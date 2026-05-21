@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/pedido_asesor.dart';
 import '../services/pedido_asesor_service.dart';
 import '../theme/app_theme.dart';
@@ -58,12 +59,7 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
   }
 
   void _seleccionarPedido(PedidoAsesor pedido) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => FacturacionScreen(pedidoAsesor: pedido),
-      ),
-    );
+    await context.push('/facturar', extra: pedido);
     // Recargar lista al regresar
     _cargarPedidos();
   }
@@ -72,19 +68,19 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Text(
           'Cancelar Pedido',
-          style: TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Text(
           '¿Estás seguro de que deseas cancelar este pedido?',
-          style: TextStyle(color: AppTheme.textSecondary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('No', style: TextStyle(color: AppTheme.textSecondary)),
+            child: Text('No', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
@@ -117,36 +113,36 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
       case 'CANCELADO':
         return AppTheme.error;
       default:
-        return AppTheme.textSecondary;
+        return Theme.of(context).colorScheme.onSurface.withOpacity(0.7);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Pedidos de Asesores',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
-        backgroundColor: AppTheme.primary,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
           onPressed: () =>
-              Navigator.pushReplacementNamed(context, '/dashboard'),
+              context.go('/dashboard'),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.add_circle_outline, color: Colors.white),
+            icon: Icon(Icons.add_circle_outline, color: Theme.of(context).colorScheme.onSurface),
             onPressed: () {
-              Navigator.pushNamed(context, '/asesor-pedidos');
+              context.push('/asesor-pedidos');
             },
             tooltip: 'Crear Nuevo Pedido',
           ),
           IconButton(
-            icon: Icon(Icons.refresh, color: Colors.white),
+            icon: Icon(Icons.refresh, color: Theme.of(context).colorScheme.onSurface),
             onPressed: _cargarPedidos,
             tooltip: 'Recargar',
           ),
@@ -173,7 +169,7 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceDark,
+        color: Theme.of(context).colorScheme.surface,
         border: Border(
           bottom: BorderSide(color: AppTheme.primary.withOpacity(0.3)),
         ),
@@ -183,7 +179,7 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
           Text(
             'Estado:',
             style: TextStyle(
-              color: AppTheme.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -211,9 +207,9 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
           });
         },
         selectedColor: AppTheme.primary,
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         labelStyle: TextStyle(
-          color: isSelected ? Colors.white : AppTheme.textSecondary,
+          color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
       ),
@@ -225,11 +221,11 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inbox, size: 80, color: AppTheme.textSecondary),
+          Icon(Icons.inbox, size: 80, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
           SizedBox(height: 16),
           Text(
             'No hay pedidos ${_filtroEstado == "TODOS" ? "" : _filtroEstado.toLowerCase() + "s"}',
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 16),
           ),
         ],
       ),
@@ -249,7 +245,7 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
 
   Widget _buildPedidoCard(PedidoAsesor pedido) {
     return Card(
-      color: AppTheme.cardBg,
+      color: Theme.of(context).colorScheme.surface,
       margin: EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -296,7 +292,7 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
                               child: Text(
                                 pedido.clienteNombre,
                                 style: TextStyle(
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -310,14 +306,14 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
                           children: [
                             Icon(
                               Icons.badge,
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                               size: 16,
                             ),
                             SizedBox(width: 4),
                             Text(
                               'Asesor: ${pedido.asesorNombre}',
                               style: TextStyle(
-                                color: AppTheme.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 fontSize: 12,
                               ),
                             ),
@@ -385,7 +381,7 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
               Text(
                 'Productos (${pedido.items.length}):',
                 style: TextStyle(
-                  color: AppTheme.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
@@ -399,7 +395,7 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
                       child: Text(
                         '• ${item.productoNombre} x${item.cantidad} - \$${item.subtotal.toStringAsFixed(0)}',
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 12,
                         ),
                       ),
@@ -411,7 +407,7 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
                   child: Text(
                     '... y ${pedido.items.length - 3} más',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 12,
                       fontStyle: FontStyle.italic,
                     ),
@@ -423,7 +419,7 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
                 Text(
                   'Observaciones:',
                   style: TextStyle(
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                   ),
@@ -431,7 +427,7 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
                 Text(
                   pedido.observaciones!,
                   style: TextStyle(
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 12,
                     fontStyle: FontStyle.italic,
                   ),
@@ -456,7 +452,7 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
                       Text(
                         _formatearFecha(pedido.fechaCreacion),
                         style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 11,
                         ),
                       ),

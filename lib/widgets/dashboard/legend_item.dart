@@ -23,7 +23,7 @@ class LegendItem extends StatelessWidget {
         SizedBox(width: 8),
         Text(
           label,
-          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
         ),
       ],
     );

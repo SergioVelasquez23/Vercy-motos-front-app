@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../models/ingreso_caja.dart';
 import '../services/ingreso_caja_service.dart';
@@ -101,8 +102,8 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
             colorScheme: ColorScheme.dark(
             primary: AppTheme.primary,
               onPrimary: Colors.white,
-              surface: AppTheme.cardBg,
-              onSurface: AppTheme.textPrimary,
+              surface: Theme.of(context).colorScheme.surface,
+              onSurface: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           child: child!,
@@ -167,15 +168,15 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppTheme.primary,
-        title: Text('Ingresos de Caja', style: TextStyle(color: Colors.white)),
-        iconTheme: IconThemeData(color: Colors.white),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Text('Ingresos de Caja', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pushReplacementNamed(context, '/dashboard'),
+          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+          onPressed: () => context.go('/dashboard'),
         ),
       ),
       body: _loading
@@ -192,7 +193,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                         decoration: InputDecoration(
                           hintText:
                               'Buscar por concepto, monto, responsable...',
-                          hintStyle: TextStyle(color: AppTheme.textSecondary),
+                          hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                           prefixIcon: Icon(Icons.search, color: AppTheme.primary),
                           suffixIcon: IconButton(
                             icon: Icon(
@@ -208,13 +209,13 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                             },
                           ),
                           filled: true,
-                          fillColor: AppTheme.cardBg,
+                          fillColor: Theme.of(context).colorScheme.surface,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide: BorderSide.none,
                           ),
                         ),
-                        style: TextStyle(color: AppTheme.textPrimary),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       ),
 
                       // Panel de filtros expandible
@@ -223,7 +224,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                         Container(
                           padding: EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppTheme.cardBg,
+                            color: Theme.of(context).colorScheme.surface,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Column(
@@ -232,7 +233,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                               Text(
                                 'Filtros avanzados',
                                 style: TextStyle(
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -252,7 +253,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                                         _fechaInicio == null
                                             ? 'Desde'
                                             : 'Desde: ${_fechaInicio!.day}/${_fechaInicio!.month}/${_fechaInicio!.year}',
-                                        style: TextStyle(color: AppTheme.textPrimary),
+                                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                       ),
                                       style: TextButton.styleFrom(
                                         backgroundColor: Colors.grey[800],
@@ -271,7 +272,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                                         _fechaFin == null
                                             ? 'Hasta'
                                             : 'Hasta: ${_fechaFin!.day}/${_fechaFin!.month}/${_fechaFin!.year}',
-                                        style: TextStyle(color: AppTheme.textPrimary),
+                                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                       ),
                                       style: TextButton.styleFrom(
                                         backgroundColor: Colors.grey[800],
@@ -287,7 +288,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                               TextField(
                                 decoration: InputDecoration(
                                   hintText: 'ID de Cuadre',
-                                  hintStyle: TextStyle(color: AppTheme.textSecondary),
+                                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                                   prefixIcon: Icon(
                                     Icons.receipt_long,
                                     color: AppTheme.primary,
@@ -299,7 +300,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                                     borderSide: BorderSide.none,
                                   ),
                                 ),
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 onChanged: (value) {
                                   setState(() {
                                     _cuadreCajaId = value;
@@ -345,7 +346,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                               _ingresos.isEmpty
                                   ? 'No hay ingresos registrados'
                                   : 'No se encontraron resultados',
-                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 16),
                             ),
                           )
                         : ListView.builder(
@@ -354,13 +355,13 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                             itemBuilder: (context, i) {
                               final ingreso = _ingresosFiltrados[i];
                               return Card(
-                                color: AppTheme.cardBg,
+                                color: Theme.of(context).colorScheme.surface,
                                 margin: EdgeInsets.only(bottom: 12),
                                 child: ListTile(
                                   title: Text(
                                     ingreso.concepto,
                                     style: TextStyle(
-                                      color: AppTheme.textPrimary,
+                                      color: Theme.of(context).colorScheme.onSurface,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -370,12 +371,12 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                                     children: [
                                       Text(
                                         'Monto: ${ingreso.monto} | Forma: ${ingreso.formaPago}',
-                                        style: TextStyle(color: AppTheme.textSecondary),
+                                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                                       ),
                                       Text(
                                         'Fecha: ${ingreso.fechaIngreso.toLocal()}',
                                         style: TextStyle(
-                                          color: AppTheme.textSecondary,
+                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                           fontSize: 12,
                                         ),
                                       ),
@@ -383,7 +384,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                                         Text(
                                           'Responsable: ${ingreso.responsable}',
                                           style: TextStyle(
-                                            color: AppTheme.textSecondary,
+                                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                             fontSize: 12,
                                           ),
                                         ),
@@ -438,7 +439,7 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
   Widget build(BuildContext context) {
             return SingleChildScrollView(
       child: Card(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         margin: EdgeInsets.all(16),
         child: Padding(
           padding: const EdgeInsets.all(20.0),
@@ -457,7 +458,7 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 22,
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                   ],
@@ -466,10 +467,10 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
                 TextFormField(
                   decoration: InputDecoration(
                     labelText: 'Concepto',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     border: OutlineInputBorder(),
                   ),
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
                   onSaved: (v) => concepto = v!,
                 ),
@@ -477,10 +478,10 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
                 TextFormField(
                   decoration: InputDecoration(
                     labelText: 'Monto',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     border: OutlineInputBorder(),
                   ),
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   keyboardType: TextInputType.number,
                   validator: (v) => v == null || double.tryParse(v) == null
                       ? 'Monto válido'
@@ -496,20 +497,20 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
                   onChanged: (v) => setState(() => formaPago = v!),
                   decoration: InputDecoration(
                     labelText: 'Forma de pago',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     border: OutlineInputBorder(),
                   ),
-                  dropdownColor: AppTheme.cardBg,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  dropdownColor: Theme.of(context).colorScheme.surface,
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 ),
                 SizedBox(height: 16),
                 TextFormField(
                   decoration: InputDecoration(
                     labelText: 'Responsable',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     border: OutlineInputBorder(),
                   ),
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
                   onSaved: (v) => responsable = v!,
                 ),
@@ -517,10 +518,10 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
                 TextFormField(
                   decoration: InputDecoration(
                     labelText: 'Observaciones',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     border: OutlineInputBorder(),
                   ),
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   onSaved: (v) => observaciones = v ?? '',
                 ),
                 SizedBox(height: 24),

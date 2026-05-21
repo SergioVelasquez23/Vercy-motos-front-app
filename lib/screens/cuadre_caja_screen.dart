@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../models/cuadre_caja.dart';
@@ -14,6 +15,7 @@ import 'contador_efectivo_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../theme/app_theme.dart';
+import '../utils/pagination_mixin.dart';
 
 class CuadreCajaScreen extends StatefulWidget {
   const CuadreCajaScreen({super.key});
@@ -23,13 +25,13 @@ class CuadreCajaScreen extends StatefulWidget {
 }
 
 class _CuadreCajaScreenState extends State<CuadreCajaScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, PaginacionMixin<CuadreCajaScreen> {
   // Getters para compatibilidad temporal con AppTheme
   Color get primary => AppTheme.primary;
-  Color get bgDark => AppTheme.backgroundDark;
-  Color get cardBg => AppTheme.cardBg;
-  Color get textDark => AppTheme.textDark;
-  Color get textLight => AppTheme.textLight;
+  Color get bgDark => Theme.of(context).scaffoldBackgroundColor;
+  Color get cardBg => Theme.of(context).colorScheme.surface;
+  Color get textDark => Theme.of(context).colorScheme.onSurface;
+  Color get textLight => Theme.of(context).colorScheme.onSurface.withOpacity(0.5);
   Color get accentOrange => AppTheme.accent;
 
   // Services
@@ -533,9 +535,9 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
         appBar: AppBar(
           title: Text(
             'Cuadres de Caja',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+            style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
           ),
-          backgroundColor: primary,
+          backgroundColor: Theme.of(context).colorScheme.surface,
         ),
         body: Center(
           child: Container(
@@ -576,80 +578,85 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       backgroundColor: bgDark,
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
           onPressed: () =>
-              Navigator.pushReplacementNamed(context, '/dashboard'),
+              context.go('/dashboard'),
         ),
         title: Text(
           'Cuadres de Caja',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
         ),
-        backgroundColor: primary,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         actions: [
-          // Botón para abrir caja
+          // Botón para abrir caja — solo icono en móvil
           if (!_showCashRegisterForm)
-            TextButton.icon(
-              icon: Icon(Icons.lock_open, color: Colors.white),
-              label: Text('Abrir Caja', style: TextStyle(color: Colors.white)),
-              style: TextButton.styleFrom(
-                backgroundColor: Colors.green,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                padding: EdgeInsets.symmetric(horizontal: 16),
-              ),
-              onPressed: () async {
-                final result = await Navigator.pushNamed(
-                  context,
-                  '/abrir_caja',
-                );
-                if (result == true) {
-                  // Si se abrió exitosamente, recargar la lista
-                  _loadCuadresCaja();
-                }
-              },
-            ),
-          SizedBox(width: 8),
+            context.isMobile
+                ? IconButton(
+                    icon: Icon(Icons.lock_open, color: Colors.green),
+                    tooltip: 'Abrir Caja',
+                    onPressed: () async {
+                      final result = await context.push('/abrir_caja');
+                      if (result == true) _loadCuadresCaja();
+                    },
+                  )
+                : Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: TextButton.icon(
+                      icon: Icon(Icons.lock_open, color: Colors.white),
+                      label: Text('Abrir Caja', style: TextStyle(color: Colors.white)),
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                      ),
+                      onPressed: () async {
+                        final result = await context.push('/abrir_caja');
+                        if (result == true) _loadCuadresCaja();
+                      },
+                    ),
+                  ),
 
-          // Botón para cerrar caja
+          // Botón para cerrar caja — solo icono en móvil
           if (!_showCashRegisterForm)
-            TextButton.icon(
-              icon: Icon(Icons.lock, color: Colors.white),
-              label: Text('Cerrar Caja', style: TextStyle(color: Colors.white)),
-              style: TextButton.styleFrom(
-                backgroundColor: Colors.red,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                padding: EdgeInsets.symmetric(horizontal: 16),
-              ),
-              onPressed: () async {
-                final result = await Navigator.pushNamed(
-                  context,
-                  '/cerrar_caja',
-                );
-                if (result == true) {
-                  // Si se cerró exitosamente, recargar la lista
-                  _loadCuadresCaja();
-                }
-              },
-            ),
-          SizedBox(width: 8),
+            context.isMobile
+                ? IconButton(
+                    icon: Icon(Icons.lock, color: Colors.red),
+                    tooltip: 'Cerrar Caja',
+                    onPressed: () async {
+                      final result = await context.push('/cerrar_caja');
+                      if (result == true) _loadCuadresCaja();
+                    },
+                  )
+                : Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: TextButton.icon(
+                      icon: Icon(Icons.lock, color: Colors.white),
+                      label: Text('Cerrar Caja', style: TextStyle(color: Colors.white)),
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                      ),
+                      onPressed: () async {
+                        final result = await context.push('/cerrar_caja');
+                        if (result == true) _loadCuadresCaja();
+                      },
+                    ),
+                  ),
 
           // Menú de opciones de gestión
           if (!_showCashRegisterForm)
             PopupMenuButton<String>(
-              icon: Icon(Icons.more_vert, color: Colors.white),
+              icon: Icon(Icons.more_vert, color: Theme.of(context).colorScheme.onSurface),
               color: cardBg,
               onSelected: (value) {
                 if (value == 'ingresos_caja') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => IngresosCajaScreen(),
-                    ),
-                  );
+                  context.push('/ingresos-caja');
                 } else if (value == 'contador_efectivo') {
                   _abrirContadorEfectivo();
                 }
@@ -710,30 +717,12 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
   }
 
   Widget _buildSearchAndResults() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(16),
+    return Padding(
+      padding: const EdgeInsets.all(16),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Título
-          Center(
-            child: Text(
-              'CUADRES DE CAJA',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: textDark,
-                shadows: [
-                  Shadow(
-                    offset: Offset(1, 1),
-                    blurRadius: 3,
-                    color: Colors.black.withOpacity(0.3),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: 20), // Filtros de búsqueda
+          // Filtros de búsqueda
           Card(
             color: cardBg,
             elevation: 4,
@@ -1012,150 +1001,137 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                     ],
                   ),
                 )
-              : SizedBox(
-                  width: double.infinity,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      headingRowColor: WidgetStateProperty.all(
-                        Colors.black.withOpacity(0.3),
-                      ),
-                      dataRowColor: WidgetStateProperty.all(
-                        cardBg.withOpacity(0.7),
-                      ),
-                      columns: [
-                        DataColumn(
-                          label: Text(
-                            'Fecha Inicio',
-                            style: TextStyle(
-                              color: textDark,
-                              fontWeight: FontWeight.bold,
-                            ),
+              : Expanded(
+                  child: Column(
+                    children: [
+                      // Encabezado
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.08),
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(8),
                           ),
                         ),
-                        DataColumn(
-                          label: Text(
-                            'Fecha Fin',
-                            style: TextStyle(
-                              color: textDark,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Text(
-                            'Nombre de Caja',
-                            style: TextStyle(
-                              color: textDark,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Text(
-                            'Responsable',
-                            style: TextStyle(
-                              color: textDark,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Text(
-                            'Total Inicial',
-                            style: TextStyle(
-                              color: textDark,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Text(
-                            'Cerrada',
-                            style: TextStyle(
-                              color: textDark,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Text(
-                            '',
-                            style: TextStyle(
-                              color: textDark,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                      rows: _cuadresCaja.map((cuadre) {
-                        return DataRow(
-                          cells: [
-                            DataCell(
-                              Text(
-                                cuadre.fechaApertura.toString().split(' ')[0],
-                                style: TextStyle(color: textDark),
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                cuadre.fechaCierre?.toString().split(' ')[0] ??
-                                    'Abierta',
-                                style: TextStyle(color: textDark),
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                cuadre.nombre,
-                                style: TextStyle(color: textDark),
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                cuadre.responsable,
-                                style: TextStyle(color: textDark),
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                formatCurrency(cuadre.fondoInicial),
-                                style: TextStyle(color: textDark),
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                cuadre.cerrada ? 'Sí' : 'No',
-                                style: TextStyle(
-                                  color: cuadre.cerrada
-                                      ? Colors.green
-                                      : primary,
-                                ),
-                              ),
-                            ),
-                            DataCell(
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: primary,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  elevation: 3,
-                                ),
-                                onPressed: () async {
-                                  // Mostrar resumen detallado usando el nuevo endpoint
-                                  _mostrarResumenDetallado(cuadre);
-                                },
-                                child: Text('Ver'),
-                              ),
-                            ),
+                        child: Row(
+                          children: [
+                            _cuadreColHeader('Fecha Inicio', flex: 2),
+                            _cuadreColHeader('Fecha Fin', flex: 2),
+                            _cuadreColHeader('Nombre de Caja', flex: 2),
+                            _cuadreColHeader('Responsable', flex: 2),
+                            _cuadreColHeader('Total Inicial', flex: 2),
+                            _cuadreColHeader('Cerrada', flex: 1),
+                            SizedBox(width: 80),
                           ],
-                        );
-                      }).toList(),
-                    ),
+                        ),
+                      ),
+                      // Filas paginadas
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: paginarLista(_cuadresCaja).length,
+                          itemBuilder: (context, index) {
+                            final cuadre = paginarLista(_cuadresCaja)[index];
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: index.isEven
+                                    ? Theme.of(context).colorScheme.surface
+                                    : Theme.of(context).colorScheme.surface.withOpacity(0.6),
+                                border: Border(
+                                  bottom: BorderSide(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.06),
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  _cuadreCell(
+                                    cuadre.fechaApertura.toString().split(' ')[0],
+                                    flex: 2,
+                                  ),
+                                  _cuadreCell(
+                                    cuadre.fechaCierre?.toString().split(' ')[0] ?? 'Abierta',
+                                    flex: 2,
+                                  ),
+                                  _cuadreCell(cuadre.nombre, flex: 2),
+                                  _cuadreCell(cuadre.responsable, flex: 2),
+                                  _cuadreCell(
+                                    formatCurrency(cuadre.fondoInicial),
+                                    flex: 2,
+                                  ),
+                                  Expanded(
+                                    flex: 1,
+                                    child: Text(
+                                      cuadre.cerrada ? 'Sí' : 'No',
+                                      style: TextStyle(
+                                        color: cuadre.cerrada ? Colors.green : primary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: 80,
+                                    child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: primary,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 8,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                      onPressed: () => _mostrarResumenDetallado(cuadre),
+                                      child: const Text('Ver'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      buildPaginacion(
+                        totalItems: _cuadresCaja.length,
+                        accentColor: primary,
+                      ),
+                    ],
                   ),
                 ),
         ],
+      ),
+    );
+  }
+
+  Widget _cuadreColHeader(String texto, {int flex = 1}) {
+    return Expanded(
+      flex: flex,
+      child: Text(
+        texto,
+        style: TextStyle(
+          color: textDark,
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
+        ),
+      ),
+    );
+  }
+
+  Widget _cuadreCell(String texto, {int flex = 1}) {
+    return Expanded(
+      flex: flex,
+      child: Text(
+        texto,
+        style: TextStyle(color: textDark, fontSize: 13),
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
@@ -1314,7 +1290,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                       children: [
                         // Encabezado de la tabla
                         Container(
-                          color: Colors.black.withOpacity(0.3),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
                           padding: EdgeInsets.symmetric(
                             vertical: 10,
                             horizontal: 16,

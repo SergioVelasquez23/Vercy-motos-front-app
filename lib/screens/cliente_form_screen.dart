@@ -191,7 +191,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
       data: Theme.of(context).copyWith(
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: Colors.white,
+          fillColor: Theme.of(context).colorScheme.surface,
           labelStyle: TextStyle(color: Colors.grey.shade400),
           hintStyle: TextStyle(color: const Color.fromARGB(255, 247, 247, 247)),
           border: OutlineInputBorder(
@@ -216,15 +216,15 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
           cursorColor: const Color.fromARGB(255, 0, 0, 0),
         ),
         dropdownMenuTheme: DropdownMenuThemeData(
-          textStyle: TextStyle(color: AppTheme.textPrimary),
+          textStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
       ),
       child: Scaffold(
-        backgroundColor: AppTheme.backgroundDark,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           title: Text(_esEdicion ? 'Editar Cliente' : 'Nuevo Cliente'),
-          backgroundColor: AppTheme.cardBg,
-          foregroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
         ),
         body: Form(
           key: _formKey,
@@ -274,7 +274,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: const Color.fromARGB(255, 11, 11, 11),
@@ -581,7 +581,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
         return TextFormField(
           controller: textController,
           focusNode: focusNode,
-          style: TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           decoration: InputDecoration(
             labelText: 'Departamento',
             hintText: 'Buscar departamento...',
@@ -612,7 +612,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
           alignment: Alignment.topLeft,
           child: Material(
             elevation: 8,
-            color: AppTheme.cardElevated,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(8),
             child: ConstrainedBox(
               constraints: BoxConstraints(
@@ -629,7 +629,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
                     dense: true,
                     title: Text(
                       dep.name,
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     ),
                     leading: Icon(
                       Icons.location_city,
@@ -715,7 +715,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
         return TextFormField(
           controller: textController,
           focusNode: focusNode,
-          style: TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           decoration: InputDecoration(
             labelText: 'Ciudad / Municipio',
             hintText: 'Buscar municipio...',
@@ -744,7 +744,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
           alignment: Alignment.topLeft,
           child: Material(
             elevation: 8,
-            color: AppTheme.cardElevated,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(8),
             child: ConstrainedBox(
               constraints: BoxConstraints(
@@ -761,7 +761,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
                     dense: true,
                     title: Text(
                       mun.name,
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     ),
                     leading: Icon(
                       Icons.place,
@@ -910,7 +910,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         border: Border(top: BorderSide(color: Colors.grey.shade800, width: 1)),
       ),
       child: Row(

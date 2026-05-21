@@ -28,10 +28,10 @@ class _ResumenCierreDetalladoScreenState
     extends State<ResumenCierreDetalladoScreen> {
   // Theme getters
   Color get primary => AppTheme.primary;
-  Color get bgDark => AppTheme.backgroundDark;
-  Color get cardBg => AppTheme.cardBg;
-  Color get textDark => AppTheme.textDark;
-  Color get textLight => AppTheme.textLight;
+  Color get bgDark => Theme.of(context).scaffoldBackgroundColor;
+  Color get cardBg => Theme.of(context).colorScheme.surface;
+  Color get textDark => Theme.of(context).colorScheme.onSurface;
+  Color get textLight => Theme.of(context).colorScheme.onSurface.withOpacity(0.5);
   Color get accent => AppTheme.accent;
 
   final ResumenCierreCompletoService _service = ResumenCierreCompletoService();
@@ -264,18 +264,18 @@ class _ResumenCierreDetalladoScreenState
     return Scaffold(
       backgroundColor: bgDark,
       appBar: AppBar(
-        backgroundColor: primary,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Text(
           isMobile
               ? widget.nombreCuadre
               : 'Resumen Detallado - ${widget.nombreCuadre}',
           style: TextStyle(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
             fontSize: isMobile ? 16 : 20,
           ),
         ),
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
         actions: [
           if (_resumen != null)
             IconButton(
@@ -471,7 +471,7 @@ class _ResumenCierreDetalladoScreenState
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.13),
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.13),
             blurRadius: 8,
             offset: Offset(0, 3),
           ),

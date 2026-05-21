@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/factura_compra.dart';
 import '../models/proveedor.dart';
 import '../services/factura_compra_service.dart';
 import '../services/proveedor_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/vercy_sidebar_layout.dart';
 import '../utils/format_utils.dart';
 import '../utils/pagination_mixin.dart';
+import '../widgets/common/screen_header.dart';
 import 'facturas_compras_screen.dart';
 
 class ComprasListScreen extends StatefulWidget {
@@ -145,80 +146,83 @@ class _ComprasListScreenState extends State<ComprasListScreen>
 
   @override
   Widget build(BuildContext context) {
-    return VercySidebarLayout(
-      title: 'Compras',
-      child: Container(
-        padding: EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Título
-            Text(
-              'Lista Compras',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ScreenHeader(
+          icon: Icons.shopping_cart,
+          title: 'Lista Compras',
+          badge: '${_comprasFiltradas.length}',
+          actions: [
+            ScreenHeaderAction.primary(
+              icon: Icons.add,
+              label: 'Crear Compra',
+              mobileLabel: 'Crear',
+              onPressed: () => context.push('/facturas-compras'),
             ),
-            SizedBox(height: 24),
-
-            // Primera fila de filtros
-            _buildPrimeraFilaFiltros(),
-            SizedBox(height: 16),
-
-            // Segunda fila de filtros
-            _buildSegundaFilaFiltros(),
-            SizedBox(height: 16),
-
-            // Tabla de compras
-            Expanded(child: _buildTabla()),
           ],
         ),
-      ),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.all(context.isMobile ? 12 : 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildPrimeraFilaFiltros(),
+                const SizedBox(height: 16),
+                _buildSegundaFilaFiltros(),
+                const SizedBox(height: 16),
+                Expanded(child: _buildTabla()),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildPrimeraFilaFiltros() {
+    final isMobile = context.isMobile;
+    final campoAncho = isMobile ? double.infinity : 200.0;
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade800),
       ),
-      child: Row(
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           // Número Compra
-          Expanded(
+          SizedBox(
+            width: campoAncho,
             child: _buildCampoFiltro(
               controller: _filtroNumeroCompraController,
               hint: 'Número Compra',
               onChanged: (_) => _aplicarFiltros(),
             ),
           ),
-          SizedBox(width: 12),
-
           // Número Factura
-          Expanded(
+          SizedBox(
+            width: campoAncho,
             child: _buildCampoFiltro(
               controller: _filtroNumeroFacturaController,
               hint: 'Número Factura',
               onChanged: (_) => _aplicarFiltros(),
             ),
           ),
-          SizedBox(width: 12),
-
           // Nombre Proveedor
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: isMobile ? double.infinity : 260,
             child: _buildCampoFiltro(
               controller: _filtroProveedorController,
               hint: 'Nombre Proveedor',
               onChanged: (_) => _aplicarFiltros(),
             ),
           ),
-          SizedBox(width: 16),
 
           // Botón Buscar
           ElevatedButton.icon(
@@ -233,13 +237,12 @@ class _ComprasListScreenState extends State<ComprasListScreen>
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primary,
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24, vertical: isMobile ? 12 : 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
           ),
-          SizedBox(width: 8),
 
           // Botón Excel
           Container(
@@ -263,17 +266,23 @@ class _ComprasListScreenState extends State<ComprasListScreen>
   }
 
   Widget _buildSegundaFilaFiltros() {
+    final isMobile = context.isMobile;
+    final fechaAncho = isMobile ? double.infinity : 200.0;
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade800),
       ),
-      child: Row(
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           // Fecha Inicio
-          Expanded(
+          SizedBox(
+            width: fechaAncho,
             child: _buildCampoFecha(
               label: 'Fecha Inicio',
               fecha: _fechaInicio,
@@ -288,7 +297,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
                       data: ThemeData.dark().copyWith(
                         colorScheme: ColorScheme.dark(
                           primary: AppTheme.primary,
-                          surface: AppTheme.cardBg,
+                          surface: Theme.of(context).colorScheme.surface,
                         ),
                       ),
                       child: child!,
@@ -306,10 +315,9 @@ class _ComprasListScreenState extends State<ComprasListScreen>
               },
             ),
           ),
-          SizedBox(width: 12),
-
           // Fecha Fin
-          Expanded(
+          SizedBox(
+            width: fechaAncho,
             child: _buildCampoFecha(
               label: 'Fecha Fin',
               fecha: _fechaFin,
@@ -324,7 +332,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
                       data: ThemeData.dark().copyWith(
                         colorScheme: ColorScheme.dark(
                           primary: AppTheme.primary,
-                          surface: AppTheme.cardBg,
+                          surface: Theme.of(context).colorScheme.surface,
                         ),
                       ),
                       child: child!,
@@ -342,13 +350,11 @@ class _ComprasListScreenState extends State<ComprasListScreen>
               },
             ),
           ),
-          SizedBox(width: 16),
-
           // Checkbox Cuentas por Pagar
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.grey.shade700),
             ),
@@ -366,26 +372,24 @@ class _ComprasListScreenState extends State<ComprasListScreen>
                 ),
                 Text(
                   'Cuentas por\nPagar',
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 12),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12),
                 ),
               ],
             ),
           ),
-          SizedBox(width: 12),
-
           // Dropdown Ordenamiento
           Container(
             padding: EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.grey.shade700),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: _ordenamiento,
-                dropdownColor: AppTheme.cardBg,
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                dropdownColor: Theme.of(context).colorScheme.surface,
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
                 icon: Icon(Icons.arrow_drop_down, color: Colors.grey),
                 items: [
                   DropdownMenuItem(
@@ -406,21 +410,19 @@ class _ComprasListScreenState extends State<ComprasListScreen>
               ),
             ),
           ),
-          SizedBox(width: 12),
-
           // Dropdown Ubicación
           Container(
             padding: EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.grey.shade700),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: _ubicacion,
-                dropdownColor: AppTheme.cardBg,
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                dropdownColor: Theme.of(context).colorScheme.surface,
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
                 icon: Icon(Icons.arrow_drop_down, color: Colors.grey),
                 items: [
                   DropdownMenuItem(value: 'TODAS', child: Text('Ubicación')),
@@ -435,27 +437,6 @@ class _ComprasListScreenState extends State<ComprasListScreen>
             ),
           ),
 
-          Spacer(),
-
-          // Botón Crear Compra
-          ElevatedButton.icon(
-            onPressed: () => Navigator.pushNamed(context, '/facturas-compras'),
-            icon: Icon(Icons.add, color: Colors.white),
-            label: Text(
-              'Crear Compra',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -469,12 +450,12 @@ class _ComprasListScreenState extends State<ComprasListScreen>
     return TextField(
       controller: controller,
       onChanged: onChanged,
-      style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey.shade500),
         filled: true,
-        fillColor: AppTheme.surfaceDark,
+        fillColor: Theme.of(context).colorScheme.surface,
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -503,7 +484,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: AppTheme.surfaceDark,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.grey.shade700),
         ),
@@ -540,7 +521,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
 
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade800),
       ),
@@ -550,7 +531,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
             ),
             child: Row(
@@ -636,7 +617,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
       child: Text(
         texto,
         style: TextStyle(
-          color: AppTheme.textPrimary,
+          color: Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.bold,
           fontSize: 13,
         ),
@@ -647,7 +628,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
 
   Widget _buildFilaTabla(FacturaCompra compra, int index) {
     final isEven = index % 2 == 0;
-    final backgroundColor = isEven ? AppTheme.cardBg : AppTheme.surfaceDark;
+    final backgroundColor = isEven ? Theme.of(context).colorScheme.surface : Theme.of(context).colorScheme.surface;
 
     // Calcular valores
     final pagado =
@@ -691,7 +672,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
             flex: 1,
             child: Text(
               numeroCompra,
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
             ),
           ),
 
@@ -711,14 +692,8 @@ class _ComprasListScreenState extends State<ComprasListScreen>
                     padding: EdgeInsets.zero,
                     icon: Icon(Icons.edit, color: Colors.white, size: 16),
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CrearFacturaCompraScreen(
-                            facturaParaEditar: compra,
-                          ),
-                        ),
-                      ).then((_) => _cargarDatos());
+                      context.push('/facturas-compras', extra: compra)
+                          .then((_) => _cargarDatos());
                     },
                     tooltip: 'Editar',
                   ),
@@ -747,7 +722,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
             flex: 2,
             child: Text(
               compra.proveedorNombre,
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -757,7 +732,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
             flex: 2,
             child: Text(
               '${compra.fechaFactura.year}-${compra.fechaFactura.month.toString().padLeft(2, '0')}-${compra.fechaFactura.day.toString().padLeft(2, '0')}',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
             ),
           ),
 
@@ -766,7 +741,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
             flex: 2,
             child: Text(
               '${compra.fechaVencimiento.year}-${compra.fechaVencimiento.month.toString().padLeft(2, '0')}-${compra.fechaVencimiento.day.toString().padLeft(2, '0')}',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
             ),
           ),
 
@@ -775,7 +750,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
             flex: 2,
             child: Text(
               '\$ ${formatNumberWithDots(compra.total)}',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -785,7 +760,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
             flex: 1,
             child: Text(
               '\$ ${formatNumberWithDots(compra.totalDescuentos)}',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -795,7 +770,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
             flex: 2,
             child: Text(
               '\$ ${formatNumberWithDots(pagado)}',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -836,7 +811,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
               final destinos = compra.items.map((i) => i.destino).toSet();
               return destinos.length == 1 ? destinos.first : 'MIXTO';
             }(),
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
             ),
           ),
         ],
@@ -851,10 +826,10 @@ class _ComprasListScreenState extends State<ComprasListScreen>
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Text(
             'Eliminar Compra',
-            style: TextStyle(color: AppTheme.textPrimary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -863,32 +838,32 @@ class _ComprasListScreenState extends State<ComprasListScreen>
               Text(
                 '¿Estás seguro de que deseas eliminar la compra ${compra.numeroFactura}?\n\n'
                 'Se revertirá el inventario asociado a esta compra.',
-                style: TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               ),
               SizedBox(height: 16),
               TextField(
                 controller: motivoController,
                 maxLines: 3,
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 decoration: InputDecoration(
                   labelText: 'Razón de la eliminación (opcional)',
-                  labelStyle: TextStyle(color: AppTheme.textSecondary),
+                  labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   hintText: 'Ej: Factura duplicada, error de digitación...',
                   hintStyle: TextStyle(
-                    color: AppTheme.textSecondary.withOpacity(0.5),
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.5),
                   ),
                   filled: true,
-                  fillColor: AppTheme.backgroundDark,
+                  fillColor: Theme.of(context).scaffoldBackgroundColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide(
-                      color: AppTheme.textSecondary.withOpacity(0.3),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide(
-                      color: AppTheme.textSecondary.withOpacity(0.3),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
@@ -904,7 +879,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
               onPressed: () => Navigator.of(context).pop(null),
               child: Text(
                 'Cancelar',
-                style: TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               ),
             ),
             TextButton(

@@ -6,8 +6,8 @@ import '../services/cartera_service.dart';
 import '../services/proveedor_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
-import '../widgets/vercy_sidebar_layout.dart';
 import '../utils/logger.dart';
+import '../widgets/common/screen_header.dart';
 
 class CuentasPorPagarScreen extends StatefulWidget {
   const CuentasPorPagarScreen({Key? key}) : super(key: key);
@@ -106,10 +106,10 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
     final result = await showDialog<double>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Text(
           'Registrar Pago - ${cuenta.proveedorNombre}',
-          style: TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -117,7 +117,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
           children: [
             Text(
               'Saldo pendiente: ${CurrencyUtils.format(cuenta.saldoPendiente)}',
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
             if (cuenta.tieneDescuento && !cuenta.descuentoPerdido) ...[
               const SizedBox(height: 8),
@@ -133,7 +133,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
             TextField(
               controller: montoController,
               keyboardType: TextInputType.number,
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: const InputDecoration(
                 labelText: 'Monto del pago',
                 prefixText: '\$ ',
@@ -232,20 +232,8 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return VercySidebarLayout(
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Cuentas por Pagar'),
-          backgroundColor: AppTheme.warning,
-          foregroundColor: AppTheme.white,
-          elevation: 0,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: _cargarCuentas,
-            ),
-          ],
-        ),
+    return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         floatingActionButton: FloatingActionButton(
           onPressed: _mostrarFormularioNuevaCuenta,
           backgroundColor: AppTheme.warning,
@@ -253,9 +241,21 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
         ),
         body: Column(
           children: [
+            ScreenHeader(
+              icon: Icons.payment,
+              title: 'Cuentas por Pagar',
+              badge: '${cuentasFiltradas.length}',
+              actions: [
+                ScreenHeaderAction.iconOnly(
+                  icon: Icons.refresh,
+                  tooltip: 'Refrescar',
+                  onPressed: _cargarCuentas,
+                ),
+              ],
+            ),
             // Filtros y búsqueda
             Container(
-              color: AppTheme.warning,
+              color: Theme.of(context).colorScheme.surface,
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
@@ -266,7 +266,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                       hintText: 'Buscar por proveedor o factura...',
                       prefixIcon: const Icon(Icons.search),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: Theme.of(context).colorScheme.surface,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -313,7 +313,6 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -328,9 +327,9 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
           _aplicarFiltros();
         });
       },
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       selectedColor: Colors.white,
-      checkmarkColor: const Color(0xFFE65100),
+      checkmarkColor: AppTheme.warning,
     );
   }
 
@@ -634,7 +633,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
               const SizedBox(height: 8),
               LinearProgressIndicator(
                 value: cuenta.montoAbonado / cuenta.montoTotal,
-                backgroundColor: AppTheme.surfaceDark,
+                backgroundColor: Theme.of(context).colorScheme.surface,
                 valueColor: AlwaysStoppedAnimation<Color>(
                   cuenta.montoAbonado >= cuenta.montoTotal
                       ? AppTheme.primary
@@ -773,10 +772,10 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              backgroundColor: Colors.white,
-              title: const Text(
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              title: Text(
                 'Nueva Cuenta por Pagar',
-                style: TextStyle(color: Colors.black87),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
               content: SingleChildScrollView(
                 child: SizedBox(
@@ -810,7 +809,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                               return TextField(
                                 controller: controller,
                                 focusNode: focusNode,
-                                style: const TextStyle(color: Colors.black87),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: const InputDecoration(
                                   labelText: 'Proveedor *',
                                   prefixIcon: Icon(Icons.business),
@@ -844,7 +843,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                       // Número de factura
                       TextField(
                         controller: numeroFacturaCtrl,
-                        style: const TextStyle(color: Colors.black87),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         decoration: const InputDecoration(
                           labelText: 'Número de factura *',
                           prefixIcon: Icon(Icons.receipt),
@@ -857,7 +856,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                       TextField(
                         controller: montoTotalCtrl,
                         keyboardType: TextInputType.number,
-                        style: const TextStyle(color: Colors.black87),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         decoration: const InputDecoration(
                           labelText: 'Monto total *',
                           prefixText: '\$ ',
@@ -871,7 +870,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                       TextField(
                         controller: diasVencimientoCtrl,
                         keyboardType: TextInputType.number,
-                        style: const TextStyle(color: Colors.black87),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         decoration: const InputDecoration(
                           labelText: 'Días de vencimiento',
                           prefixIcon: Icon(Icons.calendar_today),
@@ -887,7 +886,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                           style: TextStyle(fontSize: 14),
                         ),
                         value: tieneDescuento,
-                        activeColor: const Color(0xFFE65100),
+                        activeColor: AppTheme.warning,
                         onChanged: (value) {
                           setDialogState(() => tieneDescuento = value);
                         },
@@ -896,7 +895,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                         TextField(
                           controller: porcentajeDescuentoCtrl,
                           keyboardType: TextInputType.number,
-                          style: const TextStyle(color: Colors.black87),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           decoration: const InputDecoration(
                             labelText: 'Porcentaje de descuento (%)',
                             prefixIcon: Icon(Icons.discount),
@@ -913,7 +912,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                           style: TextStyle(fontSize: 14),
                         ),
                         value: esRecurrente,
-                        activeColor: const Color(0xFFE65100),
+                        activeColor: AppTheme.warning,
                         onChanged: (value) {
                           setDialogState(() => esRecurrente = value);
                         },
@@ -946,12 +945,12 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
 
                       // === CONFIGURACIÓN DE ALERTAS AUTOMÁTICAS ===
                       const Divider(height: 20),
-                      const Text(
+                      Text(
                         'Alertas automáticas por Telegram',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
-                          color: Colors.black87,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -972,7 +971,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                       // Días para alertas de vencimiento
                       TextField(
                         controller: diasAvisosCtrl,
-                        style: const TextStyle(color: Colors.black87),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         decoration: const InputDecoration(
                           labelText:
                               'Días para alertas (antes del vencimiento)',
@@ -986,7 +985,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                       // Días para alertas de descuento
                       TextField(
                         controller: diasAvisoDescuentoCtrl,
-                        style: const TextStyle(color: Colors.black87),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         decoration: const InputDecoration(
                           labelText: 'Días para alertas de descuento',
                           helperText: 'Ej: 10,5,2,1',
@@ -1000,7 +999,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                       TextField(
                         controller: observacionesCtrl,
                         maxLines: 2,
-                        style: const TextStyle(color: Colors.black87),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         decoration: const InputDecoration(
                           labelText: 'Observaciones',
                           prefixIcon: Icon(Icons.note),
@@ -1020,7 +1019,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                   icon: const Icon(Icons.save),
                   label: const Text('Guardar'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE65100),
+                    backgroundColor: AppTheme.warning,
                     foregroundColor: Colors.white,
                   ),
                   onPressed: () {

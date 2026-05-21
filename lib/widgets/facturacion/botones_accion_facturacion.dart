@@ -25,7 +25,7 @@ class BotonesAccionFacturacion extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
@@ -77,8 +77,8 @@ class BotonesAccionFacturacion extends StatelessWidget {
                       icon: Icon(Icons.drafts),
                       label: Text('Guardar Borrador'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.textPrimary,
-                        side: BorderSide(color: AppTheme.textMuted),
+                        foregroundColor: Colors.white,
+                        side: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                         padding: EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),

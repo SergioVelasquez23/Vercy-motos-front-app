@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:go_router/go_router.dart';
+import '../theme/app_theme.dart';
 import '../services/reportes_service.dart';
 import '../services/cliente_service.dart';
 import '../services/producto_service.dart';
@@ -17,12 +19,12 @@ class ReportesScreen extends StatefulWidget {
 
 class _ReportesScreenState extends State<ReportesScreen>
     with SingleTickerProviderStateMixin {
-  final Color primary = Color(0xFFFF6B00); // Color naranja fuego
-  final Color bgDark = Color(0xFF1E1E1E); // Color de fondo negro
-  final Color cardBg = Color(0xFF252525); // Color de tarjetas
-  final Color textDark = Color(0xFFE0E0E0); // Color de texto claro
-  final Color textLight = Color(0xFFA0A0A0); // Color de texto más suave
-  final Color accentOrange = Color(0xFFFF8800); // Naranja más brillante
+  Color get primary => AppTheme.primary;
+  Color get bgDark => Theme.of(context).scaffoldBackgroundColor;
+  Color get cardBg => Theme.of(context).colorScheme.surface;
+  Color get textDark => Theme.of(context).colorScheme.onSurface;
+  Color get textLight => Theme.of(context).colorScheme.onSurface.withOpacity(0.6);
+  Color get accentOrange => AppTheme.secondary;
 
   late TabController _tabController;
   DateTime _fechaInicio = DateTime.now().subtract(Duration(days: 7));
@@ -431,7 +433,7 @@ class _ReportesScreenState extends State<ReportesScreen>
                         Shadow(
                           offset: Offset(1, 1),
                           blurRadius: 3,
-                          color: Colors.black.withOpacity(0.3),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
                         ),
                       ],
                     ),
@@ -514,7 +516,7 @@ class _ReportesScreenState extends State<ReportesScreen>
             iconColor: primary,
             onTap: () {
               Navigator.of(context).pop();
-              Navigator.of(context).pushReplacementNamed('/dashboard');
+              context.go('/dashboard');
             },
             trailingIcon: null,
           ),
@@ -1506,7 +1508,7 @@ class _ReportesScreenState extends State<ReportesScreen>
             width: double.infinity,
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
               borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
             ),
             child: Row(
@@ -1646,7 +1648,7 @@ class _ReportesScreenState extends State<ReportesScreen>
         scrollDirection: Axis.horizontal,
         child: DataTable(
           headingRowColor: WidgetStateProperty.all(
-            Colors.black.withOpacity(0.3),
+            Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
           ),
           dataRowColor: WidgetStateProperty.all(cardBg.withOpacity(0.7)),
           columns: [

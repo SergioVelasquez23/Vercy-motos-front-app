@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/cotizacion.dart';
 import '../models/cliente.dart';
 import '../models/factura.dart';
@@ -6,9 +7,9 @@ import '../services/cotizacion_service.dart';
 import '../services/cliente_service.dart';
 import '../services/pdf_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/vercy_sidebar_layout.dart';
 import '../utils/logger.dart';
 import '../utils/pagination_mixin.dart';
+import '../widgets/common/screen_header.dart';
 import '../services/factura_service.dart';
 import '../models/item_pedido.dart';
 
@@ -90,10 +91,8 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
 
   @override
   Widget build(BuildContext context) {
-    return VercySidebarLayout(
-      title: 'Cotizaciones',
-      child: Scaffold(
-        backgroundColor: AppTheme.backgroundDark,
+    return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Column(
           children: [
             _buildHeader(),
@@ -108,66 +107,46 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
             ),
           ],
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => _navegarAFormulario(null),
-          backgroundColor: AppTheme.primary,
-          icon: Icon(Icons.add),
-          label: Text('Nueva Cotización'),
-        ),
-      ),
     );
   }
 
   Widget _buildHeader() {
-    return Container(
-      padding: EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppTheme.cardBg,
-        boxShadow: [
-          BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.request_quote, color: AppTheme.primary, size: 32),
-          SizedBox(width: 12),
-          Text(
-            'Gestión de Cotizaciones',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          Spacer(),
-          Text(
-            '${_cotizacionesFiltradas.length} cotizaciones',
-            style: TextStyle(fontSize: 16, color: Colors.black),
-          ),
-        ],
-      ),
+    return ScreenHeader(
+      icon: Icons.request_quote,
+      title: 'Gestión de Cotizaciones',
+      badge: '${_cotizacionesFiltradas.length}',
+      actions: [
+        ScreenHeaderAction.primary(
+          icon: Icons.add,
+          label: 'Nueva Cotización',
+          mobileLabel: 'Nueva',
+          onPressed: () => _navegarAFormulario(null),
+        ),
+      ],
     );
   }
 
   Widget _buildFiltros() {
+    final isMobile = context.isMobile;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Buscador
+          // Buscador — ocupa todo el espacio restante
           Expanded(
-            flex: 3,
             child: TextField(
               controller: _searchController,
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: onSurface),
               decoration: InputDecoration(
                 hintText: 'Buscar cotización...',
-                hintStyle: TextStyle(color: Colors.black),
-                prefixIcon: Icon(Icons.search, color: Colors.black),
+                hintStyle: TextStyle(color: onSurface.withOpacity(0.6)),
+                prefixIcon: Icon(Icons.search, color: onSurface.withOpacity(0.7)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -176,37 +155,43 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
                   vertical: 12,
                 ),
                 filled: true,
-                fillColor: AppTheme.surfaceDark,
+                fillColor: Theme.of(context).colorScheme.surface,
               ),
               onChanged: (value) => _aplicarFiltros(),
             ),
           ),
-          SizedBox(width: 16),
-          // Filtro por estado
-          DropdownButton<String>(
-            value: _filtroEstado,
-            dropdownColor: AppTheme.cardBg,
-            style: TextStyle(color: AppTheme.textPrimary),
-            items: [
-              DropdownMenuItem(
-                value: 'todos',
-                child: Text('Todos los estados'),
+          SizedBox(width: 12),
+          // Filtro por estado — ancho fijo grande para que se lea cómodo
+          SizedBox(
+            width: isMobile ? 160 : 220,
+            child: DropdownButtonFormField<String>(
+              value: _filtroEstado,
+              dropdownColor: Theme.of(context).colorScheme.surface,
+              style: TextStyle(color: onSurface),
+              isExpanded: true,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surface,
               ),
-              DropdownMenuItem(value: 'activa', child: Text('Activas')),
-              DropdownMenuItem(value: 'aceptada', child: Text('Aceptadas')),
-              DropdownMenuItem(value: 'rechazada', child: Text('Rechazadas')),
-              DropdownMenuItem(value: 'vencida', child: Text('Vencidas')),
-              DropdownMenuItem(value: 'convertida', child: Text('Convertidas')),
-            ],
-            onChanged: (value) {
-              setState(() => _filtroEstado = value!);
-              _aplicarFiltros();
-            },
+              items: const [
+                DropdownMenuItem(value: 'todos', child: Text('Todos los estados')),
+                DropdownMenuItem(value: 'activa', child: Text('Activas')),
+                DropdownMenuItem(value: 'aceptada', child: Text('Aceptadas')),
+                DropdownMenuItem(value: 'rechazada', child: Text('Rechazadas')),
+                DropdownMenuItem(value: 'vencida', child: Text('Vencidas')),
+                DropdownMenuItem(value: 'convertida', child: Text('Convertidas')),
+              ],
+              onChanged: (value) {
+                setState(() => _filtroEstado = value!);
+                _aplicarFiltros();
+              },
+            ),
           ),
-          SizedBox(width: 16),
-          // Botón refrescar
+          SizedBox(width: 8),
           IconButton(
-            icon: Icon(Icons.refresh, color: Colors.white),
+            icon: Icon(Icons.refresh, color: onSurface),
             onPressed: _cargarCotizaciones,
             tooltip: 'Refrescar',
           ),
@@ -227,20 +212,27 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
         .length;
 
     return Container(
+      width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildEstadoChip('Activas', activas, Colors.blue),
-          _buildEstadoChip('Aceptadas', aceptadas, Colors.green),
-          _buildEstadoChip('Rechazadas', rechazadas, Colors.red),
-          _buildEstadoChip('Vencidas', vencidas, Colors.orange),
-          _buildEstadoChip('Convertidas', convertidas, AppTheme.secondary),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _buildEstadoChip('Activas', activas, Colors.blue),
+            SizedBox(width: 12),
+            _buildEstadoChip('Aceptadas', aceptadas, Colors.green),
+            SizedBox(width: 12),
+            _buildEstadoChip('Rechazadas', rechazadas, Colors.red),
+            SizedBox(width: 12),
+            _buildEstadoChip('Vencidas', vencidas, Colors.orange),
+            SizedBox(width: 12),
+            _buildEstadoChip('Convertidas', convertidas, AppTheme.secondary),
+          ],
+        ),
       ),
     );
   }
@@ -291,7 +283,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
             _searchController.text.isEmpty
                 ? 'No hay cotizaciones registradas'
                 : 'No se encontraron cotizaciones',
-            style: TextStyle(fontSize: 18, color: Colors.black),
+            style: TextStyle(fontSize: 18, color: Theme.of(context).colorScheme.onSurface),
           ),
           SizedBox(height: 8),
           TextButton.icon(
@@ -308,7 +300,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
     return Container(
       margin: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
@@ -379,31 +371,31 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
           SizedBox(height: 4),
           Row(
             children: [
-              Icon(Icons.person, size: 14, color: Colors.black),
+              Icon(Icons.person, size: 14, color: Theme.of(context).colorScheme.onSurface),
               SizedBox(width: 4),
               Text(
                 'Cliente: ${cotizacion.clienteNombre ?? 'CONSUMIDOR FINAL'}',
-                style: TextStyle(color: Colors.black),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
             ],
           ),
           SizedBox(height: 4),
           Row(
             children: [
-              Icon(Icons.calendar_today, size: 14, color: Colors.black),
+              Icon(Icons.calendar_today, size: 14, color: Theme.of(context).colorScheme.onSurface),
               SizedBox(width: 4),
               Text(
                 'Fecha: ${cotizacion.fecha.day}/${cotizacion.fecha.month}/${cotizacion.fecha.year}',
-                style: TextStyle(color: Colors.black),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
               SizedBox(width: 16),
               if (cotizacion.fechaVencimiento != null) ...[
-                Icon(Icons.event, size: 14, color: Colors.black),
+                Icon(Icons.event, size: 14, color: Theme.of(context).colorScheme.onSurface),
                 SizedBox(width: 4),
                 Text(
                   'Vence: ${cotizacion.fechaVencimiento!.day}/${cotizacion.fechaVencimiento!.month}/${cotizacion.fechaVencimiento!.year}',
                   style: TextStyle(
-                    color: diasVigencia < 0 ? Colors.red : Colors.black,
+                    color: diasVigencia < 0 ? Colors.red : Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -412,11 +404,11 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
           SizedBox(height: 4),
           Row(
             children: [
-              Icon(Icons.shopping_cart, size: 14, color: Colors.black),
+              Icon(Icons.shopping_cart, size: 14, color: Theme.of(context).colorScheme.onSurface),
               SizedBox(width: 4),
               Text(
                 '${cotizacion.items.length} items',
-                style: TextStyle(color: Colors.black),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
             ],
           ),
@@ -536,10 +528,9 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
   }
 
   void _navegarAFormulario(Cotizacion? cotizacion) async {
-    final resultado = await Navigator.pushNamed(
-      context,
+    final resultado = await context.push(
       '/cotizaciones/form',
-      arguments: cotizacion,
+      extra: cotizacion,
     );
 
     if (resultado == true) {
@@ -595,14 +586,14 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Text(
           'Convertir a factura',
-          style: TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Text(
           'Se creará una factura a partir de la cotización #${cotizacion.id?.substring(0, 8) ?? ""}\n\nCliente: ${cotizacion.clienteNombre}\nTotal: ${cotizacion.totalFinal}',
-          style: TextStyle(color: AppTheme.textSecondary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
         ),
         actions: [
           TextButton(

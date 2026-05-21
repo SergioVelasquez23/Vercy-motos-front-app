@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../services/permissions_service.dart';
 import '../providers/user_provider.dart';
@@ -80,8 +81,7 @@ class ProtectedRoute extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              Navigator.pushReplacementNamed(
-                context,
+              context.go(
                 PermissionsService.getRutaInicioPorRol(rol),
               );
             },

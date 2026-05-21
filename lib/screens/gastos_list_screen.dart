@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/gasto.dart';
 import '../services/gasto_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/vercy_sidebar_layout.dart';
 import '../utils/format_utils.dart';
 import '../utils/pagination_mixin.dart';
+import '../widgets/common/screen_header.dart';
 
 class GastosListScreen extends StatefulWidget {
   const GastosListScreen({super.key});
@@ -135,92 +136,87 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
 
   @override
   Widget build(BuildContext context) {
-    return VercySidebarLayout(
-      title: 'Gastos',
-      child: Container(
-        padding: EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Título
-            Text(
-              'Lista de Gastos',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ScreenHeader(
+          icon: Icons.receipt_long,
+          title: 'Lista de Gastos',
+          badge: '${_gastosFiltrados.length}',
+          actions: [
+            ScreenHeaderAction.primary(
+              icon: Icons.add,
+              label: 'Crear Gasto',
+              mobileLabel: 'Crear',
+              onPressed: () => context.push('/gastos'),
             ),
-            SizedBox(height: 24),
-
-            // Primera fila de filtros
-            _buildPrimeraFilaFiltros(),
-            SizedBox(height: 16),
-
-            // Segunda fila de filtros
-            _buildSegundaFilaFiltros(),
-            SizedBox(height: 16),
-
-            // Tabla de gastos
-            Expanded(child: _buildTabla()),
           ],
         ),
-      ),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.all(context.isMobile ? 12 : 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildPrimeraFilaFiltros(),
+                const SizedBox(height: 16),
+                _buildSegundaFilaFiltros(),
+                const SizedBox(height: 16),
+                Expanded(child: _buildTabla()),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildPrimeraFilaFiltros() {
+    final isMobile = context.isMobile;
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade800),
       ),
-      child: Row(
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           // Buscar Número
-          Expanded(
+          SizedBox(
+            width: isMobile ? double.infinity : 180,
             child: _buildCampoFiltro(
               controller: _filtroNumeroController,
               hint: 'Buscar Número',
               onChanged: (_) => _aplicarFiltros(),
             ),
           ),
-          SizedBox(width: 12),
-
           // Proveedor
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: isMobile ? double.infinity : 260,
             child: _buildCampoFiltro(
               controller: _filtroProveedorController,
               hint: 'Proveedor',
               onChanged: (_) => _aplicarFiltros(),
             ),
           ),
-          SizedBox(width: 16),
-
           // Botón Buscar
           ElevatedButton.icon(
             onPressed: _aplicarFiltros,
             icon: Icon(Icons.search, color: Colors.white),
             label: Text(
               'Buscar',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primary,
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+              padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24, vertical: isMobile ? 12 : 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
           ),
-          SizedBox(width: 8),
-
           // Botón Excel
           Container(
             decoration: BoxDecoration(
@@ -237,45 +233,29 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
               tooltip: 'Exportar Excel',
             ),
           ),
-
-          Spacer(),
-
-          // Botón Crear Gasto
-          ElevatedButton.icon(
-            onPressed: () => Navigator.pushNamed(context, '/gastos'),
-            icon: Icon(Icons.add, color: Colors.white),
-            label: Text(
-              'Crear Gasto',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
   Widget _buildSegundaFilaFiltros() {
+    final isMobile = context.isMobile;
+    final fechaAncho = isMobile ? double.infinity : 200.0;
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade800),
       ),
-      child: Row(
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           // Fecha Inicio
-          Expanded(
+          SizedBox(
+            width: fechaAncho,
             child: _buildCampoFecha(
               label: 'Fecha Inicio',
               fecha: _fechaInicio,
@@ -290,7 +270,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
                       data: ThemeData.dark().copyWith(
                         colorScheme: ColorScheme.dark(
                           primary: AppTheme.primary,
-                          surface: AppTheme.cardBg,
+                          surface: Theme.of(context).colorScheme.surface,
                         ),
                       ),
                       child: child!,
@@ -308,10 +288,9 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
               },
             ),
           ),
-          SizedBox(width: 12),
-
           // Fecha Fin
-          Expanded(
+          SizedBox(
+            width: fechaAncho,
             child: _buildCampoFecha(
               label: 'Fecha Fin',
               fecha: _fechaFin,
@@ -326,7 +305,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
                       data: ThemeData.dark().copyWith(
                         colorScheme: ColorScheme.dark(
                           primary: AppTheme.primary,
-                          surface: AppTheme.cardBg,
+                          surface: Theme.of(context).colorScheme.surface,
                         ),
                       ),
                       child: child!,
@@ -344,13 +323,11 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
               },
             ),
           ),
-          SizedBox(width: 16),
-
           // Checkbox Cuentas por Pagar
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.grey.shade700),
             ),
@@ -368,18 +345,16 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
                 ),
                 Text(
                   'Cuentas por\nPagar',
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 12),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12),
                 ),
               ],
             ),
           ),
-          SizedBox(width: 12),
-
           // Checkbox Ver pagos parciales
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.grey.shade700),
             ),
@@ -397,26 +372,24 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
                 ),
                 Text(
                   'Ver pagos\nparciales',
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 12),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12),
                 ),
               ],
             ),
           ),
-          SizedBox(width: 12),
-
           // Dropdown Tipo de Gasto
           Container(
             padding: EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.grey.shade700),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: _tipoGastoSeleccionado,
-                dropdownColor: AppTheme.cardBg,
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                dropdownColor: Theme.of(context).colorScheme.surface,
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
                 icon: Icon(Icons.arrow_drop_down, color: Colors.grey),
                 items: _tiposGastoFiltro.map((tipo) {
                   return DropdownMenuItem(
@@ -444,12 +417,12 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
     return TextField(
       controller: controller,
       onChanged: onChanged,
-      style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey.shade500),
         filled: true,
-        fillColor: AppTheme.surfaceDark,
+        fillColor: Theme.of(context).colorScheme.surface,
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -478,7 +451,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: AppTheme.surfaceDark,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.grey.shade700),
         ),
@@ -515,7 +488,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
 
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade800),
       ),
@@ -525,7 +498,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
             ),
             child: Row(
@@ -605,7 +578,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
       child: Text(
         texto,
         style: TextStyle(
-          color: AppTheme.textPrimary,
+          color: Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.bold,
           fontSize: 13,
         ),
@@ -616,7 +589,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
 
   Widget _buildFilaTabla(Gasto gasto, int index) {
     final isEven = index % 2 == 0;
-    final backgroundColor = isEven ? AppTheme.cardBg : AppTheme.surfaceDark;
+    final backgroundColor = isEven ? Theme.of(context).colorScheme.surface : Theme.of(context).colorScheme.surface;
 
     // Calcular valores
     final pagado = gasto.pagadoDesdeCaja ? gasto.monto : 0.0;
@@ -644,7 +617,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
             flex: 1,
             child: Text(
               numeroGasto,
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
             ),
           ),
 
@@ -653,7 +626,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
             flex: 2,
             child: Text(
               gasto.proveedor ?? 'N/A',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -663,7 +636,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
             flex: 2,
             child: Text(
               '${gasto.fechaGasto.year}-${gasto.fechaGasto.month.toString().padLeft(2, '0')}-${gasto.fechaGasto.day.toString().padLeft(2, '0')}',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
             ),
           ),
 
@@ -672,7 +645,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
             flex: 2,
             child: Text(
               gasto.concepto,
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -682,7 +655,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
             flex: 2,
             child: Text(
               gasto.formaPago ?? 'PRINCIPAL-CAJA',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -692,7 +665,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
             flex: 2,
             child: Text(
               '\$ ${formatNumberWithDots(gasto.monto)}',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -702,7 +675,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
             flex: 2,
             child: Text(
               '\$ ${formatNumberWithDots(pagado)}',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -725,7 +698,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
             flex: 2,
             child: Text(
               gasto.tipoGastoNombre,
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -803,14 +776,14 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Row(
           children: [
             Icon(Icons.receipt_long, color: AppTheme.primary),
             SizedBox(width: 12),
             Text(
               'Detalle del Gasto',
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
           ],
         ),
@@ -871,7 +844,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
             ),
           ),
           Expanded(
-            child: Text(value, style: TextStyle(color: AppTheme.textPrimary)),
+            child: Text(value, style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
           ),
         ],
       ),
@@ -882,14 +855,14 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Text(
           '¿Eliminar Gasto?',
-          style: TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Text(
           '¿Está seguro que desea eliminar este gasto?\n\nConcepto: ${gasto.concepto}\nMonto: \$ ${formatNumberWithDots(gasto.monto)}',
-          style: TextStyle(color: AppTheme.textSecondary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
         ),
         actions: [
           TextButton(

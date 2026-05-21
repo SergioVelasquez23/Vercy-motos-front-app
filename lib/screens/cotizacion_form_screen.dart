@@ -151,10 +151,12 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(_esEdicion ? 'Editar Cotización' : 'Nueva Cotización'),
-        backgroundColor: AppTheme.primary,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        elevation: 0,
       ),
       body: Form(
         key: _formKey,
@@ -190,7 +192,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
     return Container(
       padding: EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
@@ -266,7 +268,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                     SizedBox(height: 8),
                     TextField(
                       controller: _validezController,
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       decoration: InputDecoration(
                         border: OutlineInputBorder(),
                         contentPadding: EdgeInsets.symmetric(
@@ -366,7 +368,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                       return TextField(
                         controller: textController,
                         focusNode: focusNode,
-                        style: TextStyle(color: AppTheme.textPrimary),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         decoration: InputDecoration(
                           labelText: 'Seleccionar cliente',
                           border: OutlineInputBorder(),
@@ -376,10 +378,10 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                           ),
                           suffixIcon: Icon(
                             Icons.arrow_drop_down,
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           ),
                           hintText: 'Escribe nombre del cliente...',
-                          hintStyle: TextStyle(color: AppTheme.textMuted),
+                          hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                         ),
                       );
                     },
@@ -388,7 +390,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                     alignment: Alignment.topLeft,
                     child: Material(
                       elevation: 4.0,
-                      color: AppTheme.surfaceDark,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(8),
                       child: Container(
                         constraints: BoxConstraints(
@@ -408,7 +410,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                                 decoration: BoxDecoration(
                                   border: Border(
                                     bottom: BorderSide(
-                                      color: AppTheme.textSecondary.withOpacity(
+                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(
                                         0.2,
                                       ),
                                       width: 1,
@@ -421,7 +423,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                                     Text(
                                       option.nombreCompleto,
                                       style: TextStyle(
-                                        color: AppTheme.textPrimary,
+                                        color: Theme.of(context).colorScheme.onSurface,
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
@@ -429,7 +431,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                                       Text(
                                         option.correo!,
                                         style: TextStyle(
-                                          color: AppTheme.textSecondary,
+                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                           fontSize: 12,
                                         ),
                                       ),
@@ -460,7 +462,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
               SizedBox(height: 8),
               TextField(
                 controller: _descripcionController,
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 decoration: InputDecoration(
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(
@@ -468,7 +470,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                     vertical: 8,
                   ),
                   hintText: 'Notas adicionales...',
-                  hintStyle: TextStyle(color: AppTheme.textMuted),
+                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                 ),
                 maxLines: 3,
               ),
@@ -483,7 +485,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
     return Container(
       padding: EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
@@ -507,7 +509,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                 flex: 1,
                 child: TextField(
                   controller: _codigoProductoController,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: 'Código',
                     border: OutlineInputBorder(),
@@ -550,19 +552,19 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                         return TextField(
                           controller: textEditingController,
                           focusNode: focusNode,
-                          style: TextStyle(color: AppTheme.textPrimary),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           decoration: InputDecoration(
                             labelText: 'Nombre producto *',
                             labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             border: OutlineInputBorder(),
                             suffixIcon: Icon(
                               Icons.arrow_drop_down,
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             hintText: 'Escribe al menos 2 letras...',
-                            hintStyle: TextStyle(color: AppTheme.textMuted),
+                            hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                           ),
                         );
                       },
@@ -576,7 +578,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                           alignment: Alignment.topLeft,
                           child: Material(
                             elevation: 4.0,
-                            color: AppTheme.surfaceDark,
+                            color: Theme.of(context).colorScheme.surface,
                             borderRadius: BorderRadius.circular(8),
                             child: Container(
                               constraints: BoxConstraints(
@@ -600,7 +602,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                                       decoration: BoxDecoration(
                                         border: Border(
                                           bottom: BorderSide(
-                                            color: AppTheme.textSecondary
+                                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)
                                                 .withOpacity(0.2),
                                             width: 1,
                                           ),
@@ -613,7 +615,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                                           Text(
                                             option.nombre,
                                             style: TextStyle(
-                                              color: AppTheme.textPrimary,
+                                              color: Theme.of(context).colorScheme.onSurface,
                                               fontSize: 14,
                                               fontWeight: FontWeight.w500,
                                             ),
@@ -624,7 +626,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                                               Text(
                                                 'Código: ${option.id}',
                                                 style: TextStyle(
-                                                  color: AppTheme.textSecondary,
+                                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                                   fontSize: 12,
                                                 ),
                                               ),
@@ -656,7 +658,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                 flex: 1,
                 child: TextField(
                   controller: _cantidadController,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: 'Cantidad',
                     border: OutlineInputBorder(),
@@ -669,7 +671,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                 flex: 1,
                 child: TextField(
                   controller: _precioController,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: 'Precio',
                     prefixText: '\$',
@@ -703,7 +705,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
               Expanded(
                 child: TextField(
                   controller: _porcentajeImpuestoController,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: '% Impuesto',
                     border: OutlineInputBorder(),
@@ -715,7 +717,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
               Expanded(
                 child: TextField(
                   controller: _porcentajeDescuentoController,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: '% Descuento',
                     border: OutlineInputBorder(),
@@ -746,7 +748,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
       return Container(
         padding: EdgeInsets.all(48),
         decoration: BoxDecoration(
-          color: AppTheme.cardBg,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Center(
@@ -760,7 +762,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
               SizedBox(height: 16),
               Text(
                 'No hay productos agregados',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 16),
               ),
             ],
           ),
@@ -770,7 +772,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
@@ -868,7 +870,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
     return Container(
       padding: EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
@@ -952,7 +954,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
     return Container(
       padding: EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
@@ -1002,7 +1004,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black26,
@@ -1128,10 +1130,10 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
           }
 
           return AlertDialog(
-            backgroundColor: AppTheme.cardBg,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             title: Text(
               'Buscar cliente',
-              style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold),
             ),
             content: SizedBox(
               width: 450,
@@ -1141,11 +1143,11 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                   TextField(
                     controller: buscadorCtrl,
                     autofocus: true,
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     decoration: InputDecoration(
                       hintText: 'Nombre, documento o teléfono…',
-                      hintStyle: TextStyle(color: AppTheme.textSecondary),
-                      prefixIcon: Icon(Icons.search, color: AppTheme.textSecondary),
+                      hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                      prefixIcon: Icon(Icons.search, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       border: OutlineInputBorder(),
                     ),
                     onChanged: buscar,
@@ -1160,7 +1162,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                                   buscadorCtrl.text.length < 2
                                       ? 'Escriba al menos 2 caracteres'
                                       : 'Sin resultados',
-                                  style: TextStyle(color: AppTheme.textSecondary),
+                                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                                 ),
                               )
                             : ListView.separated(
@@ -1172,7 +1174,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                                   return ListTile(
                                     title: Text(
                                       c.nombreCompleto,
-                                      style: TextStyle(color: AppTheme.textPrimary),
+                                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                     ),
                                     subtitle: Text(
                                       [
@@ -1181,7 +1183,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                                         if (c.telefono != null) c.telefono!,
                                       ].join(' · '),
                                       style: TextStyle(
-                                          color: AppTheme.textSecondary, fontSize: 12),
+                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
                                     ),
                                     onTap: () => Navigator.pop(ctx, c),
                                   );
@@ -1195,7 +1197,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: Text('Cancelar',
-                    style: TextStyle(color: AppTheme.textSecondary)),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
               ),
             ],
           );

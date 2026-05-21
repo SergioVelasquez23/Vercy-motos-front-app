@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../services/cuadre_caja_service.dart';
 import '../models/cuadre_caja.dart';
 
@@ -61,7 +62,7 @@ class CajaValidationWidget extends StatelessWidget {
           ElevatedButton.icon(
             onPressed: () {
               // Navegar a la pantalla de abrir caja
-              Navigator.pushNamed(context, '/abrir_caja');
+              context.push('/abrir_caja');
             },
             icon: const Icon(Icons.lock_open),
             label: const Text('Abrir Caja'),
@@ -122,7 +123,7 @@ class CajaValidationHelper {
             ElevatedButton.icon(
               onPressed: () {
                 Navigator.of(context).pop();
-                Navigator.pushNamed(context, '/abrir_caja');
+                context.push('/abrir_caja');
               },
               icon: const Icon(Icons.lock_open),
               label: const Text('Abrir Caja'),

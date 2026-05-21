@@ -75,7 +75,7 @@ class _CancelarProductoDialogState extends State<CancelarProductoDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: AppTheme.cardBg,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       child: Container(
         width: MediaQuery.of(context).size.width * 0.9,
         height: MediaQuery.of(context).size.height * 0.8,
@@ -108,7 +108,7 @@ class _CancelarProductoDialogState extends State<CancelarProductoDialog> {
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: Icon(Icons.close, color: AppTheme.textDark),
+                  icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
                 ),
               ],
             ),
@@ -134,7 +134,7 @@ class _CancelarProductoDialogState extends State<CancelarProductoDialog> {
                     child: Container(
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: AppTheme.textLight.withValues(alpha: 0.3),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5).withValues(alpha: 0.3),
                         ),
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -150,7 +150,7 @@ class _CancelarProductoDialogState extends State<CancelarProductoDialog> {
                               border: index > 0
                                   ? Border(
                                       top: BorderSide(
-                                        color: AppTheme.textLight.withValues(
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5).withValues(
                                           alpha: 0.2,
                                         ),
                                       ),
@@ -187,7 +187,7 @@ class _CancelarProductoDialogState extends State<CancelarProductoDialog> {
                                             'Ingredientes: ${item.ingredientesSeleccionados.join(', ')}',
                                             style: AppTheme.bodySmall.copyWith(
                                               fontStyle: FontStyle.italic,
-                                              color: AppTheme.textSecondary,
+                                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                             ),
                                           ),
                                         ],
@@ -235,7 +235,7 @@ class _CancelarProductoDialogState extends State<CancelarProductoDialog> {
             Container(
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: AppTheme.textLight.withValues(alpha: 0.3),
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5).withValues(alpha: 0.3),
                 ),
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -277,7 +277,7 @@ class _CancelarProductoDialogState extends State<CancelarProductoDialog> {
                 hintStyle: AppTheme.bodySmall,
                 border: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: AppTheme.textLight.withValues(alpha: 0.3),
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5).withValues(alpha: 0.3),
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
@@ -292,7 +292,7 @@ class _CancelarProductoDialogState extends State<CancelarProductoDialog> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.backgroundDark,
+                color: Theme.of(context).scaffoldBackgroundColor,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(

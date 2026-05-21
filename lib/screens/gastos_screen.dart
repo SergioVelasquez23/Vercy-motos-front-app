@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../models/gasto.dart';
@@ -420,7 +421,7 @@ class _GastosScreenState extends State<GastosScreen> {
 
       // Si vino con mostrarFormulario=true (desde menú), navegar a la lista
       if (widget.mostrarFormulario && mounted) {
-        Navigator.pushReplacementNamed(context, '/gastos-lista');
+        context.go('/gastos-lista');
         return;
       }
 
@@ -465,21 +466,21 @@ class _GastosScreenState extends State<GastosScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Text(
           'Confirmar eliminación',
-          style: TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Text(
           '¿Está seguro de eliminar este gasto?',
-          style: TextStyle(color: AppTheme.textSecondary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: Text(
               'Cancelar',
-              style: TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
             ),
           ),
           TextButton(
@@ -542,7 +543,7 @@ class _GastosScreenState extends State<GastosScreen> {
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -560,7 +561,7 @@ class _GastosScreenState extends State<GastosScreen> {
               Text(
                 'Nuevo Tipo de Gasto',
                 style: TextStyle(
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -574,26 +575,26 @@ class _GastosScreenState extends State<GastosScreen> {
               children: [
                 TextField(
                   controller: nombreController,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: 'Nombre *',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     hintText: 'Ej: Servicios Públicos, Nómina...',
                     hintStyle: TextStyle(
-                      color: AppTheme.textSecondary.withOpacity(0.5),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.5),
                     ),
                     filled: true,
-                    fillColor: AppTheme.surfaceDark,
+                    fillColor: Theme.of(context).colorScheme.surface,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(
-                        color: AppTheme.textSecondary.withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(
-                        color: AppTheme.textSecondary.withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
@@ -605,27 +606,27 @@ class _GastosScreenState extends State<GastosScreen> {
                 SizedBox(height: 16),
                 TextField(
                   controller: descripcionController,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   maxLines: 2,
                   decoration: InputDecoration(
                     labelText: 'Descripción (opcional)',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     hintText: 'Descripción del tipo de gasto',
                     hintStyle: TextStyle(
-                      color: AppTheme.textSecondary.withOpacity(0.5),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.5),
                     ),
                     filled: true,
-                    fillColor: AppTheme.surfaceDark,
+                    fillColor: Theme.of(context).colorScheme.surface,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(
-                        color: AppTheme.textSecondary.withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(
-                        color: AppTheme.textSecondary.withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
@@ -642,7 +643,7 @@ class _GastosScreenState extends State<GastosScreen> {
               onPressed: guardando ? null : () => Navigator.pop(context),
               child: Text(
                 'Cancelar',
-                style: TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               ),
             ),
             ElevatedButton(
@@ -728,7 +729,7 @@ class _GastosScreenState extends State<GastosScreen> {
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -746,7 +747,7 @@ class _GastosScreenState extends State<GastosScreen> {
               Text(
                 'Nuevo Proveedor',
                 style: TextStyle(
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -760,26 +761,26 @@ class _GastosScreenState extends State<GastosScreen> {
               children: [
                 TextField(
                   controller: nombreController,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: 'Nombre del Proveedor *',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     hintText: 'Ej: Transportes XYZ',
                     hintStyle: TextStyle(
-                      color: AppTheme.textSecondary.withOpacity(0.5),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.5),
                     ),
                     filled: true,
-                    fillColor: AppTheme.surfaceDark,
+                    fillColor: Theme.of(context).colorScheme.surface,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(
-                        color: AppTheme.textSecondary.withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(
-                        color: AppTheme.textSecondary.withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
@@ -791,26 +792,26 @@ class _GastosScreenState extends State<GastosScreen> {
                 SizedBox(height: 16),
                 TextField(
                   controller: telefonoController,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: 'Teléfono (opcional)',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     hintText: 'Ej: +57 300 1234567',
                     hintStyle: TextStyle(
-                      color: AppTheme.textSecondary.withOpacity(0.5),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.5),
                     ),
                     filled: true,
-                    fillColor: AppTheme.surfaceDark,
+                    fillColor: Theme.of(context).colorScheme.surface,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(
-                        color: AppTheme.textSecondary.withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(
-                        color: AppTheme.textSecondary.withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
@@ -827,7 +828,7 @@ class _GastosScreenState extends State<GastosScreen> {
               onPressed: guardando ? null : () => Navigator.pop(context),
               child: Text(
                 'Cancelar',
-                style: TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               ),
             ),
             ElevatedButton(
@@ -908,20 +909,20 @@ class _GastosScreenState extends State<GastosScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppTheme.primary,
-        title: Text('Gestión de Gastos', style: TextStyle(color: Colors.white)),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Text('Gestión de Gastos', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
           onPressed: () =>
-              Navigator.pushReplacementNamed(context, '/dashboard'),
+              context.go('/dashboard'),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.category, color: Colors.white),
+            icon: Icon(Icons.category, color: Theme.of(context).colorScheme.onSurface),
             tooltip: 'Tipos de Gasto',
-            onPressed: () => Navigator.pushNamed(context, '/tipos-gasto'),
+            onPressed: () => context.push('/tipos-gasto'),
           ),
         ],
       ),
@@ -953,7 +954,7 @@ class _GastosScreenState extends State<GastosScreen> {
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           SizedBox(height: 24),
@@ -978,6 +979,23 @@ class _GastosScreenState extends State<GastosScreen> {
   }
 
   Widget _buildHeaderRow() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Si el ancho disponible es menor a 900px, scroll horizontal con anchos fijos
+        final needScroll = constraints.maxWidth < 900;
+        return SingleChildScrollView(
+          scrollDirection: needScroll ? Axis.horizontal : Axis.vertical,
+          physics: needScroll ? null : const NeverScrollableScrollPhysics(),
+          child: SizedBox(
+            width: needScroll ? 900 : constraints.maxWidth,
+            child: _buildHeaderRowContent(),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHeaderRowContent() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -990,7 +1008,7 @@ class _GastosScreenState extends State<GastosScreen> {
               Text(
                 'Proveedor',
                 style: TextStyle(
-                  color: AppTheme.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
@@ -1040,10 +1058,10 @@ class _GastosScreenState extends State<GastosScreen> {
                             return Container(
                               height: 48,
                               decoration: BoxDecoration(
-                                color: AppTheme.surfaceDark,
+                                color: Theme.of(context).colorScheme.surface,
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color: AppTheme.textSecondary.withOpacity(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(
                                     0.3,
                                   ),
                                 ),
@@ -1052,7 +1070,7 @@ class _GastosScreenState extends State<GastosScreen> {
                                 controller: textEditingController,
                                 focusNode: focusNode,
                                 style: TextStyle(
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                   fontSize: 15,
                                 ),
                                 onChanged: (text) {
@@ -1077,12 +1095,12 @@ class _GastosScreenState extends State<GastosScreen> {
                                   border: InputBorder.none,
                                   hintText: 'Buscar proveedor...',
                                   hintStyle: TextStyle(
-                                    color: AppTheme.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                     fontSize: 15,
                                   ),
                                   prefixIcon: Icon(
                                     Icons.search,
-                                    color: AppTheme.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                     size: 20,
                                   ),
                                   suffixIcon:
@@ -1090,7 +1108,7 @@ class _GastosScreenState extends State<GastosScreen> {
                                       ? IconButton(
                                           icon: Icon(
                                             Icons.clear,
-                                            color: AppTheme.textSecondary,
+                                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                             size: 18,
                                           ),
                                           onPressed: () {
@@ -1103,7 +1121,7 @@ class _GastosScreenState extends State<GastosScreen> {
                                         )
                                       : Icon(
                                           Icons.arrow_drop_down,
-                                          color: AppTheme.textSecondary,
+                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                         ),
                                 ),
                               ),
@@ -1119,7 +1137,7 @@ class _GastosScreenState extends State<GastosScreen> {
                               alignment: Alignment.topLeft,
                               child: Material(
                                 elevation: 4.0,
-                                color: AppTheme.cardBg,
+                                color: Theme.of(context).colorScheme.surface,
                                 borderRadius: BorderRadius.circular(8),
                                 child: Container(
                                   constraints: BoxConstraints(
@@ -1154,7 +1172,7 @@ class _GastosScreenState extends State<GastosScreen> {
                                               child: Text(
                                                 proveedor.nombre,
                                                 style: TextStyle(
-                                                  color: AppTheme.textPrimary,
+                                                  color: Theme.of(context).colorScheme.onSurface,
                                                   fontSize: 14,
                                                 ),
                                               ),
@@ -1173,16 +1191,16 @@ class _GastosScreenState extends State<GastosScreen> {
                     height: 48,
                     width: 48,
                     decoration: BoxDecoration(
-                      color: AppTheme.surfaceDark,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: AppTheme.textSecondary.withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                       ),
                     ),
                     child: IconButton(
                       icon: Icon(
                         Icons.add,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         size: 24,
                       ),
                       padding: EdgeInsets.zero,
@@ -1205,7 +1223,7 @@ class _GastosScreenState extends State<GastosScreen> {
               Text(
                 'Fecha:',
                 style: TextStyle(
-                  color: AppTheme.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
@@ -1225,10 +1243,10 @@ class _GastosScreenState extends State<GastosScreen> {
                   height: 48,
                   padding: EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceDark,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: AppTheme.textSecondary.withOpacity(0.3),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                     ),
                   ),
                   child: Row(
@@ -1236,7 +1254,7 @@ class _GastosScreenState extends State<GastosScreen> {
                     children: [
                       Icon(
                         Icons.calendar_today,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         size: 20,
                       ),
                       SizedBox(width: 10),
@@ -1244,14 +1262,14 @@ class _GastosScreenState extends State<GastosScreen> {
                         child: Text(
                           '${_selectedDate.day.toString().padLeft(2, '0')}/${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.year}',
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 15,
                           ),
                         ),
                       ),
                       Icon(
                         Icons.close,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         size: 20,
                       ),
                     ],
@@ -1272,7 +1290,7 @@ class _GastosScreenState extends State<GastosScreen> {
               Text(
                 'Vencimiento:',
                 style: TextStyle(
-                  color: AppTheme.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
@@ -1294,10 +1312,10 @@ class _GastosScreenState extends State<GastosScreen> {
                   height: 48,
                   padding: EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceDark,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: AppTheme.textSecondary.withOpacity(0.3),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                     ),
                   ),
                   child: Row(
@@ -1305,7 +1323,7 @@ class _GastosScreenState extends State<GastosScreen> {
                     children: [
                       Icon(
                         Icons.calendar_today,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         size: 20,
                       ),
                       SizedBox(width: 10),
@@ -1316,15 +1334,15 @@ class _GastosScreenState extends State<GastosScreen> {
                               : 'Fecha',
                           style: TextStyle(
                             color: _fechaVencimiento != null
-                                ? AppTheme.textPrimary
-                                : AppTheme.textSecondary,
+                                ? Theme.of(context).colorScheme.onSurface
+                                : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontSize: 15,
                           ),
                         ),
                       ),
                       Icon(
                         Icons.close,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         size: 20,
                       ),
                     ],
@@ -1345,7 +1363,7 @@ class _GastosScreenState extends State<GastosScreen> {
               Text(
                 'Tipo de Gasto:',
                 style: TextStyle(
-                  color: AppTheme.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
@@ -1357,17 +1375,17 @@ class _GastosScreenState extends State<GastosScreen> {
                     child: Container(
                       height: 48,
                       decoration: BoxDecoration(
-                        color: AppTheme.surfaceDark,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: AppTheme.textSecondary.withOpacity(0.3),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                         ),
                       ),
                       child: DropdownButtonFormField<String>(
                         key: ValueKey('tipoGasto_$_selectedTipoGastoIdNuevo'),
                         value: _selectedTipoGastoIdNuevo,
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 15,
                         ),
                         decoration: InputDecoration(
@@ -1378,18 +1396,18 @@ class _GastosScreenState extends State<GastosScreen> {
                           border: InputBorder.none,
                           hintText: 'Tipo de Gasto',
                           hintStyle: TextStyle(
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontSize: 15,
                           ),
                         ),
-                        dropdownColor: AppTheme.cardBg,
+                        dropdownColor: Theme.of(context).colorScheme.surface,
                         isExpanded: true,
                         items: [
                           DropdownMenuItem<String>(
                             value: null,
                             child: Text(
                               'Tipo de Gasto',
-                              style: TextStyle(color: AppTheme.textSecondary),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                             ),
                           ),
                           ..._tiposGasto.map(
@@ -1409,16 +1427,16 @@ class _GastosScreenState extends State<GastosScreen> {
                     height: 48,
                     width: 48,
                     decoration: BoxDecoration(
-                      color: AppTheme.surfaceDark,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: AppTheme.textSecondary.withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                       ),
                     ),
                     child: IconButton(
                       icon: Icon(
                         Icons.add,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         size: 24,
                       ),
                       padding: EdgeInsets.zero,
@@ -1441,7 +1459,7 @@ class _GastosScreenState extends State<GastosScreen> {
                 Text(
                   'Documento Soporte',
                   style: TextStyle(
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1480,7 +1498,7 @@ class _GastosScreenState extends State<GastosScreen> {
                   Text(
                     _documentoSoporte ? 'Sí' : 'No',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1552,7 +1570,7 @@ class _GastosScreenState extends State<GastosScreen> {
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
@@ -1572,9 +1590,9 @@ class _GastosScreenState extends State<GastosScreen> {
     return Container(
       decoration: BoxDecoration(
         border: Border(
-          left: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
-          right: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
-          bottom: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+          left: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3)),
+          right: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3)),
+          bottom: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3)),
         ),
       ),
       child: Row(
@@ -1585,7 +1603,7 @@ class _GastosScreenState extends State<GastosScreen> {
               padding: EdgeInsets.symmetric(horizontal: 18, vertical: 16),
               child: Text(
                 concepto['concepto'] ?? '',
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
               ),
             ),
           ),
@@ -1624,7 +1642,7 @@ class _GastosScreenState extends State<GastosScreen> {
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       child: Text(
         text,
-        style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
         textAlign: TextAlign.center,
       ),
     );
@@ -1634,9 +1652,9 @@ class _GastosScreenState extends State<GastosScreen> {
     return Container(
       decoration: BoxDecoration(
         border: Border(
-          left: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
-          right: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
-          bottom: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+          left: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3)),
+          right: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3)),
+          bottom: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3)),
         ),
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(8),
@@ -1652,7 +1670,7 @@ class _GastosScreenState extends State<GastosScreen> {
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               child: TextField(
                 controller: _nuevoConceptoController,
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
                 decoration: InputDecoration(
                   isDense: false,
                   contentPadding: EdgeInsets.symmetric(
@@ -1661,11 +1679,11 @@ class _GastosScreenState extends State<GastosScreen> {
                   ),
                   hintText: 'Ingrese el concepto...',
                   hintStyle: TextStyle(
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     fontSize: 16,
                   ),
                   filled: true,
-                  fillColor: AppTheme.surfaceDark,
+                  fillColor: Theme.of(context).colorScheme.surface,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide.none,
@@ -1680,25 +1698,26 @@ class _GastosScreenState extends State<GastosScreen> {
             padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
             child: Row(
               children: [
-                Container(
-                  width: 80,
+                SizedBox(
+                  width: 95,
                   child: DropdownButtonFormField<String>(
-                    value: 'Valor',
-                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                    initialValue: 'Valor',
+                    isExpanded: true,
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
                     decoration: InputDecoration(
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
+                        horizontal: 8,
                         vertical: 16,
                       ),
                       filled: true,
-                      fillColor: AppTheme.surfaceDark,
+                      fillColor: Theme.of(context).colorScheme.surface,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
                       ),
                     ),
-                    dropdownColor: AppTheme.cardBg,
+                    dropdownColor: Theme.of(context).colorScheme.surface,
                     items: [
                       DropdownMenuItem(
                         value: 'Valor',
@@ -1712,25 +1731,25 @@ class _GastosScreenState extends State<GastosScreen> {
                     onChanged: (v) {},
                   ),
                 ),
-                SizedBox(width: 10),
+                SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _nuevoValorController,
                     keyboardType: TextInputType.number,
-                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
                     decoration: InputDecoration(
                       isDense: false,
                       contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16,
+                        horizontal: 12,
                         vertical: 18,
                       ),
                       hintText: '0,00',
                       hintStyle: TextStyle(
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontSize: 16,
                       ),
                       filled: true,
-                      fillColor: AppTheme.surfaceDark,
+                      fillColor: Theme.of(context).colorScheme.surface,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -1748,7 +1767,7 @@ class _GastosScreenState extends State<GastosScreen> {
             child: DropdownButtonFormField<String>(
               key: ValueKey('impuesto_$_nuevoImpuestoTipo'),
               value: _nuevoImpuestoTipo,
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 15),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 15),
               decoration: InputDecoration(
                 isDense: false,
                 contentPadding: EdgeInsets.symmetric(
@@ -1756,13 +1775,13 @@ class _GastosScreenState extends State<GastosScreen> {
                   vertical: 18,
                 ),
                 filled: true,
-                fillColor: AppTheme.surfaceDark,
+                fillColor: Theme.of(context).colorScheme.surface,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide.none,
                 ),
               ),
-              dropdownColor: AppTheme.cardBg,
+              dropdownColor: Theme.of(context).colorScheme.surface,
               items: [
                 DropdownMenuItem(
                   value: 'Impuesto',
@@ -1792,12 +1811,12 @@ class _GastosScreenState extends State<GastosScreen> {
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 18),
               decoration: BoxDecoration(
-                color: AppTheme.surfaceDark.withOpacity(0.5),
+                color: Theme.of(context).colorScheme.surface.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 _calcularTotalNuevoConcepto(),
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 16),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -1838,7 +1857,7 @@ class _GastosScreenState extends State<GastosScreen> {
               Text(
                 'Descripción',
                 style: TextStyle(
-                  color: AppTheme.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),
@@ -1847,12 +1866,12 @@ class _GastosScreenState extends State<GastosScreen> {
               TextField(
                 controller: _descripcionController,
                 maxLines: 5,
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 15),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 15),
                 decoration: InputDecoration(
                   hintText: '',
-                  hintStyle: TextStyle(color: AppTheme.textSecondary),
+                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   filled: true,
-                  fillColor: AppTheme.surfaceDark,
+                  fillColor: Theme.of(context).colorScheme.surface,
                   contentPadding: EdgeInsets.all(16),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -1906,7 +1925,7 @@ class _GastosScreenState extends State<GastosScreen> {
               _buildResumenRow('Descuento', _descuentoGasto),
               _buildResumenRow('Impuestos', _impuestosGasto),
               SizedBox(height: 12),
-              Divider(color: AppTheme.textSecondary.withOpacity(0.3)),
+              Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3)),
               _buildResumenRow('Total', _totalGasto, isTotal: true),
             ],
           ),
@@ -1922,14 +1941,14 @@ class _GastosScreenState extends State<GastosScreen> {
           width: 90,
           child: Text(
             label,
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
           ),
         ),
         Expanded(
           child: TextField(
             controller: controller,
             keyboardType: TextInputType.number,
-            style: TextStyle(color: AppTheme.textPrimary, fontSize: 15),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 15),
             decoration: InputDecoration(
               isDense: true,
               contentPadding: EdgeInsets.symmetric(
@@ -1937,9 +1956,9 @@ class _GastosScreenState extends State<GastosScreen> {
                 vertical: 14,
               ),
               suffixText: '%',
-              suffixStyle: TextStyle(color: AppTheme.textSecondary),
+              suffixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               filled: true,
-              fillColor: AppTheme.surfaceDark,
+              fillColor: Theme.of(context).colorScheme.surface,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
                 borderSide: BorderSide.none,
@@ -1961,7 +1980,7 @@ class _GastosScreenState extends State<GastosScreen> {
           Text(
             label,
             style: TextStyle(
-              color: isTotal ? AppTheme.textPrimary : AppTheme.textSecondary,
+              color: isTotal ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               fontSize: isTotal ? 18 : 16,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
             ),
@@ -1970,13 +1989,13 @@ class _GastosScreenState extends State<GastosScreen> {
             width: 140,
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               '\$${valor.toStringAsFixed(0)}',
               style: TextStyle(
-                color: isTotal ? AppTheme.primary : AppTheme.textPrimary,
+                color: isTotal ? AppTheme.primary : Theme.of(context).colorScheme.onSurface,
                 fontSize: isTotal ? 18 : 16,
                 fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
               ),
@@ -2181,7 +2200,7 @@ class _GastosScreenState extends State<GastosScreen> {
       children: [
         // Panel de filtros expandido
         Card(
-          color: AppTheme.cardBg,
+          color: Theme.of(context).colorScheme.surface,
           margin: EdgeInsets.all(16),
           child: Padding(
             padding: EdgeInsets.all(16),
@@ -2195,7 +2214,7 @@ class _GastosScreenState extends State<GastosScreen> {
                     Text(
                       'Filtros de Búsqueda',
                       style: TextStyle(
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -2222,13 +2241,13 @@ class _GastosScreenState extends State<GastosScreen> {
                           decoration: InputDecoration(
                             labelText: 'Filtrar por Cuadre',
                             labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             border: OutlineInputBorder(),
                           ),
                           value: _selectedCuadreId,
-                          dropdownColor: AppTheme.cardBg,
-                          style: TextStyle(color: AppTheme.textPrimary),
+                          dropdownColor: Theme.of(context).colorScheme.surface,
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           items: [
                             DropdownMenuItem(
                               value: null,
@@ -2256,21 +2275,21 @@ class _GastosScreenState extends State<GastosScreen> {
                     Expanded(
                       child: TextFormField(
                         controller: _conceptoBusquedaController,
-                        style: TextStyle(color: AppTheme.textPrimary),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         decoration: InputDecoration(
                           labelText: 'Buscar por concepto',
-                          labelStyle: TextStyle(color: AppTheme.textSecondary),
+                          labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(
                             Icons.search,
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           ),
                           suffixIcon:
                               _conceptoBusquedaController.text.isNotEmpty
                               ? IconButton(
                                   icon: Icon(
                                     Icons.clear,
-                                    color: AppTheme.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   ),
                                   onPressed: () {
                                     _conceptoBusquedaController.clear();
@@ -2308,7 +2327,7 @@ class _GastosScreenState extends State<GastosScreen> {
                                 data: Theme.of(context).copyWith(
                                   colorScheme: ColorScheme.dark(
                                     primary: AppTheme.primary,
-                                    surface: AppTheme.cardBg,
+                                    surface: Theme.of(context).colorScheme.surface,
                                   ),
                                 ),
                                 child: child!,
@@ -2322,21 +2341,21 @@ class _GastosScreenState extends State<GastosScreen> {
                         child: Container(
                           padding: EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            border: Border.all(color: AppTheme.textSecondary),
+                            border: Border.all(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Row(
                             children: [
                               Icon(
                                 Icons.calendar_today,
-                                color: AppTheme.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                               ),
                               SizedBox(width: 8),
                               Text(
                                 _fechaInicio != null
                                     ? '${_fechaInicio!.day}/${_fechaInicio!.month}/${_fechaInicio!.year}'
                                     : 'Fecha inicio',
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                               ),
                             ],
                           ),
@@ -2360,7 +2379,7 @@ class _GastosScreenState extends State<GastosScreen> {
                                 data: Theme.of(context).copyWith(
                                   colorScheme: ColorScheme.dark(
                                     primary: AppTheme.primary,
-                                    surface: AppTheme.cardBg,
+                                    surface: Theme.of(context).colorScheme.surface,
                                   ),
                                 ),
                                 child: child!,
@@ -2374,21 +2393,21 @@ class _GastosScreenState extends State<GastosScreen> {
                         child: Container(
                           padding: EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            border: Border.all(color: AppTheme.textSecondary),
+                            border: Border.all(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Row(
                             children: [
                               Icon(
                                 Icons.calendar_today,
-                                color: AppTheme.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                               ),
                               SizedBox(width: 8),
                               Text(
                                 _fechaFin != null
                                     ? '${_fechaFin!.day}/${_fechaFin!.month}/${_fechaFin!.year}'
                                     : 'Fecha fin',
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                               ),
                             ],
                           ),
@@ -2405,7 +2424,7 @@ class _GastosScreenState extends State<GastosScreen> {
                     child: Text(
                       'Mostrando ${gastosMostrar.length} de ${_gastos.length} gastos',
                       style: TextStyle(
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontSize: 14,
                       ),
                     ),
@@ -2425,7 +2444,7 @@ class _GastosScreenState extends State<GastosScreen> {
                       Icon(
                         Icons.search_off,
                         size: 64,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       ),
                       SizedBox(height: 16),
                       Text(
@@ -2433,7 +2452,7 @@ class _GastosScreenState extends State<GastosScreen> {
                             ? 'No hay gastos registrados'
                             : 'No se encontraron gastos con los filtros aplicados',
                         style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 16,
                         ),
                         textAlign: TextAlign.center,
@@ -2447,7 +2466,7 @@ class _GastosScreenState extends State<GastosScreen> {
                   itemBuilder: (context, index) {
                     final gasto = gastosMostrar[index];
                     return Card(
-                      color: AppTheme.cardBg,
+                      color: Theme.of(context).colorScheme.surface,
                       margin: EdgeInsets.only(bottom: 12),
                       elevation: 2,
                       child: Padding(
@@ -2462,7 +2481,7 @@ class _GastosScreenState extends State<GastosScreen> {
                                   child: Text(
                                     gasto.concepto,
                                     style: TextStyle(
-                                      color: AppTheme.textPrimary,
+                                      color: Theme.of(context).colorScheme.onSurface,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
                                     ),
@@ -2484,13 +2503,13 @@ class _GastosScreenState extends State<GastosScreen> {
                                 Icon(
                                   Icons.category,
                                   size: 16,
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 ),
                                 SizedBox(width: 4),
                                 Text(
                                   gasto.tipoGastoNombre,
                                   style: TextStyle(
-                                    color: AppTheme.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                     fontSize: 14,
                                   ),
                                 ),
@@ -2498,13 +2517,13 @@ class _GastosScreenState extends State<GastosScreen> {
                                 Icon(
                                   Icons.calendar_today,
                                   size: 16,
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 ),
                                 SizedBox(width: 4),
                                 Text(
                                   gasto.fechaFormateada,
                                   style: TextStyle(
-                                    color: AppTheme.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                     fontSize: 14,
                                   ),
                                 ),
@@ -2517,13 +2536,13 @@ class _GastosScreenState extends State<GastosScreen> {
                                   Icon(
                                     Icons.business,
                                     size: 16,
-                                    color: AppTheme.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   ),
                                   SizedBox(width: 4),
                                   Text(
                                     gasto.proveedor!,
                                     style: TextStyle(
-                                      color: AppTheme.textSecondary,
+                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                       fontSize: 14,
                                     ),
                                   ),
@@ -2537,13 +2556,13 @@ class _GastosScreenState extends State<GastosScreen> {
                                   Icon(
                                     Icons.receipt,
                                     size: 16,
-                                    color: AppTheme.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   ),
                                   SizedBox(width: 4),
                                   Text(
                                     'Factura: ${gasto.numeroFactura}',
                                     style: TextStyle(
-                                      color: AppTheme.textSecondary,
+                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                       fontSize: 14,
                                     ),
                                   ),

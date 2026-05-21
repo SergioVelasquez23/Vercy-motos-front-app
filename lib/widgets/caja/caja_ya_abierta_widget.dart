@@ -52,17 +52,19 @@ class CajaYaAbiertaWidget extends StatelessWidget {
                 ),
                 SizedBox(height: 16),
                 if (cajaActual != null) ...[
-                  CajaUiHelpers.buildInfoRow(Icons.point_of_sale, 'Caja', cajaActual!.nombre),
+                  CajaUiHelpers.buildInfoRow(context, Icons.point_of_sale, 'Caja', cajaActual!.nombre),
                   SizedBox(height: 8),
-                  CajaUiHelpers.buildInfoRow(Icons.person, 'Responsable', cajaActual!.responsable),
+                  CajaUiHelpers.buildInfoRow(context, Icons.person, 'Responsable', cajaActual!.responsable),
                   SizedBox(height: 8),
                   CajaUiHelpers.buildInfoRow(
+                    context,
                     Icons.access_time,
                     'Apertura',
                     '${cajaActual!.fechaApertura.day}/${cajaActual!.fechaApertura.month}/${cajaActual!.fechaApertura.year} ${cajaActual!.fechaApertura.hour}:${cajaActual!.fechaApertura.minute.toString().padLeft(2, '0')}',
                   ),
                   SizedBox(height: 8),
                   CajaUiHelpers.buildInfoRow(
+                    context,
                     Icons.attach_money,
                     'Monto inicial',
                     '\$${cajaActual!.fondoInicial.toStringAsFixed(0)}',
@@ -83,7 +85,7 @@ class CajaYaAbiertaWidget extends StatelessWidget {
                         child: Text(
                           'Debe cerrar la caja actual antes de abrir una nueva.',
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontWeight: FontWeight.w500,
                           ),
                         ),

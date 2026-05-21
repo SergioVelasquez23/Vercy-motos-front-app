@@ -90,7 +90,7 @@ class DeudaCard extends StatelessWidget {
                     Text(
                       '#${deuda.id}',
                       style: TextStyle(
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
@@ -106,14 +106,14 @@ class DeudaCard extends StatelessWidget {
                   Icon(
                     Icons.person_outline,
                     size: 18,
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   ),
                   SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       deuda.cliente,
                       style: TextStyle(
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -123,13 +123,13 @@ class DeudaCard extends StatelessWidget {
                     Icon(
                       Icons.phone_outlined,
                       size: 16,
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     ),
                     SizedBox(width: 4),
                     Text(
                       deuda.telefono!,
                       style: TextStyle(
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontSize: 13,
                       ),
                     ),
@@ -142,7 +142,7 @@ class DeudaCard extends StatelessWidget {
               // Descripción
               Text(
                 deuda.descripcion,
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -159,14 +159,14 @@ class DeudaCard extends StatelessWidget {
                         Text(
                           'Monto Original',
                           style: TextStyle(
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontSize: 12,
                           ),
                         ),
                         Text(
                           formatCurrency(deuda.montoOriginal),
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
@@ -181,7 +181,7 @@ class DeudaCard extends StatelessWidget {
                         Text(
                           'Pendiente',
                           style: TextStyle(
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontSize: 12,
                           ),
                         ),
@@ -206,7 +206,7 @@ class DeudaCard extends StatelessWidget {
                           Text(
                             'Pagado',
                             style: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                               fontSize: 12,
                             ),
                           ),
@@ -232,13 +232,13 @@ class DeudaCard extends StatelessWidget {
                   Icon(
                     Icons.schedule_outlined,
                     size: 16,
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   ),
                   SizedBox(width: 6),
                   Text(
                     'Creada: ${_formatFecha(deuda.fechaCreacion)}',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 12,
                     ),
                   ),
@@ -249,7 +249,7 @@ class DeudaCard extends StatelessWidget {
                       size: 16,
                       color: deuda.estaVencida
                           ? Colors.red
-                          : AppTheme.textSecondary,
+                          : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     ),
                     SizedBox(width: 4),
                     Text(
@@ -257,7 +257,7 @@ class DeudaCard extends StatelessWidget {
                       style: TextStyle(
                         color: deuda.estaVencida
                             ? Colors.red
-                            : AppTheme.textSecondary,
+                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontSize: 12,
                         fontWeight: deuda.estaVencida
                             ? FontWeight.w600
@@ -278,7 +278,7 @@ class DeudaCard extends StatelessWidget {
                     Text(
                       'Progreso: ${deuda.porcentajePagado.toStringAsFixed(1)}%',
                       style: TextStyle(
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontSize: 12,
                       ),
                     ),
@@ -349,7 +349,7 @@ class DeudaCard extends StatelessWidget {
                         onPressed: () => onVerDetalle?.call(deuda),
                         icon: Icon(Icons.info_outline),
                         iconSize: 20,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         tooltip: 'Ver detalle',
                       ),
                   ],

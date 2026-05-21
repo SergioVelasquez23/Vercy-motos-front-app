@@ -219,12 +219,15 @@ class Producto {
     'ingredientesSeleccionadosCombo': ingredientesSeleccionadosCombo,
     // Campos para carga masiva
     'codigo': codigo,
-    'productoOServicio': productoOServicio,
+    // El backend solo acepta `tipoItem` (en minúscula). `productoOServicio`
+    // se eliminó porque duplicaba el dato.
     'tipoItem': productoOServicio?.toLowerCase(),
-    'controlInventario': controlInventario,
+    // `controlInventario` ahora es booleano en el backend.
+    'controlInventario': controlInventario == 'SI',
     'porcentajeImpuesto': porcentajeImpuesto,
-    'inventarioBajo': inventarioBajo,
-    'inventarioOptimo': inventarioOptimo,
+    // Backend renombró los campos: inventarioBajo → stockMinimo, inventarioOptimo → stockOptimo.
+    'stockMinimo': inventarioBajo,
+    'stockOptimo': inventarioOptimo,
     'tipoProductoNombre': tipoProductoNombre,
     'lineaProductoNombre': lineaProductoNombre,
     'claseProductoNombre': claseProductoNombre,
@@ -238,8 +241,9 @@ class Producto {
     'precioVentaOpc3': precioVentaOpc3,
     'precioVentaOpc4': precioVentaOpc4,
     'precioVentaOpc5': precioVentaOpc5,
-    'almacen': almacen,
-    'bodega': bodega,
+    // Backend usa `cantidadAlmacen`/`cantidadBodega` (no `almacen`/`bodega`).
+    'cantidadAlmacen': almacen,
+    'cantidadBodega': bodega,
     'ubicacion1': ubicacion1,
     'ubicacion2': ubicacion2,
     'ubicacion3': ubicacion3,
@@ -334,10 +338,12 @@ class Producto {
       codigo: json['codigo']?.toString(),
       productoOServicio:
           json['productoOServicio']?.toString() ?? json['tipoItem']?.toString(),
-      controlInventario: json['controlInventario']?.toString(),
+      controlInventario: _normalizarSiNo(json['controlInventario']),
       porcentajeImpuesto: (json['porcentajeImpuesto'] as num?)?.toDouble(),
-      inventarioBajo: json['inventarioBajo'] as int?,
-      inventarioOptimo: json['inventarioOptimo'] as int?,
+      // Backend nuevo manda stockMinimo/stockOptimo; mantenemos fallback al
+      // nombre viejo por compatibilidad.
+      inventarioBajo: _parseIntFromAny(json['stockMinimo'] ?? json['inventarioBajo']),
+      inventarioOptimo: _parseIntFromAny(json['stockOptimo'] ?? json['inventarioOptimo']),
       tipoProductoNombre: json['tipoProductoNombre']?.toString(),
       lineaProductoNombre: json['lineaProductoNombre']?.toString(),
       claseProductoNombre: json['claseProductoNombre']?.toString(),
@@ -431,15 +437,15 @@ class Producto {
       // 🔧 FIX: Convertir correctamente números que vienen como string/double
       almacen: _parseIntFromAny(cantAlmacen),
       bodega: _parseIntFromAny(cantBodega),
-      inventarioBajo: _parseIntFromAny(json['inventarioBajo']),
-      inventarioOptimo: _parseIntFromAny(json['inventarioOptimo']),
+      inventarioBajo: _parseIntFromAny(json['stockMinimo'] ?? json['inventarioBajo']),
+      inventarioOptimo: _parseIntFromAny(json['stockOptimo'] ?? json['inventarioOptimo']),
       codigoBarras: json['codigoBarras']?.toString(),
       // ✅ FIX: Agregar campo codigo que faltaba
       codigo: json['codigo']?.toString(),
       // ✅ FIX: Parsear productoOServicio/tipoItem para que esté disponible al editar
       productoOServicio:
           json['productoOServicio']?.toString() ?? json['tipoItem']?.toString(),
-      controlInventario: json['controlInventario']?.toString(),
+      controlInventario: _normalizarSiNo(json['controlInventario']),
     );
   }
 
@@ -548,6 +554,20 @@ class Producto {
       localizacionUbi3: localizacionUbi3 ?? this.localizacionUbi3,
       localizacionUbi4: localizacionUbi4 ?? this.localizacionUbi4,
     );
+  }
+
+  // 🔧 HELPER: Normalizar campo "Sí/No" que puede venir como bool, "true"/"false",
+  // "si"/"no", "1"/"0", etc. Devuelve siempre 'SI', 'NO' o null.
+  static String? _normalizarSiNo(dynamic value) {
+    if (value == null) return null;
+    if (value is bool) return value ? 'SI' : 'NO';
+    final s = value.toString().trim().toUpperCase();
+    if (s.isEmpty) return null;
+    if (s == 'TRUE' || s == 'SI' || s == 'SÍ' || s == '1' || s == 'YES') {
+      return 'SI';
+    }
+    if (s == 'FALSE' || s == 'NO' || s == '0') return 'NO';
+    return null;
   }
 
   // 🔧 HELPER: Convertir valores de cualquier tipo a int

@@ -30,7 +30,7 @@ class PaginationControls extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceDark,
+        color: Theme.of(context).colorScheme.surface,
         border: Border(
           top: BorderSide(color: AppTheme.primary.withOpacity(0.2)),
         ),
@@ -40,19 +40,19 @@ class PaginationControls extends StatelessWidget {
         children: [
           IconButton(
             icon: Icon(Icons.arrow_back_ios, size: 18),
-            color: paginaActual > 0 ? AppTheme.primary : AppTheme.textMuted,
+            color: paginaActual > 0 ? AppTheme.primary : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             onPressed: paginaActual > 0 ? onPaginaAnterior : null,
           ),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: AppTheme.cardBg,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
               'Página ${paginaActual + 1} de $totalPaginas',
               style: TextStyle(
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -77,7 +77,7 @@ class PaginationControls extends StatelessWidget {
             icon: Icon(Icons.arrow_forward_ios, size: 18),
             color: paginaActual < totalPaginas - 1
                 ? AppTheme.primary
-                : AppTheme.textMuted,
+                : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             onPressed: paginaActual < totalPaginas - 1
                 ? onSiguientePagina
                 : null,
@@ -86,15 +86,15 @@ class PaginationControls extends StatelessWidget {
             margin: EdgeInsets.only(left: 16),
             padding: EdgeInsets.symmetric(horizontal: 8),
             decoration: BoxDecoration(
-              color: AppTheme.cardBg,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(20),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<int>(
                 value: itemsPorPagina,
-                dropdownColor: AppTheme.cardBg,
+                dropdownColor: Theme.of(context).colorScheme.surface,
                 icon: Icon(Icons.arrow_drop_down, color: AppTheme.primary),
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 items: [5, 10, 20, 50, 100].map<DropdownMenuItem<int>>((
                   int value,
                 ) {

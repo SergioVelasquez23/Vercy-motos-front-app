@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../models/pedido.dart';
 import '../services/pedido_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/vercy_sidebar_layout.dart';
 
 class EliminarPedidosScreen extends StatefulWidget {
   const EliminarPedidosScreen({Key? key}) : super(key: key);
@@ -158,7 +157,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
     return showDialog<String?>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
@@ -166,7 +165,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
             const SizedBox(width: 8),
             Text(
               'Confirmar eliminacion',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 18),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18),
             ),
           ],
         ),
@@ -176,7 +175,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
           children: [
             Text(
               'Esta accion eliminara permanentemente ${ids.length} pedido(s) de la base de datos.',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
             ),
             const SizedBox(height: 12),
             Container(
@@ -208,7 +207,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
               Text(
                 'IDs:',
                 style: TextStyle(
-                  color: AppTheme.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
@@ -218,7 +217,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                 (id) => Text(
                   '  - ${id.length > 20 ? '${id.substring(0, 20)}...' : id}',
                   style: TextStyle(
-                    color: AppTheme.textMuted,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                     fontSize: 11,
                     fontFamily: 'monospace',
                   ),
@@ -229,26 +228,26 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
             TextField(
               controller: motivoController,
               maxLines: 3,
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: InputDecoration(
                 labelText: 'Razón de la eliminación (opcional)',
-                labelStyle: TextStyle(color: AppTheme.textSecondary),
+                labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                 hintText: 'Ej: Pedido duplicado, error en facturación...',
                 hintStyle: TextStyle(
-                  color: AppTheme.textSecondary.withOpacity(0.5),
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.5),
                 ),
                 filled: true,
-                fillColor: AppTheme.backgroundDark,
+                fillColor: Theme.of(context).scaffoldBackgroundColor,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                   ),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
@@ -264,7 +263,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
             onPressed: () => Navigator.pop(context, null),
             child: Text(
               'Cancelar',
-              style: TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
             ),
           ),
           ElevatedButton.icon(
@@ -285,10 +284,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return VercySidebarLayout(
-      title: 'Eliminar Pedidos Facturados',
-      child: _buildBody(),
-    );
+    return _buildBody();
   }
 
   Widget _buildBody() {
@@ -314,26 +310,32 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
   }
 
   Widget _buildHeader() {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.red.shade900, Colors.red.shade700],
-        ),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          const Icon(Icons.delete_sweep, color: Colors.white, size: 36),
+          Icon(Icons.delete_sweep, color: onSurface, size: 36),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Eliminar Pedidos Facturados',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: onSurface,
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                   ),
@@ -342,7 +344,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                 Text(
                   'Pedidos facturados de hoy: ${_pedidosHoy.length}',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
+                    color: onSurface.withOpacity(0.7),
                     fontSize: 14,
                   ),
                 ),
@@ -353,15 +355,15 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
           IconButton(
             onPressed: _isLoading ? null : _cargarPedidosHoy,
             icon: _isLoading
-                ? const SizedBox(
+                ? SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Colors.white,
+                      color: onSurface,
                     ),
                   )
-                : const Icon(Icons.refresh, color: Colors.white),
+                : Icon(Icons.refresh, color: onSurface),
             tooltip: 'Refrescar',
           ),
         ],
@@ -373,7 +375,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -385,19 +387,19 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
       ),
       child: Row(
         children: [
-          Icon(Icons.search, color: AppTheme.textSecondary),
+          Icon(Icons.search, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
           const SizedBox(width: 12),
           Expanded(
             child: TextField(
               controller: _idController,
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Pegar ID del pedido para eliminar...',
-                hintStyle: TextStyle(color: AppTheme.textSecondary),
+                hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: AppTheme.textMuted.withOpacity(0.3),
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3),
                   ),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
@@ -405,7 +407,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                   vertical: 12,
                 ),
                 filled: true,
-                fillColor: AppTheme.surfaceDark,
+                fillColor: Theme.of(context).colorScheme.surface,
               ),
               onSubmitted: (_) => _eliminarPedidoPorId(),
             ),
@@ -461,8 +463,8 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                 : 'Seleccionar todo',
           ),
           style: OutlinedButton.styleFrom(
-            foregroundColor: AppTheme.textPrimary,
-            side: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
+            foregroundColor: Colors.white,
+            side: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3)),
           ),
         ),
         const SizedBox(width: 12),
@@ -523,7 +525,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
             const SizedBox(height: 12),
             Text(
               _errorMessage!,
-              style: TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -546,7 +548,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
             const SizedBox(height: 16),
             Text(
               'No hay pedidos facturados hoy',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 18),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 18),
             ),
           ],
         ),
@@ -555,7 +557,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -571,7 +573,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(12),
               ),
@@ -584,7 +586,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                   child: Text(
                     'ID',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -595,7 +597,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                   child: Text(
                     'Cliente',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -606,7 +608,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                   child: Text(
                     'Items',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -617,7 +619,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                   child: Text(
                     'Total',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -628,7 +630,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                   child: Text(
                     'Pago',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -639,7 +641,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                   child: Text(
                     'Hora',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -656,7 +658,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
               itemCount: _pedidosHoy.length,
               separatorBuilder: (_, __) => Divider(
                 height: 1,
-                color: AppTheme.textMuted.withOpacity(0.1),
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.1),
               ),
               itemBuilder: (context, index) {
                 final pedido = _pedidosHoy[index];
@@ -723,7 +725,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                 child: SelectableText(
                   pedido.id,
                   style: TextStyle(
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 11,
                     fontFamily: 'monospace',
                   ),
@@ -734,7 +736,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                 flex: 2,
                 child: Text(
                   pedido.cliente ?? 'CONSUMIDOR FINAL',
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -743,7 +745,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                 flex: 1,
                 child: Text(
                   '${pedido.items.length}',
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
                 ),
               ),
               // Total
@@ -787,7 +789,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                 flex: 2,
                 child: Text(
                   fechaPago,
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
                 ),
               ),
               // Acción eliminar individual

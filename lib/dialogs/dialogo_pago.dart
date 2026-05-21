@@ -341,7 +341,7 @@ class _DialogoPagoState extends State<DialogoPago> {
     final isTablet = screenWidth >= 600 && screenWidth < 900;
 
     return Dialog(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       insetPadding: EdgeInsets.symmetric(
         horizontal: isMobile ? 8 : 20,
@@ -416,7 +416,7 @@ class _DialogoPagoState extends State<DialogoPago> {
           Text(
             'Procesar Pago',
             style: TextStyle(
-              color: AppTheme.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
@@ -561,21 +561,21 @@ class _DialogoPagoState extends State<DialogoPago> {
                 Text(
                   '${item.productoNombre ?? 'Producto'}',
                   style: TextStyle(
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
                   ),
                 ),
                 Text(
                   'Precio unitario: ${formatCurrency(item.precioUnitario)}',
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
                 ),
                 if (item.ingredientesSeleccionados.isNotEmpty) ...[
                   SizedBox(height: 2),
                   Text(
                     'Ingredientes: ${item.ingredientesSeleccionados.join(', ')}',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 12,
                       fontStyle: FontStyle.italic,
                     ),
@@ -592,7 +592,7 @@ class _DialogoPagoState extends State<DialogoPago> {
                   Text(
                     '👤 Agregado por: ${item.agregadoPor}',
                     style: TextStyle(
-                      color: AppTheme.textSecondary.withOpacity(0.8),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.8),
                       fontSize: 11,
                       fontStyle: FontStyle.italic,
                     ),
@@ -603,7 +603,7 @@ class _DialogoPagoState extends State<DialogoPago> {
                   Text(
                     '👤 Pedido por: ${widget.pedido.guardadoPor}',
                     style: TextStyle(
-                      color: AppTheme.textSecondary.withOpacity(0.8),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.8),
                       fontSize: 11,
                       fontStyle: FontStyle.italic,
                     ),
@@ -613,7 +613,7 @@ class _DialogoPagoState extends State<DialogoPago> {
                   Text(
                     '👤 Mesero: ${widget.pedido.mesero}',
                     style: TextStyle(
-                      color: AppTheme.textSecondary.withOpacity(0.8),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.8),
                       fontSize: 11,
                       fontStyle: FontStyle.italic,
                     ),
@@ -624,7 +624,7 @@ class _DialogoPagoState extends State<DialogoPago> {
                   Text(
                     item.notas!,
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 12,
                     ),
                   ),
@@ -642,7 +642,7 @@ class _DialogoPagoState extends State<DialogoPago> {
                   Text(
                     'Cantidad',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 12,
                     ),
                   ),
@@ -653,7 +653,7 @@ class _DialogoPagoState extends State<DialogoPago> {
                       keyboardType: TextInputType.number,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
                       ),
                       decoration: InputDecoration(
@@ -666,7 +666,7 @@ class _DialogoPagoState extends State<DialogoPago> {
                         ),
                         contentPadding: EdgeInsets.symmetric(vertical: 8),
                         hintText: '0',
-                        hintStyle: TextStyle(color: AppTheme.textSecondary),
+                        hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       ),
                       onChanged: (value) {
                         final cantidad = int.tryParse(value) ?? 0;
@@ -681,7 +681,7 @@ class _DialogoPagoState extends State<DialogoPago> {
                   Text(
                     'Max: $cantidadMax',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 10,
                     ),
                   ),
@@ -696,7 +696,7 @@ class _DialogoPagoState extends State<DialogoPago> {
               Text(
                 formatCurrency(item.precioUnitario),
                 style: TextStyle(
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
@@ -733,7 +733,7 @@ class _DialogoPagoState extends State<DialogoPago> {
                   Text(
                     'Subtotal pedido completo:',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
@@ -741,7 +741,7 @@ class _DialogoPagoState extends State<DialogoPago> {
                   Text(
                     formatCurrency(widget.pedido.total),
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -750,7 +750,7 @@ class _DialogoPagoState extends State<DialogoPago> {
               ),
               if (productosSeleccionados.isNotEmpty) ...[
                 SizedBox(height: 12),
-                Divider(color: AppTheme.textSecondary.withOpacity(0.3)),
+                Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3)),
                 SizedBox(height: 12),
                 // Subtotal de productos seleccionados
                 Row(
@@ -759,7 +759,7 @@ class _DialogoPagoState extends State<DialogoPago> {
                     Text(
                       'Subtotal seleccionado:',
                       style: TextStyle(
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
                       ),
@@ -795,10 +795,10 @@ class _DialogoPagoState extends State<DialogoPago> {
                 child: TextField(
                   controller: descuentoPorcentajeController,
                   keyboardType: TextInputType.number,
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
                   decoration: InputDecoration(
                     labelText: 'Descuento (%)',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     prefixIcon: Icon(Icons.percent, color: AppTheme.primary),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -826,7 +826,7 @@ class _DialogoPagoState extends State<DialogoPago> {
               Text(
                 'O',
                 style: TextStyle(
-                  color: AppTheme.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -835,10 +835,10 @@ class _DialogoPagoState extends State<DialogoPago> {
                 child: TextField(
                   controller: descuentoValorController,
                   keyboardType: TextInputType.number,
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
                   decoration: InputDecoration(
                     labelText: 'Valor fijo',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     prefixIcon: Icon(
                       Icons.attach_money,
                       color: AppTheme.primary,
@@ -896,7 +896,7 @@ class _DialogoPagoState extends State<DialogoPago> {
                   Text(
                     'TOTAL A PAGAR:',
                     style: TextStyle(
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
@@ -929,7 +929,7 @@ class _DialogoPagoState extends State<DialogoPago> {
                         Text(
                           'Pago parcial de $seleccionados de ${widget.pedido.items.length} productos',
                           style: TextStyle(
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontSize: 14,
                             fontStyle: FontStyle.italic,
                           ),
@@ -985,7 +985,7 @@ class _DialogoPagoState extends State<DialogoPago> {
         color: value ? AppTheme.primary.withOpacity(0.1) : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: value ? AppTheme.primary : AppTheme.cardBg.withOpacity(0.3),
+          color: value ? AppTheme.primary : Theme.of(context).colorScheme.surface.withOpacity(0.3),
           width: value ? 2 : 1,
         ),
       ),
@@ -993,7 +993,7 @@ class _DialogoPagoState extends State<DialogoPago> {
         children: [
           Icon(
             icon,
-            color: value ? AppTheme.primary : AppTheme.textSecondary,
+            color: value ? AppTheme.primary : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             size: 24,
           ),
           SizedBox(width: 16),
@@ -1001,7 +1001,7 @@ class _DialogoPagoState extends State<DialogoPago> {
             child: Text(
               title,
               style: TextStyle(
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
@@ -1130,12 +1130,12 @@ class _DialogoPagoState extends State<DialogoPago> {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
-      style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        labelStyle: TextStyle(color: AppTheme.textSecondary),
-        hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.6)),
+        labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+        hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.6)),
         prefixIcon: Icon(icon, color: AppTheme.primary),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -1174,10 +1174,10 @@ class _DialogoPagoState extends State<DialogoPago> {
                 TextField(
                   controller: propinaController,
                   keyboardType: TextInputType.number,
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
                   decoration: InputDecoration(
                     labelText: 'Valor de la propina',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     prefixIcon: Icon(
                       Icons.attach_money,
                       color: AppTheme.primary,
@@ -1270,10 +1270,10 @@ class _DialogoPagoState extends State<DialogoPago> {
               TextField(
                 controller: billetesController,
                 keyboardType: TextInputType.number,
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
                 decoration: InputDecoration(
                   labelText: 'Total recibido',
-                  labelStyle: TextStyle(color: AppTheme.textSecondary),
+                  labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   prefixIcon: Icon(Icons.attach_money, color: AppTheme.primary),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -1343,7 +1343,7 @@ class _DialogoPagoState extends State<DialogoPago> {
           border: Border.all(color: Colors.black12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
                 blurRadius: 6,
                 offset: Offset(0, 3),
               ),
@@ -1356,7 +1356,7 @@ class _DialogoPagoState extends State<DialogoPago> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(15),
                   ),
                   child: Text(
@@ -1426,7 +1426,7 @@ class _DialogoPagoState extends State<DialogoPago> {
             Text(
               title,
               style: TextStyle(
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -1468,10 +1468,10 @@ class _DialogoPagoState extends State<DialogoPago> {
                 TextField(
                   controller: montoEfectivoController,
                   keyboardType: TextInputType.number,
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
                   decoration: InputDecoration(
                     labelText: 'Efectivo',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     prefixIcon: Icon(Icons.money, color: AppTheme.primary),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -1489,10 +1489,10 @@ class _DialogoPagoState extends State<DialogoPago> {
                 TextField(
                   controller: montoTransferenciaController,
                   keyboardType: TextInputType.number,
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
                   decoration: InputDecoration(
                     labelText: 'Transferencia',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     prefixIcon: Icon(
                       Icons.account_balance,
                       color: AppTheme.primary,
@@ -1513,10 +1513,10 @@ class _DialogoPagoState extends State<DialogoPago> {
                 TextField(
                   controller: montoTarjetaController,
                   keyboardType: TextInputType.number,
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
                   decoration: InputDecoration(
                     labelText: 'Tarjeta',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     prefixIcon: Icon(
                       Icons.credit_card,
                       color: AppTheme.primary,
@@ -1537,10 +1537,10 @@ class _DialogoPagoState extends State<DialogoPago> {
                 TextField(
                   controller: montoSistereditoController,
                   keyboardType: TextInputType.number,
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
                   decoration: InputDecoration(
                     labelText: 'SISTECredito',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     prefixIcon: Icon(
                       Icons.account_balance_wallet,
                       color: AppTheme.primary,
@@ -1561,10 +1561,10 @@ class _DialogoPagoState extends State<DialogoPago> {
                 TextField(
                   controller: montoDatafonoController,
                   keyboardType: TextInputType.number,
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
                   decoration: InputDecoration(
                     labelText: 'DataFono',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     prefixIcon: Icon(Icons.payment, color: AppTheme.primary),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),

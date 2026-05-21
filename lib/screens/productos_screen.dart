@@ -9,6 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -247,7 +248,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceDark,
+        color: Theme.of(context).colorScheme.surface,
         border: Border(
           top: BorderSide(color: AppTheme.primary.withOpacity(0.2)),
         ),
@@ -257,19 +258,19 @@ class _ProductosScreenState extends State<ProductosScreen> {
         children: [
           IconButton(
             icon: Icon(Icons.arrow_back_ios, size: 18),
-            color: _paginaActual > 0 ? AppTheme.primary : AppTheme.textMuted,
+            color: _paginaActual > 0 ? AppTheme.primary : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             onPressed: _paginaActual > 0 ? _paginaAnterior : null,
           ),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: AppTheme.cardBg,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
               'Página ${_paginaActual + 1} de $totalPaginas',
               style: TextStyle(
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -294,7 +295,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
             icon: Icon(Icons.arrow_forward_ios, size: 18),
             color: _paginaActual < totalPaginas - 1
                 ? AppTheme.primary
-                : AppTheme.textMuted,
+                : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             onPressed: _paginaActual < totalPaginas - 1
                 ? _siguientePagina
                 : null,
@@ -303,15 +304,15 @@ class _ProductosScreenState extends State<ProductosScreen> {
             margin: EdgeInsets.only(left: 16),
             padding: EdgeInsets.symmetric(horizontal: 8),
             decoration: BoxDecoration(
-              color: AppTheme.cardBg,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(20),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<int>(
                 value: _itemsPorPagina,
-                dropdownColor: AppTheme.cardBg,
+                dropdownColor: Theme.of(context).colorScheme.surface,
                 icon: Icon(Icons.arrow_drop_down, color: AppTheme.primary),
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 items: [5, 10, 20, 50, 100].map<DropdownMenuItem<int>>((
                   int value,
                 ) {
@@ -354,12 +355,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
           decoration: BoxDecoration(
             color: _selectedCategoriaId == null
                 ? AppTheme.primary
-                : AppTheme.cardBg,
+                : Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: _selectedCategoriaId == null
                   ? AppTheme.primary
-                  : AppTheme.textMuted.withOpacity(0.3),
+                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3),
             ),
           ),
           child: Text(
@@ -367,7 +368,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
             style: TextStyle(
               color: _selectedCategoriaId == null
                   ? Colors.white
-                  : AppTheme.textPrimary,
+                  : Theme.of(context).colorScheme.onSurface,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -393,12 +394,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
             decoration: BoxDecoration(
               color: _selectedCategoriaId == categoria.id
                   ? AppTheme.primary
-                  : AppTheme.cardBg,
+                  : Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: _selectedCategoriaId == categoria.id
                     ? AppTheme.primary
-                    : AppTheme.textMuted.withOpacity(0.3),
+                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3),
               ),
             ),
             child: Text(
@@ -406,7 +407,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
               style: TextStyle(
                 color: _selectedCategoriaId == categoria.id
                     ? Colors.white
-                    : AppTheme.textPrimary,
+                    : Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -423,10 +424,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: AppTheme.backgroundDark,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           title: Text('Gestión de Productos', style: AppTheme.headlineMedium),
-          backgroundColor: AppTheme.primary,
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
           elevation: 0,
           centerTitle: true,
         ),
@@ -452,10 +454,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
     if (_error != null) {
       return Scaffold(
-        backgroundColor: AppTheme.backgroundDark,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           title: Text('Gestión de Productos', style: AppTheme.headlineMedium),
-          backgroundColor: AppTheme.primary,
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
           elevation: 0,
           centerTitle: true,
         ),
@@ -494,13 +497,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 Container(
                   padding: EdgeInsets.all(AppTheme.spacingMedium),
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceDark,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                   ),
                   child: Text(
                     _error!,
                     style: AppTheme.bodyMedium.copyWith(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -532,16 +535,17 @@ class _ProductosScreenState extends State<ProductosScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
           onPressed: () {
-            Navigator.pushReplacementNamed(context, '/dashboard');
+            context.go('/dashboard');
           },
         ),
         title: Text('Gestión de Productos', style: AppTheme.headlineMedium),
-        backgroundColor: AppTheme.primary,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
         elevation: 0,
         centerTitle: true,
         actions: [
@@ -587,7 +591,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
             icon: Icon(Icons.category),
             tooltip: 'Gestionar Categorías',
             onPressed: () async {
-              await Navigator.pushNamed(context, '/categorias');
+              await context.push('/categorias');
               if (mounted) {
                 await _cargarDatosDesdeCache();
               }
@@ -601,7 +605,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
           Container(
             padding: EdgeInsets.all(context.responsivePadding),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
+              color: Theme.of(context).colorScheme.surface,
               border: Border(
                 bottom: BorderSide(
                   color: AppTheme.primary.withOpacity(0.2),
@@ -614,15 +618,15 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 // Barra de búsqueda mejorada
                 Container(
                   decoration: BoxDecoration(
-                    color: AppTheme.cardElevated,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: AppTheme.textMuted.withOpacity(0.3),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3),
                       width: 1,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                         blurRadius: 8,
                         offset: Offset(0, 2),
                       ),
@@ -630,11 +634,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   ),
                   child: TextField(
                     controller: _searchController,
-                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
                     decoration: InputDecoration(
                       hintText: 'Buscar producto...',
                       hintStyle: TextStyle(
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontSize: 16,
                       ),
                       prefixIcon: Container(
@@ -663,7 +667,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   child: Text(
                     'Categorías',
                     style: TextStyle(
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -705,7 +709,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   return Center(
                     child: Text(
                       _error!,
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     ),
                   );
                 }
@@ -713,7 +717,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   return Center(
                     child: Text(
                       'No se encontraron productos',
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     ),
                   );
                 }
@@ -808,7 +812,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
     }
 
     return Card(
-      color: AppTheme.cardBg,
+      color: Theme.of(context).colorScheme.surface,
       margin: EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: ListTile(
@@ -825,7 +829,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
         title: Text(
           producto.nombre,
           style: TextStyle(
-            color: AppTheme.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
             fontSize: 16,
           ),
@@ -876,7 +880,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 child: Text(
                   producto.descripcion!,
                   style: TextStyle(
-                    color: AppTheme.textPrimary.withOpacity(0.7),
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -888,7 +892,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: Icon(Icons.edit, color: AppTheme.textPrimary),
+              icon: Icon(Icons.edit, color: Theme.of(context).colorScheme.onSurface),
               onPressed: () async {
                 // 🔄 Cargar datos completos del producto antes de editar
                 showDialog(
@@ -946,20 +950,20 @@ class _ProductosScreenState extends State<ProductosScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Text(
             '¿Eliminar producto?',
-            style: TextStyle(color: AppTheme.textPrimary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           ),
           content: Text(
             '¿Está seguro que desea eliminar ${producto.nombre}?',
-            style: TextStyle(color: AppTheme.textPrimary.withOpacity(0.8)),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8)),
           ),
           actions: [
             TextButton(
               child: Text(
                 'Cancelar',
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
               onPressed: _isDeleting
                   ? null
@@ -1261,10 +1265,10 @@ class _ProductosScreenState extends State<ProductosScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              backgroundColor: AppTheme.cardBg,
+              backgroundColor: Theme.of(context).colorScheme.surface,
               title: Text(
                 isEditing ? 'Editar Producto' : 'Nuevo Producto',
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
               content: SingleChildScrollView(
                 child: Column(
@@ -1415,14 +1419,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     // Nombre
                     TextField(
                       controller: nombreController,
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       decoration: InputDecoration(
                         labelText: 'Nombre',
                         labelStyle: TextStyle(
-                          color: AppTheme.textPrimary.withOpacity(0.7),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         ),
                         filled: true,
-                        fillColor: AppTheme.cardBg.withOpacity(0.3),
+                        fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -1447,7 +1451,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         ),
                       ),
                       iconColor: AppTheme.primary,
-                      collapsedIconColor: AppTheme.textPrimary,
+                      collapsedIconColor: Theme.of(context).colorScheme.onSurface,
                       children: [
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 16),
@@ -1456,11 +1460,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // Código interno
                               TextField(
                                 controller: codigoController,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'Código Interno',
                                   labelStyle: TextStyle(
-                                    color: AppTheme.textPrimary.withOpacity(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(
                                       0.7,
                                     ),
                                   ),
@@ -1470,11 +1474,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   ),
                                   helperText: 'Código único del sistema',
                                   helperStyle: TextStyle(
-                                    color: AppTheme.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                     fontSize: 11,
                                   ),
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -1491,11 +1495,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // Código de barras
                               TextField(
                                 controller: codigoBarrasController,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'Código de Barras',
                                   labelStyle: TextStyle(
-                                    color: AppTheme.textPrimary.withOpacity(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(
                                       0.7,
                                     ),
                                   ),
@@ -1506,11 +1510,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   helperText:
                                       'Escanea o ingresa el código manualmente',
                                   helperStyle: TextStyle(
-                                    color: AppTheme.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                     fontSize: 11,
                                   ),
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -1542,7 +1546,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         ),
                       ),
                       iconColor: AppTheme.primary,
-                      collapsedIconColor: AppTheme.textPrimary,
+                      collapsedIconColor: Theme.of(context).colorScheme.onSurface,
                       children: [
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 16),
@@ -1553,12 +1557,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                 value: productoOServicioController.text.isNotEmpty
                                     ? productoOServicioController.text.toUpperCase()
                                     : 'PRODUCTO',
-                                dropdownColor: AppTheme.cardBg,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                dropdownColor: Theme.of(context).colorScheme.surface,
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'Producto o Servicio',
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -1580,13 +1584,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // Tipo Producto
                               TextField(
                                 controller: tipoProductoNombreController,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'Tipo Producto',
                                   helperText: 'Ej: Repuesto, Aceite, Llanta',
                                   helperStyle: TextStyle(fontSize: 11),
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -1597,13 +1601,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // Línea Producto
                               TextField(
                                 controller: lineaProductoNombreController,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'Línea Producto',
                                   helperText: 'Ej: Motos, Accesorios',
                                   helperStyle: TextStyle(fontSize: 11),
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -1614,13 +1618,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // Clase Producto
                               TextField(
                                 controller: claseProductoNombreController,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'Clase Producto',
                                   helperText: 'Subcategoría específica',
                                   helperStyle: TextStyle(fontSize: 11),
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -1631,12 +1635,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // Marca
                               TextField(
                                 controller: marcaController,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'Marca',
                                   prefixIcon: Icon(Icons.branding_watermark),
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -1653,14 +1657,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     TextField(
                       controller: descripcionController,
                       maxLines: 3,
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       decoration: InputDecoration(
                         labelText: 'Descripción (Opcional)',
                         labelStyle: TextStyle(
-                          color: AppTheme.textPrimary.withOpacity(0.7),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         ),
                         filled: true,
-                        fillColor: AppTheme.cardBg.withOpacity(0.3),
+                        fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -1675,16 +1679,16 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     // Precio
                     TextField(
                       controller: precioController,
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       decoration: InputDecoration(
                         labelText: 'Precio',
                         labelStyle: TextStyle(
-                          color: AppTheme.textPrimary.withOpacity(0.7),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         ),
                         prefixText: '\$ ',
                         prefixStyle: TextStyle(color: AppTheme.primary),
                         filled: true,
-                        fillColor: AppTheme.cardBg.withOpacity(0.3),
+                        fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -1700,16 +1704,16 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     // Costo
                     TextField(
                       controller: costoController,
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       decoration: InputDecoration(
                         labelText: 'Costo',
                         labelStyle: TextStyle(
-                          color: AppTheme.textPrimary.withOpacity(0.7),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         ),
                         prefixText: '\$ ',
                         prefixStyle: TextStyle(color: AppTheme.primary),
                         filled: true,
-                        fillColor: AppTheme.cardBg.withOpacity(0.3),
+                        fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -1725,16 +1729,16 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     // Impuestos
                     TextField(
                       controller: impuestosController,
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       decoration: InputDecoration(
                         labelText: 'Impuestos',
                         labelStyle: TextStyle(
-                          color: AppTheme.textPrimary.withOpacity(0.7),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         ),
                         prefixText: '\$ ',
                         prefixStyle: TextStyle(color: AppTheme.primary),
                         filled: true,
-                        fillColor: AppTheme.cardBg.withOpacity(0.3),
+                        fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -1750,13 +1754,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     // Utilidad (calculada automáticamente)
                     TextField(
                       controller: utilidadController,
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       readOnly:
                           true, // Solo lectura - se calcula automáticamente
                       decoration: InputDecoration(
                         labelText: 'Utilidad (Automática)',
                         labelStyle: TextStyle(
-                          color: AppTheme.textPrimary.withOpacity(0.7),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         ),
                         prefixText: '\$ ',
                         prefixStyle: TextStyle(color: AppTheme.primary),
@@ -1868,7 +1872,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         ),
                       ),
                       iconColor: AppTheme.primary,
-                      collapsedIconColor: AppTheme.textPrimary,
+                      collapsedIconColor: Theme.of(context).colorScheme.onSurface,
                       children: [
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 16),
@@ -1877,13 +1881,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // Control de inventario
                               TextField(
                                 controller: controlInventarioController,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'Control de Inventario',
                                   helperText: 'Ej: SI, NO',
                                   helperStyle: TextStyle(fontSize: 11),
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -1894,7 +1898,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // % Impuesto
                               TextField(
                                 controller: porcentajeImpuestoController,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 keyboardType: TextInputType.number,
                                 decoration: InputDecoration(
                                   labelText: '% Impuesto',
@@ -1902,7 +1906,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   helperText: 'Porcentaje de impuesto (0-100)',
                                   helperStyle: TextStyle(fontSize: 11),
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -1913,14 +1917,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // Inventario bajo
                               TextField(
                                 controller: inventarioBajoController,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 keyboardType: TextInputType.number,
                                 decoration: InputDecoration(
                                   labelText: 'Inventario Bajo',
                                   helperText: 'Cantidad mínima para alerta',
                                   helperStyle: TextStyle(fontSize: 11),
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -1931,14 +1935,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // Inventario óptimo
                               TextField(
                                 controller: inventarioOptimoController,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 keyboardType: TextInputType.number,
                                 decoration: InputDecoration(
                                   labelText: 'Inventario Óptimo',
                                   helperText: 'Cantidad ideal en existencia',
                                   helperStyle: TextStyle(fontSize: 11),
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -1949,14 +1953,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // Localización
                               TextField(
                                 controller: localizacionController,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'Localización',
                                   prefixIcon: Icon(Icons.location_on),
                                   helperText: 'Ubicación general del producto',
                                   helperStyle: TextStyle(fontSize: 11),
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -1982,7 +1986,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         ),
                       ),
                       iconColor: AppTheme.primary,
-                      collapsedIconColor: AppTheme.textPrimary,
+                      collapsedIconColor: Theme.of(context).colorScheme.onSurface,
                       children: [
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 16),
@@ -1991,12 +1995,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // Nombre proveedor
                               TextField(
                                 controller: nombreProveedorController,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'Nombre Proveedor',
                                   prefixIcon: Icon(Icons.business),
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -2007,12 +2011,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // NIT proveedor
                               TextField(
                                 controller: nitProveedorController,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'NIT Proveedor (sin DV)',
                                   prefixIcon: Icon(Icons.badge),
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -2038,7 +2042,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         ),
                       ),
                       iconColor: AppTheme.primary,
-                      collapsedIconColor: AppTheme.textPrimary,
+                      collapsedIconColor: Theme.of(context).colorScheme.onSurface,
                       children: [
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 16),
@@ -2047,7 +2051,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // Almacén
                               TextField(
                                 controller: almacenController,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 keyboardType: TextInputType.number,
                                 decoration: InputDecoration(
                                   labelText: 'Almacén',
@@ -2055,7 +2059,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   helperText: 'Número de almacén',
                                   helperStyle: TextStyle(fontSize: 11),
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -2066,7 +2070,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // Bodega
                               TextField(
                                 controller: bodegaController,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 keyboardType: TextInputType.number,
                                 decoration: InputDecoration(
                                   labelText: 'Bodega',
@@ -2074,7 +2078,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   helperText: 'Número de bodega',
                                   helperStyle: TextStyle(fontSize: 11),
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -2085,11 +2089,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // Ubicación 1
                               TextField(
                                 controller: ubicacion1Controller,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'Ubicación 1',
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -2100,11 +2104,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // Ubicación 2
                               TextField(
                                 controller: ubicacion2Controller,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'Ubicación 2',
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -2115,11 +2119,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // Ubicación 3
                               TextField(
                                 controller: ubicacion3Controller,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'Ubicación 3',
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -2130,11 +2134,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // Ubicación 4
                               TextField(
                                 controller: ubicacion4Controller,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'Ubicación 4',
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -2145,11 +2149,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // Localización Ubi 1-4
                               TextField(
                                 controller: localizacionUbi1Controller,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'Localización Ubicación 1',
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -2159,11 +2163,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
                               TextField(
                                 controller: localizacionUbi2Controller,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'Localización Ubicación 2',
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -2173,11 +2177,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
                               TextField(
                                 controller: localizacionUbi3Controller,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'Localización Ubicación 3',
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -2187,11 +2191,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
                               TextField(
                                 controller: localizacionUbi4Controller,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'Localización Ubicación 4',
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -2217,7 +2221,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         ),
                       ),
                       iconColor: AppTheme.primary,
-                      collapsedIconColor: AppTheme.textPrimary,
+                      collapsedIconColor: Theme.of(context).colorScheme.onSurface,
                       children: [
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 16),
@@ -2226,13 +2230,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               // Precio Venta Opción 1
                               TextField(
                                 controller: precioVentaOpc1Controller,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 keyboardType: TextInputType.number,
                                 decoration: InputDecoration(
                                   labelText: 'Precio de Venta Opción 1',
                                   prefixText: '\$ ',
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -2242,13 +2246,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
                               TextField(
                                 controller: precioVentaOpc2Controller,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 keyboardType: TextInputType.number,
                                 decoration: InputDecoration(
                                   labelText: 'Precio de Venta Opción 2',
                                   prefixText: '\$ ',
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -2258,13 +2262,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
                               TextField(
                                 controller: precioVentaOpc3Controller,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 keyboardType: TextInputType.number,
                                 decoration: InputDecoration(
                                   labelText: 'Precio de Venta Opción 3',
                                   prefixText: '\$ ',
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -2274,13 +2278,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
                               TextField(
                                 controller: precioVentaOpc4Controller,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 keyboardType: TextInputType.number,
                                 decoration: InputDecoration(
                                   labelText: 'Precio de Venta Opción 4',
                                   prefixText: '\$ ',
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -2290,13 +2294,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
                               TextField(
                                 controller: precioVentaOpc5Controller,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 keyboardType: TextInputType.number,
                                 decoration: InputDecoration(
                                   labelText: 'Precio de Venta Opción 5',
                                   prefixText: '\$ ',
                                   filled: true,
-                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -2312,15 +2316,15 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     // Categoría
                     DropdownButtonFormField<String>(
                       initialValue: selectedCategoriaId,
-                      style: TextStyle(color: AppTheme.textPrimary),
-                      dropdownColor: AppTheme.cardBg,
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                      dropdownColor: Theme.of(context).colorScheme.surface,
                       decoration: InputDecoration(
                         labelText: 'Categoría',
                         labelStyle: TextStyle(
-                          color: AppTheme.textPrimary.withOpacity(0.7),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         ),
                         filled: true,
-                        fillColor: AppTheme.cardBg.withOpacity(0.3),
+                        fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -2335,7 +2339,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                             value: categoria.id,
                             child: Text(
                               categoria.nombre,
-                              style: TextStyle(color: AppTheme.textPrimary),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                             ),
                           );
                         }),
@@ -2351,19 +2355,19 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     // Estado
                     DropdownButtonFormField<String>(
                       value: estado,
-                      style: TextStyle(color: AppTheme.textPrimary),
-                      dropdownColor: AppTheme.cardBg,
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                      dropdownColor: Theme.of(context).colorScheme.surface,
                       decoration: InputDecoration(
                         labelText: 'Estado',
                         labelStyle: TextStyle(
-                          color: AppTheme.textPrimary.withOpacity(0.7),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         ),
                         prefixIcon: Icon(
                           Icons.toggle_on,
                           color: AppTheme.primary,
                         ),
                         filled: true,
-                        fillColor: AppTheme.cardBg.withOpacity(0.3),
+                        fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -2385,7 +2389,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               SizedBox(width: 8),
                               Text(
                                 'Activo',
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                               ),
                             ],
                           ),
@@ -2398,7 +2402,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               SizedBox(width: 8),
                               Text(
                                 'Inactivo',
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                               ),
                             ],
                           ),
@@ -2417,7 +2421,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       children: [
                         Text(
                           '¿Tiene variantes?',
-                          style: TextStyle(color: AppTheme.textPrimary),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         ),
                         Switch(
                           value: tieneVariantes,
@@ -2435,15 +2439,15 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     // Tipo de producto (siempre visible)
                     DropdownButtonFormField<String>(
                       initialValue: tipoProducto,
-                      style: TextStyle(color: AppTheme.textPrimary),
-                      dropdownColor: AppTheme.cardBg,
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                      dropdownColor: Theme.of(context).colorScheme.surface,
                       decoration: InputDecoration(
                         labelText: 'Tipo de Producto',
                         labelStyle: TextStyle(
-                          color: AppTheme.textPrimary.withOpacity(0.7),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         ),
                         filled: true,
-                        fillColor: AppTheme.cardBg.withOpacity(0.3),
+                        fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -2457,7 +2461,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                           value: 'combo',
                           child: Text(
                             'Combo (Cliente elige ingredientes)',
-                            style: TextStyle(color: AppTheme.textPrimary),
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           ),
                         ),
                       ],
@@ -2500,7 +2504,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   ? 'Los combos permiten al cliente elegir entre ingredientes opcionales (ej: pollo, res, cerdo)'
                                   : 'Los productos individuales permiten al cliente seleccionar cualquier ingrediente disponible al momento del pedido',
                               style: TextStyle(
-                                color: AppTheme.textPrimary.withOpacity(0.8),
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
                                 fontSize: 12,
                               ),
                             ),
@@ -2548,7 +2552,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       Container(
                         padding: EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppTheme.cardBg.withOpacity(0.5),
+                          color: Theme.of(context).colorScheme.surface.withOpacity(0.5),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: AppTheme.primary.withOpacity(0.3),
@@ -2571,7 +2575,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   (ing) => Text(
                                     '• ${ing.ingredienteNombre}',
                                     style: TextStyle(
-                                      color: AppTheme.textPrimary.withOpacity(
+                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(
                                         0.8,
                                       ),
                                       fontSize: 11,
@@ -2595,7 +2599,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   (ing) => Text(
                                     '• ${ing.ingredienteNombre}',
                                     style: TextStyle(
-                                      color: AppTheme.textPrimary.withOpacity(
+                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(
                                         0.8,
                                       ),
                                       fontSize: 11,
@@ -2613,15 +2617,15 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       // Estado del producto
                       DropdownButtonFormField<String>(
                         initialValue: estado,
-                        style: TextStyle(color: AppTheme.textPrimary),
-                        dropdownColor: AppTheme.cardBg,
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                        dropdownColor: Theme.of(context).colorScheme.surface,
                         decoration: InputDecoration(
                           labelText: 'Estado',
                           labelStyle: TextStyle(
-                            color: AppTheme.textPrimary.withOpacity(0.7),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           ),
                           filled: true,
-                          fillColor: AppTheme.cardBg.withOpacity(0.3),
+                          fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -2637,7 +2641,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                             value: estadoItem,
                             child: Text(
                               estadoItem,
-                              style: TextStyle(color: AppTheme.textPrimary),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                             ),
                           );
                         }).toList(),
@@ -2652,14 +2656,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       // Descripción
                       TextField(
                         controller: descripcionController,
-                        style: TextStyle(color: AppTheme.textPrimary),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         decoration: InputDecoration(
                           labelText: 'Descripción',
                           labelStyle: TextStyle(
-                            color: AppTheme.textPrimary.withOpacity(0.7),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           ),
                           filled: true,
-                          fillColor: AppTheme.cardBg.withOpacity(0.3),
+                          fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -2674,7 +2678,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       Text(
                         'Ingredientes disponibles (Carnes):',
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -2683,7 +2687,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       Container(
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: AppTheme.textPrimary.withOpacity(0.3),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
                           ),
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -2694,7 +2698,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                             Text(
                               'Selecciona los ingredientes que estarán disponibles para este producto:',
                               style: TextStyle(
-                                color: AppTheme.textPrimary.withOpacity(0.7),
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 fontSize: 12,
                               ),
                             ),
@@ -2714,7 +2718,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                       style: TextStyle(
                                         color: isSelected
                                             ? Colors.white
-                                            : AppTheme.textPrimary,
+                                            : Theme.of(context).colorScheme.onSurface,
                                         fontSize: 12,
                                       ),
                                     ),
@@ -2738,13 +2742,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                       }
                                     },
                                     selectedColor: AppTheme.primary,
-                                    backgroundColor: AppTheme.cardBg
+                                    backgroundColor: Theme.of(context).colorScheme.surface
                                         .withOpacity(0.5),
                                     checkmarkColor: Colors.white,
                                     side: BorderSide(
                                       color: isSelected
                                           ? AppTheme.primary
-                                          : AppTheme.textPrimary.withOpacity(
+                                          : Theme.of(context).colorScheme.onSurface.withOpacity(
                                               0.3,
                                             ),
                                     ),
@@ -2775,7 +2779,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 TextButton(
                   child: Text(
                     'Cancelar',
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   ),
                   onPressed: () {
                     Navigator.of(context).pop();
@@ -3248,10 +3252,10 @@ class _ProductosScreenState extends State<ProductosScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Text(
             'Seleccionar imagen',
-            style: TextStyle(color: AppTheme.textPrimary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -3260,7 +3264,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 leading: Icon(Icons.camera_alt, color: AppTheme.primary),
                 title: Text(
                   'Tomar foto',
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 ),
                 onTap: () {
                   Navigator.of(context).pop(ImageSource.camera);
@@ -3270,7 +3274,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 leading: Icon(Icons.photo_library, color: AppTheme.primary),
                 title: Text(
                   'Galería',
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 ),
                 onTap: () {
                   Navigator.of(context).pop(ImageSource.gallery);
@@ -3380,7 +3384,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   });
             }
             return AlertDialog(
-              backgroundColor: AppTheme.cardBg,
+              backgroundColor: Theme.of(context).colorScheme.surface,
               title: Row(
                 children: [
                   Icon(Icons.restaurant_menu, color: AppTheme.primary),
@@ -3389,7 +3393,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     child: Text(
                       'Gestionar Ingredientes - ${tipoProducto == 'combo' ? 'Combo' : 'Individual'}',
                       style: TextStyle(
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 18,
                       ),
                     ),
@@ -3424,7 +3428,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   ? '• Ingredientes requeridos: Se incluyen automáticamente\n• Ingredientes opcionales: El cliente puede elegir'
                                   : '• Solo ingredientes requeridos: Se descuentan automáticamente del inventario',
                               style: TextStyle(
-                                color: AppTheme.textPrimary.withOpacity(0.8),
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
                                 fontSize: 12,
                               ),
                             ),
@@ -3439,7 +3443,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                 children: [
                                   TabBar(
                                     labelColor: AppTheme.primary,
-                                    unselectedLabelColor: AppTheme.textPrimary
+                                    unselectedLabelColor: Theme.of(context).colorScheme.onSurface
                                         .withOpacity(0.6),
                                     indicatorColor: AppTheme.primary,
                                     tabs: [
@@ -3507,7 +3511,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   onPressed: () => Navigator.of(context).pop(),
                   child: Text(
                     'Cancelar',
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   ),
                 ),
                 ElevatedButton(
@@ -3559,7 +3563,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   child: Text(
                     'No hay ingredientes ${esOpcional ? 'opcionales' : 'requeridos'} configurados',
                     style: TextStyle(
-                      color: AppTheme.textPrimary.withOpacity(0.6),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -3569,16 +3573,16 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   itemBuilder: (context, index) {
                     final ingrediente = ingredientes[index];
                     return Card(
-                      color: AppTheme.cardBg.withOpacity(0.5),
+                      color: Theme.of(context).colorScheme.surface.withOpacity(0.5),
                       child: ListTile(
                         title: Text(
                           ingrediente.ingredienteNombre,
-                          style: TextStyle(color: AppTheme.textPrimary),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         ),
                         subtitle: Text(
                           'Cantidad: ${ingrediente.cantidadNecesaria}',
                           style: TextStyle(
-                            color: AppTheme.textPrimary.withOpacity(0.7),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           ),
                         ),
                         trailing: IconButton(
@@ -3650,7 +3654,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
             }
 
             return Dialog(
-              backgroundColor: AppTheme.cardBg,
+              backgroundColor: Theme.of(context).colorScheme.surface,
               child: Container(
                 width: MediaQuery.of(context).size.width * 0.9,
                 height: MediaQuery.of(context).size.height * 0.8,
@@ -3662,7 +3666,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     Text(
                       'Seleccionar Ingrediente ${esOpcional ? 'Opcional' : 'Requerido'}',
                       style: TextStyle(
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -3672,18 +3676,18 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     // Barra de búsqueda
                     TextField(
                       controller: searchController,
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       decoration: InputDecoration(
                         labelText: 'Buscar ingrediente...',
                         labelStyle: TextStyle(
-                          color: AppTheme.textPrimary.withOpacity(0.7),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         ),
                         prefixIcon: Icon(Icons.search, color: AppTheme.primary),
                         suffixIcon: searchController.text.isNotEmpty
                             ? IconButton(
                                 icon: Icon(
                                   Icons.clear,
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                                 onPressed: () {
                                   searchController.clear();
@@ -3692,7 +3696,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               )
                             : null,
                         filled: true,
-                        fillColor: AppTheme.cardBg.withOpacity(0.3),
+                        fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -3713,7 +3717,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       child: Container(
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: AppTheme.textPrimary.withOpacity(0.3),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
                           ),
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -3725,7 +3729,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                     Icon(
                                       Icons.search_off,
                                       size: 48,
-                                      color: AppTheme.textPrimary.withOpacity(
+                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(
                                         0.5,
                                       ),
                                     ),
@@ -3733,7 +3737,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                     Text(
                                       'No se encontraron ingredientes',
                                       style: TextStyle(
-                                        color: AppTheme.textPrimary.withOpacity(
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(
                                           0.7,
                                         ),
                                       ),
@@ -3755,7 +3759,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                       style: TextStyle(
                                         color: isSelected
                                             ? AppTheme.primary
-                                            : AppTheme.textPrimary,
+                                            : Theme.of(context).colorScheme.onSurface,
                                         fontWeight: isSelected
                                             ? FontWeight.bold
                                             : FontWeight.normal,
@@ -3764,7 +3768,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                     subtitle: Text(
                                       '${ingrediente.categoria} - ${ingrediente.unidad} - Stock: ${ingrediente.cantidad}',
                                       style: TextStyle(
-                                        color: AppTheme.textPrimary.withOpacity(
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(
                                           0.7,
                                         ),
                                         fontSize: 12,
@@ -3797,14 +3801,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         Expanded(
                           child: TextField(
                             controller: cantidadController,
-                            style: TextStyle(color: AppTheme.textPrimary),
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                             decoration: InputDecoration(
                               labelText: 'Cantidad necesaria',
                               labelStyle: TextStyle(
-                                color: AppTheme.textPrimary.withOpacity(0.7),
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                               ),
                               filled: true,
-                              fillColor: AppTheme.cardBg.withOpacity(0.3),
+                              fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
                               ),
@@ -3830,7 +3834,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                           onPressed: () => Navigator.of(context).pop(),
                           child: Text(
                             'Cancelar',
-                            style: TextStyle(color: AppTheme.textPrimary),
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           ),
                         ),
                         SizedBox(width: 12),
@@ -4253,14 +4257,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            backgroundColor: AppTheme.cardBg,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             title: Row(
               children: [
                 Icon(Icons.qr_code_2, color: AppTheme.primary),
                 SizedBox(width: 12),
                 Text(
                   'Imprimir código de barras',
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 18),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18),
                 ),
               ],
             ),
@@ -4275,7 +4279,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     Text(
                       'Producto',
                       style: TextStyle(
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -4315,17 +4319,17 @@ class _ProductosScreenState extends State<ProductosScreen> {
                             return TextField(
                               controller: textEditingController,
                               focusNode: focusNode,
-                              style: TextStyle(color: AppTheme.textPrimary),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                               decoration: InputDecoration(
                                 hintText: 'Buscar producto...',
                                 hintStyle: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 filled: true,
-                                fillColor: AppTheme.surfaceDark,
+                                fillColor: Theme.of(context).colorScheme.surface,
                                 contentPadding: EdgeInsets.symmetric(
                                   horizontal: 12,
                                   vertical: 12,
@@ -4383,7 +4387,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               Text(
                                 'Cantidad',
                                 style: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   fontSize: 12,
                                 ),
                               ),
@@ -4393,13 +4397,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   text: cantidad.toString(),
                                 ),
                                 keyboardType: TextInputType.number,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   filled: true,
-                                  fillColor: AppTheme.surfaceDark,
+                                  fillColor: Theme.of(context).colorScheme.surface,
                                   contentPadding: EdgeInsets.symmetric(
                                     horizontal: 8,
                                     vertical: 8,
@@ -4443,7 +4447,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       Container(
                         padding: EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppTheme.surfaceDark,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: AppTheme.primary.withOpacity(0.3),
@@ -4455,7 +4459,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                             Text(
                               'Vista previa',
                               style: TextStyle(
-                                color: AppTheme.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -4481,7 +4485,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 onPressed: () => Navigator.pop(context),
                 child: Text(
                   'Cancelar',
-                  style: TextStyle(color: AppTheme.textSecondary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                 ),
               ),
               ElevatedButton.icon(
@@ -4501,7 +4505,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 label: Text('Imprimir'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primary,
-                  disabledBackgroundColor: AppTheme.textMuted,
+                  disabledBackgroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                 ),
               ),
             ],
@@ -4525,7 +4529,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
         children: [
           Text(
             label,
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
           ),
           SizedBox(height: 4),
           DropdownButtonFormField<String>(
@@ -4534,14 +4538,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 .map((item) => DropdownMenuItem(value: item, child: Text(item)))
                 .toList(),
             onChanged: onChanged,
-            style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
-            dropdownColor: AppTheme.surfaceDark,
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
+            dropdownColor: Theme.of(context).colorScheme.surface,
             decoration: InputDecoration(
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
               filled: true,
-              fillColor: AppTheme.surfaceDark,
+              fillColor: Theme.of(context).colorScheme.surface,
               contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             ),
           ),
@@ -4561,7 +4565,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
     return Container(
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -4574,7 +4578,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
               Text(
                 unidadMedida,
                 style: TextStyle(
-                  color: Colors.black,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                 ),
@@ -4582,7 +4586,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
               Text(
                 tipoFecha,
                 style: TextStyle(
-                  color: Colors.black,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                 ),
@@ -4594,7 +4598,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
           Text(
             producto.nombre,
             style: TextStyle(
-              color: Colors.black,
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 11,
               fontWeight: FontWeight.bold,
             ),
@@ -4609,11 +4613,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
             children: [
               Text(
                 tipoLista,
-                style: TextStyle(color: Colors.black, fontSize: 9),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 9),
               ),
               Text(
                 tipoPrecio,
-                style: TextStyle(color: Colors.black, fontSize: 9),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 9),
               ),
             ],
           ),
@@ -4623,7 +4627,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
             Text(
               '\$${producto.precio.toStringAsFixed(0)}',
               style: TextStyle(
-                color: Colors.black,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
               ),
@@ -4659,7 +4663,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
           // Número del código
           Text(
             producto.codigoBarras ?? producto.codigo ?? 'N/A',
-            style: TextStyle(color: Colors.black, fontSize: 10),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 10),
           ),
         ],
       ),

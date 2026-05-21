@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -395,7 +396,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
       
       // Navegar a la lista de pedidos asesores
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/admin-pedidos-asesor');
+        context.go('/admin-pedidos-asesor');
       }
     } catch (e) {
       _mostrarError('Error al guardar pedido: $e');
@@ -424,28 +425,28 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
           tooltip: 'Volver al dashboard',
           onPressed: () =>
-              Navigator.pushReplacementNamed(context, '/dashboard'),
+              context.go('/dashboard'),
         ),
         title: Row(
           children: [
-            Icon(Icons.shopping_cart, color: Colors.white),
+            Icon(Icons.shopping_cart, color: Theme.of(context).colorScheme.onSurface),
             SizedBox(width: 12),
             Text(
               'Crear Pedido',
               style: TextStyle(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ],
         ),
-        backgroundColor: AppTheme.primary,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         automaticallyImplyLeading: true,
         actions: [
@@ -455,13 +456,13 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
             child: Center(
               child: Text(
                 userProvider.userName ?? 'Asesor',
-                style: TextStyle(color: Colors.white70, fontSize: 14),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
               ),
             ),
           ),
           // Botón de cerrar sesión
           IconButton(
-            icon: Icon(Icons.logout, color: Colors.white),
+            icon: Icon(Icons.logout, color: Theme.of(context).colorScheme.onSurface),
             tooltip: 'Cerrar sesión',
             onPressed: () => _cerrarSesion(context, userProvider),
           ),
@@ -485,7 +486,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                       Container(
                         width: 400,
                         decoration: BoxDecoration(
-                          color: AppTheme.cardBg,
+                          color: Theme.of(context).colorScheme.surface,
                           border: Border(
                             left: BorderSide(
                               color: AppTheme.primary.withOpacity(0.3),
@@ -507,7 +508,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                       Container(
                         padding: EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppTheme.cardBg,
+                          color: Theme.of(context).colorScheme.surface,
                           border: Border(
                             top: BorderSide(
                               color: AppTheme.primary.withOpacity(0.3),
@@ -554,7 +555,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
         // Barra de búsqueda y código de barras
         Container(
           padding: EdgeInsets.all(16),
-          color: AppTheme.cardBg,
+          color: Theme.of(context).colorScheme.surface,
           child: Column(
             children: [
               // Código de barras
@@ -595,12 +596,12 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                   Expanded(
                     child: TextField(
                       controller: _codigoBarrasController,
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       decoration: InputDecoration(
                         hintText: 'Escanee o ingrese código de barras...',
-                        hintStyle: TextStyle(color: AppTheme.textSecondary),
+                        hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                         filled: true,
-                        fillColor: AppTheme.surfaceDark,
+                        fillColor: Theme.of(context).colorScheme.surface,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide.none,
@@ -623,13 +624,13 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                     flex: 2,
                     child: TextField(
                       controller: _searchController,
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       decoration: InputDecoration(
                         hintText: 'Buscar producto...',
-                        hintStyle: TextStyle(color: AppTheme.textSecondary),
+                        hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                         prefixIcon: Icon(Icons.search, color: AppTheme.primary),
                         filled: true,
-                        fillColor: AppTheme.surfaceDark,
+                        fillColor: Theme.of(context).colorScheme.surface,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide.none,
@@ -643,23 +644,23 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                       value: _categoriaSeleccionada,
                       decoration: InputDecoration(
                         hintText: 'Categoría',
-                        hintStyle: TextStyle(color: AppTheme.textSecondary),
+                        hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                         filled: true,
-                        fillColor: AppTheme.surfaceDark,
+                        fillColor: Theme.of(context).colorScheme.surface,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide.none,
                         ),
                         contentPadding: EdgeInsets.symmetric(horizontal: 12),
                       ),
-                      style: TextStyle(color: AppTheme.textPrimary),
-                      dropdownColor: AppTheme.cardBg,
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                      dropdownColor: Theme.of(context).colorScheme.surface,
                       items: [
                         DropdownMenuItem<String>(
                           value: null,
                           child: Text(
                             'Todas',
-                            style: TextStyle(color: AppTheme.textPrimary),
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           ),
                         ),
                         ..._categorias.map(
@@ -667,7 +668,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                             value: cat.id,
                             child: Text(
                               cat.nombre,
-                              style: TextStyle(color: AppTheme.textPrimary),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                             ),
                           ),
                         ),
@@ -693,13 +694,13 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                       Icon(
                         Icons.inventory_2_outlined,
                         size: 64,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       ),
                       SizedBox(height: 16),
                       Text(
                         'No se encontraron productos',
                         style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 16,
                         ),
                       ),
@@ -735,7 +736,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
         decoration: BoxDecoration(
           color: isSelected
               ? AppTheme.primary.withOpacity(0.2)
-              : AppTheme.cardBg,
+              : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
@@ -778,7 +779,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
               child: Text(
                 producto.nombre,
                 style: TextStyle(
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
                 ),
@@ -792,7 +793,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
             if (producto.codigo != null)
               Text(
                 producto.codigo!,
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 10),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 10),
               ),
             SizedBox(height: 4),
             // Precio
@@ -877,7 +878,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
               Text(
                 'Pedido',
                 style: TextStyle(
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -905,7 +906,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
         Container(
           padding: EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppTheme.surfaceDark.withOpacity(0.5),
+            color: Theme.of(context).colorScheme.surface.withOpacity(0.5),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -913,7 +914,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
               Text(
                 'Datos del Cliente',
                 style: TextStyle(
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
                 ),
@@ -976,13 +977,13 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                               controller: textEditingController,
                               focusNode: focusNode,
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 13,
                               ),
                               decoration: InputDecoration(
                                 labelText: 'Cliente *',
                                 labelStyle: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   fontSize: 12,
                                 ),
                                 prefixIcon: Icon(
@@ -992,10 +993,10 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                                 ),
                                 suffixIcon: Icon(
                                   Icons.arrow_drop_down,
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 ),
                                 filled: true,
-                                fillColor: AppTheme.surfaceDark,
+                                fillColor: Theme.of(context).colorScheme.surface,
                                 contentPadding: EdgeInsets.symmetric(
                                   horizontal: 8,
                                   vertical: 12,
@@ -1006,7 +1007,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                                 ),
                                 hintText: 'Buscar cliente...',
                                 hintStyle: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   fontSize: 12,
                                 ),
                               ),
@@ -1022,7 +1023,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                               alignment: Alignment.topLeft,
                               child: Material(
                                 elevation: 4.0,
-                                color: AppTheme.surfaceDark,
+                                color: Theme.of(context).colorScheme.surface,
                                 borderRadius: BorderRadius.circular(8),
                                 child: Container(
                                   constraints: BoxConstraints(
@@ -1048,7 +1049,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                                           decoration: BoxDecoration(
                                             border: Border(
                                               bottom: BorderSide(
-                                                color: AppTheme.textSecondary
+                                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)
                                                     .withOpacity(0.2),
                                                 width: 1,
                                               ),
@@ -1144,23 +1145,23 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                       child: TextField(
                         controller: _telefonoController,
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 13,
                         ),
                         keyboardType: TextInputType.phone,
                         decoration: InputDecoration(
                           labelText: 'Teléfono (opcional)',
                           labelStyle: TextStyle(
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontSize: 11,
                           ),
                           prefixIcon: Icon(
                             Icons.phone,
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             size: 16,
                           ),
                           filled: true,
-                          fillColor: AppTheme.surfaceDark,
+                          fillColor: Theme.of(context).colorScheme.surface,
                           contentPadding: EdgeInsets.symmetric(
                             horizontal: 8,
                             vertical: 0,
@@ -1180,20 +1181,20 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                 height: 40,
                 child: TextField(
                   controller: _observacionesController,
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
                   decoration: InputDecoration(
                     labelText: 'Observaciones (opcional)',
                     labelStyle: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 11,
                     ),
                     prefixIcon: Icon(
                       Icons.note,
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       size: 16,
                     ),
                     filled: true,
-                    fillColor: AppTheme.surfaceDark,
+                    fillColor: Theme.of(context).colorScheme.surface,
                     contentPadding: EdgeInsets.symmetric(
                       horizontal: 8,
                       vertical: 0,
@@ -1219,13 +1220,13 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                       Icon(
                         Icons.shopping_cart_outlined,
                         size: 40,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       ),
                       SizedBox(height: 8),
                       Text(
                         'Carrito vacío',
                         style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 14,
                         ),
                       ),
@@ -1233,7 +1234,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                       Text(
                         'Toque un producto para agregarlo',
                         style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 11,
                         ),
                       ),
@@ -1253,7 +1254,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
         Container(
           padding: EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppTheme.surfaceDark,
+            color: Theme.of(context).colorScheme.surface,
             border: Border(
               top: BorderSide(color: AppTheme.primary.withOpacity(0.3)),
             ),
@@ -1265,12 +1266,12 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                 children: [
                   Text(
                     'Subtotal:',
-                    style: TextStyle(color: AppTheme.textSecondary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   ),
                   Text(
                     '\$${_subtotal.toStringAsFixed(0)}',
                     style: TextStyle(
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -1285,7 +1286,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                   Text(
                     'TOTAL:',
                     style: TextStyle(
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
                     ),
@@ -1364,7 +1365,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
       margin: EdgeInsets.only(bottom: 8),
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
       ),
@@ -1381,7 +1382,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                       child: Text(
                         item.productoNombre ?? 'Producto',
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.w600,
                         ),
                         maxLines: 1,
@@ -1414,7 +1415,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                 SizedBox(height: 4),
                 Text(
                   '\$${item.precioUnitario.toStringAsFixed(0)} c/u',
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
                 ),
               ],
             ),
@@ -1422,7 +1423,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
           // Controles de cantidad
           Container(
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -1441,7 +1442,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                   child: Text(
                     '${item.cantidad}',
                     style: TextStyle(
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1612,7 +1613,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
     return await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Row(
           children: [
             Icon(Icons.warehouse, color: AppTheme.primary),
@@ -1620,7 +1621,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
             Expanded(
               child: Text(
                 '¿De dónde descontar?',
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
             ),
           ],
@@ -1632,14 +1633,14 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
             Text(
               producto.nombre,
               style: TextStyle(
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
             ),
             SizedBox(height: 8),
             Text(
               'Cantidad solicitada: $cantidad',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
             ),
             SizedBox(height: 16),
             // Opción Bodega
@@ -1730,21 +1731,21 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Text(
           'Cerrar Sesión',
-          style: TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Text(
           '¿Estás seguro de que deseas cerrar sesión?',
-          style: TextStyle(color: AppTheme.textSecondary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancelar',
-              style: TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
             ),
           ),
           ElevatedButton(
@@ -1785,7 +1786,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
             maxChildSize: 0.95,
             builder: (context, scrollController) => Container(
               decoration: BoxDecoration(
-                color: AppTheme.cardBg,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(20),
                   topRight: Radius.circular(20),
@@ -1799,7 +1800,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: AppTheme.textSecondary.withOpacity(0.3),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -1820,7 +1821,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                         Text(
                           'Pedido',
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
                           ),
@@ -1829,7 +1830,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                         IconButton(
                           icon: Icon(
                             Icons.close,
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           ),
                           onPressed: () => Navigator.pop(context),
                         ),
@@ -1872,7 +1873,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
               Text(
                 'Pedido',
                 style: TextStyle(
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -1900,7 +1901,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
         Container(
           padding: EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppTheme.surfaceDark.withOpacity(0.5),
+            color: Theme.of(context).colorScheme.surface.withOpacity(0.5),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1908,7 +1909,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
               Text(
                 'Datos del Cliente',
                 style: TextStyle(
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
                 ),
@@ -1972,13 +1973,13 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                               controller: textEditingController,
                               focusNode: focusNode,
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 13,
                               ),
                               decoration: InputDecoration(
                                 labelText: 'Cliente *',
                                 labelStyle: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   fontSize: 12,
                                 ),
                                 prefixIcon: Icon(
@@ -1988,10 +1989,10 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                                 ),
                                 suffixIcon: Icon(
                                   Icons.arrow_drop_down,
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 ),
                                 filled: true,
-                                fillColor: AppTheme.surfaceDark,
+                                fillColor: Theme.of(context).colorScheme.surface,
                                 contentPadding: EdgeInsets.symmetric(
                                   horizontal: 8,
                                   vertical: 12,
@@ -2002,7 +2003,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                                 ),
                                 hintText: 'Buscar cliente...',
                                 hintStyle: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   fontSize: 12,
                                 ),
                               ),
@@ -2018,7 +2019,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                               alignment: Alignment.topLeft,
                               child: Material(
                                 elevation: 4.0,
-                                color: AppTheme.surfaceDark,
+                                color: Theme.of(context).colorScheme.surface,
                                 borderRadius: BorderRadius.circular(8),
                                 child: Container(
                                   constraints: BoxConstraints(
@@ -2044,7 +2045,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                                           decoration: BoxDecoration(
                                             border: Border(
                                               bottom: BorderSide(
-                                                color: AppTheme.textSecondary
+                                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)
                                                     .withOpacity(0.2),
                                                 width: 1,
                                               ),
@@ -2135,21 +2136,21 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                 height: 40,
                 child: TextField(
                   controller: _telefonoController,
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
                   keyboardType: TextInputType.phone,
                   decoration: InputDecoration(
                     labelText: 'Teléfono (opcional)',
                     labelStyle: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 11,
                     ),
                     prefixIcon: Icon(
                       Icons.phone,
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       size: 16,
                     ),
                     filled: true,
-                    fillColor: AppTheme.surfaceDark,
+                    fillColor: Theme.of(context).colorScheme.surface,
                     contentPadding: EdgeInsets.symmetric(
                       horizontal: 8,
                       vertical: 0,
@@ -2166,20 +2167,20 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                 height: 40,
                 child: TextField(
                   controller: _observacionesController,
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
                   decoration: InputDecoration(
                     labelText: 'Observaciones (opcional)',
                     labelStyle: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 11,
                     ),
                     prefixIcon: Icon(
                       Icons.note,
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       size: 16,
                     ),
                     filled: true,
-                    fillColor: AppTheme.surfaceDark,
+                    fillColor: Theme.of(context).colorScheme.surface,
                     contentPadding: EdgeInsets.symmetric(
                       horizontal: 8,
                       vertical: 0,
@@ -2205,13 +2206,13 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                       Icon(
                         Icons.shopping_cart_outlined,
                         size: 40,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       ),
                       SizedBox(height: 8),
                       Text(
                         'Carrito vacío',
                         style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 14,
                         ),
                       ),
@@ -2219,7 +2220,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                       Text(
                         'Toque un producto para agregarlo',
                         style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 11,
                         ),
                       ),
@@ -2239,7 +2240,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
         Container(
           padding: EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppTheme.surfaceDark,
+            color: Theme.of(context).colorScheme.surface,
             boxShadow: [
               BoxShadow(
                 color: Colors.black26,
@@ -2255,12 +2256,12 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                 children: [
                   Text(
                     'Subtotal:',
-                    style: TextStyle(color: AppTheme.textSecondary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   ),
                   Text(
                     '\$${_subtotal.toStringAsFixed(0)}',
                     style: TextStyle(
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -2273,7 +2274,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                   Text(
                     'TOTAL:',
                     style: TextStyle(
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
                     ),
@@ -2409,7 +2410,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
 
       // Navegar a la lista de pedidos asesores
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/admin-pedidos-asesor');
+        context.go('/admin-pedidos-asesor');
       }
     } catch (e) {
       _mostrarError('Error al guardar pedido: $e');
@@ -2430,7 +2431,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
       margin: EdgeInsets.only(bottom: 8),
       padding: EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
       ),
@@ -2446,7 +2447,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                       child: Text(
                         item.productoNombre ?? 'Producto',
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
                         ),
@@ -2480,7 +2481,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                 SizedBox(height: 2),
                 Text(
                   '\$${item.precioUnitario.toStringAsFixed(0)} x ${item.cantidad}',
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 11),
                 ),
               ],
             ),
@@ -2491,7 +2492,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
               IconButton(
                 icon: Icon(
                   Icons.remove_circle_outline,
-                  color: AppTheme.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   size: 22,
                 ),
                 padding: EdgeInsets.zero,
@@ -2506,7 +2507,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                 child: Text(
                   '${item.cantidad}',
                   style: TextStyle(
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -2563,10 +2564,10 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Text(
             'Crear Nuevo Cliente',
-            style: TextStyle(color: AppTheme.textPrimary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           ),
           content: SingleChildScrollView(
             child: Column(
@@ -2577,16 +2578,16 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                   value: tipoPersona,
                   decoration: InputDecoration(
                     labelText: 'Tipo de Persona',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     filled: true,
-                    fillColor: AppTheme.surfaceDark,
+                    fillColor: Theme.of(context).colorScheme.surface,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide.none,
                     ),
                   ),
-                  style: TextStyle(color: AppTheme.textPrimary),
-                  dropdownColor: AppTheme.surfaceDark,
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                  dropdownColor: Theme.of(context).colorScheme.surface,
                   items: ['Persona Natural', 'Persona Jurídica']
                       .map(
                         (tipo) =>
@@ -2603,16 +2604,16 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                   value: tipoDoc,
                   decoration: InputDecoration(
                     labelText: 'Tipo Documento',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     filled: true,
-                    fillColor: AppTheme.surfaceDark,
+                    fillColor: Theme.of(context).colorScheme.surface,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide.none,
                     ),
                   ),
-                  style: TextStyle(color: AppTheme.textPrimary),
-                  dropdownColor: AppTheme.surfaceDark,
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                  dropdownColor: Theme.of(context).colorScheme.surface,
                   items: ['CC', 'NIT', 'CE', 'Pasaporte', 'TI']
                       .map(
                         (tipo) =>
@@ -2627,12 +2628,12 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                 // Número de documento
                 TextField(
                   controller: docController,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: 'Número de Documento *',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     filled: true,
-                    fillColor: AppTheme.surfaceDark,
+                    fillColor: Theme.of(context).colorScheme.surface,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide.none,
@@ -2643,12 +2644,12 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                   SizedBox(height: 12),
                   TextField(
                     controller: nombreController,
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     decoration: InputDecoration(
                       labelText: 'Nombres *',
-                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       filled: true,
-                      fillColor: AppTheme.surfaceDark,
+                      fillColor: Theme.of(context).colorScheme.surface,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -2658,12 +2659,12 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                   SizedBox(height: 12),
                   TextField(
                     controller: apellidoController,
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     decoration: InputDecoration(
                       labelText: 'Apellidos *',
-                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       filled: true,
-                      fillColor: AppTheme.surfaceDark,
+                      fillColor: Theme.of(context).colorScheme.surface,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -2674,12 +2675,12 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                   SizedBox(height: 12),
                   TextField(
                     controller: nombreController,
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     decoration: InputDecoration(
                       labelText: 'Razón Social *',
-                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       filled: true,
-                      fillColor: AppTheme.surfaceDark,
+                      fillColor: Theme.of(context).colorScheme.surface,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -2690,13 +2691,13 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                 SizedBox(height: 12),
                 TextField(
                   controller: telefonoController,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   keyboardType: TextInputType.phone,
                   decoration: InputDecoration(
                     labelText: 'Teléfono',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     filled: true,
-                    fillColor: AppTheme.surfaceDark,
+                    fillColor: Theme.of(context).colorScheme.surface,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide.none,
@@ -2706,13 +2707,13 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                 SizedBox(height: 12),
                 TextField(
                   controller: correoController,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     labelText: 'Correo',
-                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     filled: true,
-                    fillColor: AppTheme.surfaceDark,
+                    fillColor: Theme.of(context).colorScheme.surface,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide.none,
@@ -2727,7 +2728,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
               onPressed: () => Navigator.pop(context),
               child: Text(
                 'Cancelar',
-                style: TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               ),
             ),
             ElevatedButton(
@@ -2865,14 +2866,14 @@ class _ScannerScreenState extends State<_ScannerScreen> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               SizedBox(height: 12),
               Text(
                 'Por favor, usa la versión móvil de la app o ingresa el código manualmente.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               ),
               SizedBox(height: 24),
               ElevatedButton(
@@ -2929,7 +2930,7 @@ class _ScannerScreenState extends State<_ScannerScreen> {
                     Text(
                       'Error al acceder a la cámara',
                       style: TextStyle(
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 16,
                       ),
                     ),
@@ -2937,7 +2938,7 @@ class _ScannerScreenState extends State<_ScannerScreen> {
                     Text(
                       error.errorDetails?.message ?? 'Error desconocido',
                       style: TextStyle(
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontSize: 12,
                       ),
                       textAlign: TextAlign.center,
@@ -2972,7 +2973,7 @@ class _ScannerScreenState extends State<_ScannerScreen> {
               child: Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(

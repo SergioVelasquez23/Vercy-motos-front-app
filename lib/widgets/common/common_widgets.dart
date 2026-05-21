@@ -62,7 +62,7 @@ class InfoRow extends StatelessWidget {
       margin: EdgeInsets.symmetric(vertical: 6),
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceDark.withOpacity(0.3),
+        color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppTheme.primary.withOpacity(0.2), width: 1),
       ),
@@ -84,7 +84,7 @@ class InfoRow extends StatelessWidget {
                 Text(
                   etiqueta,
                   style: TextStyle(
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -93,7 +93,7 @@ class InfoRow extends StatelessWidget {
                 Text(
                   valor,
                   style: TextStyle(
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -125,7 +125,7 @@ class SeccionContainer extends StatelessWidget {
     return Container(
       padding: padding ?? EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg.withOpacity(opacity!),
+        color: Theme.of(context).colorScheme.surface.withOpacity(opacity!),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
       ),

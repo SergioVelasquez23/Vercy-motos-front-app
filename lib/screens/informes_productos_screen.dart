@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../models/cliente.dart';
 import '../models/producto.dart';
@@ -8,7 +9,7 @@ import '../services/reportes_service.dart';
 import '../theme/app_theme.dart';
 import '../services/cuadre_caja_service.dart';
 import '../services/pdf_service.dart';
-import 'facturas_list_screen.dart';
+import '../widgets/common/screen_header.dart';
 
 class InformesProductosScreen extends StatefulWidget {
   const InformesProductosScreen({super.key});
@@ -63,11 +64,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
       );
       return;
     }
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => FacturasListScreen(filtroInicial: pedidoId),
-      ),
-    );
+    context.push('/facturas-lista', extra: pedidoId);
   }
 
   // Mantener por compatibilidad (no se usa)
@@ -86,7 +83,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppTheme.cardBg,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
@@ -96,7 +93,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                 const SizedBox(height: 16),
                 Text(
                   'Generando PDF...',
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 ),
               ],
             ),
@@ -366,35 +363,24 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
-      appBar: AppBar(
-        title: const Text(
-          'Informes de Productos',
-          style: TextStyle(color: Colors.white),
+    return Column(
+      children: [
+        ScreenHeader(
+          icon: Icons.analytics,
+          title: 'Informes de Productos',
         ),
-        centerTitle: true,
-        backgroundColor: AppTheme.warning,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pushReplacementNamed(context, '/dashboard');
-          },
-        ),
-      ),
-      body: SingleChildScrollView(
+        Expanded(
+          child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // SECCIÓN DE FILTROS
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: AppTheme.cardBg,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: AppTheme.metal.withOpacity(0.2),
@@ -412,7 +398,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         Row(
@@ -421,7 +407,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                               'Filtrar por caja activa',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: AppTheme.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                               ),
                             ),
                             Switch(
@@ -449,7 +435,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                                 'Desde',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -467,7 +453,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                                   ),
                                 ),
                                 style: TextStyle(
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                   fontSize: 14,
                                 ),
                               ),
@@ -483,7 +469,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                                 'Hasta',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -501,7 +487,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                                   ),
                                 ),
                                 style: TextStyle(
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                   fontSize: 14,
                                 ),
                               ),
@@ -630,7 +616,9 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
             ],
           ),
         ),
-      ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -642,7 +630,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
           label,
           style: TextStyle(
             fontSize: 13,
-            color: AppTheme.textSecondary,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -658,18 +646,18 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                 width: 1,
               ),
               borderRadius: BorderRadius.circular(6),
-              color: AppTheme.cardBg,
+              color: Theme.of(context).colorScheme.surface,
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   _dateFormat.format(fecha),
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
                 ),
                 Icon(
                   Icons.calendar_today,
-                  color: AppTheme.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   size: 18,
                 ),
               ],
@@ -688,18 +676,18 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
           label,
           style: TextStyle(
             fontSize: 13,
-            color: AppTheme.textSecondary,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             fontWeight: FontWeight.w500,
           ),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
-          style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
           decoration: InputDecoration(
             hintText: label,
             hintStyle: TextStyle(
-              color: AppTheme.textSecondary.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.5),
               fontSize: 14,
             ),
             contentPadding: const EdgeInsets.symmetric(
@@ -725,7 +713,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
               borderSide: BorderSide(color: AppTheme.warning, width: 1.5),
             ),
             filled: true,
-            fillColor: AppTheme.cardBg,
+            fillColor: Theme.of(context).colorScheme.surface,
           ),
         ),
       ],
@@ -740,7 +728,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
           'Cliente',
           style: TextStyle(
             fontSize: 13,
-            color: AppTheme.textSecondary,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -763,26 +751,26 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
             return TextField(
               controller: controller,
               focusNode: focusNode,
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
               onChanged: (value) {
                 _clienteController.text = value;
               },
               decoration: InputDecoration(
                 hintText: 'Buscar cliente...',
                 hintStyle: TextStyle(
-                  color: AppTheme.textSecondary.withOpacity(0.5),
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.5),
                   fontSize: 14,
                 ),
                 prefixIcon: Icon(
                   Icons.search,
-                  color: AppTheme.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   size: 20,
                 ),
                 suffixIcon: controller.text.isNotEmpty
                     ? IconButton(
                         icon: Icon(
                           Icons.clear,
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           size: 18,
                         ),
                         onPressed: () {
@@ -814,7 +802,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                   borderSide: BorderSide(color: AppTheme.warning, width: 1.5),
                 ),
                 filled: true,
-                fillColor: AppTheme.cardBg,
+                fillColor: Theme.of(context).colorScheme.surface,
               ),
             );
           },
@@ -823,7 +811,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
               alignment: Alignment.topLeft,
               child: Material(
                 elevation: 8,
-                color: AppTheme.cardBg,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(8),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(
@@ -841,14 +829,14 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                         title: Text(
                           cliente.nombreCompleto,
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 13,
                           ),
                         ),
                         subtitle: Text(
                           cliente.numeroIdentificacion,
                           style: TextStyle(
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontSize: 11,
                           ),
                         ),
@@ -874,7 +862,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
           'Nombre Producto',
           style: TextStyle(
             fontSize: 13,
-            color: AppTheme.textSecondary,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -897,26 +885,26 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
             return TextField(
               controller: controller,
               focusNode: focusNode,
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
               onChanged: (value) {
                 _productoController.text = value;
               },
               decoration: InputDecoration(
                 hintText: 'Buscar producto...',
                 hintStyle: TextStyle(
-                  color: AppTheme.textSecondary.withOpacity(0.5),
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.5),
                   fontSize: 14,
                 ),
                 prefixIcon: Icon(
                   Icons.search,
-                  color: AppTheme.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   size: 20,
                 ),
                 suffixIcon: controller.text.isNotEmpty
                     ? IconButton(
                         icon: Icon(
                           Icons.clear,
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           size: 18,
                         ),
                         onPressed: () {
@@ -948,7 +936,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                   borderSide: BorderSide(color: AppTheme.warning, width: 1.5),
                 ),
                 filled: true,
-                fillColor: AppTheme.cardBg,
+                fillColor: Theme.of(context).colorScheme.surface,
               ),
             );
           },
@@ -957,7 +945,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
               alignment: Alignment.topLeft,
               child: Material(
                 elevation: 8,
-                color: AppTheme.cardBg,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(8),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(
@@ -975,14 +963,14 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                         title: Text(
                           producto.nombre,
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 13,
                           ),
                         ),
                         subtitle: Text(
                           producto.codigo ?? '',
                           style: TextStyle(
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontSize: 11,
                           ),
                         ),
@@ -1015,7 +1003,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
         alignment: Alignment.center,
         child: Text(
           'No hay datos para mostrar',
-          style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 16),
         ),
       );
     }
@@ -1027,7 +1015,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AppTheme.cardBg,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: AppTheme.metal.withOpacity(0.2),
@@ -1058,13 +1046,13 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
               width: 1,
             ),
             borderRadius: BorderRadius.circular(8),
-            color: AppTheme.cardBg,
+            color: Theme.of(context).colorScheme.surface,
           ),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
               headingRowColor: WidgetStateProperty.all(
-                AppTheme.backgroundDark.withOpacity(0.3),
+                Theme.of(context).scaffoldBackgroundColor.withOpacity(0.3),
               ),
               dataRowColor: WidgetStateProperty.resolveWith<Color>((
                 Set<WidgetState> states,
@@ -1072,7 +1060,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                 if (states.contains(WidgetState.hovered)) {
                   return AppTheme.primary.withOpacity(0.1);
                 }
-                return AppTheme.cardBg;
+                return Theme.of(context).colorScheme.surface;
               }),
               columns: [
                 DataColumn(label: _buildColumnHeader('TIPO')),
@@ -1106,7 +1094,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                       Text(
                         item['tipo'] ?? 'POS',
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 12,
                         ),
                       ),
@@ -1115,7 +1103,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                       Text(
                         item['fecha'] ?? '-',
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 12,
                         ),
                       ),
@@ -1124,7 +1112,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                       Text(
                         item['numeroFactura'] ?? '-',
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 12,
                         ),
                       ),
@@ -1133,7 +1121,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                       Text(
                         item['cliente'] ?? '-',
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 12,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -1143,7 +1131,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                       Text(
                         item['nombreProducto'] ?? '-',
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 12,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -1153,7 +1141,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                       Text(
                         item['codigoProducto'] ?? '-',
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 12,
                         ),
                       ),
@@ -1162,7 +1150,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                       Text(
                         (item['cantidad'] ?? 0).toString(),
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 12,
                         ),
                       ),
@@ -1171,7 +1159,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                       Text(
                         _formatCurrency(precioUnitario),
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 12,
                         ),
                       ),
@@ -1180,7 +1168,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                       Text(
                         _formatCurrency(subtotal),
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 12,
                         ),
                       ),
@@ -1191,7 +1179,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                         style: TextStyle(
                           color: descuento > 0
                               ? AppTheme.warning
-                              : AppTheme.textPrimary,
+                              : Theme.of(context).colorScheme.onSurface,
                           fontSize: 12,
                         ),
                       ),
@@ -1200,7 +1188,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                       Text(
                         _formatCurrency(impuesto),
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 12,
                         ),
                       ),
@@ -1226,7 +1214,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AppTheme.cardBg,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: AppTheme.metal.withOpacity(0.2),
@@ -1323,7 +1311,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
     return Text(
       text,
       style: TextStyle(
-        color: AppTheme.textPrimary,
+        color: Theme.of(context).colorScheme.onSurface,
         fontWeight: FontWeight.w600,
         fontSize: 12,
       ),
@@ -1336,7 +1324,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
         Text(
           label,
           style: TextStyle(
-            color: AppTheme.textSecondary,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
@@ -1345,7 +1333,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
         Text(
           isInt ? valor.toInt().toString() : _formatCurrency(valor),
           style: TextStyle(
-            color: AppTheme.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
@@ -1360,7 +1348,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
         Text(
           label,
           style: TextStyle(
-            color: AppTheme.textSecondary,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             fontSize: 11,
             fontWeight: FontWeight.w500,
           ),
@@ -1369,7 +1357,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
         Text(
           value,
           style: TextStyle(
-            color: color ?? AppTheme.textPrimary,
+            color: color ?? Theme.of(context).colorScheme.onSurface,
             fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
@@ -1540,7 +1528,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
           context: context,
           barrierDismissible: false,
           builder: (context) => AlertDialog(
-            backgroundColor: AppTheme.cardBg,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             content: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1548,7 +1536,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                 const SizedBox(width: 16),
                 Text(
                   'Generando vista previa...',
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 ),
               ],
             ),

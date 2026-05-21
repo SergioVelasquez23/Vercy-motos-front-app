@@ -15,6 +15,11 @@ class MatiasWebhookService {
   static const String WEBSOCKET_PATH = '/topic/matias-webhooks';
   static const Duration RECONNECT_DELAY = Duration(seconds: 5);
 
+  /// Interruptor maestro: si es false, [connect] retorna sin intentar conectar
+  /// y no se programan reintentos. Útil mientras el backend WS no esté listo.
+  // ignore: constant_identifier_names
+  static const bool ENABLED = false;
+
   WebSocketChannel? _channel;
   OnWebhookEvent? _onEvent;
   OnConnectionStatusChanged? _onConnectionStatusChanged;
@@ -34,6 +39,12 @@ class MatiasWebhookService {
     required OnWebhookEvent onEvent,
     OnConnectionStatusChanged? onConnectionStatusChanged,
   }) async {
+    if (!ENABLED) {
+      appLog('🔕 WebSocket Matias deshabilitado (MatiasWebhookService.ENABLED = false)');
+      _onConnectionStatusChanged = onConnectionStatusChanged;
+      _onConnectionStatusChanged?.call(false);
+      return;
+    }
     if (_isConnected) {
       appLog('⚠️ WebSocket ya está conectado');
       return;

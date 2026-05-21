@@ -31,14 +31,14 @@ class TabInventarioProducto extends StatelessWidget {
     required this.controlInventarioSeleccionadoList,
   });
 
-  Widget _buildTextField(String label, TextEditingController controller, {bool isNumeric = false}) {
+  Widget _buildTextField(BuildContext context, String label, TextEditingController controller, {bool isNumeric = false}) {
     return TextField(
       controller: controller,
-      style: TextStyle(color: Colors.black87),
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
       keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.black54),
+        labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
         border: OutlineInputBorder(),
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide(color: Colors.grey),
@@ -50,14 +50,20 @@ class TabInventarioProducto extends StatelessWidget {
     );
   }
 
-  Widget _buildDropdown(String label, String value, List<String> items, ValueChanged<String?> onChanged) {
+  Widget _buildDropdown(BuildContext context, String label, String value, List<String> items, ValueChanged<String?> onChanged) {
+    // Defensa: si el valor no está en items (ej. backend devuelve "true"/"false"
+    // en vez de "SI"/"NO"), usar el primero como fallback para no romper el
+    // assert del DropdownButton.
+    final safeValue = items.contains(value)
+        ? value
+        : (items.isNotEmpty ? items.first : null);
     return DropdownButtonFormField<String>(
-      value: value,
-      dropdownColor: AppTheme.cardBg,
-      style: TextStyle(color: Colors.black87),
+      value: safeValue,
+      dropdownColor: Theme.of(context).colorScheme.surface,
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.black54),
+        labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
         border: OutlineInputBorder(),
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide(color: Colors.grey),
@@ -85,6 +91,7 @@ class TabInventarioProducto extends StatelessWidget {
               children: [
                 Expanded(
                   child: _buildDropdown(
+                    context,
                     'Control Inventario',
                     controlInventarioSeleccionado,
                     ['SI', 'NO'],
@@ -92,18 +99,18 @@ class TabInventarioProducto extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width: 16),
-                Expanded(child: _buildTextField('Inv. Bajo', inventarioBajoController, isNumeric: true)),
+                Expanded(child: _buildTextField(context, 'Inv. Bajo', inventarioBajoController, isNumeric: true)),
                 SizedBox(width: 16),
-                Expanded(child: _buildTextField('Inv. Óptimo', inventarioOptimoController, isNumeric: true)),
+                Expanded(child: _buildTextField(context, 'Inv. Óptimo', inventarioOptimoController, isNumeric: true)),
               ],
             ),
             SizedBox(height: 16),
 
             Row(
               children: [
-                Expanded(child: _buildTextField('Almacén', almacenController, isNumeric: true)),
+                Expanded(child: _buildTextField(context, 'Almacén', almacenController, isNumeric: true)),
                 SizedBox(width: 16),
-                Expanded(child: _buildTextField('Bodega', bodegaController, isNumeric: true)),
+                Expanded(child: _buildTextField(context, 'Bodega', bodegaController, isNumeric: true)),
               ],
             ),
             SizedBox(height: 24),
@@ -112,21 +119,21 @@ class TabInventarioProducto extends StatelessWidget {
             SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _buildTextField('Ubicación 1', ubicacion1Controller)),
+                Expanded(child: _buildTextField(context, 'Ubicación 1', ubicacion1Controller)),
                 SizedBox(width: 16),
-                Expanded(child: _buildTextField('Ubicación 2', ubicacion2Controller)),
+                Expanded(child: _buildTextField(context, 'Ubicación 2', ubicacion2Controller)),
               ],
             ),
             SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _buildTextField('Ubicación 3', ubicacion3Controller)),
+                Expanded(child: _buildTextField(context, 'Ubicación 3', ubicacion3Controller)),
                 SizedBox(width: 16),
-                Expanded(child: _buildTextField('Ubicación 4', ubicacion4Controller)),
+                Expanded(child: _buildTextField(context, 'Ubicación 4', ubicacion4Controller)),
               ],
             ),
             SizedBox(height: 16),
-            _buildTextField('Localización', localizacionController),
+            _buildTextField(context, 'Localización', localizacionController),
           ],
         ),
       ),

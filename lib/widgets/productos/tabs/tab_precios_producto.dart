@@ -19,14 +19,14 @@ class TabPreciosProducto extends StatelessWidget {
     required this.precioVentaOpc3Controller,
   });
 
-  Widget _buildTextField(String label, TextEditingController controller, {bool isNumeric = false}) {
+  Widget _buildTextField(BuildContext context, String label, TextEditingController controller, {bool isNumeric = false}) {
     return TextField(
       controller: controller,
-      style: TextStyle(color: Colors.black87),
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
       keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.black54),
+        labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
         border: OutlineInputBorder(),
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide(color: Colors.grey),
@@ -50,11 +50,11 @@ class TabPreciosProducto extends StatelessWidget {
             SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _buildTextField('Costo *', costoController, isNumeric: true)),
+                Expanded(child: _buildTextField(context, 'Costo *', costoController, isNumeric: true)),
                 SizedBox(width: 16),
-                Expanded(child: _buildTextField('Precio *', precioController, isNumeric: true)),
+                Expanded(child: _buildTextField(context, 'Precio *', precioController, isNumeric: true)),
                 SizedBox(width: 16),
-                Expanded(child: _buildTextField('% Impuesto', porcentajeImpuestoController, isNumeric: true)),
+                Expanded(child: _buildTextField(context, '% Impuesto', porcentajeImpuestoController, isNumeric: true)),
               ],
             ),
             SizedBox(height: 24),
@@ -63,11 +63,11 @@ class TabPreciosProducto extends StatelessWidget {
             SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _buildTextField('Precio Opc. 1', precioVentaOpc1Controller, isNumeric: true)),
+                Expanded(child: _buildTextField(context, 'Precio Opc. 1', precioVentaOpc1Controller, isNumeric: true)),
                 SizedBox(width: 16),
-                Expanded(child: _buildTextField('Precio Opc. 2', precioVentaOpc2Controller, isNumeric: true)),
+                Expanded(child: _buildTextField(context, 'Precio Opc. 2', precioVentaOpc2Controller, isNumeric: true)),
                 SizedBox(width: 16),
-                Expanded(child: _buildTextField('Precio Opc. 3', precioVentaOpc3Controller, isNumeric: true)),
+                Expanded(child: _buildTextField(context, 'Precio Opc. 3', precioVentaOpc3Controller, isNumeric: true)),
               ],
             ),
           ],

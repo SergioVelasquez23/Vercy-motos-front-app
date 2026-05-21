@@ -28,15 +28,15 @@ class TabBasicoProducto extends StatelessWidget {
     this.onCategoriaChanged,
   });
 
-  Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1, bool isNumeric = false}) {
+  Widget _buildTextField(BuildContext context, String label, TextEditingController controller, {int maxLines = 1, bool isNumeric = false}) {
     return TextField(
       controller: controller,
-      style: TextStyle(color: Colors.black87),
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
       maxLines: maxLines,
       keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.black54),
+        labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
         border: OutlineInputBorder(),
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide(color: Colors.grey),
@@ -48,14 +48,19 @@ class TabBasicoProducto extends StatelessWidget {
     );
   }
 
-  Widget _buildDropdown(String label, String value, List<String> items, ValueChanged<String?> onChanged) {
+  Widget _buildDropdown(BuildContext context, String label, String value, List<String> items, ValueChanged<String?> onChanged) {
+    // Si el valor recibido no está en items (vacío, casing distinto, etc.) se
+    // usa el primero como fallback para evitar el assert de Dropdown.
+    final safeValue = items.contains(value)
+        ? value
+        : (items.isNotEmpty ? items.first : null);
     return DropdownButtonFormField<String>(
-      value: value,
-      dropdownColor: AppTheme.cardBg,
-      style: TextStyle(color: Colors.black87),
+      value: safeValue,
+      dropdownColor: Theme.of(context).colorScheme.surface,
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.black54),
+        labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
         border: OutlineInputBorder(),
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide(color: Colors.grey),
@@ -69,14 +74,18 @@ class TabBasicoProducto extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoriaDropdown(String? value, ValueChanged<String?> onChanged) {
+  Widget _buildCategoriaDropdown(BuildContext context, String? value, ValueChanged<String?> onChanged) {
+    // Si la categoría apunta a un ID que ya no existe en la lista cargada,
+    // tratarla como "Sin categoría" para no romper el dropdown.
+    final categoriaIds = categorias.map((c) => c.id).toSet();
+    final safeValue = (value != null && categoriaIds.contains(value)) ? value : null;
     return DropdownButtonFormField<String>(
-      value: value,
-      dropdownColor: AppTheme.cardBg,
-      style: TextStyle(color: Colors.black87),
+      value: safeValue,
+      dropdownColor: Theme.of(context).colorScheme.surface,
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
       decoration: InputDecoration(
         labelText: 'Categoría',
-        labelStyle: TextStyle(color: Colors.black54),
+        labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
         border: OutlineInputBorder(),
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide(color: Colors.grey),
@@ -110,6 +119,7 @@ class TabBasicoProducto extends StatelessWidget {
                 // Tipo de producto
                 Expanded(
                   child: _buildDropdown(
+                    context,
                     'Tipo *',
                     tipoSeleccionado,
                     ['PRODUCTO', 'SERVICIO'],
@@ -123,26 +133,26 @@ class TabBasicoProducto extends StatelessWidget {
                 SizedBox(width: 16),
                 // Código
                 Expanded(
-                  child: _buildTextField('Código', codigoController),
+                  child: _buildTextField(context, 'Código', codigoController),
                 ),
               ],
             ),
             SizedBox(height: 16),
 
             // Código de barras
-            _buildTextField('Código de barras', codigoBarrasController),
+            _buildTextField(context, 'Código de barras', codigoBarrasController),
             SizedBox(height: 16),
 
             // Nombre (ancho completo)
-            _buildTextField('Nombre *', nombreController),
+            _buildTextField(context, 'Nombre *', nombreController),
             SizedBox(height: 16),
 
             // Descripción (ancho completo, multilinea)
-            _buildTextField('Descripción', descripcionController, maxLines: 4),
+            _buildTextField(context, 'Descripción', descripcionController, maxLines: 4),
             SizedBox(height: 16),
 
             // Categoría
-            _buildCategoriaDropdown(categoriaSeleccionada, (value) {
+            _buildCategoriaDropdown(context, categoriaSeleccionada, (value) {
               setState(() {});
               onCategoriaChanged?.call(value);
             }),

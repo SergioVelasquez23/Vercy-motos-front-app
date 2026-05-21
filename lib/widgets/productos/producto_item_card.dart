@@ -30,7 +30,7 @@ class ProductoItemCard extends StatelessWidget {
     }
 
     return Card(
-      color: AppTheme.cardBg,
+      color: Theme.of(context).colorScheme.surface,
       margin: EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: ListTile(
@@ -54,7 +54,7 @@ class ProductoItemCard extends StatelessWidget {
         title: Text(
           producto.nombre,
           style: TextStyle(
-            color: AppTheme.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
             fontSize: 16,
           ),
@@ -105,7 +105,7 @@ class ProductoItemCard extends StatelessWidget {
                 child: Text(
                   producto.descripcion!,
                   style: TextStyle(
-                    color: AppTheme.textPrimary.withOpacity(0.7),
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -117,7 +117,7 @@ class ProductoItemCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: Icon(Icons.edit, color: AppTheme.textPrimary),
+              icon: Icon(Icons.edit, color: Theme.of(context).colorScheme.onSurface),
               onPressed: () => onEdit(producto),
             ),
             IconButton(

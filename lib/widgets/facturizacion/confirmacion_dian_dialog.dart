@@ -34,7 +34,7 @@ class ConfirmacionDianDialog extends StatelessWidget {
     final tipo = tipoDocumento ?? 'Documento';
 
     return Dialog(
-      backgroundColor: AppTheme.cardBg,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480),
@@ -64,7 +64,7 @@ class ConfirmacionDianDialog extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -72,7 +72,7 @@ class ConfirmacionDianDialog extends StatelessWidget {
               Text(
                 'La DIAN ha aceptado el documento',
                 style: TextStyle(
-                  color: AppTheme.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   fontSize: 14,
                 ),
               ),
@@ -106,7 +106,7 @@ class ConfirmacionDianDialog extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.grey.shade300),
                   ),
@@ -115,7 +115,7 @@ class ConfirmacionDianDialog extends StatelessWidget {
                       Text(
                         'Código QR',
                         style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
@@ -266,7 +266,7 @@ class _InfoRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceDark,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey.shade300.withOpacity(0.5)),
       ),
@@ -275,7 +275,7 @@ class _InfoRow extends StatelessWidget {
           Text(
             '$label: ',
             style: TextStyle(
-              color: AppTheme.textSecondary,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -284,7 +284,7 @@ class _InfoRow extends StatelessWidget {
             child: Text(
               value.length > 40 ? '${value.substring(0, 40)}...' : value,
               style: TextStyle(
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 12,
                 fontFamily: 'monospace',
               ),
@@ -329,10 +329,10 @@ class _QrTexto extends StatelessWidget {
       ),
       child: SelectableText(
         texto,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 10,
           fontFamily: 'monospace',
-          color: Colors.black87,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
         textAlign: TextAlign.center,
       ),

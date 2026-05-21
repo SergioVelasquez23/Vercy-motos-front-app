@@ -71,7 +71,7 @@ class _OptimizedLoadingWidgetState extends State<OptimizedLoadingWidget>
       opacity: _fadeAnimation,
       child: Center(
         child: Card(
-          color: AppTheme.cardBg,
+          color: Theme.of(context).colorScheme.surface,
           elevation: 8,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -134,7 +134,7 @@ class _OptimizedLoadingWidgetState extends State<OptimizedLoadingWidget>
                   Text(
                     widget.message!,
                     style: TextStyle(
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -147,7 +147,7 @@ class _OptimizedLoadingWidgetState extends State<OptimizedLoadingWidget>
                   Text(
                     widget.subtitle!,
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 14,
                     ),
                     textAlign: TextAlign.center,
@@ -174,7 +174,7 @@ class _OptimizedLoadingWidgetState extends State<OptimizedLoadingWidget>
                     onPressed: widget.onCancel,
                     child: Text(
                       'Cancelar',
-                      style: TextStyle(color: AppTheme.textSecondary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     ),
                   ),
                 ],

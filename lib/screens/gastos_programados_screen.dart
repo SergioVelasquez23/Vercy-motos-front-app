@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/gasto_programado.dart';
 import '../services/cartera_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
-import '../widgets/vercy_sidebar_layout.dart';
 
 class GastosProgramadosScreen extends StatefulWidget {
   const GastosProgramadosScreen({Key? key}) : super(key: key);
@@ -215,12 +215,11 @@ class _GastosProgramadosScreenState extends State<GastosProgramadosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return VercySidebarLayout(
-      child: Scaffold(
+    return Scaffold(
         appBar: AppBar(
           title: const Text('Gastos Programados'),
-          backgroundColor: const Color(0xFF2196F3),
-          foregroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
           elevation: 0,
           actions: [
             IconButton(
@@ -231,14 +230,14 @@ class _GastosProgramadosScreenState extends State<GastosProgramadosScreen> {
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: _mostrarFormularioCrear,
-          backgroundColor: const Color(0xFF2196F3),
+          backgroundColor: AppTheme.primary,
           child: const Icon(Icons.add),
         ),
         body: Column(
           children: [
             // Filtros y búsqueda
             Container(
-              color: const Color(0xFF2196F3),
+              color: AppTheme.primary,
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
@@ -249,7 +248,7 @@ class _GastosProgramadosScreenState extends State<GastosProgramadosScreen> {
                       hintText: 'Buscar gastos...',
                       prefixIcon: const Icon(Icons.search),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: Theme.of(context).colorScheme.surface,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -276,9 +275,9 @@ class _GastosProgramadosScreenState extends State<GastosProgramadosScreen> {
                               _aplicarFiltros();
                             });
                           },
-                          backgroundColor: Colors.white,
+                          backgroundColor: Theme.of(context).colorScheme.surface,
                           selectedColor: Colors.white,
-                          checkmarkColor: const Color(0xFF2196F3),
+                          checkmarkColor: AppTheme.primary,
                         ),
                         const SizedBox(width: 8),
                         _buildCategoriaChip('Todos', null),
@@ -319,8 +318,7 @@ class _GastosProgramadosScreenState extends State<GastosProgramadosScreen> {
             ),
           ], // cierra children del Column
         ), // cierra Column del body
-      ), // cierra Scaffold
-    ); // cierra VercySidebarLayout
+    ); // cierra Scaffold
   }
 
   Widget _buildCategoriaChip(String label, CategoriaGasto? categoria) {
@@ -334,9 +332,9 @@ class _GastosProgramadosScreenState extends State<GastosProgramadosScreen> {
           _aplicarFiltros();
         });
       },
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       selectedColor: Colors.white,
-      checkmarkColor: const Color(0xFF2196F3),
+      checkmarkColor: AppTheme.primary,
     );
   }
 
@@ -435,7 +433,7 @@ class _GastosProgramadosScreenState extends State<GastosProgramadosScreen> {
                   'Total',
                   CurrencyUtils.formatShort(totalEstimado),
                   Icons.receipt,
-                  const Color(0xFF2196F3),
+                  AppTheme.primary,
                 ),
                 _buildResumenItem(
                   'Gastos',

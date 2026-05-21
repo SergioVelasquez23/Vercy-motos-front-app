@@ -4,8 +4,8 @@ import 'dart:typed_data';
 import '../models/proveedor.dart';
 import '../services/proveedor_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/vercy_sidebar_layout.dart';
 import '../utils/pagination_mixin.dart';
+import '../widgets/common/screen_header.dart';
 
 class ProveedoresListScreen extends StatefulWidget {
   const ProveedoresListScreen({super.key});
@@ -89,143 +89,104 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
 
   @override
   Widget build(BuildContext context) {
-    return VercySidebarLayout(
-      title: 'Proveedores',
-      child: Container(
-        padding: EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Título
-            Text(
-              'Lista proveedores',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ScreenHeader(
+          icon: Icons.people_outline,
+          title: 'Lista proveedores',
+          badge: '${_proveedoresFiltrados.length}',
+          actions: [
+            ScreenHeaderAction.success(
+              icon: Icons.file_upload,
+              label: 'Carga Masiva',
+              mobileLabel: 'Carga',
+              onPressed: _mostrarDialogoCargaMasiva,
             ),
-            SizedBox(height: 24),
-
-            // Barra de filtros y acciones
-            _buildBarraFiltros(),
-            SizedBox(height: 16),
-
-            // Tabla de proveedores
-            Expanded(child: _buildTabla()),
+            ScreenHeaderAction.primary(
+              icon: Icons.add,
+              label: 'Crear Proveedor',
+              mobileLabel: 'Crear',
+              onPressed: _mostrarDialogoProveedor,
+            ),
           ],
         ),
-      ),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.all(context.isMobile ? 12 : 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildBarraFiltros(),
+                const SizedBox(height: 16),
+                Expanded(child: _buildTabla()),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildBarraFiltros() {
+    final isMobile = context.isMobile;
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade800),
       ),
-      child: Row(
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           // Campo Nombre Proveedor
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: isMobile ? double.infinity : 240,
             child: _buildCampoFiltro(
               controller: _filtroNombreController,
               hint: 'Nombre Proveedor',
               onChanged: (_) => _aplicarFiltros(),
             ),
           ),
-          SizedBox(width: 12),
-
           // Campo Teléfono
-          Expanded(
+          SizedBox(
+            width: isMobile ? double.infinity : 160,
             child: _buildCampoFiltro(
               controller: _filtroTelefonoController,
               hint: 'Teléfono',
               onChanged: (_) => _aplicarFiltros(),
             ),
           ),
-          SizedBox(width: 12),
-
           // Campo Dirección
-          Expanded(
+          SizedBox(
+            width: isMobile ? double.infinity : 200,
             child: _buildCampoFiltro(
               controller: _filtroDireccionController,
               hint: 'Dirección Proveedor',
               onChanged: (_) => _aplicarFiltros(),
             ),
           ),
-          SizedBox(width: 24),
-
-          // Botón Crear Proveedor
-          ElevatedButton.icon(
-            onPressed: () => _mostrarDialogoProveedor(),
-            icon: Icon(Icons.add, color: Colors.white),
-            label: Text(
-              'Crear Proveedor',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+          // Botón Saldar masivo
+          if (!isMobile)
+            ElevatedButton(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Saldar masivo - Próximamente')),
+                );
+              },
+              child: Text(
+                'Saldar masivo',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
             ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-          SizedBox(width: 12),
-
-          // Botón Carga Masiva ✅ NUEVO
-          ElevatedButton.icon(
-            onPressed: () => _mostrarDialogoCargaMasiva(),
-            icon: Icon(Icons.file_upload, color: Colors.white),
-            label: Text(
-              'Carga Masiva',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.success,
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-          SizedBox(width: 12),
-
-          // Botón Saldar masivo (placeholder)
-          ElevatedButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Saldar masivo - Próximamente')),
-              );
-            },
-            child: Text(
-              'Saldar masivo',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-          SizedBox(width: 12),
-
           // Botón Excel
           Container(
             decoration: BoxDecoration(
@@ -242,8 +203,6 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
               tooltip: 'Exportar Excel',
             ),
           ),
-          SizedBox(width: 8),
-
           // Botón PDF
           Container(
             decoration: BoxDecoration(
@@ -273,12 +232,12 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
     return TextField(
       controller: controller,
       onChanged: onChanged,
-      style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey.shade500),
         filled: true,
-        fillColor: AppTheme.surfaceDark,
+        fillColor: Theme.of(context).colorScheme.surface,
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -303,7 +262,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
 
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade800),
       ),
@@ -313,7 +272,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
             ),
             child: Row(
@@ -352,16 +311,16 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
                   )
                 : Column(
                     children: [
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: paginarLista(_proveedoresFiltrados).length,
-                        itemBuilder: (context, index) {
-                          final proveedor = paginarLista(
-                            _proveedoresFiltrados,
-                          )[index];
-                          return _buildFilaTabla(proveedor, index);
-                        },
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: paginarLista(_proveedoresFiltrados).length,
+                          itemBuilder: (context, index) {
+                            final proveedor = paginarLista(
+                              _proveedoresFiltrados,
+                            )[index];
+                            return _buildFilaTabla(proveedor, index);
+                          },
+                        ),
                       ),
                       buildPaginacion(
                         totalItems: _proveedoresFiltrados.length,
@@ -381,7 +340,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
       child: Text(
         texto,
         style: TextStyle(
-          color: AppTheme.textPrimary,
+          color: Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.bold,
           fontSize: 14,
         ),
@@ -391,7 +350,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
 
   Widget _buildFilaTabla(Proveedor proveedor, int index) {
     final isEven = index % 2 == 0;
-    final backgroundColor = isEven ? AppTheme.cardBg : AppTheme.surfaceDark;
+    final backgroundColor = isEven ? Theme.of(context).colorScheme.surface : Theme.of(context).colorScheme.surface;
 
     // Mostrar ID corto si es UUID, o el documento si existe
     String idDisplay =
@@ -413,7 +372,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
             flex: 2,
             child: Text(
               idDisplay,
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
             ),
           ),
 
@@ -422,7 +381,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
             flex: 4,
             child: Text(
               proveedor.nombre,
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -432,7 +391,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
             flex: 2,
             child: Text(
               proveedor.telefono ?? '',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
             ),
           ),
 
@@ -441,7 +400,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
             flex: 3,
             child: Text(
               proveedor.direccion ?? '',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -545,7 +504,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Row(
             children: [
               Icon(
@@ -555,7 +514,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
               SizedBox(width: 12),
               Text(
                 esEdicion ? 'Editar Proveedor' : 'Crear Proveedor',
-                style: TextStyle(color: Colors.black87, fontSize: 20),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 20),
               ),
             ],
           ),
@@ -991,7 +950,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
                       }
                     },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF00BFA5),
+                backgroundColor: AppTheme.success,
                 padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(24),
@@ -1032,7 +991,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
           labelText: label,
           labelStyle: TextStyle(color: Colors.grey.shade400),
           filled: true,
-          fillColor: AppTheme.surfaceDark,
+          fillColor: Theme.of(context).colorScheme.surface,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide(color: Colors.grey.shade700),
@@ -1060,11 +1019,11 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
       child: TextField(
         controller: controller,
         maxLines: maxLines,
-        style: TextStyle(color: Colors.black87),
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         decoration: InputDecoration(
           labelText: label,
           labelStyle: TextStyle(
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.w500,
           ),
           filled: true,
@@ -1099,7 +1058,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
         decoration: InputDecoration(
           labelText: label,
           labelStyle: TextStyle(
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.w500,
           ),
           filled: true,
@@ -1117,8 +1076,8 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
             borderSide: BorderSide(color: AppTheme.primary, width: 2),
           ),
         ),
-        dropdownColor: Colors.white,
-        style: TextStyle(color: Colors.black87),
+        dropdownColor: Theme.of(context).colorScheme.surface,
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         items: [
           DropdownMenuItem<String>(
             value: null,
@@ -1137,20 +1096,20 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Row(
           children: [
             Icon(Icons.warning_amber, color: Colors.orange),
             SizedBox(width: 12),
             Text(
               'Confirmar eliminación',
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
           ],
         ),
         content: Text(
           '¿Estás seguro de que deseas eliminar el proveedor "${proveedor.nombre}"?',
-          style: TextStyle(color: AppTheme.textSecondary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
         ),
         actions: [
           TextButton(
@@ -1195,14 +1154,14 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Row(
             children: [
               Icon(Icons.upload_file, color: AppTheme.primary),
               SizedBox(width: 12),
               Text(
                 'Carga Masiva de Proveedores',
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
             ],
           ),
@@ -1214,13 +1173,13 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
               children: [
                 Text(
                   'Selecciona un archivo Excel (.xlsx) con los datos de los proveedores.',
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 ),
                 SizedBox(height: 16),
                 Text(
                   'Columnas requeridas:',
                   style: TextStyle(
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
                   ),
@@ -1229,7 +1188,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
                 Container(
                   padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceDark,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -1249,7 +1208,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
               onPressed: () => Navigator.pop(context),
               child: Text(
                 'Cancelar',
-                style: TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               ),
             ),
             ElevatedButton.icon(
@@ -1302,14 +1261,14 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
         context: context,
         barrierDismissible: false,
         builder: (c) => AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           content: Row(
             children: [
               CircularProgressIndicator(color: AppTheme.primary),
               SizedBox(width: 16),
               Text(
                 'Procesando archivo Excel...',
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
             ],
           ),
@@ -1352,7 +1311,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Row(
           children: [
             Icon(
@@ -1362,7 +1321,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
             SizedBox(width: 8),
             Text(
               'Resultado de la carga',
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
           ],
         ),
@@ -1387,7 +1346,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
               Container(
                 constraints: BoxConstraints(maxHeight: 150),
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceDark,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: SingleChildScrollView(
@@ -1415,7 +1374,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
       children: [
         Text(
           '$label:',
-          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
         ),
         SizedBox(width: 8),
         Container(

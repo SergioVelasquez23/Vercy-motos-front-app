@@ -28,12 +28,12 @@ class StatCard extends StatelessWidget {
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         border: Border.all(color: color.withOpacity(0.3), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.08),
             blurRadius: 8,
             offset: Offset(0, 2),
             spreadRadius: 0,
@@ -109,7 +109,7 @@ class StatCard extends StatelessWidget {
           Text(
             value,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppTheme.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
               fontWeight: FontWeight.w800,
               fontSize: context.isMobile ? 28 : 32,
               letterSpacing: -0.5,
@@ -119,7 +119,7 @@ class StatCard extends StatelessWidget {
           Text(
             objective,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppTheme.textSecondary.withOpacity(0.7),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
               fontSize: 12,
             ),
           ),

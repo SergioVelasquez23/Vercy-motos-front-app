@@ -14,7 +14,7 @@ class ObservacionesSection extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
@@ -32,7 +32,7 @@ class ObservacionesSection extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ],
@@ -41,16 +41,16 @@ class ObservacionesSection extends StatelessWidget {
           TextField(
             controller: observacionesController,
             maxLines: 3,
-            style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
             decoration: InputDecoration(
               hintText: 'Ej: Abonado \$50,000 - Paquete 1, etc...',
-              hintStyle: TextStyle(color: AppTheme.textSecondary),
+              hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
               contentPadding: EdgeInsets.all(16),
               filled: true,
-              fillColor: AppTheme.surfaceDark,
+              fillColor: Theme.of(context).colorScheme.surface,
             ),
           ),
         ],

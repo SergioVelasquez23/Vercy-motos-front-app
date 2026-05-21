@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
-import 'dart:typed_data';
-import '../../config/constants.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../config/constants.dart';
-import '../../widgets/vercy_sidebar_layout.dart';
 import '../../services/documento_service.dart';
 import '../../services/matias_service.dart';
 import '../../services/matias_webhook_service.dart';
 import '../../models/matias_webhook_event.dart';
 import '../../widgets/facturizacion/confirmacion_dian_dialog.dart';
 import '../../widgets/facturizacion/nota_credito_debito_dialog.dart';
+import '../../utils/base64_file_launcher.dart';
 import '../../utils/logger.dart';
 
 /// Pantalla "Bandeja de Documentos Electrónicos"
@@ -199,39 +198,26 @@ class _DocumentosPendientesScreenState
   }
 
   Future<void> _reenviarDocumento(DocumentoFE doc) async {
-    // Intentar con el servicio genérico de reenvío
     setState(() => _isLoading = true);
     try {
       final uuid = doc.raw?['uuid']?.toString() ?? doc.id;
       final tipoDoc = doc.tipoDocumento?.toLowerCase() ?? 'invoices';
-      String tipo;
+      final esPOS = tipoDoc == 'pos';
 
-      switch (tipoDoc) {
-        case 'nota_credito':
-        case 'nota credito':
-          tipo = 'credit-notes';
-          break;
-        case 'nota_debito':
-        case 'nota debito':
-          tipo = 'debit-notes';
-          break;
-        case 'documento_soporte':
-          tipo = 'support-documents';
-          break;
-        case 'pos':
-          tipo = 'pos-documents';
-          break;
-        case 'nota_ajuste':
-          tipo = 'adjustment-notes';
-          break;
-        default:
-          tipo = 'invoices';
+      MatiasDocumentoResult resultado;
+      if (esPOS) {
+        // POS usa endpoint dedicado: PATCH /api/matias/pos/documents/{uuid}/resend
+        resultado = await MatiasService.reenviarPOS(uuid);
+      } else {
+        final tipo = switch (tipoDoc) {
+          'nota_credito' || 'nota credito' => 'credit-notes',
+          'nota_debito' || 'nota debito' => 'debit-notes',
+          'documento_soporte' => 'support-documents',
+          'nota_ajuste' => 'adjustment-notes',
+          _ => 'invoices',
+        };
+        resultado = await MatiasService.reenviarDocumentoAutoIncrement(tipo, uuid);
       }
-
-      final resultado = await MatiasService.reenviarDocumentoAutoIncrement(
-        tipo,
-        uuid,
-      );
 
       if (!mounted) return;
 
@@ -283,26 +269,60 @@ class _DocumentosPendientesScreenState
   // ── Descargas y consultas ─────────────────────────────────────────────────
 
   Future<void> _descargarPDF(DocumentoFE doc) async {
-    final cufe = doc.cufe;
-    if (cufe == null) {
-      _mostrarError('No se puede descargar: Documento sin CUFE');
+    // Matías exige XmlDocumentKey para el endpoint de PDF; si no está
+    // disponible (documentos viejos) caemos a CUFE.
+    final trackId = doc.pdfTrackId;
+
+    // 🔍 DIAGNOSTIC: dejar evidencia clara de qué se está enviando.
+    appLog('───── PDF DOWNLOAD DEBUG ─────');
+    appLog('  doc.cufe            = ${doc.cufe}');
+    appLog('  doc.xmlDocumentKey  = ${doc.xmlDocumentKey}');
+    appLog('  doc.pdfTrackId      = $trackId');
+    appLog('  origen del trackId  = ${doc.xmlDocumentKey != null && doc.xmlDocumentKey!.isNotEmpty ? "XmlDocumentKey" : "cufe (fallback)"}');
+    appLog('  raw keys disponibles= ${doc.raw?.keys.toList()}');
+    // Si hay un campo "XmlDocumentKey" en el raw que no detectamos, lo logueamos
+    final raw = doc.raw;
+    if (raw != null) {
+      final candidatos = ['XmlDocumentKey', 'xmlDocumentKey', 'xml_document_key', 'cufe', 'CUFE', 'cune', 'trackId', 'track_id'];
+      for (final k in candidatos) {
+        if (raw.containsKey(k)) {
+          appLog('    raw["$k"] = ${raw[k]}');
+        }
+      }
+    }
+    appLog('───────────────────────────────');
+
+    if (trackId == null || trackId.isEmpty) {
+      _mostrarError('No se puede descargar: Documento sin XmlDocumentKey/CUFE');
       return;
     }
 
     setState(() => _isLoading = true);
     try {
-      final bytes = await MatiasService.descargarPDFFactura(doc.id);
+      // 1) Intentar URL directa de Matias (más fiable que el binario base64).
+      final url = await MatiasService.obtenerURLPDF(trackId);
       if (!mounted) return;
-
-      if (bytes != null) {
-        _mostrarExito(
-          'PDF descargado (${(bytes.length / 1024).toStringAsFixed(2)} KB)',
+      if (url != null && url.isNotEmpty) {
+        final ok = await launchUrl(
+          Uri.parse(url),
+          mode: LaunchMode.externalApplication,
         );
-        // TODO: Guardar/mostrar PDF según plataforma (web/mobile)
-        appLog('✅ PDF descargado: ${bytes.length} bytes');
-      } else {
-        _mostrarError('No se pudo descargar el PDF');
+        if (!ok && mounted) _mostrarError('No se pudo abrir el PDF.');
+        return;
       }
+
+      // 2) Fallback: descargar binario base64 desde el backend.
+      final res = await MatiasService.descargarPDF(trackId);
+      if (!mounted) return;
+      if (res == null) {
+        _mostrarError('PDF no disponible. El documento debe estar ACEPTADO por la DIAN.');
+        return;
+      }
+      final ok = await Base64FileLauncher.open(
+        base64: res['base64']!,
+        mimeType: res['mimeType']!,
+      );
+      if (!ok && mounted) _mostrarError('No se pudo abrir el PDF.');
     } catch (e) {
       if (mounted) _mostrarError('Error al descargar PDF: $e');
     } finally {
@@ -310,28 +330,110 @@ class _DocumentosPendientesScreenState
     }
   }
 
+  Future<void> _reenviarCorreo(DocumentoFE doc) async {
+    final cufe = doc.cufe;
+    if (cufe == null || cufe.isEmpty) {
+      _mostrarError('No se puede reenviar: Documento sin CUFE');
+      return;
+    }
+
+    final emailCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final email = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reenviar correo'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Se enviará la factura electrónica al correo indicado.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: emailCtrl,
+                autofocus: true,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Correo del cliente',
+                  hintText: 'cliente@ejemplo.com',
+                  prefixIcon: Icon(Icons.email_outlined),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Correo requerido';
+                  final regex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+                  if (!regex.hasMatch(v.trim())) return 'Correo no válido';
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.send),
+            label: const Text('Reenviar'),
+            onPressed: () {
+              if (formKey.currentState?.validate() == true) {
+                Navigator.of(ctx).pop(emailCtrl.text.trim());
+              }
+            },
+          ),
+        ],
+      ),
+    );
+
+    if (email == null || !mounted) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final res = await MatiasService.reenviarCorreoFactura(cufe, email);
+      if (!mounted) return;
+      if (res.success) {
+        _mostrarExito('✉️ Correo reenviado a $email');
+      } else {
+        _mostrarError('Reenviar correo: ${res.message}');
+      }
+    } catch (e) {
+      if (mounted) _mostrarError('Error: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   Future<void> _descargarQR(DocumentoFE doc) async {
     final cufe = doc.cufe;
-    if (cufe == null) {
+    if (cufe == null || cufe.isEmpty) {
       _mostrarError('No se puede descargar: Documento sin CUFE');
       return;
     }
 
     setState(() => _isLoading = true);
     try {
-      final bytes = await MatiasService.obtenerQRDocumento(cufe);
+      // El QR viene en /document-pdf/{trackId}.data.qr.url
+      final url = await MatiasService.obtenerQRDocumento(cufe);
       if (!mounted) return;
 
-      if (bytes != null) {
-        _mostrarExito(
-          'QR descargado (${(bytes.length / 1024).toStringAsFixed(2)} KB)',
-        );
-        appLog('✅ QR descargado: ${bytes.length} bytes');
-      } else {
-        _mostrarError('No se pudo descargar el QR');
+      if (url == null || url.isEmpty) {
+        _mostrarError('No se pudo obtener el QR. ¿El documento está ACEPTADO?');
+        return;
       }
+      final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      if (!ok && mounted) _mostrarError('No se pudo abrir el QR. URL: $url');
     } catch (e) {
-      if (mounted) _mostrarError('Error al descargar QR: $e');
+      if (mounted) _mostrarError('Error al obtener el QR: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -339,26 +441,28 @@ class _DocumentosPendientesScreenState
 
   Future<void> _descargarXML(DocumentoFE doc) async {
     final cufe = doc.cufe;
-    if (cufe == null) {
+    if (cufe == null || cufe.isEmpty) {
       _mostrarError('No se puede descargar: Documento sin CUFE');
       return;
     }
 
     setState(() => _isLoading = true);
     try {
-      final xml = await MatiasService.obtenerXMLDocumento(cufe);
+      final res = await MatiasService.descargarXML(cufe);
       if (!mounted) return;
-
-      if (xml != null) {
-        _mostrarExito(
-          'XML descargado (${(xml.length / 1024).toStringAsFixed(2)} KB)',
-        );
-        appLog('✅ XML descargado: ${xml.length} chars');
-      } else {
-        _mostrarError('No se pudo descargar el XML');
+      if (res == null) {
+        _mostrarError('XML no disponible. El documento debe estar ACEPTADO por la DIAN.');
+        return;
       }
+      // Forzamos descarga con nombre — los navegadores no muestran XML inline.
+      final ok = await Base64FileLauncher.open(
+        base64: res['base64']!,
+        mimeType: res['mimeType']!,
+        filename: '${doc.numero ?? cufe}.xml',
+      );
+      if (!ok && mounted) _mostrarError('No se pudo abrir el XML.');
     } catch (e) {
-      if (mounted) _mostrarError('Error al descargar XML: $e');
+      if (mounted) _mostrarError('Error al obtener el XML: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -429,6 +533,10 @@ class _DocumentosPendientesScreenState
   }
 
   void _mostrarStatusDialog(String cufe, Map<String, dynamic> status) {
+    // Estructura backend (MatiasDocumentStatus):
+    //   { status, message, success, document: { uuid, document_number, order_number,
+    //     document_key, document_name, is_valid, invoice_date, qr } }
+    final document = status['document'] as Map<String, dynamic>?;
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -439,19 +547,18 @@ class _DocumentosPendientesScreenState
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildStatusField('CUFE', cufe),
-              _buildStatusField(
-                'Estado',
-                status['estado']?.toString() ?? 'N/A',
-              ),
-              _buildStatusField(
-                'Mensaje',
-                status['mensaje']?.toString() ?? 'N/A',
-              ),
-              if (status['fecha_consulta'] != null)
-                _buildStatusField(
-                  'Consultado',
-                  status['fecha_consulta']?.toString() ?? 'N/A',
-                ),
+              _buildStatusField('Estado', status['status']?.toString() ?? 'N/A'),
+              _buildStatusField('Mensaje', status['message']?.toString() ?? 'N/A'),
+              if (document != null) ...[
+                if (document['document_number'] != null)
+                  _buildStatusField('N° Documento', document['document_number'].toString()),
+                if (document['document_name'] != null)
+                  _buildStatusField('Tipo', document['document_name'].toString()),
+                if (document['is_valid'] != null)
+                  _buildStatusField('Válido', document['is_valid'].toString()),
+                if (document['invoice_date'] != null)
+                  _buildStatusField('Fecha emisión', document['invoice_date'].toString()),
+              ],
             ],
           ),
         ),
@@ -478,7 +585,7 @@ class _DocumentosPendientesScreenState
           SizedBox(height: 4),
           SelectableText(
             value,
-            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
           ),
         ],
       ),
@@ -503,10 +610,8 @@ class _DocumentosPendientesScreenState
 
   @override
   Widget build(BuildContext context) {
-    return VercySidebarLayout(
-      title: 'Documentos Electrónicos',
-      child: Scaffold(
-        backgroundColor: AppTheme.backgroundDark,
+    return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Column(
           children: [
             _buildHeader(),
@@ -520,18 +625,19 @@ class _DocumentosPendientesScreenState
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildHeader() {
     final totalPendientes = _documentos.where((d) => d.esPendiente).length;
     final totalRechazados = _documentos.where((d) => d.esRechazado).length;
+    final isMobile = context.isMobile;
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 24, vertical: isMobile ? 12 : 18),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black26,
@@ -541,6 +647,7 @@ class _DocumentosPendientesScreenState
         ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
             padding: const EdgeInsets.all(12),
@@ -548,37 +655,39 @@ class _DocumentosPendientesScreenState
               color: AppTheme.primary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(Icons.inbox_rounded, color: AppTheme.primary, size: 28),
+            child: Icon(Icons.inbox_rounded, color: AppTheme.primary, size: isMobile ? 22 : 28),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Bandeja de Documentos Electrónicos',
+                  isMobile ? 'Bandeja DIAN' : 'Bandeja de Documentos Electrónicos',
                   style: TextStyle(
-                    fontSize: 22,
+                    fontSize: isMobile ? 18 : 22,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
+                const SizedBox(height: 4),
                 Row(
                   children: [
-                    Text(
-                      '$totalPendientes pendientes · $totalRechazados rechazados',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 13,
+                    Flexible(
+                      child: Text(
+                        '$totalPendientes pendientes · $totalRechazados rechazados',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          fontSize: 13,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    // Estado WebSocket
+                    const SizedBox(width: 12),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: _webhookService.isConnected
                             ? Colors.green.withOpacity(0.1)
@@ -600,13 +709,9 @@ class _DocumentosPendientesScreenState
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            _webhookService.isConnected
-                                ? '🔌 En línea'
-                                : '⚠️ Desconectado',
+                            _webhookService.isConnected ? '🔌 En línea' : '⚠️ Desconectado',
                             style: TextStyle(
-                              color: _webhookService.isConnected
-                                  ? Colors.green
-                                  : Colors.orange,
+                              color: _webhookService.isConnected ? Colors.green : Colors.orange,
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
                             ),
@@ -619,14 +724,18 @@ class _DocumentosPendientesScreenState
               ],
             ),
           ),
+          const SizedBox(width: 12),
           ElevatedButton.icon(
             onPressed: _isLoading ? null : _cargarDocumentos,
             icon: const Icon(Icons.refresh, color: Colors.white, size: 18),
-            label: const Text(
-              'Actualizar',
-              style: TextStyle(color: Colors.white),
+            label: Text(
+              isMobile ? '' : 'Actualizar',
+              style: const TextStyle(color: Colors.white),
             ),
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 20, vertical: isMobile ? 10 : 14),
+            ),
           ),
         ],
       ),
@@ -702,9 +811,9 @@ class _DocumentosPendientesScreenState
                 ],
               ),
               selectedColor: color,
-              backgroundColor: AppTheme.cardBg,
+              backgroundColor: Theme.of(context).colorScheme.surface,
               labelStyle: TextStyle(
-                color: activo ? Colors.white : AppTheme.textPrimary,
+                color: activo ? Colors.white : Theme.of(context).colorScheme.onSurface,
                 fontSize: 13,
               ),
               side: BorderSide(color: activo ? color : Colors.grey.shade300),
@@ -731,13 +840,13 @@ class _DocumentosPendientesScreenState
             _filtroEstado.isEmpty
                 ? 'No hay documentos en la bandeja'
                 : 'No hay documentos ${_filtroEstado.toLowerCase()}s',
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 16),
           ),
           const SizedBox(height: 8),
           Text(
             'Los documentos aparecerán aquí cuando se cobre un pedido',
             style: TextStyle(
-              color: AppTheme.textSecondary.withOpacity(0.6),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.6),
               fontSize: 13,
             ),
           ),
@@ -761,6 +870,7 @@ class _DocumentosPendientesScreenState
           onConsultarStatus: _consultarStatusDIAN,
           onCrearNotaCredito: _crearNotaCredito,
           onCrearNotaDebito: _crearNotaDebito,
+          onReenviarCorreo: _reenviarCorreo,
         );
       },
     );
@@ -779,6 +889,7 @@ class _DocumentoCard extends StatelessWidget {
   final Future<void> Function(DocumentoFE) onConsultarStatus;
   final Future<void> Function(DocumentoFE) onCrearNotaCredito;
   final Future<void> Function(DocumentoFE) onCrearNotaDebito;
+  final Future<void> Function(DocumentoFE) onReenviarCorreo;
 
   const _DocumentoCard({
     required this.documento,
@@ -790,6 +901,7 @@ class _DocumentoCard extends StatelessWidget {
     required this.onConsultarStatus,
     required this.onCrearNotaCredito,
     required this.onCrearNotaDebito,
+    required this.onReenviarCorreo,
   });
 
   @override
@@ -798,7 +910,7 @@ class _DocumentoCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: _borderColor.withOpacity(0.3)),
         boxShadow: AppTheme.cardShadow,
@@ -850,7 +962,7 @@ class _DocumentoCard extends StatelessWidget {
                               ? documento.id.substring(0, 8).toUpperCase()
                               : documento.id.toUpperCase()),
                       style: TextStyle(
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         fontFamily: 'monospace',
@@ -864,14 +976,14 @@ class _DocumentoCard extends StatelessWidget {
                     Icon(
                       Icons.person_outline,
                       size: 14,
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         documento.clienteNombre ?? 'CONSUMIDOR FINAL',
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 13,
                         ),
                         maxLines: 1,
@@ -882,7 +994,7 @@ class _DocumentoCard extends StatelessWidget {
                     Text(
                       '\$ ${documento.total.toStringAsFixed(0)}',
                       style: TextStyle(
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
                       ),
@@ -894,7 +1006,7 @@ class _DocumentoCard extends StatelessWidget {
                   Text(
                     _formatFecha(documento.fechaCreacion!),
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 11,
                     ),
                   ),
@@ -1009,6 +1121,7 @@ class _DocumentoCard extends StatelessWidget {
         onConsultarStatus: () => onConsultarStatus(documento),
         onCrearNotaCredito: () => onCrearNotaCredito(documento),
         onCrearNotaDebito: () => onCrearNotaDebito(documento),
+        onReenviarCorreo: () => onReenviarCorreo(documento),
       );
     }
     return const SizedBox.shrink();
@@ -1107,6 +1220,7 @@ class _MenuDescargas extends StatelessWidget {
   final VoidCallback onConsultarStatus;
   final VoidCallback onCrearNotaCredito;
   final VoidCallback onCrearNotaDebito;
+  final VoidCallback onReenviarCorreo;
 
   const _MenuDescargas({
     required this.documento,
@@ -1116,6 +1230,7 @@ class _MenuDescargas extends StatelessWidget {
     required this.onConsultarStatus,
     required this.onCrearNotaCredito,
     required this.onCrearNotaDebito,
+    required this.onReenviarCorreo,
   });
 
   @override
@@ -1158,6 +1273,17 @@ class _MenuDescargas extends StatelessWidget {
           onTap: onDescargarXML,
         ),
         PopupMenuDivider(),
+        PopupMenuItem<void>(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.email_outlined, size: 18, color: AppTheme.secondary),
+              SizedBox(width: 12),
+              Text('Reenviar correo'),
+            ],
+          ),
+          onTap: onReenviarCorreo,
+        ),
         PopupMenuItem<void>(
           child: Row(
             mainAxisSize: MainAxisSize.min,

@@ -13,7 +13,6 @@ import '../models/categoria.dart';
 import '../services/producto_service.dart';
 import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
-import '../widgets/vercy_sidebar_layout.dart';
 import '../widgets/productos/tabs/tab_basico_producto.dart';
 import '../widgets/productos/tabs/tab_precios_producto.dart';
 import '../widgets/productos/tabs/tab_clasificacion_producto.dart';
@@ -24,6 +23,7 @@ import '../utils/logger.dart';
 import '../utils/pagination_mixin.dart';
 import '../utils/snackbar_helper.dart';
 import '../utils/dialogs_helper.dart';
+import '../widgets/common/screen_header.dart';
 
 class ProductosListScreen extends StatefulWidget {
   const ProductosListScreen({super.key});
@@ -170,144 +170,114 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
 
   @override
   Widget build(BuildContext context) {
-    return VercySidebarLayout(
-      title: 'Productos',
-      child: Container(
-        padding: EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Título y botones de acción
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Lista productos',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                Row(
-                  children: [
-                    // Dropdown con opciones de carga y descarga
-                    PopupMenuButton<String>(
-                      onSelected: (value) {
-                        if (value.startsWith('carga-')) {
-                          final tipo = value.replaceFirst('carga-', '');
-                          _mostrarCargaMasivaProductos(tipo: tipo);
-                        } else if (value.startsWith('descarga-')) {
-                          final tipo = value.replaceFirst('descarga-', '');
-                          _descargarProductosExcel(tipo: tipo);
-                        }
-                      },
-                      itemBuilder: (BuildContext context) => [
-                        // Opciones de Carga
-                        PopupMenuItem<String>(
-                          child: Row(
-                            children: [
-                              Icon(Icons.cloud_upload, color: AppTheme.success),
-                              SizedBox(width: 12),
-                              Text('Carga - Bodega'),
-                            ],
-                          ),
-                          value: 'carga-bodega',
-                        ),
-                        PopupMenuItem<String>(
-                          child: Row(
-                            children: [
-                              Icon(Icons.cloud_upload, color: AppTheme.info),
-                              SizedBox(width: 12),
-                              Text('Carga - Almacén'),
-                            ],
-                          ),
-                          value: 'carga-almacen',
-                        ),
-                        PopupMenuItem<String>(
-                          child: Row(
-                            children: [
-                              Icon(Icons.cloud_upload, color: Colors.purple),
-                              SizedBox(width: 12),
-                              Text('Carga - Ambos'),
-                            ],
-                          ),
-                          value: 'carga-ambos',
-                        ),
-                        PopupMenuDivider(),
-                        // Opciones de Descarga
-                        PopupMenuItem<String>(
-                          child: Row(
-                            children: [
-                              Icon(Icons.download, color: Colors.orange),
-                              SizedBox(width: 12),
-                              Text('Descargar - Bodega'),
-                            ],
-                          ),
-                          value: 'descarga-bodega',
-                        ),
-                        PopupMenuItem<String>(
-                          child: Row(
-                            children: [
-                              Icon(Icons.download, color: Colors.deepOrange),
-                              SizedBox(width: 12),
-                              Text('Descargar - Almacén'),
-                            ],
-                          ),
-                          value: 'descarga-almacen',
-                        ),
-                        PopupMenuItem<String>(
-                          child: Row(
-                            children: [
-                              Icon(Icons.download, color: Colors.red),
-                              SizedBox(width: 12),
-                              Text('Descargar - Ambos'),
-                            ],
-                          ),
-                          value: 'descarga-ambos',
-                        ),
-                      ],
-                      child: ElevatedButton.icon(
-                        onPressed: null,
-                        icon: Icon(Icons.more_vert, color: Colors.white),
-                        label: Text(
-                          'Excel',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primary,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ScreenHeader(
+          icon: Icons.inventory_2,
+          title: 'Lista productos',
+          badge: '${_productosFiltrados.length}',
+          actions: [
+            PopupMenuButton<String>(
+              tooltip: 'Excel',
+              onSelected: (value) {
+                if (value.startsWith('carga-')) {
+                  final tipo = value.replaceFirst('carga-', '');
+                  _mostrarCargaMasivaProductos(tipo: tipo);
+                } else if (value.startsWith('descarga-')) {
+                  final tipo = value.replaceFirst('descarga-', '');
+                  _descargarProductosExcel(tipo: tipo);
+                }
+              },
+              itemBuilder: (BuildContext context) => [
+                PopupMenuItem<String>(
+                  value: 'carga-bodega',
+                  child: Row(children: [
+                    Icon(Icons.cloud_upload, color: AppTheme.success),
                     SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      onPressed: _crearNuevoProducto,
-                      icon: Icon(Icons.add, color: Colors.white),
-                      label: Text(
-                        'Nuevo Producto',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ],
+                    Text('Carga - Bodega'),
+                  ]),
+                ),
+                PopupMenuItem<String>(
+                  value: 'carga-almacen',
+                  child: Row(children: [
+                    Icon(Icons.cloud_upload, color: AppTheme.info),
+                    SizedBox(width: 12),
+                    Text('Carga - Almacén'),
+                  ]),
+                ),
+                PopupMenuItem<String>(
+                  value: 'carga-ambos',
+                  child: Row(children: [
+                    Icon(Icons.cloud_upload, color: Colors.purple),
+                    SizedBox(width: 12),
+                    Text('Carga - Ambos'),
+                  ]),
+                ),
+                const PopupMenuDivider(),
+                PopupMenuItem<String>(
+                  value: 'descarga-bodega',
+                  child: Row(children: [
+                    Icon(Icons.download, color: Colors.orange),
+                    SizedBox(width: 12),
+                    Text('Descargar - Bodega'),
+                  ]),
+                ),
+                PopupMenuItem<String>(
+                  value: 'descarga-almacen',
+                  child: Row(children: [
+                    Icon(Icons.download, color: Colors.deepOrange),
+                    SizedBox(width: 12),
+                    Text('Descargar - Almacén'),
+                  ]),
+                ),
+                PopupMenuItem<String>(
+                  value: 'descarga-ambos',
+                  child: Row(children: [
+                    Icon(Icons.download, color: Colors.red),
+                    SizedBox(width: 12),
+                    Text('Descargar - Ambos'),
+                  ]),
                 ),
               ],
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.more_vert, color: Colors.white, size: 18),
+                    SizedBox(width: 6),
+                    Text('Excel', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
             ),
-            SizedBox(height: 24),
-
-            // Barra de filtros
-            _buildBarraFiltros(),
-            SizedBox(height: 16),
-
-            // Tabla de productos
-            Expanded(child: _buildTabla()),
+            ScreenHeaderAction.primary(
+              icon: Icons.add,
+              label: 'Nuevo Producto',
+              mobileLabel: 'Nuevo',
+              onPressed: _crearNuevoProducto,
+            ),
           ],
         ),
-      ),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.all(context.isMobile ? 12 : 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildBarraFiltros(),
+                const SizedBox(height: 16),
+                Expanded(child: _buildTabla()),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -315,7 +285,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade800),
       ),
@@ -325,15 +295,15 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
           Container(
             padding: EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.grey.shade700),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: _tipoFiltro,
-                dropdownColor: AppTheme.cardBg,
-                style: TextStyle(color: Colors.black87, fontSize: 14),
+                dropdownColor: Theme.of(context).colorScheme.surface,
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
                 icon: Icon(Icons.arrow_drop_down, color: Colors.grey),
                 items: [
                   DropdownMenuItem(value: 'PRODUCTO', child: Text('PRODUCTO')),
@@ -373,15 +343,15 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
           Container(
             padding: EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.grey.shade700),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: _categoriaSeleccionada,
-                dropdownColor: AppTheme.cardBg,
-                style: TextStyle(color: Colors.black87, fontSize: 14),
+                dropdownColor: Theme.of(context).colorScheme.surface,
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
                 icon: Icon(Icons.arrow_drop_down, color: Colors.grey),
                 hint: Text('Otros', style: TextStyle(color: Colors.grey)),
                 items: [
@@ -413,12 +383,12 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
     return TextField(
       controller: controller,
       onChanged: onChanged,
-      style: TextStyle(color: Colors.black87, fontSize: 14),
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey.shade500),
         filled: true,
-        fillColor: AppTheme.surfaceDark,
+        fillColor: Theme.of(context).colorScheme.surface,
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -443,7 +413,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
 
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade800),
       ),
@@ -453,7 +423,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
             ),
             child: Row(
@@ -515,14 +485,14 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                   )
                 : Column(
                     children: [
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: paginarLista(_productosFiltrados).length,
-                        itemBuilder: (context, index) {
-                          final producto = paginarLista(_productosFiltrados)[index];
-                          return _buildFilaTabla(producto, index);
-                        },
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: paginarLista(_productosFiltrados).length,
+                          itemBuilder: (context, index) {
+                            final producto = paginarLista(_productosFiltrados)[index];
+                            return _buildFilaTabla(producto, index);
+                          },
+                        ),
                       ),
                       buildPaginacion(
                         totalItems: _productosFiltrados.length,
@@ -546,7 +516,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
       child: Text(
         texto,
         style: TextStyle(
-          color: AppTheme.textPrimary,
+          color: Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.bold,
           fontSize: 13,
         ),
@@ -557,7 +527,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
 
   Widget _buildFilaTabla(Producto producto, int index) {
     final isEven = index % 2 == 0;
-    final backgroundColor = isEven ? AppTheme.cardBg : AppTheme.surfaceDark;
+    final backgroundColor = isEven ? Theme.of(context).colorScheme.surface : Theme.of(context).colorScheme.surface;
     final estadoInventario = _getEstadoInventario(producto);
     final colorEstado = _getColorEstado(estadoInventario);
 
@@ -601,7 +571,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
             flex: 3,
             child: Text(
               producto.nombre.toUpperCase(),
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -611,7 +581,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
             flex: 2,
             child: Text(
               '\$ ${formatNumberWithDots(producto.precio)}',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -626,7 +596,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                 '${_getStockTotal(producto)}',
                 style: TextStyle(
                   color: _getStockTotal(producto) > 0
-                      ? AppTheme.textPrimary
+                      ? Theme.of(context).colorScheme.onSurface
                       : Colors.red,
                   fontSize: 13,
                   fontWeight: _getStockTotal(producto) == 0
@@ -643,7 +613,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
             flex: 2,
             child: Text(
               '\$ ${formatNumberWithDots(producto.costo)}',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -785,7 +755,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Row(
           children: [
             Icon(Icons.inventory_2, color: AppTheme.primary),
@@ -793,7 +763,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
             Expanded(
               child: Text(
                 producto.nombre,
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 18),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -879,7 +849,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
             ),
           ),
           Expanded(
-            child: Text(value, style: TextStyle(color: AppTheme.textPrimary)),
+            child: Text(value, style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
           ),
         ],
       ),
@@ -890,12 +860,12 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Row(
           children: [
             Icon(Icons.location_on, color: AppTheme.primary),
             SizedBox(width: 12),
-            Text('Ubicaciones', style: TextStyle(color: AppTheme.textPrimary)),
+            Text('Ubicaciones', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
           ],
         ),
         content: Container(
@@ -948,7 +918,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
       padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       margin: EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceDark,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -958,7 +928,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
           Text(
             value,
             style: TextStyle(
-              color: AppTheme.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1139,7 +1109,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              backgroundColor: AppTheme.cardBg,
+              backgroundColor: Theme.of(context).colorScheme.surface,
               title: Row(
                 children: [
                   Icon(
@@ -1149,7 +1119,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                   SizedBox(width: 12),
                   Text(
                     isEditing ? 'Editar Producto' : 'Nuevo Producto',
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   ),
                 ],
               ),
@@ -1357,7 +1327,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              backgroundColor: AppTheme.cardBg,
+              backgroundColor: Theme.of(context).colorScheme.surface,
               title: Row(
                 children: [
                   Icon(
@@ -1367,7 +1337,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                   SizedBox(width: 12),
                   Text(
                     isEditing ? 'Editar Producto' : 'Nuevo Producto',
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   ),
                 ],
               ),
@@ -1380,11 +1350,11 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                       // Tipo de producto
                       DropdownButtonFormField<String>(
                         value: tipoSeleccionado,
-                        dropdownColor: AppTheme.cardBg,
-                        style: TextStyle(color: Colors.black87),
+                        dropdownColor: Theme.of(context).colorScheme.surface,
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         decoration: InputDecoration(
                           labelText: 'Tipo',
-                          labelStyle: TextStyle(color: Colors.black54),
+                          labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                           border: OutlineInputBorder(
                             borderSide: BorderSide(color: Colors.grey),
                           ),
@@ -1417,10 +1387,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                       // Código
                       TextField(
                         controller: codigoController,
-                        style: TextStyle(color: Colors.black87),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         decoration: InputDecoration(
                           labelText: 'Código',
-                          labelStyle: TextStyle(color: Colors.black54),
+                          labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                           border: OutlineInputBorder(),
                           enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(color: Colors.grey),
@@ -1432,10 +1402,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                       // Nombre
                       TextField(
                         controller: nombreController,
-                        style: TextStyle(color: Colors.black87),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         decoration: InputDecoration(
                           labelText: 'Nombre *',
-                          labelStyle: TextStyle(color: Colors.black54),
+                          labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                           border: OutlineInputBorder(),
                           enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(color: Colors.grey),
@@ -1447,11 +1417,11 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                       // Descripción
                       TextField(
                         controller: descripcionController,
-                        style: TextStyle(color: Colors.black87),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         maxLines: 3,
                         decoration: InputDecoration(
                           labelText: 'Descripción',
-                          labelStyle: TextStyle(color: Colors.black54),
+                          labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                           border: OutlineInputBorder(),
                           enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(color: Colors.grey),
@@ -1463,11 +1433,11 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                       // Categoría
                       DropdownButtonFormField<String>(
                         value: categoriaSeleccionada,
-                        dropdownColor: AppTheme.cardBg,
-                        style: TextStyle(color: Colors.black87),
+                        dropdownColor: Theme.of(context).colorScheme.surface,
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         decoration: InputDecoration(
                           labelText: 'Categoría',
-                          labelStyle: TextStyle(color: Colors.black54),
+                          labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                           border: OutlineInputBorder(
                             borderSide: BorderSide(color: Colors.grey),
                           ),
@@ -1500,11 +1470,11 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                           Expanded(
                             child: TextField(
                               controller: costoController,
-                              style: TextStyle(color: Colors.black87),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                               keyboardType: TextInputType.number,
                               decoration: InputDecoration(
                                 labelText: 'Costo *',
-                                labelStyle: TextStyle(color: Colors.black54),
+                                labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                                 border: OutlineInputBorder(),
                                 enabledBorder: OutlineInputBorder(
                                   borderSide: BorderSide(color: Colors.grey),
@@ -1517,11 +1487,11 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                           Expanded(
                             child: TextField(
                               controller: precioController,
-                              style: TextStyle(color: Colors.black87),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                               keyboardType: TextInputType.number,
                               decoration: InputDecoration(
                                 labelText: 'Precio *',
-                                labelStyle: TextStyle(color: Colors.black54),
+                                labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                                 border: OutlineInputBorder(),
                                 enabledBorder: OutlineInputBorder(
                                   borderSide: BorderSide(color: Colors.grey),
@@ -1668,14 +1638,14 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Row(
             children: [
               Icon(Icons.warning, color: Colors.red),
               SizedBox(width: 12),
               Text(
                 'Confirmar eliminación',
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
             ],
           ),
@@ -1685,13 +1655,13 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
             children: [
               Text(
                 '¿Estás seguro de que deseas eliminar este producto?',
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
               SizedBox(height: 12),
               Container(
                 padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceDark,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
@@ -1775,14 +1745,14 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Row(
             children: [
               Icon(Icons.upload_file, color: AppTheme.primary),
               SizedBox(width: 12),
               Text(
                 titulo,
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
             ],
           ),
@@ -1795,13 +1765,13 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                 children: [
                   Text(
                     'Selecciona un archivo Excel (.xlsx) con los datos de los productos.\nÚltima columna: $ultimaColumna',
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   ),
                   SizedBox(height: 16),
                   Container(
                     padding: EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppTheme.surfaceDark,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
@@ -1939,14 +1909,14 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
         context: context,
         barrierDismissible: false,
         builder: (c) => AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           content: Row(
             children: [
               CircularProgressIndicator(color: AppTheme.primary),
               SizedBox(width: 16),
               Text(
                 'Analizando archivo Excel...',
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
             ],
           ),
@@ -1966,10 +1936,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
         showDialog(
           context: context,
           builder: (c) => AlertDialog(
-            backgroundColor: AppTheme.cardBg,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             title: Text(
               'Diagnóstico del Excel',
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
             content: Container(
               width: 500,
@@ -1982,7 +1952,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                     Container(
                       padding: EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppTheme.surfaceDark,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Column(
@@ -1991,18 +1961,18 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                           Text(
                             'Resumen del archivo:',
                             style: TextStyle(
-                              color: AppTheme.textPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           SizedBox(height: 8),
                           Text(
                             'Total columnas: ${resultado['totalColumnas']}',
-                            style: TextStyle(color: AppTheme.textPrimary),
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           ),
                           Text(
                             'Total filas: ${resultado['totalFilas']}',
-                            style: TextStyle(color: AppTheme.textPrimary),
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           ),
                           SizedBox(height: 8),
                           Row(
@@ -2058,7 +2028,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                     Text(
                       'Columnas detectadas:',
                       style: TextStyle(
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -2088,7 +2058,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                                             child: Text(
                                               '${col['original']}',
                                               style: TextStyle(
-                                                color: AppTheme.textPrimary,
+                                                color: Theme.of(context).colorScheme.onSurface,
                                                 fontSize: 12,
                                               ),
                                             ),
@@ -2141,14 +2111,14 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
         showDialog(
           context: context,
           builder: (c) => AlertDialog(
-            backgroundColor: AppTheme.cardBg,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             title: Text(
               'Error en diagnóstico',
               style: TextStyle(color: Colors.red),
             ),
             content: Text(
               'Error al analizar el archivo:\n$e',
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
             actions: [
               TextButton(
@@ -2175,14 +2145,14 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
         context: context,
         barrierDismissible: false,
         builder: (c) => AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           content: Row(
             children: [
               CircularProgressIndicator(color: AppTheme.primary),
               SizedBox(width: 16),
               Text(
                 'Procesando archivo Excel...',
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
             ],
           ),
@@ -2211,10 +2181,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
         showDialog(
           context: context,
           builder: (c) => AlertDialog(
-            backgroundColor: AppTheme.cardBg,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             title: Text(
               'Carga Completada',
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -2301,11 +2271,11 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
         showDialog(
           context: context,
           builder: (c) => AlertDialog(
-            backgroundColor: AppTheme.cardBg,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             title: Text('Error', style: TextStyle(color: Colors.red)),
             content: Text(
               'Error al procesar el archivo:\n$e',
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
             actions: [
               TextButton(
@@ -2714,12 +2684,12 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
   Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1, bool isNumeric = false}) {
     return TextField(
       controller: controller,
-      style: TextStyle(color: Colors.black87),
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
       maxLines: maxLines,
       keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.black54),
+        labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
         border: OutlineInputBorder(),
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide(color: Colors.grey),
@@ -2734,11 +2704,11 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
   Widget _buildDropdown(String label, String value, List<String> items, ValueChanged<String?> onChanged) {
     return DropdownButtonFormField<String>(
       value: value,
-      dropdownColor: AppTheme.cardBg,
-      style: TextStyle(color: Colors.black87),
+      dropdownColor: Theme.of(context).colorScheme.surface,
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.black54),
+        labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
         border: OutlineInputBorder(),
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide(color: Colors.grey),
@@ -2755,11 +2725,11 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
   Widget _buildCategoriaDropdown(String? value, ValueChanged<String?> onChanged) {
     return DropdownButtonFormField<String>(
       value: value,
-      dropdownColor: AppTheme.cardBg,
-      style: TextStyle(color: Colors.black87),
+      dropdownColor: Theme.of(context).colorScheme.surface,
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
       decoration: InputDecoration(
         labelText: 'Categoría',
-        labelStyle: TextStyle(color: Colors.black54),
+        labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
         border: OutlineInputBorder(),
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide(color: Colors.grey),
@@ -2794,10 +2764,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Text(
             'Imprimir código de barras',
-            style: TextStyle(color: AppTheme.textPrimary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           ),
           content: Container(
             width: 400,
@@ -2809,7 +2779,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                 Container(
                   padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceDark,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.grey.shade700),
                   ),
@@ -2827,7 +2797,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                       Text(
                         producto.nombre,
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -2841,7 +2811,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                 Text(
                   'Opciones de impresión:',
                   style: TextStyle(
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -2852,7 +2822,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                 CheckboxListTile(
                   title: Text(
                     'Incluir fecha',
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   ),
                   value: incluirFecha,
                   activeColor: AppTheme.primary,
@@ -2869,7 +2839,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                 CheckboxListTile(
                   title: Text(
                     'Incluir código del producto',
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   ),
                   value: incluirCodigo,
                   activeColor: AppTheme.primary,
@@ -2886,7 +2856,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                 CheckboxListTile(
                   title: Text(
                     'Incluir precio',
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   ),
                   value: incluirPrecio,
                   activeColor: AppTheme.primary,
@@ -2905,10 +2875,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                 TextField(
                   controller: cantidadController,
                   keyboardType: TextInputType.number,
-                  style: TextStyle(color: Colors.black87),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: 'Cantidad de códigos a imprimir',
-                    labelStyle: TextStyle(color: Colors.black54),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                     hintText: 'Ej: 2',
                     hintStyle: TextStyle(color: Colors.grey.shade600),
                     border: OutlineInputBorder(
@@ -3113,10 +3083,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
     showDialog(
       context: context,
       builder: (c) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Text(
           'Seleccionar método de impresión',
-          style: TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Text(
           'Elige el método que mejor funcione con tu impresora:',
@@ -3240,10 +3210,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
     showDialog(
       context: context,
       builder: (c) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Text(
           'Seleccionar impresora',
-          style: TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Container(
           width: 300,
@@ -3261,7 +3231,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                       leading: Icon(Icons.print, color: Colors.white),
                       title: Text(
                         printer.name,
-                        style: TextStyle(color: AppTheme.textPrimary),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       ),
                       subtitle: printer.location != null
                           ? Text(
@@ -3421,14 +3391,14 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
           context: context,
           barrierDismissible: false,
           builder: (c) => AlertDialog(
-            backgroundColor: AppTheme.cardBg,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             content: Row(
               children: [
                 CircularProgressIndicator(color: AppTheme.primary),
                 SizedBox(width: 16),
                 Text(
                   'Descargando productos...',
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 ),
               ],
             ),
@@ -3540,8 +3510,8 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                                   esEntrada
                                       ? '+${mov.cantidad}'
                                       : '${mov.cantidad}',
-                                  style: const TextStyle(
-                                    color: AppTheme.textPrimary,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.onSurface,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 12,
                                   ),

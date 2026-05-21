@@ -88,7 +88,7 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: AppTheme.cardBg,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       child: Container(
         width: MediaQuery.of(context).size.width * 0.9,
         constraints: BoxConstraints(
@@ -106,14 +106,14 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
                 Text(
                   'Agregar Item',
                   style: TextStyle(
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.close, color: AppTheme.textSecondary),
+                  icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                 ),
               ],
             ),
@@ -121,11 +121,11 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
 
             // Búsqueda de productos
             TextField(
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: InputDecoration(
                 hintText: 'Buscar productos...',
-                hintStyle: TextStyle(color: AppTheme.textSecondary),
-                prefixIcon: Icon(Icons.search, color: AppTheme.textSecondary),
+                hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                prefixIcon: Icon(Icons.search, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                 filled: true,
                 fillColor: Colors.grey[800],
                 border: OutlineInputBorder(
@@ -149,7 +149,7 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
                     Text(
                       'Seleccionar Producto:',
                       style: TextStyle(
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -171,16 +171,16 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
                           return ListTile(
                             title: Text(
                               producto.nombre,
-                              style: TextStyle(color: AppTheme.textPrimary),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                             ),
                             subtitle: Text(
                               '${producto.categoria?.nombre ?? 'Sin categoría'} - Stock: ${producto.cantidad}',
-                              style: TextStyle(color: AppTheme.textSecondary),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                             ),
                             trailing: Text(
                               '\$${producto.precio.toStringAsFixed(0)}',
                               style: TextStyle(
-                                color: AppTheme.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -206,7 +206,7 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
                       Container(
                         padding: EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: AppTheme.cardBg,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.grey[600]!),
                         ),
@@ -217,7 +217,7 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
                             Text(
                               'Detalles del Item',
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -231,7 +231,7 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
                                   _usarTotal
                                       ? Icons.calculate
                                       : Icons.attach_money,
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   size: 20,
                                 ),
                                 SizedBox(width: 12),
@@ -243,7 +243,7 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
                                       Text(
                                         'Modo de entrada de precios',
                                         style: TextStyle(
-                                          color: AppTheme.textPrimary,
+                                          color: Theme.of(context).colorScheme.onSurface,
                                           fontSize: 14,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -254,7 +254,7 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
                                             ? 'Total directo - el precio unitario se calculará automáticamente'
                                             : 'Precio unitario manual - ingresa el precio por unidad',
                                         style: TextStyle(
-                                          color: AppTheme.textSecondary,
+                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                           fontSize: 12,
                                         ),
                                       ),
@@ -286,16 +286,16 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
                             // Cantidad (siempre visible)
                             TextField(
                               controller: _cantidadController,
-                              style: TextStyle(color: AppTheme.textPrimary),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                               keyboardType: TextInputType.number,
                               decoration: InputDecoration(
                                 labelText: 'Cantidad',
                                 labelStyle: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 ),
                                 suffixText: 'unidades',
                                 suffixStyle: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderSide: BorderSide(
@@ -318,20 +318,20 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
                             if (!_usarTotal) ...[
                               TextField(
                                 controller: _precioController,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 keyboardType: TextInputType.number,
                                 decoration: InputDecoration(
                                   labelText: 'Precio Unitario',
                                   labelStyle: TextStyle(
-                                    color: AppTheme.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   ),
                                   prefixText: '\$',
                                   prefixStyle: TextStyle(
-                                    color: AppTheme.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   ),
                                   helperText: 'Precio por unidad',
                                   helperStyle: TextStyle(
-                                    color: AppTheme.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                     fontSize: 12,
                                   ),
                                   enabledBorder: OutlineInputBorder(
@@ -352,21 +352,21 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
                             ] else ...[
                               TextField(
                                 controller: _totalController,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 keyboardType: TextInputType.number,
                                 decoration: InputDecoration(
                                   labelText: 'Total del Item',
                                   labelStyle: TextStyle(
-                                    color: AppTheme.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   ),
                                   prefixText: '\$',
                                   prefixStyle: TextStyle(
-                                    color: AppTheme.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   ),
                                   helperText:
                                       'El precio unitario se calculará automáticamente',
                                   helperStyle: TextStyle(
-                                    color: AppTheme.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                     fontSize: 12,
                                   ),
                                   enabledBorder: OutlineInputBorder(
@@ -395,21 +395,21 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
                                   child: TextField(
                                     controller: _porcentajeImpuestoController,
                                     style: TextStyle(
-                                      color: AppTheme.textPrimary,
+                                      color: Theme.of(context).colorScheme.onSurface,
                                     ),
                                     keyboardType: TextInputType.number,
                                     decoration: InputDecoration(
                                       labelText: '% IVA',
                                       labelStyle: TextStyle(
-                                        color: AppTheme.textSecondary,
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                       ),
                                       suffixText: '%',
                                       suffixStyle: TextStyle(
-                                        color: AppTheme.textSecondary,
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                       ),
                                       helperText: '0%, 5%, 19%',
                                       helperStyle: TextStyle(
-                                        color: AppTheme.textSecondary,
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                         fontSize: 10,
                                       ),
                                       enabledBorder: OutlineInputBorder(
@@ -434,17 +434,17 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
                                   child: TextField(
                                     controller: _porcentajeDescuentoController,
                                     style: TextStyle(
-                                      color: AppTheme.textPrimary,
+                                      color: Theme.of(context).colorScheme.onSurface,
                                     ),
                                     keyboardType: TextInputType.number,
                                     decoration: InputDecoration(
                                       labelText: '% Descuento',
                                       labelStyle: TextStyle(
-                                        color: AppTheme.textSecondary,
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                       ),
                                       suffixText: '%',
                                       suffixStyle: TextStyle(
-                                        color: AppTheme.textSecondary,
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                       ),
                                       enabledBorder: OutlineInputBorder(
                                         borderSide: BorderSide(
@@ -484,14 +484,14 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
                                         Text(
                                           'Precio Unitario Calculado:',
                                           style: TextStyle(
-                                            color: AppTheme.textPrimary,
+                                            color: Theme.of(context).colorScheme.onSurface,
                                             fontSize: 14,
                                           ),
                                         ),
                                         Text(
                                           '\$${_precioUnitarioCalculado.toStringAsFixed(2)}',
                                           style: TextStyle(
-                                            color: AppTheme.textPrimary,
+                                            color: Theme.of(context).colorScheme.onSurface,
                                             fontSize: 14,
                                             fontWeight: FontWeight.w500,
                                           ),
@@ -519,7 +519,7 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
                                       _valorImpuesto,
                                     ),
                                   Divider(
-                                    color: AppTheme.textSecondary.withOpacity(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(
                                       0.3,
                                     ),
                                   ),
@@ -566,7 +566,7 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
                   onPressed: () => Navigator.pop(context),
                   child: Text(
                     'Cancelar',
-                    style: TextStyle(color: AppTheme.textSecondary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   ),
                 ),
                 SizedBox(width: 12),
@@ -616,12 +616,12 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
         children: [
           Text(
             label,
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
           ),
           Text(
             '${isNegative ? "-" : ""}\$${valor.abs().toStringAsFixed(0)}',
             style: TextStyle(
-              color: isNegative ? Colors.red[300] : AppTheme.textPrimary,
+              color: isNegative ? Colors.red[300] : Theme.of(context).colorScheme.onSurface,
               fontSize: 13,
             ),
           ),

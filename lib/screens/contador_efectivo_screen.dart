@@ -25,10 +25,10 @@ class ContadorEfectivoScreen extends StatefulWidget {
 class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
   // Getters para compatibilidad temporal con AppTheme
   Color get primary => AppTheme.primary;
-  Color get bgDark => AppTheme.backgroundDark;
-  Color get cardBg => AppTheme.cardBg;
-  Color get textDark => AppTheme.textDark;
-  Color get textLight => AppTheme.textLight;
+  Color get bgDark => Theme.of(context).scaffoldBackgroundColor;
+  Color get cardBg => Theme.of(context).colorScheme.surface;
+  Color get textDark => Theme.of(context).colorScheme.onSurface;
+  Color get textLight => Theme.of(context).colorScheme.onSurface.withOpacity(0.5);
 
   // Lista de denominaciones
   List<DenominacionEfectivo> _denominaciones = [];
@@ -415,30 +415,30 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
     return Scaffold(
       backgroundColor: bgDark,
       appBar: AppBar(
-        backgroundColor: primary,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         title: Text(
           'Contador de Efectivo',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.file_download, color: Colors.white),
+            icon: Icon(Icons.file_download, color: Theme.of(context).colorScheme.onSurface),
             onPressed: ExcelExportService.hayDatosParaExportar(_denominaciones)
                 ? _exportarAExcel
                 : null,
             tooltip: 'Exportar a Excel',
           ),
           IconButton(
-            icon: Icon(Icons.refresh, color: Colors.white),
+            icon: Icon(Icons.refresh, color: Theme.of(context).colorScheme.onSurface),
             onPressed: _resetearContador,
             tooltip: 'Resetear contador',
           ),
@@ -468,7 +468,7 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
             blurRadius: 8,
             offset: Offset(0, 2),
           ),
@@ -707,7 +707,7 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
         color: cardBg,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
             blurRadius: 8,
             offset: Offset(0, -2),
           ),

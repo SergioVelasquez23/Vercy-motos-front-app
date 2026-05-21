@@ -167,7 +167,7 @@ class FacturaCompraService {
         
 
       final response = await http.get(
-        Uri.parse('$baseUrl/numero-factura'),
+        Uri.parse('$baseUrl/numero-compra'),
         headers: headers,
       );
       if (response.statusCode == 200) {
@@ -593,7 +593,7 @@ class FacturaCompraService {
     try {
         
       final numeroResponse = await http.get(
-        Uri.parse('$baseUrl/numero-factura'),
+        Uri.parse('$baseUrl/numero-compra'),
         headers: headers,
       );
 

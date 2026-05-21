@@ -15,38 +15,38 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Detalle de Factura',
           style: TextStyle(
-            color: AppTheme.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: AppTheme.backgroundDark,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
-        iconTheme: IconThemeData(color: AppTheme.textPrimary),
+        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildInfoGeneral(),
+            _buildInfoGeneral(context),
             SizedBox(height: 16),
-            _buildItems(),
+            _buildItems(context),
             SizedBox(height: 16),
-            _buildResumen(),
+            _buildResumen(context),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInfoGeneral() {
+  Widget _buildInfoGeneral(BuildContext context) {
     return Card(
-      color: AppTheme.cardBg,
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -55,25 +55,28 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
             Text(
               'Información General',
               style: TextStyle(
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
             SizedBox(height: 16),
-            _buildInfoRow('Número de Factura:', factura.numeroFactura),
-            _buildInfoRow('Proveedor:', factura.proveedorNombre),
+            _buildInfoRow(context, 'Número de Factura:', factura.numeroFactura),
+            _buildInfoRow(context, 'Proveedor:', factura.proveedorNombre),
             if (factura.proveedorNit != null)
-              _buildInfoRow('NIT:', factura.proveedorNit!),
+              _buildInfoRow(context, 'NIT:', factura.proveedorNit!),
             _buildInfoRow(
+              context,
               'Fecha de Factura:',
               _formatearFecha(factura.fechaFactura),
             ),
             _buildInfoRow(
+              context,
               'Fecha de Creación:',
               _formatearFechaConHora(factura.fechaCreacion),
             ),
             _buildInfoRow(
+              context,
               'Fecha de Vencimiento:',
               _formatearFecha(factura.fechaVencimiento),
             ),
@@ -82,7 +85,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
               children: [
                 Text(
                   'Estado:',
-                  style: TextStyle(color: AppTheme.textSecondary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                 ),
                 // Si está pagado desde caja, mostrar PAGADA independientemente del estado en la base de datos
                 // Usar el método auxiliar para determinar el estado visual
@@ -97,7 +100,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
               children: [
                 Text(
                   'Pagado desde caja:',
-                  style: TextStyle(color: AppTheme.textSecondary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                 ),
                 Row(
                   children: [
@@ -116,7 +119,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
                       style: TextStyle(
                         color: factura.pagadoDesdeCaja
                             ? Colors.green
-                            : AppTheme.textSecondary,
+                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -130,9 +133,9 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildItems() {
+  Widget _buildItems(BuildContext context) {
     return Card(
-      color: AppTheme.cardBg,
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -141,7 +144,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
             Text(
               'Items de la Factura',
               style: TextStyle(
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -149,16 +152,16 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
             SizedBox(height: 16),
             ...factura.items.map(
               (item) => Card(
-                color: AppTheme.backgroundDark,
+                color: Theme.of(context).scaffoldBackgroundColor,
                 margin: EdgeInsets.only(bottom: 8),
                 child: ListTile(
                   title: Text(
                     item.ingredienteNombre,
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   ),
                   subtitle: Text(
                     '${item.cantidad} ${item.unidad} x \$${item.precioUnitario.toStringAsFixed(0)}',
-                    style: TextStyle(color: AppTheme.textSecondary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   ),
                   trailing: Text(
                     '\$${item.subtotal.toStringAsFixed(0)}',
@@ -176,9 +179,9 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildResumen() {
+  Widget _buildResumen(BuildContext context) {
     return Card(
-      color: AppTheme.cardBg,
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -187,7 +190,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
             Text(
               'Resumen',
               style: TextStyle(
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -199,7 +202,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
                 Text(
                   'Total:',
                   style: TextStyle(
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -218,7 +221,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
             Text(
               'Nota: El IVA ya está incluido en los precios',
               style: TextStyle(
-                color: AppTheme.textSecondary,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
               ),
@@ -229,14 +232,14 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(BuildContext context, String label, String value) {
     return Padding(
       padding: EdgeInsets.only(bottom: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: AppTheme.textSecondary)),
-          Text(value, style: TextStyle(color: AppTheme.textPrimary)),
+          Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
+          Text(value, style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
         ],
       ),
     );

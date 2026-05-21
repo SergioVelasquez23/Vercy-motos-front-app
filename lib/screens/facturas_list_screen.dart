@@ -5,17 +5,19 @@ import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import '../models/cliente.dart';
 import '../models/factura.dart';
 import '../models/pedido.dart';
+import '../models/item_pedido.dart';
 import '../models/negocio_info.dart';
 import '../services/cliente_service.dart';
 import '../services/factura_service.dart';
 import '../services/pedido_service.dart';
 import '../services/pdf_service.dart';
 import '../services/negocio_info_service.dart';
+import '../services/matias_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/vercy_sidebar_layout.dart';
 import '../widgets/facturizacion/facturacion_electronica_menu.dart';
 import '../utils/logger.dart';
 import '../utils/pagination_mixin.dart';
+import '../widgets/common/screen_header.dart';
 
 class FacturasListScreen extends StatefulWidget {
   final String? filtroInicial;
@@ -41,6 +43,10 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
   List<dynamic> _documentosFiltrados = []; // Puede ser Factura o Pedido
   bool _isLoading = false;
 
+  // Contador de documentos consumidos en Matias (-1 = no cargado / error)
+  int _cantidadDocumentosMatias = -1;
+  bool _cargandoCantidadMatias = false;
+
   // Filtros
   String _filtroTipo = ''; // 🔥 Mostrar TODOS los documentos por defecto
   String _filtroNumero = '';
@@ -56,6 +62,23 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
       _filtroNumeroController.text = _filtroNumero;
     }
     _cargarDocumentos();
+    _cargarCantidadMatias();
+  }
+
+  Future<void> _cargarCantidadMatias() async {
+    if (!mounted) return;
+    setState(() => _cargandoCantidadMatias = true);
+    try {
+      final total = await MatiasService.obtenerCantidadDocumentos();
+      if (!mounted) return;
+      setState(() {
+        _cantidadDocumentosMatias = total;
+        _cargandoCantidadMatias = false;
+      });
+    } catch (e) {
+      appLog('❌ _cargarCantidadMatias: $e');
+      if (mounted) setState(() => _cargandoCantidadMatias = false);
+    }
   }
 
   @override
@@ -213,100 +236,117 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
 
   @override
   Widget build(BuildContext context) {
-    return VercySidebarLayout(
-      title: 'Documentos',
-      child: Scaffold(
-        backgroundColor: AppTheme.backgroundDark,
-        body: Column(
-          children: [
-            _buildHeader(),
-            _buildFiltros(),
-            Expanded(
-              child: _isLoading
-                  ? Center(child: CircularProgressIndicator())
-                  : _buildTable(),
-            ),
-          ],
-        ),
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: Column(
+        children: [
+          _buildHeader(),
+          _buildFiltros(),
+          Expanded(
+            child: _isLoading
+                ? Center(child: CircularProgressIndicator())
+                : _buildTable(),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildHeader() {
-    return Container(
-      padding: EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppTheme.cardBg,
-        boxShadow: [
-          BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.description, color: AppTheme.primary, size: 32),
-              SizedBox(width: 12),
-              Text(
-                'Lista documentos',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+    return ScreenHeader(
+      icon: Icons.description,
+      title: 'Lista documentos',
+      actions: [
+        _buildContadorMatiasChip(),
+        ScreenHeaderAction.primary(
+          icon: Icons.refresh,
+          label: 'Actualizar',
+          mobileLabel: 'Actualizar',
+          onPressed: () async {
+            await _cargarDocumentos();
+            await _cargarCantidadMatias();
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Lista actualizada'),
+                backgroundColor: AppTheme.success,
+                duration: Duration(seconds: 2),
               ),
+            );
+          },
+        ),
+        ScreenHeaderAction.warning(
+          icon: Icons.clear,
+          label: 'Limpiar filtros',
+          mobileLabel: 'Limpiar',
+          onPressed: () {
+            setState(() {
+              _filtroTipo = '';
+              _filtroNumero = '';
+              _filtroCliente = '';
+              _aplicarFiltros();
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Filtros limpiados'),
+                backgroundColor: AppTheme.success,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContadorMatiasChip() {
+    Widget contenido;
+    if (_cargandoCantidadMatias) {
+      contenido = const SizedBox(
+        width: 14,
+        height: 14,
+        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+      );
+    } else if (_cantidadDocumentosMatias < 0) {
+      contenido = Icon(Icons.error_outline, color: Colors.white, size: 16);
+    } else {
+      contenido = Text(
+        '$_cantidadDocumentosMatias',
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+        ),
+      );
+    }
+
+    return Tooltip(
+      message: _cantidadDocumentosMatias < 0
+          ? 'No se pudo consultar Matias'
+          : 'Documentos usados en Matias',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: _cargandoCantidadMatias ? null : _cargarCantidadMatias,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppTheme.secondary,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.receipt_long, color: Colors.white, size: 16),
+              const SizedBox(width: 6),
+              const Text(
+                'Matias:',
+                style: TextStyle(color: Colors.white, fontSize: 12),
+              ),
+              const SizedBox(width: 6),
+              contenido,
             ],
           ),
-          Row(
-            children: [
-              ElevatedButton.icon(
-                onPressed: () async {
-                  await _cargarDocumentos();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Lista actualizada'),
-                      backgroundColor: AppTheme.success,
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                },
-                icon: Icon(Icons.refresh, color: Colors.white),
-                label: Text(
-                  'Actualizar',
-                  style: TextStyle(color: Colors.white),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                ),
-              ),
-              SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _filtroTipo = ''; // 🔥 Resetear a TODOS
-                    _filtroNumero = '';
-                    _filtroCliente = '';
-                    _aplicarFiltros();
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Filtros limpiados'),
-                      backgroundColor: AppTheme.success,
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                },
-                icon: Icon(Icons.clear, color: Colors.white),
-                label: Text(
-                  'Limpiar filtros',
-                  style: TextStyle(color: Colors.white),
-                ),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -314,7 +354,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
   Widget _buildFiltros() {
     return Container(
       padding: EdgeInsets.all(24),
-      color: AppTheme.backgroundDark,
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: Row(
         children: [
           // Filtro por tipo
@@ -331,10 +371,10 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   vertical: 8,
                 ),
                 filled: true,
-                fillColor: AppTheme.cardBg,
+                fillColor: Theme.of(context).colorScheme.surface,
               ),
-              dropdownColor: AppTheme.cardBg,
-              style: TextStyle(color: AppTheme.textPrimary),
+              dropdownColor: Theme.of(context).colorScheme.surface,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               items: [
                 DropdownMenuItem(value: 'POS', child: Text('POS')),
                 DropdownMenuItem(value: 'FE', child: Text('FE')),
@@ -363,9 +403,9 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   vertical: 8,
                 ),
                 filled: true,
-                fillColor: AppTheme.cardBg,
+                fillColor: Theme.of(context).colorScheme.surface,
               ),
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               onChanged: (value) {
                 setState(() {
                   _filtroNumero = value;
@@ -389,9 +429,9 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   vertical: 8,
                 ),
                 filled: true,
-                fillColor: AppTheme.cardBg,
+                fillColor: Theme.of(context).colorScheme.surface,
               ),
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               onChanged: (value) {
                 setState(() {
                   _filtroCliente = value;
@@ -415,9 +455,9 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   vertical: 8,
                 ),
                 filled: true,
-                fillColor: AppTheme.cardBg,
+                fillColor: Theme.of(context).colorScheme.surface,
               ),
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               onChanged: (value) {
                 setState(() {
                   _filtroOrden = value;
@@ -447,14 +487,14 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
               }
             },
             itemBuilder: (_) => [
-              PopupMenuItem(value: 'exportar_csv', child: Row(children: [Icon(Icons.download, size: 18, color: AppTheme.textPrimary), SizedBox(width: 8), Text('Exportar CSV', style: TextStyle(color: AppTheme.textPrimary))])),
-              PopupMenuItem(value: 'limpiar_filtros', child: Row(children: [Icon(Icons.clear_all, size: 18, color: AppTheme.textPrimary), SizedBox(width: 8), Text('Limpiar filtros', style: TextStyle(color: AppTheme.textPrimary))])),
+              PopupMenuItem(value: 'exportar_csv', child: Row(children: [Icon(Icons.download, size: 18, color: Theme.of(context).colorScheme.onSurface), SizedBox(width: 8), Text('Exportar CSV', style: TextStyle(color: Theme.of(context).colorScheme.onSurface))])),
+              PopupMenuItem(value: 'limpiar_filtros', child: Row(children: [Icon(Icons.clear_all, size: 18, color: Theme.of(context).colorScheme.onSurface), SizedBox(width: 8), Text('Limpiar filtros', style: TextStyle(color: Theme.of(context).colorScheme.onSurface))])),
             ],
-            color: AppTheme.cardBg,
+            color: Theme.of(context).colorScheme.surface,
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              decoration: BoxDecoration(color: AppTheme.cardBg, borderRadius: BorderRadius.circular(8)),
-              child: Row(children: [Text('Otros', style: TextStyle(color: AppTheme.textPrimary)), SizedBox(width: 4), Icon(Icons.arrow_drop_down, color: AppTheme.textPrimary)]),
+              decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(8)),
+              child: Row(children: [Text('Otros', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)), SizedBox(width: 4), Icon(Icons.arrow_drop_down, color: Theme.of(context).colorScheme.onSurface)]),
             ),
           ),
         ],
@@ -479,22 +519,43 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
       );
     }
 
+    final isMobile = context.isMobile;
+    // Ancho mínimo para que la tabla siempre tenga espacio para todas las columnas
+    const double minTableWidth = 1100;
     return Container(
-      margin: EdgeInsets.all(24),
+      margin: EdgeInsets.all(isMobile ? 8 : 24),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
         ],
       ),
-      child: Column(
+      child: LayoutBuilder(builder: (context, constraints) {
+        final available = constraints.maxWidth;
+        final needScroll = available < minTableWidth;
+        final tableContent = SizedBox(
+          width: needScroll ? minTableWidth : available,
+          child: _buildTableContent(),
+        );
+        return needScroll
+            ? SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: tableContent,
+              )
+            : tableContent;
+      }),
+    );
+  }
+
+  Widget _buildTableContent() {
+    return Column(
         children: [
           // Encabezado de la tabla
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: AppTheme.cardElevated,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
             ),
             child: Row(
@@ -504,7 +565,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   child: Text(
                     'N. Factura',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
@@ -515,7 +576,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   child: Text(
                     'Cliente',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
@@ -526,7 +587,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   child: Text(
                     'Expedición',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
@@ -537,7 +598,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   child: Text(
                     'Total',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
@@ -549,7 +610,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   child: Text(
                     'Abono',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
@@ -561,7 +622,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   child: Text(
                     'Saldo',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
@@ -573,14 +634,25 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   child: Text(
                     'Estado',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
                     textAlign: TextAlign.center,
                   ),
                 ),
-                SizedBox(width: 80), // Espacio para acciones
+                Expanded(
+                  flex: 6,
+                  child: Text(
+                    'Acciones',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ],
             ),
           ),
@@ -610,33 +682,34 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   )
                 : Column(
                     children: [
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: paginarLista(_documentosFiltrados).length,
-                    itemBuilder: (context, index) {
-                      final documento = paginarLista(_documentosFiltrados)[index];
-                      try {
-                        return _buildTableRow(documento, index);
-                      } catch (e) {
-                        appLog('❌ Error renderizando fila $index: $e');
-                        return Container();
-                      }
-                    },
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: paginarLista(_documentosFiltrados).length,
+                          itemBuilder: (context, index) {
+                            final documento = paginarLista(_documentosFiltrados)[index];
+                            try {
+                              return _buildTableRow(documento, index);
+                            } catch (e) {
+                              appLog('❌ Error renderizando fila $index: $e');
+                              return Container();
+                            }
+                          },
+                        ),
+                      ),
+                      buildPaginacion(
+                        totalItems: _documentosFiltrados.length,
+                        accentColor: AppTheme.primary,
+                      ),
+                    ],
                   ),
-                  buildPaginacion(
-                    totalItems: _documentosFiltrados.length,
-                    accentColor: AppTheme.primary,
-                  ),
-        ]),
-      )],
-      ),
-    );
+          ),
+        ],
+      );
   }
 
   Widget _buildTableRow(dynamic documento, int index) {
     final isEven = index % 2 == 0;
-    final backgroundColor = isEven ? AppTheme.cardBg : AppTheme.surfaceDark;
+    final backgroundColor = isEven ? Theme.of(context).colorScheme.surface : Theme.of(context).colorScheme.surface;
     
     // Extraer datos según el tipo de documento
     String numero;
@@ -706,7 +779,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                 Expanded(
                   child: Text(
                     numero,
-                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -719,7 +792,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
             flex: 3,
             child: Text(
               clienteNombre,
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -731,7 +804,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
               fecha != null
                   ? '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}'
                   : 'N/A',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
             ),
           ),
 
@@ -740,7 +813,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
             flex: 2,
             child: Text(
               '\$ ${total.toStringAsFixed(0)}',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -750,7 +823,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
             flex: 2,
             child: Text(
               '\$ ${abono.toStringAsFixed(0)}',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -760,7 +833,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
             flex: 2,
             child: Text(
               '\$ ${saldo.toStringAsFixed(0)}',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -800,19 +873,28 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
           ),
 
           // Acciones
-          SizedBox(
-            width: 280,
+          Expanded(
+            flex: 6,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // ── Menú Facturación Electrónica ──
-                FacturacionElectronicaMenu(
-                  documento: documento,
-                  onRefresh: _cargarDocumentos,
+                Flexible(
+                  child: FacturacionElectronicaMenu(
+                    documento: documento,
+                    onRefresh: _cargarDocumentos,
+                  ),
                 ),
-                SizedBox(width: 4),
-                // Botón ver PDF
+                const SizedBox(width: 4),
+                Flexible(
+                  child: AccionesMatiasMenu(
+                    documento: documento,
+                    onRefresh: _cargarDocumentos,
+                  ),
+                ),
                 IconButton(
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                   icon: Icon(
                     Icons.picture_as_pdf,
                     color: Colors.red.shade400,
@@ -821,8 +903,9 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   onPressed: () => _verPDF(documento),
                   tooltip: 'Ver PDF',
                 ),
-                // Botón imprimir
                 IconButton(
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                   icon: Icon(
                     Icons.print,
                     color: AppTheme.primary,
@@ -1044,12 +1127,15 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
               },
             )
             .toList(),
-        // ✅ Calcular totales desde los ítems reales, no desde documento.total
+        // ✅ Calcular totales desde los ítems reales, no desde documento.total.
+        // Tipado explícito porque en web dart2js a veces pierde la inferencia
+        // del fold<double> y falla en runtime con TypeError.
         'subtotal': documento.subtotal > 0
             ? documento.subtotal
             : documento.items.fold<double>(
                 0.0,
-                (sum, item) => sum + (item.cantidad * item.precioUnitario),
+                (double sum, ItemPedido item) =>
+                    sum + (item.cantidad * item.precioUnitario).toDouble(),
               ),
         'iva': documento.totalImpuestos,
         'descuento': documento.totalDescuentos > 0
@@ -1062,8 +1148,8 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   ? documento.total
                   : documento.items.fold<double>(
                       0.0,
-                      (sum, item) =>
-                          sum + (item.cantidad * item.precioUnitario),
+                      (double sum, ItemPedido item) =>
+                          sum + (item.cantidad * item.precioUnitario).toDouble(),
                     )),
         // 💰 Retenciones
         'retencion': documento.valorRetencion,
@@ -1240,34 +1326,34 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
     final nombreFinal = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Text(
           'Nombre del archivo',
-          style: TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               'Personaliza el nombre del archivo PDF:',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
             ),
             SizedBox(height: 12),
             TextField(
               controller: controladorNombre,
               autofocus: true,
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: InputDecoration(
                 hintText: 'Nombre del archivo',
-                hintStyle: TextStyle(color: AppTheme.textSecondary),
+                hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                 filled: true,
-                fillColor: AppTheme.surfaceDark,
+                fillColor: Theme.of(context).colorScheme.surface,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide.none,
                 ),
                 suffixText: '.pdf',
-                suffixStyle: TextStyle(color: AppTheme.textSecondary),
+                suffixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               ),
             ),
           ],
@@ -1277,7 +1363,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
               'Cancelar',
-              style: TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
             ),
           ),
           ElevatedButton.icon(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../config/constants.dart';
 import '../theme/app_theme.dart';
@@ -313,25 +314,25 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppTheme.textPrimary),
+          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
           onPressed: () =>
-              Navigator.pushReplacementNamed(context, '/dashboard'),
+              context.go('/dashboard'),
         ),
         title: Text(
           'Historial de Inventario',
           style: TextStyle(
-            color: AppTheme.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: AppTheme.textPrimary),
+            icon: Icon(Icons.refresh, color: Theme.of(context).colorScheme.onSurface),
             onPressed: _cargarMovimientos,
             tooltip: 'Actualizar datos',
           ),
@@ -343,10 +344,10 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
           Container(
             padding: EdgeInsets.all(12.0),
             decoration: BoxDecoration(
-              color: AppTheme.cardBg,
+              color: Theme.of(context).colorScheme.surface,
               border: Border(
                 bottom: BorderSide(
-                  color: AppTheme.textSecondary.withOpacity(0.3),
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                 ),
               ),
             ),
@@ -364,7 +365,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                             vertical: 12,
                           ),
                           decoration: BoxDecoration(
-                            color: AppTheme.surfaceDark,
+                            color: Theme.of(context).colorScheme.surface,
                             borderRadius: BorderRadius.circular(8.0),
                           ),
                           child: Row(
@@ -378,7 +379,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                               Text(
                                 'Desde:',
                                 style: TextStyle(
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                   fontSize: 12,
                                 ),
                               ),
@@ -388,7 +389,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                   DateFormat(kDateFormat).format(_fechaDesde),
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: AppTheme.textPrimary,
+                                    color: Theme.of(context).colorScheme.onSurface,
                                   ),
                                   textAlign: TextAlign.right,
                                 ),
@@ -408,7 +409,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                             vertical: 12,
                           ),
                           decoration: BoxDecoration(
-                            color: AppTheme.surfaceDark,
+                            color: Theme.of(context).colorScheme.surface,
                             borderRadius: BorderRadius.circular(8.0),
                           ),
                           child: Row(
@@ -422,7 +423,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                               Text(
                                 'Hasta:',
                                 style: TextStyle(
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                   fontSize: 12,
                                 ),
                               ),
@@ -432,7 +433,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                   DateFormat(kDateFormat).format(_fechaHasta),
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: AppTheme.textPrimary,
+                                    color: Theme.of(context).colorScheme.onSurface,
                                   ),
                                   textAlign: TextAlign.right,
                                 ),
@@ -454,7 +455,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                       child: Container(
                         padding: EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
-                          color: AppTheme.surfaceDark,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(8.0),
                         ),
                         child: DropdownButton<String>(
@@ -467,8 +468,8 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                 producto,
                                 style: TextStyle(
                                   color: producto == 'Todos los productos'
-                                      ? AppTheme.textSecondary
-                                      : AppTheme.textPrimary,
+                                      ? Theme.of(context).colorScheme.onSurface.withOpacity(0.7)
+                                      : Theme.of(context).colorScheme.onSurface,
                                   fontSize: 12,
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -481,8 +482,8 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                               _aplicarFiltros();
                             });
                           },
-                          dropdownColor: AppTheme.surfaceDark,
-                          style: TextStyle(color: AppTheme.textPrimary),
+                          dropdownColor: Theme.of(context).colorScheme.surface,
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           underline: Container(),
                         ),
                       ),
@@ -494,7 +495,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                       child: Container(
                         padding: EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
-                          color: AppTheme.surfaceDark,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(8.0),
                         ),
                         child: DropdownButton<String>(
@@ -507,8 +508,8 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                 tipo,
                                 style: TextStyle(
                                   color: tipo == '-- Tipo --'
-                                      ? AppTheme.textSecondary
-                                      : AppTheme.textPrimary,
+                                      ? Theme.of(context).colorScheme.onSurface.withOpacity(0.7)
+                                      : Theme.of(context).colorScheme.onSurface,
                                   fontSize: 12,
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -521,8 +522,8 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                               _aplicarFiltros();
                             });
                           },
-                          dropdownColor: AppTheme.surfaceDark,
-                          style: TextStyle(color: AppTheme.textPrimary),
+                          dropdownColor: Theme.of(context).colorScheme.surface,
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           underline: Container(),
                         ),
                       ),
@@ -537,16 +538,16 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                         decoration: InputDecoration(
                           hintText: 'Buscar...',
                           hintStyle: TextStyle(
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontSize: 12,
                           ),
                           prefixIcon: Icon(
                             Icons.search,
                             size: 18,
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           ),
                           filled: true,
-                          fillColor: AppTheme.surfaceDark,
+                          fillColor: Theme.of(context).colorScheme.surface,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8.0),
                             borderSide: BorderSide.none,
@@ -557,7 +558,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                           ),
                         ),
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 12,
                         ),
                       ),
@@ -593,7 +594,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                     child: Text(
                       'No se encontraron movimientos',
                       style: TextStyle(
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 16,
                       ),
                     ),
@@ -603,7 +604,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                       return Container(
                         width: constraints.maxWidth,
                         height: constraints.maxHeight,
-                        color: AppTheme.cardBg,
+                        color: Theme.of(context).colorScheme.surface,
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: SizedBox(
@@ -633,7 +634,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                           child: Text(
                                             'FECHA',
                                             style: TextStyle(
-                                              color: AppTheme.textPrimary,
+                                              color: Theme.of(context).colorScheme.onSurface,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 14,
                                             ),
@@ -646,7 +647,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                           child: Text(
                                             'PRODUCTO',
                                             style: TextStyle(
-                                              color: AppTheme.textPrimary,
+                                              color: Theme.of(context).colorScheme.onSurface,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 14,
                                             ),
@@ -659,7 +660,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                           child: Text(
                                             'MOTIVO',
                                             style: TextStyle(
-                                              color: AppTheme.textPrimary,
+                                              color: Theme.of(context).colorScheme.onSurface,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 14,
                                             ),
@@ -672,7 +673,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                           child: Text(
                                             'TIPO',
                                             style: TextStyle(
-                                              color: AppTheme.textPrimary,
+                                              color: Theme.of(context).colorScheme.onSurface,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 14,
                                             ),
@@ -689,7 +690,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                           child: Text(
                                             'Stock\nInicial',
                                             style: TextStyle(
-                                              color: AppTheme.textPrimary,
+                                              color: Theme.of(context).colorScheme.onSurface,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 11,
                                             ),
@@ -707,7 +708,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                           child: Text(
                                             'Cantidad\nMovida',
                                             style: TextStyle(
-                                              color: AppTheme.textPrimary,
+                                              color: Theme.of(context).colorScheme.onSurface,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 11,
                                             ),
@@ -725,7 +726,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                           child: Text(
                                             'Stock\nFinal',
                                             style: TextStyle(
-                                              color: AppTheme.textPrimary,
+                                              color: Theme.of(context).colorScheme.onSurface,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 11,
                                             ),
@@ -751,7 +752,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                           .contains('salida');
 
                                       Color colorCantidad =
-                                          AppTheme.textPrimary;
+                                          Theme.of(context).colorScheme.onSurface;
                                       if (esEntrada) {
                                         colorCantidad = Colors.green;
                                       } else if (esSalida) {
@@ -786,7 +787,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                                     'dd/MM/yyyy\nHH:mm',
                                                   ).format(movimiento.fecha),
                                                   style: TextStyle(
-                                                    color: AppTheme.textPrimary,
+                                                    color: Theme.of(context).colorScheme.onSurface,
                                                     fontSize: 11,
                                                   ),
                                                 ),
@@ -802,7 +803,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                                 child: Text(
                                                   movimiento.productoNombre,
                                                   style: TextStyle(
-                                                    color: AppTheme.textPrimary,
+                                                    color: Theme.of(context).colorScheme.onSurface,
                                                     fontSize: 11,
                                                   ),
                                                   overflow:
@@ -927,7 +928,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                                   movimiento.cantidadAnterior
                                                       .toStringAsFixed(0),
                                                   style: TextStyle(
-                                                    color: AppTheme.textPrimary,
+                                                    color: Theme.of(context).colorScheme.onSurface,
                                                     fontSize: 11,
                                                   ),
                                                   textAlign: TextAlign.center,
@@ -967,7 +968,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                                   movimiento.cantidadNueva
                                                       .toStringAsFixed(0),
                                                   style: TextStyle(
-                                                    color: AppTheme.textPrimary,
+                                                    color: Theme.of(context).colorScheme.onSurface,
                                                     fontSize: 11,
                                                     fontWeight: FontWeight.bold,
                                                   ),

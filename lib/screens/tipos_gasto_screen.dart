@@ -11,11 +11,11 @@ class TiposGastoScreen extends StatefulWidget {
 }
 
 class _TiposGastoScreenState extends State<TiposGastoScreen> {
-  final Color primary = Color(0xFFFF6B00); // Naranja fuego
-  final Color bgDark = Color(0xFF1E1E1E); // Fondo oscuro
-  final Color cardBg = Color(0xFF252525); // Tarjetas
-  final Color textDark = Color(0xFFE0E0E0); // Texto claro
-  final Color textLight = Color(0xFFA0A0A0); // Texto suave
+  Color get primary => AppTheme.primary;
+  Color get bgDark => Theme.of(context).scaffoldBackgroundColor;
+  Color get cardBg => Theme.of(context).colorScheme.surface;
+  Color get textDark => Theme.of(context).colorScheme.onSurface;
+  Color get textLight => Theme.of(context).colorScheme.onSurface.withOpacity(0.6);
 
   // Services
   final GastoService _gastoService = GastoService();
@@ -193,7 +193,7 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
         backgroundColor: cardBg,
         title: Text(
           'Confirmar eliminación',
-          style: TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -201,13 +201,13 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
           children: [
             Text(
               '¿Está seguro de eliminar este tipo de gasto?',
-              style: TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
             ),
             SizedBox(height: 12),
             Text(
               'Nombre: ${tipo.nombre}',
               style: TextStyle(
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -216,7 +216,7 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
                 padding: EdgeInsets.only(top: 4),
                 child: Text(
                   'Descripción: ${tipo.descripcion}',
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
                 ),
               ),
           ],
@@ -226,7 +226,7 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
             onPressed: () => Navigator.of(context).pop(false),
             child: Text(
               'Cancelar',
-              style: TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
             ),
           ),
           TextButton(
@@ -325,9 +325,9 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
     return Scaffold(
       backgroundColor: bgDark,
       appBar: AppBar(
-        backgroundColor: primary,
-        title: Text('Tipos de Gasto', style: TextStyle(color: Colors.white)),
-        iconTheme: IconThemeData(color: Colors.white),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Text('Tipos de Gasto', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
         elevation: 0,
         actions: [
           if (!_showForm && !_isLoading)
@@ -378,7 +378,7 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 22,
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ],
@@ -388,20 +388,20 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
                 controller: _nombreController,
                 decoration: InputDecoration(
                   labelText: 'Nombre del Tipo de Gasto',
-                  labelStyle: TextStyle(color: AppTheme.textSecondary),
+                  labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   border: OutlineInputBorder(),
                 ),
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
               SizedBox(height: 16),
               TextFormField(
                 controller: _descripcionController,
                 decoration: InputDecoration(
                   labelText: 'Descripción (Opcional)',
-                  labelStyle: TextStyle(color: AppTheme.textSecondary),
+                  labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   border: OutlineInputBorder(),
                 ),
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 maxLines: 3,
               ),
               SizedBox(height: 24),
@@ -447,7 +447,7 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
                 SizedBox(height: 16),
                 Text(
                   'No hay tipos de gasto registrados',
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 16),
                 ),
                 SizedBox(height: 16),
                 Row(
@@ -489,8 +489,8 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
                     tipo.nombre,
                     style: TextStyle(
                       color: tipo.activo
-                          ? AppTheme.textPrimary
-                          : AppTheme.textSecondary,
+                          ? Theme.of(context).colorScheme.onSurface
+                          : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -498,7 +498,7 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
                       tipo.descripcion != null && tipo.descripcion!.isNotEmpty
                       ? Text(
                           tipo.descripcion!,
-                          style: TextStyle(color: AppTheme.textSecondary),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                         )
                       : null,
                   trailing: Row(
@@ -526,7 +526,7 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
                             value: 'edit',
                             child: Text(
                               'Editar',
-                              style: TextStyle(color: AppTheme.textPrimary),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                             ),
                           ),
                           PopupMenuItem(

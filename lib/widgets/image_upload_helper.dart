@@ -90,10 +90,10 @@ class _ImageUploadHelperState extends State<ImageUploadHelper> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: AppTheme.cardBg,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       title: Text(
         'Gestión de Imágenes',
-        style: TextStyle(color: AppTheme.textPrimary),
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
       ),
       content: SizedBox(
         width: double.maxFinite,
@@ -126,7 +126,7 @@ class _ImageUploadHelperState extends State<ImageUploadHelper> {
                   Text(
                     'Imágenes Disponibles (${_imagenesDisponibles.length})',
                     style: TextStyle(
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -138,7 +138,7 @@ class _ImageUploadHelperState extends State<ImageUploadHelper> {
                             child: Text(
                               'No hay imágenes disponibles',
                               style: TextStyle(
-                                color: AppTheme.textPrimary.withOpacity(0.6),
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                               ),
                             ),
                           )
@@ -151,7 +151,7 @@ class _ImageUploadHelperState extends State<ImageUploadHelper> {
                               );
 
                               return Card(
-                                color: AppTheme.cardBg.withOpacity(0.5),
+                                color: Theme.of(context).colorScheme.surface.withOpacity(0.5),
                                 child: ListTile(
                                   leading: Container(
                                     width: 40,
@@ -181,7 +181,7 @@ class _ImageUploadHelperState extends State<ImageUploadHelper> {
                                   title: Text(
                                     filename,
                                     style: TextStyle(
-                                      color: AppTheme.textPrimary,
+                                      color: Theme.of(context).colorScheme.onSurface,
                                       fontSize: 12,
                                     ),
                                   ),
@@ -211,7 +211,7 @@ class _ImageUploadHelperState extends State<ImageUploadHelper> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cerrar', style: TextStyle(color: AppTheme.textPrimary)),
+          child: Text('Cerrar', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
         ),
         ElevatedButton(
           onPressed: () async {

@@ -333,7 +333,7 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
         widget.factura?.numero ?? widget.facturaNumero ?? 'N/A';
 
     return Dialog(
-      backgroundColor: AppTheme.cardBg,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
@@ -366,13 +366,13 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
-                              color: AppTheme.textPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                           Text(
                             'Sobre factura: $facturaNumero',
                             style: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                               fontSize: 13,
                             ),
                           ),
@@ -381,7 +381,7 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.close),
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
@@ -394,7 +394,7 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceDark,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: Colors.grey.shade200),
                   ),
@@ -413,14 +413,14 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
                             Text(
                               'Cliente: ${widget.factura?.clienteNombre ?? "N/A"}',
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 13,
                               ),
                             ),
                             Text(
                               'Total: \$${(widget.factura?.total ?? 0).toStringAsFixed(0)}',
                               style: TextStyle(
-                                color: AppTheme.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 fontSize: 13,
                               ),
                             ),
@@ -445,7 +445,7 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
                 Text(
                   'Motivo',
                   style: TextStyle(
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -453,8 +453,8 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
                 DropdownButtonFormField<int>(
                   value: _motivoId,
                   decoration: _inputDecoration('Selecciona el motivo'),
-                  dropdownColor: AppTheme.cardBg,
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                  dropdownColor: Theme.of(context).colorScheme.surface,
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
                   items: _motivos
                       .map(
                         (m) => DropdownMenuItem(value: m.$1, child: Text(m.$2)),
@@ -468,7 +468,7 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
                 Text(
                   'Descripción adicional (opcional)',
                   style: TextStyle(
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -478,7 +478,7 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
                   decoration: _inputDecoration(
                     'Ej: Devolución por producto dañado',
                   ),
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
                   maxLength: 200,
                   buildCounter:
                       (
@@ -489,7 +489,7 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
                       }) => Text(
                         '$currentLength/${maxLength ?? 200}',
                         style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 11,
                         ),
                       ),
@@ -500,7 +500,7 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
                 Text(
                   'Valor de la nota',
                   style: TextStyle(
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -513,7 +513,7 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
                   decoration: _inputDecoration(
                     'Valor (por defecto = total factura)',
                   ),
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
                   validator: (v) {
                     if (v != null && v.isNotEmpty) {
                       final n = double.tryParse(v.replaceAll(',', '.'));
@@ -526,7 +526,7 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
                 const SizedBox(height: 4),
                 Text(
                   'Si dejas vacío se usa el total de la factura (\$${(widget.factura?.total ?? 0).toStringAsFixed(0)})',
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 11),
                 ),
 
                 // ── Error ──
@@ -571,7 +571,7 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
                           : () => Navigator.of(context).pop(),
                       child: Text(
                         'Cancelar',
-                        style: TextStyle(color: AppTheme.textSecondary),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -614,9 +614,9 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
 
   InputDecoration _inputDecoration(String hint) => InputDecoration(
     hintText: hint,
-    hintStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+    hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
     filled: true,
-    fillColor: AppTheme.surfaceDark,
+    fillColor: Theme.of(context).colorScheme.surface,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
       borderSide: BorderSide(color: Colors.grey.shade300),

@@ -73,9 +73,10 @@ class _CategoriasScreenState extends State<CategoriasScreen>
       appBar: AppBar(
         title: Text(
           'Gestión de Categorías',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
         ),
-        backgroundColor: primary,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
         elevation: 0,
       ),
       body: _isLoading

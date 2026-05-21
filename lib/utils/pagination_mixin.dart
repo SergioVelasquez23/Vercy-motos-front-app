@@ -54,7 +54,7 @@ mixin PaginacionMixin<T extends StatefulWidget> on State<T> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         border: Border(top: BorderSide(color: Colors.white12)),
       ),
       child: Row(
@@ -63,7 +63,7 @@ mixin PaginacionMixin<T extends StatefulWidget> on State<T> {
           // Info
           Text(
             'Mostrando $inicio–$fin de $totalItems',
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
           ),
           // Controles
           Row(
@@ -71,8 +71,8 @@ mixin PaginacionMixin<T extends StatefulWidget> on State<T> {
               // Items por página
               DropdownButton<int>(
                 value: _itemsPorPagina,
-                dropdownColor: AppTheme.cardBg,
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                dropdownColor: Theme.of(context).colorScheme.surface,
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
                 underline: const SizedBox.shrink(),
                 items: [10, 20, 50, 100].map((v) => DropdownMenuItem(
                   value: v,
@@ -116,13 +116,13 @@ mixin PaginacionMixin<T extends StatefulWidget> on State<T> {
 
     if (start > 0) {
       widgets.add(_pageBtn(0, color));
-      if (start > 1) widgets.add(Text(' … ', style: TextStyle(color: AppTheme.textSecondary)));
+      if (start > 1) widgets.add(Text(' … ', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))));
     }
     for (int i = start; i < end; i++) {
       widgets.add(_pageBtn(i, color));
     }
     if (end < total) {
-      if (end < total - 1) widgets.add(Text(' … ', style: TextStyle(color: AppTheme.textSecondary)));
+      if (end < total - 1) widgets.add(Text(' … ', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))));
       widgets.add(_pageBtn(total - 1, color));
     }
     return widgets;
@@ -144,7 +144,7 @@ mixin PaginacionMixin<T extends StatefulWidget> on State<T> {
         child: Text(
           '${page + 1}',
           style: TextStyle(
-            color: isActive ? Colors.white : AppTheme.textSecondary,
+            color: isActive ? Colors.white : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             fontSize: 13,
             fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
           ),

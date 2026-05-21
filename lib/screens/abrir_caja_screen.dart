@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../models/cuadre_caja.dart';
@@ -122,7 +123,7 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
   }
 
   void _irACerrarCaja() {
-    Navigator.of(context).pushReplacementNamed('/cerrar_caja');
+    context.go('/cerrar_caja');
   }
 
   void _mostrarError(String mensaje) {
@@ -150,16 +151,16 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
     final userProvider = Provider.of<UserProvider>(context);
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Abrir Caja',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
         ),
-        backgroundColor: AppTheme.primary,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),

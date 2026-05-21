@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/alerta_notificacion.dart';
 import '../services/alertas_service.dart';
 import '../services/cartera_service.dart';
+import '../theme/app_theme.dart';
 
 class AlertasScreen extends StatefulWidget {
   const AlertasScreen({Key? key}) : super(key: key);
@@ -98,8 +99,8 @@ class _AlertasScreenState extends State<AlertasScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sistema de Alertas'),
-        backgroundColor: const Color(0xFF9C27B0),
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
         elevation: 0,
         actions: [
           IconButton(
@@ -535,7 +536,7 @@ class _AlertasScreenState extends State<AlertasScreen>
               icon: const Icon(Icons.play_arrow),
               label: const Text('Ejecutar Todas las Pruebas'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF9C27B0),
+                backgroundColor: AppTheme.secondary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.all(16),
               ),

@@ -19,13 +19,13 @@ class TabClasificacionProducto extends StatelessWidget {
     required this.nitProveedorController,
   });
 
-  Widget _buildTextField(String label, TextEditingController controller) {
+  Widget _buildTextField(BuildContext context, String label, TextEditingController controller) {
     return TextField(
       controller: controller,
-      style: TextStyle(color: Colors.black87),
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.black54),
+        labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
         border: OutlineInputBorder(),
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide(color: Colors.grey),
@@ -47,27 +47,27 @@ class TabClasificacionProducto extends StatelessWidget {
           children: [
             Text('Clasificación', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 16)),
             SizedBox(height: 16),
-            _buildTextField('Marca', marcaController),
+            _buildTextField(context, 'Marca', marcaController),
             SizedBox(height: 16),
 
             Row(
               children: [
-                Expanded(child: _buildTextField('Tipo Producto', tipoProductoNombreController)),
+                Expanded(child: _buildTextField(context, 'Tipo Producto', tipoProductoNombreController)),
                 SizedBox(width: 16),
-                Expanded(child: _buildTextField('Línea Producto', lineaProductoNombreController)),
+                Expanded(child: _buildTextField(context, 'Línea Producto', lineaProductoNombreController)),
               ],
             ),
             SizedBox(height: 16),
-            _buildTextField('Clase Producto', claseProductoNombreController),
+            _buildTextField(context, 'Clase Producto', claseProductoNombreController),
             SizedBox(height: 24),
 
             Text('Proveedor', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 16)),
             SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _buildTextField('Nombre Proveedor', nombreProveedorController)),
+                Expanded(child: _buildTextField(context, 'Nombre Proveedor', nombreProveedorController)),
                 SizedBox(width: 16),
-                Expanded(child: _buildTextField('NIT Proveedor', nitProveedorController)),
+                Expanded(child: _buildTextField(context, 'NIT Proveedor', nitProveedorController)),
               ],
             ),
           ],

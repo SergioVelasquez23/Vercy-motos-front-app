@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../models/factura_compra.dart';
 import '../models/proveedor.dart';
@@ -284,14 +285,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Row(
             children: [
               Icon(Icons.add_shopping_cart, color: AppTheme.primary),
               SizedBox(width: 8),
               Text(
                 'Crear Nuevo Producto',
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 18),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18),
               ),
             ],
           ),
@@ -304,12 +305,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   // Nombre
                   TextField(
                     controller: nombreController,
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     decoration: InputDecoration(
                       labelText: 'Nombre del producto *',
-                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       filled: true,
-                      fillColor: AppTheme.surfaceDark,
+                      fillColor: Theme.of(context).colorScheme.surface,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -323,14 +324,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                       Expanded(
                         child: TextField(
                           controller: codigoController,
-                          style: TextStyle(color: AppTheme.textPrimary),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           decoration: InputDecoration(
                             labelText: 'Código (opcional)',
                             labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             filled: true,
-                            fillColor: AppTheme.surfaceDark,
+                            fillColor: Theme.of(context).colorScheme.surface,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide.none,
@@ -342,14 +343,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                       Expanded(
                         child: TextField(
                           controller: codigoBarrasController,
-                          style: TextStyle(color: AppTheme.textPrimary),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           decoration: InputDecoration(
                             labelText: 'Código barras',
                             labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             filled: true,
-                            fillColor: AppTheme.surfaceDark,
+                            fillColor: Theme.of(context).colorScheme.surface,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide.none,
@@ -367,15 +368,15 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                         child: TextField(
                           controller: costoController,
                           keyboardType: TextInputType.number,
-                          style: TextStyle(color: AppTheme.textPrimary),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           decoration: InputDecoration(
                             labelText: 'Costo *',
                             labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             prefixText: '\$ ',
                             filled: true,
-                            fillColor: AppTheme.surfaceDark,
+                            fillColor: Theme.of(context).colorScheme.surface,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide.none,
@@ -388,15 +389,15 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                         child: TextField(
                           controller: precioController,
                           keyboardType: TextInputType.number,
-                          style: TextStyle(color: AppTheme.textPrimary),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           decoration: InputDecoration(
                             labelText: 'Precio venta *',
                             labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             prefixText: '\$ ',
                             filled: true,
-                            fillColor: AppTheme.surfaceDark,
+                            fillColor: Theme.of(context).colorScheme.surface,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide.none,
@@ -411,12 +412,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   TextField(
                     controller: cantidadController,
                     keyboardType: TextInputType.number,
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     decoration: InputDecoration(
                       labelText: 'Cantidad inicial',
-                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       filled: true,
-                      fillColor: AppTheme.surfaceDark,
+                      fillColor: Theme.of(context).colorScheme.surface,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -431,14 +432,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                         child: TextField(
                           controller: cantidadController,
                           keyboardType: TextInputType.number,
-                          style: TextStyle(color: AppTheme.textPrimary),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           decoration: InputDecoration(
                             labelText: 'Cantidad',
                             labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             filled: true,
-                            fillColor: AppTheme.surfaceDark,
+                            fillColor: Theme.of(context).colorScheme.surface,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide.none,
@@ -451,14 +452,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                         child: TextField(
                           controller: impuestosController,
                           keyboardType: TextInputType.number,
-                          style: TextStyle(color: AppTheme.textPrimary),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           decoration: InputDecoration(
                             labelText: '% Impuesto',
                             labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             filled: true,
-                            fillColor: AppTheme.surfaceDark,
+                            fillColor: Theme.of(context).colorScheme.surface,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide.none,
@@ -475,14 +476,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                       Expanded(
                         child: TextField(
                           controller: categoriaController,
-                          style: TextStyle(color: AppTheme.textPrimary),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           decoration: InputDecoration(
                             labelText: 'Categoría',
                             labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             filled: true,
-                            fillColor: AppTheme.surfaceDark,
+                            fillColor: Theme.of(context).colorScheme.surface,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide.none,
@@ -494,14 +495,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                       Expanded(
                         child: TextField(
                           controller: marcaController,
-                          style: TextStyle(color: AppTheme.textPrimary),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           decoration: InputDecoration(
                             labelText: 'Marca',
                             labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             filled: true,
-                            fillColor: AppTheme.surfaceDark,
+                            fillColor: Theme.of(context).colorScheme.surface,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide.none,
@@ -515,12 +516,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   // Ubicación
                   TextField(
                     controller: ubicacionController,
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     decoration: InputDecoration(
                       labelText: 'Ubicación/Localización',
-                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       filled: true,
-                      fillColor: AppTheme.surfaceDark,
+                      fillColor: Theme.of(context).colorScheme.surface,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -532,12 +533,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   TextField(
                     controller: descripcionController,
                     maxLines: 2,
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     decoration: InputDecoration(
                       labelText: 'Descripción (opcional)',
-                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       filled: true,
-                      fillColor: AppTheme.surfaceDark,
+                      fillColor: Theme.of(context).colorScheme.surface,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -553,7 +554,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               onPressed: guardando ? null : () => Navigator.pop(dialogContext),
               child: Text(
                 'Cancelar',
-                style: TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               ),
             ),
             ElevatedButton(
@@ -674,21 +675,21 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           _modoEdicion ? 'Editar compra' : 'Crear compra',
           style: TextStyle(
-            color: AppTheme.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: AppTheme.backgroundDark,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
-        iconTheme: IconThemeData(color: AppTheme.textPrimary),
+        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pushReplacementNamed(context, '/compras'),
+          onPressed: () => context.go('/compras'),
         ),
         actions: [
           // Botón Compras en borrador
@@ -792,7 +793,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   Text(
                     'Fecha',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -806,10 +807,10 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                           vertical: 12,
                         ),
                         decoration: BoxDecoration(
-                          color: AppTheme.surfaceDark,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
-                            color: AppTheme.textSecondary.withOpacity(0.3),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                           ),
                         ),
                         child: Row(
@@ -818,13 +819,13 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                             Text(
                               _formatearFechaISO(_fechaFactura),
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 14,
                               ),
                             ),
                             Icon(
                               Icons.calendar_today,
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                               size: 18,
                             ),
                           ],
@@ -843,7 +844,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   Text(
                     'Vencimiento',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -857,10 +858,10 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                           vertical: 12,
                         ),
                         decoration: BoxDecoration(
-                          color: AppTheme.surfaceDark,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
-                            color: AppTheme.textSecondary.withOpacity(0.3),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                           ),
                         ),
                         child: Row(
@@ -869,13 +870,13 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                             Text(
                               _formatearFechaISO(_fechaVencimiento),
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 14,
                               ),
                             ),
                             Icon(
                               Icons.calendar_today,
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                               size: 18,
                             ),
                           ],
@@ -899,7 +900,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   Text(
                     'Proveedor',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -907,16 +908,16 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: AppTheme.surfaceDark,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
-                          color: AppTheme.textSecondary.withOpacity(0.3),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                         ),
                       ),
                       child: DropdownButtonFormField<Proveedor>(
                         value: _proveedorSeleccionado,
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 14,
                         ),
                         decoration: InputDecoration(
@@ -926,16 +927,16 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                           ),
                           border: InputBorder.none,
                           hintText: 'Seleccionar proveedor',
-                          hintStyle: TextStyle(color: AppTheme.textSecondary),
+                          hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                         ),
-                        dropdownColor: AppTheme.cardBg,
+                        dropdownColor: Theme.of(context).colorScheme.surface,
                         isExpanded: true,
                         items: [
                           DropdownMenuItem<Proveedor>(
                             value: null,
                             child: Text(
                               'Proveedor general',
-                              style: TextStyle(color: AppTheme.textSecondary),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                             ),
                           ),
                           ..._proveedores.map((proveedor) {
@@ -943,7 +944,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                               value: proveedor,
                               child: Text(
                                 proveedor.nombre,
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                               ),
                             );
                           }),
@@ -975,7 +976,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   Text(
                     'Factura',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -987,16 +988,16 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                         vertical: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: AppTheme.surfaceDark,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
-                          color: AppTheme.textSecondary.withOpacity(0.3),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                         ),
                       ),
                       child: Text(
                         _numeroFactura ?? 'Generando...',
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 14,
                         ),
                       ),
@@ -1097,16 +1098,16 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 SizedBox(height: 8),
                 TextField(
                   controller: _origenCompraController,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
                     hintText:
                         'Ej: Transferencia, Sistecredito, Efectivo en mano, etc.',
                     hintStyle: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 13,
                     ),
                     filled: true,
-                    fillColor: AppTheme.surfaceDark,
+                    fillColor: Theme.of(context).colorScheme.surface,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(4),
                       borderSide: BorderSide.none,
@@ -1137,7 +1138,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         Text(
           'Datos Producto',
           style: TextStyle(
-            color: AppTheme.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -1154,12 +1155,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             children: [
               Text(
                 'Código de Barras',
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               ),
               SizedBox(width: 16),
               Expanded(
                 child: TextField(
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
                   decoration: InputDecoration(
                     isDense: true,
                     contentPadding: EdgeInsets.symmetric(
@@ -1168,11 +1169,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                     ),
                     hintText: 'Escanear o ingresar código',
                     hintStyle: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 13,
                     ),
                     filled: true,
-                    fillColor: AppTheme.surfaceDark,
+                    fillColor: Theme.of(context).colorScheme.surface,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(4),
                       borderSide: BorderSide.none,
@@ -1222,7 +1223,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                         vertical: 10,
                       ),
                       decoration: BoxDecoration(
-                        color: AppTheme.surfaceDark,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Row(
@@ -1239,7 +1240,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                           Text(
                             'Cargando...',
                             style: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                               fontSize: 11,
                             ),
                           ),
@@ -1290,7 +1291,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                               controller: textEditingController,
                               focusNode: focusNode,
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 13,
                               ),
                               decoration: InputDecoration(
@@ -1301,11 +1302,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                                 ),
                                 hintText: 'Código...',
                                 hintStyle: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   fontSize: 13,
                                 ),
                                 filled: true,
-                                fillColor: AppTheme.surfaceDark,
+                                fillColor: Theme.of(context).colorScheme.surface,
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(4),
                                   borderSide: BorderSide.none,
@@ -1323,7 +1324,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                               alignment: Alignment.topLeft,
                               child: Material(
                                 elevation: 4.0,
-                                color: AppTheme.surfaceDark,
+                                color: Theme.of(context).colorScheme.surface,
                                 borderRadius: BorderRadius.circular(8),
                                 child: Container(
                                   constraints: BoxConstraints(
@@ -1345,7 +1346,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                                                 ? option.codigo!
                                                 : option.id,
                                             style: TextStyle(
-                                              color: AppTheme.textPrimary,
+                                              color: Theme.of(context).colorScheme.onSurface,
                                               fontSize: 12,
                                             ),
                                           ),
@@ -1370,7 +1371,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                         vertical: 10,
                       ),
                       decoration: BoxDecoration(
-                        color: AppTheme.surfaceDark,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Row(
@@ -1387,7 +1388,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                           Text(
                             'Cargando productos...',
                             style: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                               fontSize: 13,
                             ),
                           ),
@@ -1435,7 +1436,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                               controller: textEditingController,
                               focusNode: focusNode,
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 13,
                               ),
                               decoration: InputDecoration(
@@ -1448,18 +1449,18 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                                     ? 'No hay productos disponibles'
                                     : 'Escribe al menos 2 letras...',
                                 hintStyle: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   fontSize: 13,
                                 ),
                                 filled: true,
-                                fillColor: AppTheme.surfaceDark,
+                                fillColor: Theme.of(context).colorScheme.surface,
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(4),
                                   borderSide: BorderSide.none,
                                 ),
                                 suffixIcon: Icon(
                                   Icons.arrow_drop_down,
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   size: 20,
                                 ),
                               ),
@@ -1475,7 +1476,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                               alignment: Alignment.topLeft,
                               child: Material(
                                 elevation: 4.0,
-                                color: AppTheme.surfaceDark,
+                                color: Theme.of(context).colorScheme.surface,
                                 borderRadius: BorderRadius.circular(8),
                                 child: Container(
                                   constraints: BoxConstraints(
@@ -1497,7 +1498,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                                           decoration: BoxDecoration(
                                             border: Border(
                                               bottom: BorderSide(
-                                                color: AppTheme.textSecondary
+                                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)
                                                     .withOpacity(0.2),
                                                 width: 1,
                                               ),
@@ -1510,7 +1511,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                                               Text(
                                                 option.nombre,
                                                 style: TextStyle(
-                                                  color: AppTheme.textPrimary,
+                                                  color: Theme.of(context).colorScheme.onSurface,
                                                   fontSize: 14,
                                                   fontWeight: FontWeight.w500,
                                                 ),
@@ -1576,7 +1577,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               flex: 1,
               child: TextField(
                 controller: _cantidadProductoController,
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   isDense: true,
@@ -1586,11 +1587,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   ),
                   hintText: '0',
                   hintStyle: TextStyle(
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     fontSize: 13,
                   ),
                   filled: true,
-                  fillColor: AppTheme.surfaceDark,
+                  fillColor: Theme.of(context).colorScheme.surface,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(4),
                     borderSide: BorderSide.none,
@@ -1605,7 +1606,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               flex: 1,
               child: TextField(
                 controller: _valorUnitarioController,
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   isDense: true,
@@ -1615,11 +1616,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   ),
                   hintText: '\$0',
                   hintStyle: TextStyle(
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     fontSize: 13,
                   ),
                   filled: true,
-                  fillColor: AppTheme.surfaceDark,
+                  fillColor: Theme.of(context).colorScheme.surface,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(4),
                     borderSide: BorderSide.none,
@@ -1651,12 +1652,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceDark.withOpacity(0.5),
+                  color: Theme.of(context).colorScheme.surface.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   '\$${valorTotal.toStringAsFixed(0)}',
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
                 ),
               ),
             ),
@@ -1665,12 +1666,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               flex: 1,
               child: Container(
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceDark,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: DropdownButtonFormField<String>(
                   value: _tipoImpuesto,
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
                   decoration: InputDecoration(
                     isDense: true,
                     contentPadding: EdgeInsets.symmetric(
@@ -1679,7 +1680,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                     ),
                     border: InputBorder.none,
                   ),
-                  dropdownColor: AppTheme.cardBg,
+                  dropdownColor: Theme.of(context).colorScheme.surface,
                   items: ['--', 'IVA', 'INC']
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                       .toList(),
@@ -1692,7 +1693,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               flex: 1,
               child: TextField(
                 controller: _porcentajeImpuestoController,
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   isDense: true,
@@ -1702,11 +1703,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   ),
                   hintText: '0',
                   hintStyle: TextStyle(
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     fontSize: 13,
                   ),
                   filled: true,
-                  fillColor: AppTheme.surfaceDark,
+                  fillColor: Theme.of(context).colorScheme.surface,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(4),
                     borderSide: BorderSide.none,
@@ -1719,12 +1720,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               flex: 1,
               child: Container(
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceDark,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: DropdownButtonFormField<String>(
                   value: _tipoDescuento,
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
                   decoration: InputDecoration(
                     isDense: true,
                     contentPadding: EdgeInsets.symmetric(
@@ -1733,7 +1734,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                     ),
                     border: InputBorder.none,
                   ),
-                  dropdownColor: AppTheme.cardBg,
+                  dropdownColor: Theme.of(context).colorScheme.surface,
                   items: ['%', '\$']
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                       .toList(),
@@ -1746,7 +1747,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               flex: 1,
               child: TextField(
                 controller: _porcentajeDescuentoController,
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   isDense: true,
@@ -1756,11 +1757,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   ),
                   hintText: '0',
                   hintStyle: TextStyle(
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     fontSize: 13,
                   ),
                   filled: true,
-                  fillColor: AppTheme.surfaceDark,
+                  fillColor: Theme.of(context).colorScheme.surface,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(4),
                     borderSide: BorderSide.none,
@@ -1807,12 +1808,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               flex: 1,
               child: Container(
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceDark,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: DropdownButtonFormField<String>(
                   value: _destinoSeleccionado,
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
                   decoration: InputDecoration(
                     isDense: true,
                     contentPadding: EdgeInsets.symmetric(
@@ -1822,7 +1823,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                     border: InputBorder.none,
                     hintText: 'Destino',
                   ),
-                  dropdownColor: AppTheme.cardBg,
+                  dropdownColor: Theme.of(context).colorScheme.surface,
                   items: ['BODEGA', 'ALMACÉN', 'PARTE Y PARTE']
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                       .toList(),
@@ -1878,12 +1879,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceDark,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: TextFormField(
                     controller: _cantidadAlmacenController,
-                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
                     keyboardType: TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -1896,7 +1897,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                       border: InputBorder.none,
                       hintText: 'Cant. Almacén',
                       hintStyle: TextStyle(
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontSize: 12,
                       ),
                       prefixIcon: Icon(
@@ -1923,12 +1924,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceDark,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: TextFormField(
                     controller: _cantidadBodegaController,
-                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
                     keyboardType: TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -1941,7 +1942,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                       border: InputBorder.none,
                       hintText: 'Cant. Bodega',
                       hintStyle: TextStyle(
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontSize: 12,
                       ),
                       prefixIcon: Icon(
@@ -1973,7 +1974,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
           Container(
             decoration: BoxDecoration(
               border: Border.all(
-                color: AppTheme.textSecondary.withOpacity(0.3),
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
               ),
               borderRadius: BorderRadius.circular(4),
             ),
@@ -1983,7 +1984,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceDark,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(4),
                       topRight: Radius.circular(4),
@@ -1996,7 +1997,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                         child: Text(
                           'Producto',
                           style: TextStyle(
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
@@ -2006,7 +2007,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                         child: Text(
                           'Cant.',
                           style: TextStyle(
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
@@ -2016,7 +2017,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                         child: Text(
                           'P. Unit',
                           style: TextStyle(
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
@@ -2026,7 +2027,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                         child: Text(
                           'Subtotal',
                           style: TextStyle(
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
@@ -2045,7 +2046,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                     decoration: BoxDecoration(
                       border: Border(
                         top: BorderSide(
-                          color: AppTheme.textSecondary.withOpacity(0.2),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.2),
                         ),
                       ),
                     ),
@@ -2056,7 +2057,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                           child: Text(
                             item.ingredienteNombre,
                             style: TextStyle(
-                              color: AppTheme.textPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontSize: 13,
                             ),
                             overflow: TextOverflow.ellipsis,
@@ -2066,7 +2067,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                           child: Text(
                             '${item.cantidad} ${item.unidad}',
                             style: TextStyle(
-                              color: AppTheme.textPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontSize: 13,
                             ),
                           ),
@@ -2075,7 +2076,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                           child: Text(
                             '\$${item.precioUnitario.toStringAsFixed(0)}',
                             style: TextStyle(
-                              color: AppTheme.textPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontSize: 13,
                             ),
                           ),
@@ -2166,7 +2167,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       flex: flex,
       child: Text(
         label,
-        style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
       ),
     );
   }
@@ -2176,16 +2177,16 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       flex: flex,
       child: TextField(
         enabled: enabled,
-        style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
         decoration: InputDecoration(
           isDense: true,
           contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           hintText: hint,
-          hintStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+          hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
           filled: true,
           fillColor: enabled
-              ? AppTheme.surfaceDark
-              : AppTheme.surfaceDark.withOpacity(0.5),
+              ? Theme.of(context).colorScheme.surface
+              : Theme.of(context).colorScheme.surface.withOpacity(0.5),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(4),
             borderSide: BorderSide.none,
@@ -2208,18 +2209,18 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             children: [
               Text(
                 'Descripción',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
               ),
               SizedBox(height: 8),
               TextField(
                 controller: _descripcionController,
                 maxLines: 4,
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: 'Descripción de la compra...',
-                  hintStyle: TextStyle(color: AppTheme.textSecondary),
+                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   filled: true,
-                  fillColor: AppTheme.surfaceDark,
+                  fillColor: Theme.of(context).colorScheme.surface,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(4),
                     borderSide: BorderSide.none,
@@ -2254,14 +2255,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
           width: 80,
           child: Text(
             label,
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
           ),
         ),
         Expanded(
           child: TextField(
             controller: controller,
             keyboardType: TextInputType.number,
-            style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
             decoration: InputDecoration(
               isDense: true,
               contentPadding: EdgeInsets.symmetric(
@@ -2269,9 +2270,9 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 vertical: 10,
               ),
               suffixText: '%',
-              suffixStyle: TextStyle(color: AppTheme.textSecondary),
+              suffixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               filled: true,
-              fillColor: AppTheme.surfaceDark,
+              fillColor: Theme.of(context).colorScheme.surface,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(4),
                 borderSide: BorderSide.none,
@@ -2337,75 +2338,81 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
           totalDescuentosItems,
           isNegative: true,
         ),
-        // Dcto General con dropdown
-        Row(
+        // Dcto General con dropdown — label arriba, controles abajo para
+        // evitar overflow en el panel lateral angosto.
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Text(
-                'Dcto General',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
-              ),
+            Text(
+              'Dcto General',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
             ),
-            Container(
-              width: 70,
-              height: 32,
-              child: DropdownButtonFormField<String>(
-                value: _tipoDescuentoGeneral == 'Porcentaje'
-                    ? 'Valor'
-                    : 'Valor',
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 12),
-                decoration: InputDecoration(
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  filled: true,
-                  fillColor: AppTheme.surfaceDark,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                    borderSide: BorderSide.none,
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                SizedBox(
+                  width: 80,
+                  height: 36,
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _tipoDescuentoGeneral == 'Porcentaje' ? '%' : 'Valor',
+                    isExpanded: true,
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).colorScheme.surface,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(4),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    dropdownColor: Theme.of(context).colorScheme.surface,
+                    items: const [
+                      DropdownMenuItem(value: 'Valor', child: Text('Valor')),
+                      DropdownMenuItem(value: '%', child: Text('%')),
+                    ],
+                    onChanged: (v) {
+                      setState(
+                        () => _tipoDescuentoGeneral =
+                            v == '%' ? 'Porcentaje' : 'Valor',
+                      );
+                    },
                   ),
                 ),
-                dropdownColor: AppTheme.cardBg,
-                items: [
-                  DropdownMenuItem(value: 'Valor', child: Text('Valor')),
-                  DropdownMenuItem(value: '%', child: Text('%')),
-                ],
-                onChanged: (v) {
-                  setState(
-                    () => _tipoDescuentoGeneral = v == '%'
-                        ? 'Porcentaje'
-                        : 'Valor',
-                  );
-                },
-              ),
-            ),
-            SizedBox(width: 8),
-            Container(
-              width: 80,
-              height: 32,
-              child: TextField(
-                controller: _descuentoGeneralValorController,
-                keyboardType: TextInputType.number,
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
-                decoration: InputDecoration(
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 8,
-                  ),
-                  prefixText: '\$',
-                  prefixStyle: TextStyle(color: AppTheme.textSecondary),
-                  filled: true,
-                  fillColor: AppTheme.surfaceDark,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                    borderSide: BorderSide.none,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SizedBox(
+                    height: 36,
+                    child: TextField(
+                      controller: _descuentoGeneralValorController,
+                      keyboardType: TextInputType.number,
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 8,
+                        ),
+                        prefixText: _tipoDescuentoGeneral == 'Porcentaje' ? null : '\$',
+                        suffixText: _tipoDescuentoGeneral == 'Porcentaje' ? '%' : null,
+                        prefixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                        suffixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surface,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(4),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
                   ),
                 ),
-                onChanged: (_) => setState(() {}),
-              ),
+              ],
             ),
           ],
         ),
@@ -2423,7 +2430,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             Text(
               'TOTAL',
               style: TextStyle(
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -2431,7 +2438,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: AppTheme.surfaceDark,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
@@ -2461,13 +2468,13 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         children: [
           Text(
             label,
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
           ),
           Container(
             width: 120,
             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
@@ -2475,7 +2482,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               style: TextStyle(
                 color: isNegative && valor > 0
                     ? Colors.red[300]
-                    : AppTheme.textPrimary,
+                    : Theme.of(context).colorScheme.onSurface,
                 fontSize: 13,
               ),
               textAlign: TextAlign.right,
@@ -2492,7 +2499,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
   Widget _buildInfoBasica() {
     return Card(
-      color: AppTheme.cardBg,
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -2501,7 +2508,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             Text(
               'Información Básica',
               style: TextStyle(
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -2556,14 +2563,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             ),
             SizedBox(height: 16),
             TextFormField(
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: InputDecoration(
                 labelText: 'Número de Factura',
-                labelStyle: TextStyle(color: AppTheme.textSecondary),
+                labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                 border: OutlineInputBorder(),
                 enabledBorder: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
@@ -2576,31 +2583,31 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             SizedBox(height: 16),
             DropdownButtonFormField<Proveedor>(
               initialValue: _proveedorSeleccionado,
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: InputDecoration(
                 labelText: 'Proveedor',
-                labelStyle: TextStyle(color: AppTheme.textSecondary),
+                labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                 hintText: 'Seleccionar proveedor',
                 hintStyle: TextStyle(
-                  color: AppTheme.textSecondary.withOpacity(0.7),
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.7),
                 ),
                 border: OutlineInputBorder(),
                 enabledBorder: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderSide: BorderSide(color: AppTheme.primary),
                 ),
               ),
-              dropdownColor: AppTheme.cardBg,
+              dropdownColor: Theme.of(context).colorScheme.surface,
               items: [
                 DropdownMenuItem<Proveedor>(
                   value: null,
                   child: Text(
                     'Proveedor general',
-                    style: TextStyle(color: AppTheme.textSecondary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   ),
                 ),
                 ..._proveedores.map((proveedor) {
@@ -2608,7 +2615,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                     value: proveedor,
                     child: Text(
                       proveedor.nombre,
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     ),
                   );
                 }),
@@ -2629,21 +2636,21 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             SizedBox(height: 16),
             TextFormField(
               controller: _proveedorNitController,
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               enabled: _proveedorSeleccionado == null,
               decoration: InputDecoration(
                 labelText: 'NIT del Proveedor (Opcional)',
-                labelStyle: TextStyle(color: AppTheme.textSecondary),
+                labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                 hintText: _proveedorSeleccionado != null
                     ? 'Autocompletado desde proveedor seleccionado'
                     : 'Solo para proveedores personalizados',
                 hintStyle: TextStyle(
-                  color: AppTheme.textSecondary.withOpacity(0.7),
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.7),
                 ),
                 border: OutlineInputBorder(),
                 enabledBorder: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
@@ -2651,7 +2658,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 ),
                 disabledBorder: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: AppTheme.textSecondary.withOpacity(0.1),
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.1),
                   ),
                 ),
               ),
@@ -2659,21 +2666,21 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             SizedBox(height: 16),
             TextFormField(
               controller: _proveedorNombreController,
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               enabled: _proveedorSeleccionado == null,
               decoration: InputDecoration(
                 labelText: 'Nombre del Proveedor (Opcional)',
-                labelStyle: TextStyle(color: AppTheme.textSecondary),
+                labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                 hintText: _proveedorSeleccionado != null
                     ? 'Autocompletado desde proveedor seleccionado'
                     : 'Solo para proveedores personalizados',
                 hintStyle: TextStyle(
-                  color: AppTheme.textSecondary.withOpacity(0.7),
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.7),
                 ),
                 border: OutlineInputBorder(),
                 enabledBorder: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
@@ -2681,19 +2688,19 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 ),
                 disabledBorder: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: AppTheme.textSecondary.withOpacity(0.1),
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.1),
                   ),
                 ),
               ),
             ),
             SizedBox(height: 16),
-            Divider(color: AppTheme.textSecondary.withOpacity(0.3)),
+            Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3)),
             SizedBox(height: 16),
             // 💰 Sección de Retenciones DIAN
             Text(
               'Retenciones (Opcional)',
               style: TextStyle(
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -2701,7 +2708,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             SizedBox(height: 8),
             Text(
               'Configure los porcentajes de retención si aplican',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
             ),
             SizedBox(height: 16),
             Row(
@@ -2709,16 +2716,16 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 Expanded(
                   child: TextField(
                     controller: _porcentajeRetencionController,
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       labelText: '% Rete Fuente',
-                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       suffixText: '%',
-                      suffixStyle: TextStyle(color: AppTheme.textSecondary),
+                      suffixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       helperText: '0.1% - 11%',
                       helperStyle: TextStyle(
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontSize: 10,
                       ),
                       filled: true,
@@ -2734,16 +2741,16 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 Expanded(
                   child: TextField(
                     controller: _porcentajeReteIvaController,
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       labelText: '% Rete IVA',
-                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       suffixText: '%',
-                      suffixStyle: TextStyle(color: AppTheme.textSecondary),
+                      suffixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       helperText: '15% estándar',
                       helperStyle: TextStyle(
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontSize: 10,
                       ),
                       filled: true,
@@ -2759,16 +2766,16 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 Expanded(
                   child: TextField(
                     controller: _porcentajeReteIcaController,
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       labelText: '% Rete ICA',
-                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       suffixText: '%',
-                      suffixStyle: TextStyle(color: AppTheme.textSecondary),
+                      suffixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       helperText: 'Varía por municipio',
                       helperStyle: TextStyle(
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontSize: 10,
                       ),
                       filled: true,
@@ -2790,7 +2797,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
   Widget _buildFechas() {
     return Card(
-      color: AppTheme.cardBg,
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -2799,7 +2806,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             Text(
               'Fechas',
               style: TextStyle(
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -2811,11 +2818,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   child: ListTile(
                     title: Text(
                       'Fecha de Factura',
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     ),
                     subtitle: Text(
                       _formatearFecha(_fechaFactura),
-                      style: TextStyle(color: AppTheme.textSecondary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     ),
                     leading: Icon(
                       Icons.calendar_today,
@@ -2828,11 +2835,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   child: ListTile(
                     title: Text(
                       'Fecha de Vencimiento',
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     ),
                     subtitle: Text(
                       _formatearFecha(_fechaVencimiento),
-                      style: TextStyle(color: AppTheme.textSecondary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     ),
                     leading: Icon(Icons.event, color: AppTheme.primary),
                     onTap: () => _seleccionarFecha(context, false),
@@ -2848,7 +2855,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
   Widget _buildItems() {
     return Card(
-      color: AppTheme.cardBg,
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -2860,7 +2867,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 Text(
                   'Items de la Factura',
                   style: TextStyle(
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -2886,12 +2893,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                       Icon(
                         Icons.inventory_2,
                         size: 48,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       ),
                       SizedBox(height: 8),
                       Text(
                         'No hay items agregados',
-                        style: TextStyle(color: AppTheme.textSecondary),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       ),
                     ],
                   ),
@@ -2902,16 +2909,16 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 final index = entry.key;
                 final item = entry.value;
                 return Card(
-                  color: AppTheme.backgroundDark,
+                  color: Theme.of(context).scaffoldBackgroundColor,
                   margin: EdgeInsets.only(bottom: 8),
                   child: ListTile(
                     title: Text(
                       item.ingredienteNombre,
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     ),
                     subtitle: Text(
                       '${item.cantidad} ${item.unidad} x \$${item.precioUnitario.toStringAsFixed(0)}',
-                      style: TextStyle(color: AppTheme.textSecondary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -2981,7 +2988,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
     final totalFinal = baseGravable + totalImpuestosItems - totalRetenciones;
 
     return Card(
-      color: AppTheme.cardBg,
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -2993,7 +3000,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 Text(
                   'Resumen',
                   style: TextStyle(
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -3016,7 +3023,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               children: [
                 Text(
                   'Dcto General',
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
                 ),
                 SizedBox(width: 12),
                 Expanded(
@@ -3026,9 +3033,9 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                         width: 100,
                         child: DropdownButtonFormField<String>(
                           value: _tipoDescuentoGeneral,
-                          dropdownColor: AppTheme.cardBg,
+                          dropdownColor: Theme.of(context).colorScheme.surface,
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 12,
                           ),
                           decoration: InputDecoration(
@@ -3060,7 +3067,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                           controller: _descuentoGeneralValorController,
                           keyboardType: TextInputType.number,
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 12,
                           ),
                           decoration: InputDecoration(
@@ -3073,7 +3080,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                             hintText: _tipoDescuentoGeneral == 'Porcentaje'
                                 ? '%'
                                 : '\$',
-                            hintStyle: TextStyle(color: AppTheme.textSecondary),
+                            hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                           ),
                           onChanged: (_) => setState(() {}),
                         ),
@@ -3146,12 +3153,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         children: [
           Text(
             label,
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
           ),
           Text(
             '${isNegative ? "-" : ""}\$${valor.abs().toStringAsFixed(0)}',
             style: TextStyle(
-              color: isNegative ? Colors.red[300] : AppTheme.textPrimary,
+              color: isNegative ? Colors.red[300] : Theme.of(context).colorScheme.onSurface,
               fontSize: 14,
             ),
           ),
@@ -3168,7 +3175,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         Expanded(
           flex: 2,
           child: Card(
-            color: AppTheme.cardBg,
+            color: Theme.of(context).colorScheme.surface,
             child: Padding(
               padding: EdgeInsets.all(16),
               child: Column(
@@ -3177,7 +3184,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   Text(
                     'Descripción',
                     style: TextStyle(
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -3186,14 +3193,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   TextFormField(
                     controller: _descripcionController,
                     maxLines: 5,
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     decoration: InputDecoration(
                       hintText: 'Ingrese una descripción de la compra...',
-                      hintStyle: TextStyle(color: AppTheme.textSecondary),
+                      hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       border: OutlineInputBorder(),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(
-                          color: AppTheme.textSecondary.withOpacity(0.3),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
@@ -3211,7 +3218,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         // Columna derecha - Retenciones
         Expanded(
           child: Card(
-            color: AppTheme.cardBg,
+            color: Theme.of(context).colorScheme.surface,
             child: Padding(
               padding: EdgeInsets.all(16),
               child: Column(
@@ -3220,7 +3227,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   Text(
                     'Retenciones',
                     style: TextStyle(
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -3231,14 +3238,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   TextFormField(
                     controller: _porcentajeRetencionController,
                     keyboardType: TextInputType.number,
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     decoration: InputDecoration(
                       labelText: 'Retencion %',
-                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       border: OutlineInputBorder(),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(
-                          color: AppTheme.textSecondary.withOpacity(0.3),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
@@ -3253,14 +3260,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   TextFormField(
                     controller: _porcentajeReteIvaController,
                     keyboardType: TextInputType.number,
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     decoration: InputDecoration(
                       labelText: 'Reteiva %',
-                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       border: OutlineInputBorder(),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(
-                          color: AppTheme.textSecondary.withOpacity(0.3),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
@@ -3275,14 +3282,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   TextFormField(
                     controller: _porcentajeReteIcaController,
                     keyboardType: TextInputType.number,
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     decoration: InputDecoration(
                       labelText: 'Reteica %',
-                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       border: OutlineInputBorder(),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(
-                          color: AppTheme.textSecondary.withOpacity(0.3),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
@@ -3569,10 +3576,10 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       await showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Text(
             'Borradores guardados (${borradores.length})',
-            style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold),
           ),
           content: SizedBox(
             width: 500,
@@ -3591,10 +3598,10 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
                 return ListTile(
                   leading: Icon(Icons.description_outlined, color: AppTheme.primary),
-                  title: Text(proveedor, style: TextStyle(color: AppTheme.textPrimary)),
+                  title: Text(proveedor, style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
                   subtitle: Text(
                     '$fechaStr · $nItems ítem(s)',
-                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
                   ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -3622,7 +3629,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('Cerrar', style: TextStyle(color: AppTheme.textSecondary)),
+              child: Text('Cerrar', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
             ),
           ],
         ),
@@ -3904,7 +3911,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
       // Navegar a la lista de compras
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/compras');
+        context.go('/compras');
       }
     } catch (e) {
         

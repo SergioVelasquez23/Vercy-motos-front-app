@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 
 class CajaUiHelpers {
-  static Widget buildCard({required IconData icon, required String title, required Widget child}) {
+  static Widget buildCard({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required Widget child,
+  }) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: AppTheme.textMuted.withOpacity(0.1)),
+        border: Border.all(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.1)),
         boxShadow: AppTheme.cardShadow,
       ),
       child: Padding(
@@ -31,7 +36,7 @@ class CajaUiHelpers {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -44,7 +49,7 @@ class CajaUiHelpers {
     );
   }
 
-  static Widget buildInfoTile(String label, String value, IconData icon) {
+  static Widget buildInfoTile(BuildContext context, String label, String value, IconData icon) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -57,7 +62,7 @@ class CajaUiHelpers {
               children: [
                 Text(
                   label,
-                  style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                 ),
                 SizedBox(height: 2),
                 Text(
@@ -65,7 +70,7 @@ class CajaUiHelpers {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -76,19 +81,19 @@ class CajaUiHelpers {
     );
   }
 
-  static Widget buildInfoRow(IconData icon, String label, String value) {
+  static Widget buildInfoRow(BuildContext context, IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, color: AppTheme.textSecondary, size: 18),
+        Icon(icon, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), size: 18),
         SizedBox(width: 8),
         Text(
           '$label: ',
-          style: TextStyle(color: AppTheme.textMuted, fontSize: 14),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6), fontSize: 14),
         ),
         Expanded(
           child: Text(
             value,
-            style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w500),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w500),
           ),
         ),
       ],

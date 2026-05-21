@@ -30,17 +30,20 @@ class FormularioAbrirCajaWidget extends StatelessWidget {
       children: [
         // Información del usuario
         CajaUiHelpers.buildCard(
+          context: context,
           icon: Icons.person_outline,
           title: 'Información del Turno',
           child: Column(
             children: [
               CajaUiHelpers.buildInfoTile(
+                context,
                 'Responsable',
                 userProvider.userName ?? 'Usuario no identificado',
                 Icons.badge,
               ),
-              Divider(color: AppTheme.textMuted.withOpacity(0.2)),
+              Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.2)),
               CajaUiHelpers.buildInfoTile(
+                context,
                 'Fecha y Hora',
                 '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year} ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}',
                 Icons.schedule,
@@ -52,28 +55,29 @@ class FormularioAbrirCajaWidget extends StatelessWidget {
 
         // Selección de caja
         CajaUiHelpers.buildCard(
+          context: context,
           icon: Icons.point_of_sale,
           title: 'Seleccionar Caja',
           child: DropdownButtonFormField<String>(
             decoration: InputDecoration(
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                borderSide: BorderSide(color: AppTheme.textMuted),
+                borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                borderSide: BorderSide(color: AppTheme.textMuted),
+                borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                 borderSide: BorderSide(color: AppTheme.primary, width: 2),
               ),
               filled: true,
-              fillColor: AppTheme.surfaceDark,
+              fillColor: Theme.of(context).colorScheme.surface,
               contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
-            dropdownColor: AppTheme.cardBg,
-            style: TextStyle(color: AppTheme.textPrimary),
+            dropdownColor: Theme.of(context).colorScheme.surface,
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             value: selectedCaja,
             items: ['Caja Principal', 'Caja Secundaria']
                 .map<DropdownMenuItem<String>>((String value) {
@@ -89,6 +93,7 @@ class FormularioAbrirCajaWidget extends StatelessWidget {
 
         // Monto inicial
         CajaUiHelpers.buildCard(
+          context: context,
           icon: Icons.attach_money,
           title: 'Monto Inicial *',
           child: Column(
@@ -97,23 +102,23 @@ class FormularioAbrirCajaWidget extends StatelessWidget {
               TextFormField(
                 controller: montoInicialController,
                 keyboardType: TextInputType.numberWithOptions(decimal: true),
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 18),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18),
                 decoration: InputDecoration(
                   hintText: 'Ingrese el monto inicial',
-                  hintStyle: TextStyle(color: AppTheme.textMuted),
+                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                    borderSide: BorderSide(color: AppTheme.textMuted),
+                    borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                     borderSide: BorderSide(color: AppTheme.primary, width: 2),
                   ),
                   filled: true,
-                  fillColor: AppTheme.surfaceDark,
+                  fillColor: Theme.of(context).colorScheme.surface,
                   prefixIcon: Container(
                     margin: EdgeInsets.all(8),
                     padding: EdgeInsets.all(8),
@@ -128,13 +133,13 @@ class FormularioAbrirCajaWidget extends StatelessWidget {
               SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(Icons.info_outline, size: 14, color: AppTheme.textMuted),
+                  Icon(Icons.info_outline, size: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                   SizedBox(width: 6),
                   Text(
                     'Este será el dinero con el que inicia la caja',
                     style: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.textMuted,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                     ),
                   ),
                 ],
@@ -146,27 +151,28 @@ class FormularioAbrirCajaWidget extends StatelessWidget {
 
         // Identificación máquina
         CajaUiHelpers.buildCard(
+          context: context,
           icon: Icons.computer,
           title: 'Identificación de Máquina',
           child: TextFormField(
             controller: idMaquinaController,
-            style: TextStyle(color: AppTheme.textPrimary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             decoration: InputDecoration(
               hintText: 'ID o nombre de la máquina',
-              hintStyle: TextStyle(color: AppTheme.textMuted),
+              hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                borderSide: BorderSide(color: AppTheme.textMuted),
+                borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                 borderSide: BorderSide(color: AppTheme.primary, width: 2),
               ),
               filled: true,
-              fillColor: AppTheme.surfaceDark,
+              fillColor: Theme.of(context).colorScheme.surface,
               prefixIcon: Container(
                 margin: EdgeInsets.all(8),
                 padding: EdgeInsets.all(8),
@@ -183,28 +189,29 @@ class FormularioAbrirCajaWidget extends StatelessWidget {
 
         // Observaciones
         CajaUiHelpers.buildCard(
+          context: context,
           icon: Icons.notes,
           title: 'Observaciones',
           child: TextFormField(
             controller: observacionesController,
             maxLines: 3,
-            style: TextStyle(color: AppTheme.textPrimary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             decoration: InputDecoration(
               hintText: 'Observaciones adicionales (opcional)',
-              hintStyle: TextStyle(color: AppTheme.textMuted),
+              hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                borderSide: BorderSide(color: AppTheme.textMuted),
+                borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                 borderSide: BorderSide(color: AppTheme.primary, width: 2),
               ),
               filled: true,
-              fillColor: AppTheme.surfaceDark,
+              fillColor: Theme.of(context).colorScheme.surface,
               alignLabelWithHint: true,
             ),
           ),

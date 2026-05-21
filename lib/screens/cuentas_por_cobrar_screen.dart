@@ -7,7 +7,7 @@ import '../services/cartera_service.dart';
 import '../services/pedido_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
-import '../widgets/vercy_sidebar_layout.dart';
+import '../widgets/common/screen_header.dart';
 
 class CuentasPorCobrarScreen extends StatefulWidget {
   const CuentasPorCobrarScreen({Key? key}) : super(key: key);
@@ -114,10 +114,10 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
     final result = await showDialog<double>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Text(
           'Registrar Abono - ${cuenta.clienteNombre}',
-          style: TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -125,13 +125,13 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
           children: [
             Text(
               'Saldo pendiente: ${CurrencyUtils.format(cuenta.saldoPendiente)}',
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: montoController,
               keyboardType: TextInputType.number,
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: const InputDecoration(
                 labelText: 'Monto del abono',
                 prefixText: '\$ ',
@@ -208,25 +208,23 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return VercySidebarLayout(
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Cuentas por Cobrar'),
-          backgroundColor: AppTheme.primary,
-          foregroundColor: AppTheme.white,
-          elevation: 0,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: _cargarCuentas,
-            ),
-          ],
-        ),
-        body: Column(
+    return Column(
           children: [
+            ScreenHeader(
+              icon: Icons.account_balance,
+              title: 'Cuentas por Cobrar',
+              badge: '${cuentasFiltradas.length}',
+              actions: [
+                ScreenHeaderAction.iconOnly(
+                  icon: Icons.refresh,
+                  tooltip: 'Refrescar',
+                  onPressed: _cargarCuentas,
+                ),
+              ],
+            ),
             // Filtros y búsqueda
             Container(
-              color: AppTheme.primary,
+              color: Theme.of(context).colorScheme.surface,
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
@@ -237,7 +235,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                       hintText: 'Buscar por cliente o factura...',
                       prefixIcon: const Icon(Icons.search),
                       filled: true,
-                      fillColor: AppTheme.white,
+                      fillColor: Theme.of(context).colorScheme.surface,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -280,9 +278,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                   : _buildCuentasList(),
             ),
           ], // cierra children del Column
-        ), // cierra Column del body
-      ), // cierra Scaffold
-    ); // cierra VercySidebarLayout
+        ); // cierra Column
   }
 
   Widget _buildFiltroChip(String label, EstadoCuenta? estado) {
@@ -296,8 +292,8 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
           _aplicarFiltros();
         });
       },
-      backgroundColor: AppTheme.white,
-      selectedColor: AppTheme.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      selectedColor: Colors.white,
       checkmarkColor: AppTheme.primary,
     );
   }
@@ -618,7 +614,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
               const SizedBox(height: 8),
               LinearProgressIndicator(
                 value: cuenta.porcentajePagado / 100,
-                backgroundColor: AppTheme.surfaceDark,
+                backgroundColor: Theme.of(context).colorScheme.surface,
                 valueColor: AlwaysStoppedAnimation<Color>(
                   cuenta.porcentajePagado >= 100
                       ? AppTheme.primary
@@ -767,7 +763,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                           Icon(
                             Icons.person,
                             size: 16,
-                            color: AppTheme.textMuted,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                           ),
                           const SizedBox(width: 4),
                           Expanded(
@@ -784,7 +780,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                       Text(
                         'Pedido #${deuda.id.length >= 8 ? deuda.id.substring(0, 8) : deuda.id}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.textMuted,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                         ),
                       ),
                     ],
@@ -830,14 +826,14 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
             // Información de fecha y productos
             Row(
               children: [
-                Icon(Icons.calendar_today, size: 14, color: AppTheme.textMuted),
+                Icon(Icons.calendar_today, size: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                 const SizedBox(width: 4),
                 Text(
                   DateFormat('dd/MM/yyyy HH:mm').format(deuda.fecha),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(width: 12),
-                Icon(Icons.shopping_cart, size: 14, color: AppTheme.textMuted),
+                Icon(Icons.shopping_cart, size: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                 const SizedBox(width: 4),
                 Text(
                   '${deuda.items.length} item(s)',
@@ -885,7 +881,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: AppTheme.textMuted,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                     ),
                   ),
                   Text(
@@ -905,19 +901,19 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppTheme.cardBg.withOpacity(0.5),
+                  color: Theme.of(context).colorScheme.surface.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.note, size: 14, color: AppTheme.textMuted),
+                    Icon(Icons.note, size: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         deuda.notas!,
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -963,7 +959,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Row(
           children: [
             Icon(Icons.sticky_note_2, color: AppTheme.secondary),
@@ -971,7 +967,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
             Expanded(
               child: Text(
                 'Detalle de Deuda',
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
             ),
           ],
@@ -997,7 +993,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                 'Productos:',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 8),
@@ -1010,14 +1006,14 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                       Expanded(
                         child: Text(
                           '${item.cantidad}x ${item.productoNombre}',
-                          style: TextStyle(color: AppTheme.textPrimary),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         ),
                       ),
                       Text(
                         CurrencyUtils.format(item.subtotal),
                         style: TextStyle(
                           fontWeight: FontWeight.w500,
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ],
@@ -1034,7 +1030,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   Text(
@@ -1072,12 +1068,12 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
               label,
               style: TextStyle(
                 fontWeight: FontWeight.w500,
-                color: AppTheme.textMuted,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
               ),
             ),
           ),
           Expanded(
-            child: Text(value, style: TextStyle(color: AppTheme.textPrimary)),
+            child: Text(value, style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
           ),
         ],
       ),
@@ -1088,14 +1084,14 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Row(
           children: [
             Icon(Icons.payment, color: AppTheme.primary),
             const SizedBox(width: 8),
             Text(
               'Confirmar Pago',
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
           ],
         ),
@@ -1104,7 +1100,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
           children: [
             Text(
               '¿Confirma el pago de esta deuda?',
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
             const SizedBox(height: 16),
             Container(
@@ -1118,7 +1114,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                 children: [
                   Text(
                     'Cliente: ${deuda.cliente ?? "Sin cliente"}',
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   ),
                   const SizedBox(height: 8),
                   Text(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 
 class AppNavigationBar extends StatelessWidget {
@@ -11,7 +12,7 @@ class AppNavigationBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 60,
-      color: AppTheme.cardBg,
+      color: Theme.of(context).colorScheme.surface,
       child: Scrollbar(
         scrollbarOrientation: ScrollbarOrientation.bottom,
         thumbVisibility: true,
@@ -103,7 +104,7 @@ class AppNavigationBar extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         if (!isActive) {
-          Navigator.pushNamed(context, route);
+          context.push(route);
         }
       },
       child: Container(
@@ -120,7 +121,7 @@ class AppNavigationBar extends StatelessWidget {
             Icon(
               icon,
               size: 20,
-              color: isActive ? AppTheme.primary : AppTheme.textSecondary,
+              color: isActive ? AppTheme.primary : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             ),
             SizedBox(height: 4),
             Text(
@@ -128,7 +129,7 @@ class AppNavigationBar extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                color: isActive ? AppTheme.primary : AppTheme.textSecondary,
+                color: isActive ? AppTheme.primary : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               ),
             ),
           ],

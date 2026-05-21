@@ -267,14 +267,14 @@ class _RolesScreenState extends State<RolesScreen> {
           backgroundColor: Colors.grey[900],
           title: Text(
             isEditing ? 'Editar Rol' : 'Nuevo Rol',
-            style: TextStyle(color: AppTheme.textPrimary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: nombreController,
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 decoration: InputDecoration(
                   labelText: 'Nombre del rol *',
                   labelStyle: const TextStyle(color: Colors.grey),
@@ -289,7 +289,7 @@ class _RolesScreenState extends State<RolesScreen> {
               const SizedBox(height: 16),
               TextField(
                 controller: descripcionController,
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 maxLines: 3,
                 decoration: InputDecoration(
                   labelText: 'Descripción',
@@ -314,7 +314,7 @@ class _RolesScreenState extends State<RolesScreen> {
                   ),
                   Text(
                     'Rol activo',
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   ),
                 ],
               ),
@@ -418,11 +418,11 @@ class _RolesScreenState extends State<RolesScreen> {
         backgroundColor: Colors.grey[900],
         title: Text(
           'Confirmar eliminación',
-          style: TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Text(
           '¿Está seguro de que desea eliminar el rol "${role.nombre}"?',
-          style: TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         actions: [
           TextButton(

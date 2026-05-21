@@ -15,18 +15,18 @@ Future<bool> showConfirmDialog(
   final result = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      backgroundColor: AppTheme.cardBg,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       title: Text(title,
           style: TextStyle(
-              color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+              color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold)),
       content: Text(content,
-          style: TextStyle(color: AppTheme.textSecondary)),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx, false),
           child: Text(cancelText,
-              style: TextStyle(color: AppTheme.textSecondary)),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
         ),
         ElevatedButton(
           onPressed: () => Navigator.pop(ctx, true),
@@ -55,13 +55,13 @@ Future<void> showInfoDialog(
   await showDialog<void>(
     context: context,
     builder: (ctx) => AlertDialog(
-      backgroundColor: AppTheme.cardBg,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       title: Text(title,
           style: TextStyle(
-              color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
+              color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold)),
       content: Text(content,
-          style: TextStyle(color: AppTheme.textSecondary)),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
       actions: [
         ElevatedButton(
           onPressed: () => Navigator.pop(ctx),

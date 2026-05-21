@@ -446,11 +446,11 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              backgroundColor: AppTheme.backgroundDark,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
               title: Text(
                 '💵 Declarar Efectivo en Caja',
                 style: TextStyle(
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -473,7 +473,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                           Text(
                             'Efectivo esperado:',
                             style: TextStyle(
-                              color: AppTheme.textPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -494,7 +494,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                     Text(
                       'Ingrese el efectivo real en caja:',
                       style: TextStyle(
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -504,7 +504,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                       keyboardType: TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       decoration: InputDecoration(
                         hintText: '0.00',
                         hintStyle: TextStyle(color: Colors.grey),
@@ -572,7 +572,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                                 Text(
                                   '⚠️ Descuadre detectado',
                                   style: TextStyle(
-                                    color: AppTheme.textPrimary,
+                                    color: Theme.of(context).colorScheme.onSurface,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -584,7 +584,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                               children: [
                                 Text(
                                   descuadre > 0 ? 'Falta:' : 'Sobra:',
-                                  style: TextStyle(color: AppTheme.textPrimary),
+                                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 ),
                                 Text(
                                   formatCurrency(descuadre.abs()),
@@ -766,16 +766,16 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Cerrar Caja',
-          style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
         ),
-        backgroundColor: AppTheme.backgroundDark,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppTheme.textPrimary),
+          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -846,7 +846,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                           SizedBox(height: 8),
                           Text(
                             'No hay ninguna caja abierta para cerrar.',
-                            style: TextStyle(color: AppTheme.textSecondary),
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                             textAlign: TextAlign.center,
                           ),
                         ],
@@ -894,7 +894,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                     Container(
                       padding: EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppTheme.cardBg,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
                       ),
@@ -910,7 +910,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                             ],
@@ -919,12 +919,12 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                           TextFormField(
                             controller: _observacionesController,
                             maxLines: 3,
-                            style: TextStyle(color: AppTheme.textPrimary),
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                             decoration: InputDecoration(
                               hintText: 'Observaciones del cierre (opcional)',
-                              hintStyle: TextStyle(color: AppTheme.textMuted),
+                              hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                               filled: true,
-                              fillColor: AppTheme.surfaceDark,
+                              fillColor: Theme.of(context).colorScheme.surface,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
                                 borderSide: BorderSide.none,
@@ -994,11 +994,11 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: AppTheme.textSecondary)),
+          Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
           Text(
             value,
             style: TextStyle(
-              color: valueColor ?? AppTheme.textPrimary,
+              color: valueColor ?? Theme.of(context).colorScheme.onSurface,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -1048,7 +1048,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
       ),
@@ -1156,7 +1156,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ],
@@ -1168,7 +1168,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                       Text(
                         movimientos.descuadre > 0 ? 'Faltante:' : 'Sobrante:',
                         style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 13,
                         ),
                       ),
@@ -1199,7 +1199,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppTheme.error.withOpacity(0.3)),
       ),
@@ -1244,7 +1244,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             SizedBox(height: 8),
@@ -1287,11 +1287,11 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                       children: [
                         Text(
                           'Proveedor: ${gasto.proveedor ?? 'N/A'}',
-                          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                          style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                         ),
                         Text(
                           'Forma: ${gasto.formaPago ?? 'N/A'}',
-                          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                          style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                         ),
                       ],
                     ),
@@ -1299,7 +1299,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                       SizedBox(height: 4),
                       Text(
                         'Fecha: ${_formatearFecha(gasto.fecha!)}',
-                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                        style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       ),
                     ],
                   ],
@@ -1318,7 +1318,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
       ),
@@ -1348,7 +1348,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           _buildInfoRow(
             'Total Compras No desde Caja:',
             formatCurrency(compras.totalComprasNoDesdeCaja),
-            valueColor: AppTheme.textSecondary,
+            valueColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
           ),
           _buildInfoRow(
             'Total General de Compras:',
@@ -1363,7 +1363,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             SizedBox(height: 8),
@@ -1400,11 +1400,11 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                     ),
                     Text(
                       'Proveedor: ${compra.proveedor}',
-                      style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     ),
                     Text(
                       'Medio: ${compra.medioPago}',
-                      style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     ),
                     if (compra.observaciones.isNotEmpty) ...[
                       SizedBox(height: 4),
@@ -1419,7 +1419,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                     if (compra.fecha != null) ...[
                       Text(
                         'Fecha: ${_formatearFecha(compra.fecha!)}',
-                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                        style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       ),
                     ],
                   ],
@@ -1473,7 +1473,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                       'Proveedor: ${compra.proveedor}',
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       ),
                     ),
                     if (compra.observaciones.isNotEmpty) ...[
@@ -1502,7 +1502,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                         'Fecha: ${_formatearFecha(compra.fecha!)}',
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         ),
                       ),
                     ],
@@ -1522,7 +1522,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppTheme.success.withOpacity(0.3)),
       ),
@@ -1563,7 +1563,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: AppTheme.textSecondary,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             ),
           ),
           SizedBox(height: 8),
@@ -1601,7 +1601,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: AppTheme.textSecondary,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             ),
           ),
           SizedBox(height: 8),
@@ -1628,7 +1628,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: AppTheme.textSecondary,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             ),
           ),
           SizedBox(height: 8),
@@ -1666,7 +1666,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           SizedBox(height: 8),
@@ -1695,7 +1695,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                       'Ventas totales: ${formatCurrency(ventas.totalVentas)}',
                       style: TextStyle(
                         fontWeight: FontWeight.w500,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       ),
                     ),
                   ],

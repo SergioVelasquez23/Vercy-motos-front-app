@@ -1,5 +1,6 @@
 import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../models/pedido.dart';
 import '../models/item_pedido.dart';
@@ -22,7 +23,6 @@ import '../theme/app_theme.dart';
 import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../providers/facturacion_draft_provider.dart';
-import '../widgets/vercy_sidebar_layout.dart';
 import '../widgets/facturacion/observaciones_section.dart';
 import '../widgets/facturacion/totales_section.dart';
 import '../widgets/facturacion/botones_accion_facturacion.dart';
@@ -393,9 +393,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     _aiuController.dispose();
     _dctoGeneralController.dispose();
     _observacionesController.dispose();
-    // ✅ LIMPIAR CONTROLADORES DE AUTOCOMPLETE
-    _nombreProductoAutocompleteController?.dispose();
-    _codigoAutocompleteController?.dispose();
+    // ⚠️ NO llamar dispose() en los controladores de Autocomplete: son referencias
+    // al TextEditingController interno que el widget Autocomplete crea y dispone él mismo.
+    _nombreProductoAutocompleteController = null;
+    _codigoAutocompleteController = null;
 
     // 🔴 Cerrar canal de sincronización entre pestañas
     _productosChannel?.close();
@@ -565,10 +566,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context);
 
-    return VercySidebarLayout(
-      title: 'Facturación',
-      child: Scaffold(
-        backgroundColor: AppTheme.backgroundDark,
+    return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: LayoutBuilder(
           builder: (context, constraints) {
             final isMobile = constraints.maxWidth < 600;
@@ -625,8 +624,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             );
           },
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildHeader() {
@@ -637,7 +635,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         return Container(
           padding: EdgeInsets.all(isMobile ? 12 : 24),
           decoration: BoxDecoration(
-            color: AppTheme.cardBg,
+            color: Theme.of(context).colorScheme.surface,
             boxShadow: [
               BoxShadow(
                 color: Colors.black12,
@@ -663,7 +661,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                       ],
@@ -680,7 +678,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primary,
-                          foregroundColor: Colors.black87,
+                          foregroundColor: Colors.white,
                           padding: EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 10,
@@ -699,7 +697,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     Spacer(),
@@ -712,7 +710,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primary,
-                        foregroundColor: Colors.black87,
+                        foregroundColor: Colors.white,
                         padding: EdgeInsets.symmetric(
                           horizontal: 24,
                           vertical: 16,
@@ -734,7 +732,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         return Container(
           padding: EdgeInsets.all(isMobile ? 12 : 24),
           decoration: BoxDecoration(
-            color: AppTheme.cardBg,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
@@ -813,7 +811,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           label,
           style: TextStyle(
             fontWeight: FontWeight.w600,
-            color: AppTheme.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 14,
           ),
         ),
@@ -833,9 +831,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             border: OutlineInputBorder(),
             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
             filled: true,
-            fillColor: AppTheme.surfaceDark,
+            fillColor: Theme.of(context).colorScheme.surface,
           ),
-          style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
           items: const [
             DropdownMenuItem(
               value: 'LOCAL',
@@ -858,7 +856,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             'Solo local · Sin envío a DIAN',
             style: TextStyle(
               fontSize: 11,
-              color: AppTheme.textSecondary,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               fontStyle: FontStyle.italic,
             ),
           ),
@@ -901,15 +899,15 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
           suffixIcon: Icon(
             Icons.calendar_today,
-            color: AppTheme.textSecondary,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             size: 18,
           ),
           filled: true,
-          fillColor: AppTheme.surfaceDark,
+          fillColor: Theme.of(context).colorScheme.surface,
         ),
         child: Text(
           '${_fechaFactura.year}-${_fechaFactura.month.toString().padLeft(2, '0')}-${_fechaFactura.day.toString().padLeft(2, '0')}',
-          style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
         ),
       ),
     );
@@ -932,15 +930,15 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
           suffixIcon: Icon(
             Icons.calendar_today,
-            color: AppTheme.textSecondary,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             size: 18,
           ),
           filled: true,
-          fillColor: AppTheme.surfaceDark,
+          fillColor: Theme.of(context).colorScheme.surface,
         ),
         child: Text(
           '${_fechaVencimiento.year}-${_fechaVencimiento.month.toString().padLeft(2, '0')}-${_fechaVencimiento.day.toString().padLeft(2, '0')}',
-          style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
         ),
       ),
     );
@@ -994,7 +992,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                   return TextField(
                     controller: textEditingController,
                     focusNode: focusNode,
-                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
                     onChanged: (value) {
                       // ✅ Si el usuario borra todo el texto, asignar CONSUMIDOR FINAL
                       if (value.trim().isEmpty) {
@@ -1030,17 +1028,17 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         vertical: 16,
                       ),
                       filled: true,
-                      fillColor: AppTheme.surfaceDark,
+                      fillColor: Theme.of(context).colorScheme.surface,
                       hintText: 'Buscar cliente...',
-                      hintStyle: TextStyle(color: AppTheme.textSecondary),
+                      hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       prefixIcon: Icon(
                         Icons.search,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         size: 20,
                       ),
                       suffixIcon: Icon(
                         Icons.arrow_drop_down,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       ),
                     ),
                   );
@@ -1055,7 +1053,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     alignment: Alignment.topLeft,
                     child: Material(
                       elevation: 4.0,
-                      color: AppTheme.surfaceDark,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(8),
                       child: Container(
                         constraints: BoxConstraints(
@@ -1068,6 +1066,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                           shrinkWrap: true,
                           itemBuilder: (BuildContext context, int index) {
                             final Cliente cliente = options.elementAt(index);
+                            final onSurface = Theme.of(context).colorScheme.onSurface;
                             return InkWell(
                               onTap: () => onSelected(cliente),
                               child: Container(
@@ -1075,9 +1074,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 decoration: BoxDecoration(
                                   border: Border(
                                     bottom: BorderSide(
-                                      color: AppTheme.textSecondary.withOpacity(
-                                        0.2,
-                                      ),
+                                      color: onSurface.withOpacity(0.12),
                                       width: 1,
                                     ),
                                   ),
@@ -1108,7 +1105,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                           Text(
                                             cliente.nombreCompleto,
                                             style: TextStyle(
-                                              color: AppTheme.textPrimary,
+                                              color: onSurface,
                                               fontSize: 14,
                                               fontWeight: FontWeight.w500,
                                             ),
@@ -1119,7 +1116,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                             Text(
                                               'Doc: ${cliente.numeroIdentificacion}',
                                               style: TextStyle(
-                                                color: AppTheme.textSecondary,
+                                                color: onSurface.withOpacity(0.7),
                                                 fontSize: 12,
                                               ),
                                             ),
@@ -1183,7 +1180,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   Widget _buildDatosExtras() {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
@@ -1203,7 +1200,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   Spacer(),
@@ -1243,7 +1240,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                             ),
@@ -1251,7 +1248,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             TextField(
                               controller: _ordenCompraController,
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 14,
                               ),
                               decoration: InputDecoration(
@@ -1261,9 +1258,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                   vertical: 16,
                                 ),
                                 filled: true,
-                                fillColor: AppTheme.surfaceDark,
+                                fillColor: Theme.of(context).colorScheme.surface,
                                 hintStyle: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 ),
                               ),
                             ),
@@ -1289,7 +1286,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                             ),
@@ -1315,10 +1312,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                   ),
                                   suffixIcon: Icon(
                                     Icons.calendar_today,
-                                    color: AppTheme.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   ),
                                   filled: true,
-                                  fillColor: AppTheme.surfaceDark,
+                                  fillColor: Theme.of(context).colorScheme.surface,
                                 ),
                                 child: Text(
                                   _fechaCompra != null
@@ -1326,8 +1323,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                       : 'mm/dd/yyyy',
                                   style: TextStyle(
                                     color: _fechaCompra != null
-                                        ? AppTheme.textPrimary
-                                        : AppTheme.textSecondary,
+                                        ? Theme.of(context).colorScheme.onSurface
+                                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                     fontSize: 14,
                                   ),
                                 ),
@@ -1355,7 +1352,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                             ),
@@ -1363,7 +1360,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             TextField(
                               controller: _ordenServicioController,
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 14,
                               ),
                               decoration: InputDecoration(
@@ -1373,9 +1370,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                   vertical: 16,
                                 ),
                                 filled: true,
-                                fillColor: AppTheme.surfaceDark,
+                                fillColor: Theme.of(context).colorScheme.surface,
                                 hintStyle: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 ),
                               ),
                             ),
@@ -1401,7 +1398,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                             ),
@@ -1409,7 +1406,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             TextField(
                               controller: _ordenPedidoController,
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 14,
                               ),
                               decoration: InputDecoration(
@@ -1419,9 +1416,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                   vertical: 16,
                                 ),
                                 filled: true,
-                                fillColor: AppTheme.surfaceDark,
+                                fillColor: Theme.of(context).colorScheme.surface,
                                 hintStyle: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 ),
                               ),
                             ),
@@ -1447,7 +1444,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                             ),
@@ -1455,7 +1452,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             TextField(
                               controller: _vendedorController,
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 14,
                               ),
                               decoration: InputDecoration(
@@ -1465,9 +1462,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                   vertical: 16,
                                 ),
                                 filled: true,
-                                fillColor: AppTheme.surfaceDark,
+                                fillColor: Theme.of(context).colorScheme.surface,
                                 hintStyle: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 ),
                               ),
                             ),
@@ -1498,7 +1495,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                             ),
@@ -1506,7 +1503,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             TextField(
                               controller: _porcentajeDctoPagoController,
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 14,
                               ),
                               decoration: InputDecoration(
@@ -1516,9 +1513,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                   vertical: 16,
                                 ),
                                 filled: true,
-                                fillColor: AppTheme.surfaceDark,
+                                fillColor: Theme.of(context).colorScheme.surface,
                                 hintStyle: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 ),
                               ),
                               keyboardType: TextInputType.number,
@@ -1545,7 +1542,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                             ),
@@ -1559,13 +1556,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                   vertical: 16,
                                 ),
                                 filled: true,
-                                fillColor: AppTheme.surfaceDark,
+                                fillColor: Theme.of(context).colorScheme.surface,
                                 hintStyle: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 ),
                               ),
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 14,
                               ),
                               items: ['Detal', 'Mayor', 'Distribuidor']
@@ -1601,7 +1598,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                             ),
@@ -1609,7 +1606,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             TextField(
                               controller: _guiaController,
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 14,
                               ),
                               decoration: InputDecoration(
@@ -1619,9 +1616,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                   vertical: 16,
                                 ),
                                 filled: true,
-                                fillColor: AppTheme.surfaceDark,
+                                fillColor: Theme.of(context).colorScheme.surface,
                                 hintStyle: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 ),
                               ),
                             ),
@@ -1647,7 +1644,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                             ),
@@ -1673,10 +1670,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                   ),
                                   suffixIcon: Icon(
                                     Icons.calendar_today,
-                                    color: AppTheme.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   ),
                                   filled: true,
-                                  fillColor: AppTheme.surfaceDark,
+                                  fillColor: Theme.of(context).colorScheme.surface,
                                 ),
                                 child: Text(
                                   _fechaDctoPago != null
@@ -1684,8 +1681,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                       : '2026-02-18',
                                   style: TextStyle(
                                     color: _fechaDctoPago != null
-                                        ? AppTheme.textPrimary
-                                        : AppTheme.textSecondary,
+                                        ? Theme.of(context).colorScheme.onSurface
+                                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                     fontSize: 14,
                                   ),
                                 ),
@@ -1709,7 +1706,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   Widget _buildDatosProducto() {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
@@ -1730,7 +1727,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   Spacer(),
@@ -1766,7 +1763,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -1777,7 +1774,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                           controller: _codigoBarrasController,
                           autofocus: true,
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 14,
                           ),
                           decoration: InputDecoration(
@@ -1785,13 +1782,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                               borderSide: BorderSide(
                                 color: _codigoBarrasController.text.isNotEmpty
                                     ? AppTheme.primary
-                                    : AppTheme.textMuted.withOpacity(0.3),
+                                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3),
                                 width: 2,
                               ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderSide: BorderSide(
-                                color: AppTheme.textMuted.withOpacity(0.3),
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3),
                                 width: 1,
                               ),
                             ),
@@ -1806,9 +1803,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                               vertical: 8,
                             ),
                             filled: true,
-                            fillColor: AppTheme.surfaceDark,
+                            fillColor: Theme.of(context).colorScheme.surface,
                             hintText: 'Escanee o ingrese código',
-                            hintStyle: TextStyle(color: AppTheme.textSecondary),
+                            hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                             prefixIcon: Icon(
                               Icons.qr_code_scanner,
                               color: AppTheme.primary,
@@ -1913,7 +1910,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                   controller: textEditingController,
                                   focusNode: focusNode,
                                   style: TextStyle(
-                                    color: AppTheme.textPrimary,
+                                    color: Theme.of(context).colorScheme.onSurface,
                                     fontSize: 13,
                                   ),
                                   decoration: InputDecoration(
@@ -1924,11 +1921,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                     ),
                                     hintText: 'Código...',
                                     hintStyle: TextStyle(
-                                      color: AppTheme.textSecondary,
+                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                       fontSize: 13,
                                     ),
                                     filled: true,
-                                    fillColor: AppTheme.surfaceDark,
+                                    fillColor: Theme.of(context).colorScheme.surface,
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(4),
                                       borderSide: BorderSide.none,
@@ -1946,7 +1943,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                   alignment: Alignment.topLeft,
                                   child: Material(
                                     elevation: 4.0,
-                                    color: AppTheme.surfaceDark,
+                                    color: Theme.of(context).colorScheme.surface,
                                     borderRadius: BorderRadius.circular(8),
                                     child: Container(
                                       constraints: BoxConstraints(
@@ -1968,7 +1965,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                                     ? option.codigo!
                                                     : option.id,
                                                 style: TextStyle(
-                                                  color: AppTheme.textPrimary,
+                                                  color: Theme.of(context).colorScheme.onSurface,
                                                   fontSize: 12,
                                                 ),
                                               ),
@@ -2038,7 +2035,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                   controller: textEditingController,
                                   focusNode: focusNode,
                                   style: TextStyle(
-                                    color: AppTheme.textPrimary,
+                                    color: Theme.of(context).colorScheme.onSurface,
                                     fontSize: 13,
                                   ),
                                   decoration: InputDecoration(
@@ -2051,18 +2048,18 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                         ? 'No hay productos disponibles'
                                         : 'Escribe al menos 2 letras...',
                                     hintStyle: TextStyle(
-                                      color: AppTheme.textSecondary,
+                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                       fontSize: 13,
                                     ),
                                     filled: true,
-                                    fillColor: AppTheme.surfaceDark,
+                                    fillColor: Theme.of(context).colorScheme.surface,
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(4),
                                       borderSide: BorderSide.none,
                                     ),
                                     suffixIcon: Icon(
                                       Icons.arrow_drop_down,
-                                      color: AppTheme.textSecondary,
+                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                       size: 20,
                                     ),
                                   ),
@@ -2078,7 +2075,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                   alignment: Alignment.topLeft,
                                   child: Material(
                                     elevation: 4.0,
-                                    color: AppTheme.surfaceDark,
+                                    color: Theme.of(context).colorScheme.surface,
                                     borderRadius: BorderRadius.circular(8),
                                     child: Container(
                                       constraints: BoxConstraints(
@@ -2100,7 +2097,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                               decoration: BoxDecoration(
                                                 border: Border(
                                                   bottom: BorderSide(
-                                                    color: AppTheme.textSecondary
+                                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)
                                                         .withOpacity(0.2),
                                                     width: 1,
                                                   ),
@@ -2113,7 +2110,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                                   Text(
                                                     option.nombre,
                                                     style: TextStyle(
-                                                      color: AppTheme.textPrimary,
+                                                      color: Theme.of(context).colorScheme.onSurface,
                                                       fontSize: 14,
                                                       fontWeight: FontWeight.w500,
                                                     ),
@@ -2124,7 +2121,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                                         ? 'Código: ${option.codigo}'
                                                         : 'Código: ${option.id}',
                                                     style: TextStyle(
-                                                      color: AppTheme.textSecondary,
+                                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                                       fontSize: 12,
                                                     ),
                                                   ),
@@ -2155,13 +2152,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         child: TextField(
                           controller: _cantidadController,
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 14,
                           ),
                           decoration: InputDecoration(
                             labelText: 'Cantidad',
                             labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             border: OutlineInputBorder(),
                             contentPadding: EdgeInsets.symmetric(
@@ -2169,7 +2166,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                               vertical: 8,
                             ),
                             filled: true,
-                            fillColor: AppTheme.surfaceDark,
+                            fillColor: Theme.of(context).colorScheme.surface,
                           ),
                           keyboardType: TextInputType.number,
                         ),
@@ -2180,23 +2177,23 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         child: TextField(
                           controller: _valorUnitController,
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 14,
                           ),
                           decoration: InputDecoration(
                             labelText: 'Valor unit',
                             labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             prefixText: '\$',
-                            prefixStyle: TextStyle(color: AppTheme.textPrimary),
+                            prefixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                             border: OutlineInputBorder(),
                             contentPadding: EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 8,
                             ),
                             filled: true,
-                            fillColor: AppTheme.surfaceDark,
+                            fillColor: Theme.of(context).colorScheme.surface,
                           ),
                           keyboardType: TextInputType.number,
                         ),
@@ -2207,16 +2204,16 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         child: TextField(
                           enabled: false,
                           style: TextStyle(
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontSize: 14,
                           ),
                           decoration: InputDecoration(
                             labelText: 'Valor tot',
                             labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             filled: true,
-                            fillColor: AppTheme.surfaceDark.withOpacity(0.5),
+                            fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.5),
                             border: OutlineInputBorder(),
                             contentPadding: EdgeInsets.symmetric(
                               horizontal: 12,
@@ -2236,7 +2233,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     Container(
                       padding: EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppTheme.surfaceDark,
+                        color: Theme.of(context).colorScheme.surface,
                         border: Border.all(
                           color: AppTheme.primary.withOpacity(0.3),
                           width: 1,
@@ -2251,7 +2248,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                               Text(
                                 'Stock disponible: ${_productoSeleccionado!.nombre}',
                                 style: TextStyle(
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 13,
                                 ),
@@ -2397,14 +2394,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         child: DropdownButtonFormField<String>(
                           value: _origenSeleccionado,
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 14,
                           ),
-                          dropdownColor: AppTheme.surfaceDark,
+                          dropdownColor: Theme.of(context).colorScheme.surface,
                           decoration: InputDecoration(
                             labelText: 'Origen',
                             labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             hintText: 'Seleccionar...',
                             border: OutlineInputBorder(),
@@ -2413,10 +2410,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                               vertical: 8,
                             ),
                             filled: true,
-                            fillColor: AppTheme.surfaceDark,
+                            fillColor: Theme.of(context).colorScheme.surface,
                             prefixIcon: Icon(
                               Icons.warehouse,
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                           ),
                           items: ['BODEGA', 'ALMACÉN']
@@ -2436,7 +2433,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                       Text(
                         'Selecciona de dónde vender',
                         style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 12,
                           fontStyle: FontStyle.italic,
                         ),
@@ -2452,14 +2449,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         child: DropdownButtonFormField<String>(
                           value: _tipoImpuesto,
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 14,
                           ),
-                          dropdownColor: AppTheme.surfaceDark,
+                          dropdownColor: Theme.of(context).colorScheme.surface,
                           decoration: InputDecoration(
                             labelText: 'Tipo Impuesto',
                             labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             border: OutlineInputBorder(),
                             contentPadding: EdgeInsets.symmetric(
@@ -2467,7 +2464,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                               vertical: 8,
                             ),
                             filled: true,
-                            fillColor: AppTheme.surfaceDark,
+                            fillColor: Theme.of(context).colorScheme.surface,
                           ),
                           items: ['IVA', 'IMPOCONSUMO', 'NINGUNO']
                               .map(
@@ -2487,13 +2484,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         child: TextField(
                           controller: _porcentajeImpuestoController,
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 14,
                           ),
                           decoration: InputDecoration(
                             labelText: '% Imp.',
                             labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             border: OutlineInputBorder(),
                             contentPadding: EdgeInsets.symmetric(
@@ -2501,7 +2498,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                               vertical: 8,
                             ),
                             filled: true,
-                            fillColor: AppTheme.surfaceDark,
+                            fillColor: Theme.of(context).colorScheme.surface,
                           ),
                           keyboardType: TextInputType.number,
                           onChanged: (value) => setState(() {}),
@@ -2513,14 +2510,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         child: DropdownButtonFormField<String>(
                           value: _porcentajeTipoDescuento,
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 14,
                           ),
-                          dropdownColor: AppTheme.surfaceDark,
+                          dropdownColor: Theme.of(context).colorScheme.surface,
                           decoration: InputDecoration(
                             labelText: 'Porcer',
                             labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             border: OutlineInputBorder(),
                             contentPadding: EdgeInsets.symmetric(
@@ -2528,7 +2525,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                               vertical: 8,
                             ),
                             filled: true,
-                            fillColor: AppTheme.surfaceDark,
+                            fillColor: Theme.of(context).colorScheme.surface,
                           ),
                           items: ['Porcentaje', 'Valor']
                               .map(
@@ -2548,13 +2545,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         child: TextField(
                           controller: _porcentajeDescuentoController,
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 14,
                           ),
                           decoration: InputDecoration(
                             labelText: '% Descue',
                             labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             border: OutlineInputBorder(),
                             contentPadding: EdgeInsets.symmetric(
@@ -2562,7 +2559,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                               vertical: 8,
                             ),
                             filled: true,
-                            fillColor: AppTheme.surfaceDark,
+                            fillColor: Theme.of(context).colorScheme.surface,
                           ),
                           keyboardType: TextInputType.number,
                           onChanged: (value) => setState(() {}),
@@ -2578,7 +2575,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primary,
-                          foregroundColor: Colors.black87,
+                          foregroundColor: Colors.white,
                           padding: EdgeInsets.symmetric(
                             horizontal: 24,
                             vertical: 20,
@@ -2601,7 +2598,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       return Container(
         padding: EdgeInsets.all(48),
         decoration: BoxDecoration(
-          color: AppTheme.cardBg,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
@@ -2617,12 +2614,12 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               Icon(
                 Icons.shopping_cart_outlined,
                 size: 64,
-                color: AppTheme.textSecondary,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               ),
               SizedBox(height: 16),
               Text(
                 'No hay productos agregados',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 16),
               ),
             ],
           ),
@@ -2632,7 +2629,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
@@ -2655,7 +2652,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     'Producto',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -2665,7 +2662,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     'Cantidad',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -2675,7 +2672,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     'P. Unit',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -2685,7 +2682,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     'Impuesto',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -2695,7 +2692,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     'Descuento',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -2705,7 +2702,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     'Total',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -2715,7 +2712,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     'Origen',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -2730,7 +2727,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             itemCount: _items.length,
             separatorBuilder: (context, index) => Divider(
               height: 1,
-              color: AppTheme.textSecondary.withOpacity(0.2),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.2),
             ),
             itemBuilder: (context, index) {
               final item = _items[index];
@@ -2745,21 +2742,21 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                       flex: 3,
                       child: Text(
                         item.productoNombre ?? 'Producto',
-                        style: TextStyle(color: AppTheme.textPrimary),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       ),
                     ),
                     Expanded(
                       flex: 1,
                       child: Text(
                         '${item.cantidad}',
-                        style: TextStyle(color: AppTheme.textPrimary),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       ),
                     ),
                     Expanded(
                       flex: 1,
                       child: Text(
                         '\$${item.precioUnitario.toStringAsFixed(0)}',
-                        style: TextStyle(color: AppTheme.textPrimary),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       ),
                     ),
                     Expanded(
@@ -2768,7 +2765,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         '\$${item.subtotal.toStringAsFixed(0)}',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ),
@@ -2815,7 +2812,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   Widget _buildRetencionesYAIU() {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
@@ -2837,7 +2834,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   Spacer(),
@@ -2845,7 +2842,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     _retencionesExpanded
                         ? Icons.keyboard_arrow_up
                         : Icons.keyboard_arrow_down,
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   ),
                 ],
               ),
@@ -2977,7 +2974,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         Text(
           label,
           style: TextStyle(
-            color: AppTheme.textSecondary,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
@@ -2986,15 +2983,15 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         TextField(
           controller: controller,
           keyboardType: TextInputType.numberWithOptions(decimal: true),
-          style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
           onChanged: (value) => setState(() {}),
           decoration: InputDecoration(
             border: OutlineInputBorder(),
             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             filled: true,
-            fillColor: AppTheme.surfaceDark,
+            fillColor: Theme.of(context).colorScheme.surface,
             suffixText: suffix,
-            suffixStyle: TextStyle(color: AppTheme.textSecondary),
+            suffixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
           ),
         ),
       ],
@@ -3238,7 +3235,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
   void _crearCliente() async {
     // Navegar al formulario de crear cliente
-    final resultado = await Navigator.pushNamed(context, '/clientes/form');
+    final resultado = await context.push('/clientes/form');
 
     // Si se creó un cliente, actualizar el campo y la lista
     if (resultado != null && resultado is Cliente) {
@@ -3258,7 +3255,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
       ),
@@ -3274,7 +3271,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ],
@@ -3297,12 +3294,12 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                   decoration: BoxDecoration(
                     color: isSelected
                         ? AppTheme.primary.withOpacity(0.2)
-                        : AppTheme.surfaceDark,
+                        : Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isSelected
                           ? AppTheme.primary
-                          : AppTheme.textMuted.withOpacity(0.3),
+                          : Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3),
                       width: isSelected ? 2 : 1,
                     ),
                   ),
@@ -3313,7 +3310,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         metodo['icon'],
                         color: isSelected
                             ? AppTheme.primary
-                            : AppTheme.textSecondary,
+                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         size: 24,
                       ),
                       SizedBox(width: 8),
@@ -3322,7 +3319,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         style: TextStyle(
                           color: isSelected
                               ? AppTheme.primary
-                              : AppTheme.textPrimary,
+                              : Theme.of(context).colorScheme.onSurface,
                           fontWeight: isSelected
                               ? FontWeight.bold
                               : FontWeight.normal,
@@ -3337,14 +3334,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           // Campos para pago múltiple
           if (_metodoPago == 'multiple') ...[
             SizedBox(height: 20),
-            Divider(color: AppTheme.textMuted.withOpacity(0.3)),
+            Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3)),
             SizedBox(height: 16),
             Text(
               'Distribución del pago',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             SizedBox(height: 12),
@@ -3359,7 +3356,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         ),
                       ),
                       SizedBox(height: 8),
@@ -3369,7 +3366,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                           decimal: true,
                         ),
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 16,
                         ),
                         decoration: InputDecoration(
@@ -3379,13 +3376,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             vertical: 16,
                           ),
                           filled: true,
-                          fillColor: AppTheme.surfaceDark,
+                          fillColor: Theme.of(context).colorScheme.surface,
                           prefixIcon: Icon(
                             Icons.attach_money,
                             color: AppTheme.primary,
                           ),
                           hintText: '0.00',
-                          hintStyle: TextStyle(color: AppTheme.textSecondary),
+                          hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                         ),
                         onChanged: (value) {
                           setState(() {});
@@ -3404,7 +3401,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         ),
                       ),
                       SizedBox(height: 8),
@@ -3414,7 +3411,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                           decimal: true,
                         ),
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 16,
                         ),
                         decoration: InputDecoration(
@@ -3424,13 +3421,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             vertical: 16,
                           ),
                           filled: true,
-                          fillColor: AppTheme.surfaceDark,
+                          fillColor: Theme.of(context).colorScheme.surface,
                           prefixIcon: Icon(
                             Icons.account_balance,
                             color: AppTheme.primary,
                           ),
                           hintText: '0.00',
-                          hintStyle: TextStyle(color: AppTheme.textSecondary),
+                          hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                         ),
                         onChanged: (value) {
                           setState(() {});
@@ -3453,7 +3450,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         ),
                       ),
                       SizedBox(height: 8),
@@ -3463,7 +3460,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                           decimal: true,
                         ),
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 16,
                         ),
                         decoration: InputDecoration(
@@ -3473,13 +3470,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             vertical: 16,
                           ),
                           filled: true,
-                          fillColor: AppTheme.surfaceDark,
+                          fillColor: Theme.of(context).colorScheme.surface,
                           prefixIcon: Icon(
                             Icons.credit_card,
                             color: AppTheme.primary,
                           ),
                           hintText: '0.00',
-                          hintStyle: TextStyle(color: AppTheme.textSecondary),
+                          hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                         ),
                         onChanged: (value) {
                           setState(() {});
@@ -3498,7 +3495,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         ),
                       ),
                       SizedBox(height: 8),
@@ -3508,7 +3505,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                           decimal: true,
                         ),
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 16,
                         ),
                         decoration: InputDecoration(
@@ -3518,13 +3515,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             vertical: 16,
                           ),
                           filled: true,
-                          fillColor: AppTheme.surfaceDark,
+                          fillColor: Theme.of(context).colorScheme.surface,
                           prefixIcon: Icon(
                             Icons.card_giftcard,
                             color: AppTheme.primary,
                           ),
                           hintText: '0.00',
-                          hintStyle: TextStyle(color: AppTheme.textSecondary),
+                          hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                         ),
                         onChanged: (value) {
                           setState(() {});
@@ -3574,14 +3571,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Row(
             children: [
               Icon(Icons.drafts, color: AppTheme.primary),
               SizedBox(width: 8),
               Text(
                 'Facturas en borrador',
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
             ],
           ),
@@ -3593,25 +3590,25 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               itemBuilder: (context, index) {
                 final borrador = borradores[index];
                 return Card(
-                  color: AppTheme.surfaceDark,
+                  color: Theme.of(context).colorScheme.surface,
                   margin: EdgeInsets.only(bottom: 8),
                   child: ListTile(
                     leading: Icon(Icons.receipt, color: AppTheme.primary),
                     title: Text(
                       borrador.cliente ?? 'Sin cliente',
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           '${borrador.items.length} productos - \$${borrador.total.toStringAsFixed(0)}',
-                          style: TextStyle(color: AppTheme.textSecondary),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                         ),
                         Text(
                           '${borrador.fecha.day}/${borrador.fecha.month}/${borrador.fecha.year}',
                           style: TextStyle(
-                            color: AppTheme.textMuted,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                             fontSize: 12,
                           ),
                         ),
@@ -3793,14 +3790,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Row(
           children: [
             Icon(Icons.sticky_note_2_outlined, color: Colors.orange),
             SizedBox(width: 8),
             Text(
               'Confirmar Deuda',
-              style: TextStyle(color: Colors.black87),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
           ],
         ),
@@ -3811,7 +3808,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             Text(
               '¿Desea registrar esta venta como deuda?',
               style: TextStyle(
-                color: Colors.black87,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -3845,7 +3842,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             Text(
               'Esta deuda quedará pendiente de pago y aparecerá en la sección de Cartera.',
               style: TextStyle(
-                color: Colors.black54,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                 fontSize: 13,
               ),
             ),
@@ -3953,7 +3950,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                 label: 'Ver en Cartera',
                 textColor: Colors.white,
                 onPressed: () {
-                  Navigator.pushNamed(context, '/cuentas-por-cobrar');
+                  context.push('/cuentas-por-cobrar');
                 },
               ),
             ),
@@ -3984,14 +3981,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         Text(
           label,
           style: TextStyle(
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.w500,
           ),
         ),
         Text(
           value,
           style: TextStyle(
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -4319,7 +4316,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               context: context,
               barrierDismissible: false,
               builder: (dialogContext) => AlertDialog(
-                backgroundColor: AppTheme.cardBg,
+                backgroundColor: Theme.of(context).colorScheme.surface,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -4353,7 +4350,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                           Text(
                             'Total: \$${total.toStringAsFixed(0)}',
                             style: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                               fontSize: 14,
                             ),
                           ),
@@ -4368,7 +4365,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     Text(
                       '¿Qué desea hacer con la factura?',
                       style: TextStyle(
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 14,
                       ),
                     ),
@@ -4475,7 +4472,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     },
                     child: Text(
                       'Cerrar',
-                      style: TextStyle(color: AppTheme.textSecondary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     ),
                   ),
                 ],
@@ -4787,7 +4784,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
@@ -4814,7 +4811,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                   Text(
                     'ID: ${pedido.id}',
                     style: AppTheme.bodySmall.copyWith(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     ),
                   ),
                 ],
@@ -4830,7 +4827,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             Container(
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppTheme.backgroundDark,
+                color: Theme.of(context).scaffoldBackgroundColor,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
@@ -4840,14 +4837,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                   _buildResumenItem('Forma de pago', _formatearFormaPago(medioPago)),
                   if (descuento > 0) _buildResumenItem('Descuento', '-\$${descuento.toStringAsFixed(0)}'),
                   if (propina > 0) _buildResumenItem('Propina', '+\$${propina.toStringAsFixed(0)}'),
-                  Divider(color: AppTheme.textSecondary.withOpacity(0.3)),
+                  Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3)),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         'TOTAL PAGADO',
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
@@ -4868,7 +4865,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             SizedBox(height: 16),
             Text(
               '¿Qué desea hacer con la factura?',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
             ),
             SizedBox(height: 12),
             // Opciones de impresión
@@ -4908,7 +4905,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             },
             child: Text(
               'Cerrar sin imprimir',
-              style: TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
             ),
           ),
         ],
@@ -4924,11 +4921,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         children: [
           Text(
             label,
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
           ),
           Text(
             valor,
-            style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
           ),
         ],
       ),
@@ -4992,12 +4989,12 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           content: Row(
             children: [
               CircularProgressIndicator(color: AppTheme.primary),
               SizedBox(width: 16),
-              Text('Generando PDF...', style: TextStyle(color: AppTheme.textPrimary)),
+              Text('Generando PDF...', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
             ],
           ),
         ),
@@ -5064,12 +5061,12 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           content: Row(
             children: [
               CircularProgressIndicator(color: AppTheme.primary),
               SizedBox(width: 16),
-              Text('Preparando impresión...', style: TextStyle(color: AppTheme.textPrimary)),
+              Text('Preparando impresión...', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
             ],
           ),
         ),
@@ -5369,34 +5366,34 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     final nombreFinal = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Text(
           'Nombre del archivo',
-          style: TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               'Personaliza el nombre del archivo PDF:',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
             ),
             SizedBox(height: 12),
             TextField(
               controller: controladorNombre,
               autofocus: true,
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: InputDecoration(
                 hintText: 'Nombre del archivo',
-                hintStyle: TextStyle(color: AppTheme.textSecondary),
+                hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                 filled: true,
-                fillColor: AppTheme.surfaceDark,
+                fillColor: Theme.of(context).colorScheme.surface,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide.none,
                 ),
                 suffixText: '.pdf',
-                suffixStyle: TextStyle(color: AppTheme.textSecondary),
+                suffixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               ),
             ),
           ],
@@ -5406,7 +5403,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
               'Cancelar',
-              style: TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
             ),
           ),
           ElevatedButton.icon(

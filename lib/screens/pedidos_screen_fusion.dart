@@ -97,11 +97,11 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   // Colores del tema ahora se usan desde AppTheme
   // Variables de compatibilidad temporal para evitar errores de compilación
   Color get primary => AppTheme.primary;
-  Color get cardBg => AppTheme.cardBg;
-  Color get textDark => AppTheme.textDark; // Ahora es blanco desde el tema
+  Color get cardBg => Theme.of(context).colorScheme.surface;
+  Color get textDark => Theme.of(context).colorScheme.onSurface; // Ahora es blanco desde el tema
   Color get textLight =>
-      AppTheme.textLight; // Ahora es gris claro con buen contraste
-  Color get bgDark => AppTheme.backgroundDark;
+      Theme.of(context).colorScheme.onSurface.withOpacity(0.5); // Ahora es gris claro con buen contraste
+  Color get bgDark => Theme.of(context).scaffoldBackgroundColor;
 
   final TextEditingController _busquedaController = TextEditingController();
   late TabController _tabController;
@@ -502,7 +502,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Text('Cancelar Pedido', style: AppTheme.headlineMedium),
           content: Text(
             '¿Estás seguro de que quieres cancelar el pedido de la mesa ${pedido.mesa}?',
@@ -513,7 +513,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
               onPressed: () => Navigator.of(context).pop(false),
               child: Text(
                 'No',
-                style: TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               ),
             ),
             ElevatedButton(
@@ -629,7 +629,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              backgroundColor: AppTheme.cardBg,
+              backgroundColor: Theme.of(context).colorScheme.surface,
               title: Row(
                 children: [
                   Icon(Icons.delete_forever, color: Colors.red, size: 28),
@@ -655,7 +655,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                     // Campo de búsqueda
                     Container(
                       decoration: BoxDecoration(
-                        color: AppTheme.backgroundDark,
+                        color: Theme.of(context).scaffoldBackgroundColor,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: AppTheme.primary.withOpacity(0.3),
@@ -663,10 +663,10 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                       ),
                       child: TextField(
                         controller: busquedaEliminarController,
-                        style: TextStyle(color: AppTheme.textPrimary),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         decoration: InputDecoration(
                           hintText: 'Buscar por mesa, cliente, ID o total...',
-                          hintStyle: TextStyle(color: AppTheme.textSecondary),
+                          hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                           prefixIcon: Icon(
                             Icons.search,
                             color: AppTheme.primary,
@@ -680,7 +680,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                               ? IconButton(
                                   icon: Icon(
                                     Icons.clear,
-                                    color: AppTheme.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   ),
                                   onPressed: () {
                                     setState(() {
@@ -733,14 +733,14 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                                   title: Text(
                                     'Mesa ${pedido.mesa} - ${pedido.cliente ?? "Sin cliente"}',
                                     style: TextStyle(
-                                      color: AppTheme.textPrimary,
+                                      color: Theme.of(context).colorScheme.onSurface,
                                       fontSize: 14,
                                     ),
                                   ),
                                   subtitle: Text(
                                     'Total: ${formatCurrency(_getTotalCorrecto(pedido))}',
                                     style: TextStyle(
-                                      color: AppTheme.textSecondary,
+                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                       fontSize: 12,
                                     ),
                                   ),
@@ -760,20 +760,20 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                                   children: [
                                     Icon(
                                       Icons.search_off,
-                                      color: AppTheme.textSecondary,
+                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                       size: 48,
                                     ),
                                     SizedBox(height: 8),
                                     Text(
                                       'No se encontraron pedidos',
                                       style: AppTheme.bodyMedium.copyWith(
-                                        color: AppTheme.textSecondary,
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                       ),
                                     ),
                                     Text(
                                       'que coincidan con "$busquedaEliminar"',
                                       style: AppTheme.bodySmall.copyWith(
-                                        color: AppTheme.textSecondary,
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                       ),
                                     ),
                                   ],
@@ -832,14 +832,14 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                                   title: Text(
                                     'Mesa ${pedido.mesa} - ${pedido.cliente ?? "Sin cliente"}',
                                     style: TextStyle(
-                                      color: AppTheme.textPrimary,
+                                      color: Theme.of(context).colorScheme.onSurface,
                                       fontSize: 14,
                                     ),
                                   ),
                                   subtitle: Text(
                                     'Total: ${formatCurrency(_getTotalCorrecto(pedido))} - ${_generarTextoPagoMixto(pedido)}',
                                     style: TextStyle(
-                                      color: AppTheme.textSecondary,
+                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                       fontSize: 12,
                                     ),
                                   ),
@@ -862,7 +862,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                   },
                   child: Text(
                     'Cancelar',
-                    style: TextStyle(color: AppTheme.textSecondary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   ),
                 ),
                 ElevatedButton(
@@ -1060,12 +1060,12 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     if (!userProvider.isAdmin) {
       // Si el usuario no es admin, mostrar pantalla de acceso restringido
       return Scaffold(
-        backgroundColor: AppTheme.backgroundDark,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: CustomScrollView(
           controller: _scrollController,
           slivers: [
             SliverAppBar(
-              backgroundColor: AppTheme.primary,
+              backgroundColor: Theme.of(context).colorScheme.surface,
               elevation: 0,
               floating: true,
               pinned: false,
@@ -1075,7 +1075,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                 title: Text(
                   'Pedidos',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1088,7 +1088,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                   margin: EdgeInsets.all(20),
                   padding: EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: AppTheme.cardBg,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: Colors.red.withOpacity(0.3)),
                   ),
@@ -1100,7 +1100,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                       Text(
                         'Acceso Restringido',
                         style: TextStyle(
-                          color: AppTheme.textDark,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -1108,7 +1108,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                       SizedBox(height: 8),
                       Text(
                         'Necesitas permisos de administrador para acceder a esta sección.',
-                        style: TextStyle(color: AppTheme.textLight),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -1122,13 +1122,13 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     }
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         controller: _scrollController,
         slivers: [
           // AppBar que se oculta al hacer scroll
           SliverAppBar(
-            backgroundColor: AppTheme.primary,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             elevation: 0,
             floating: true, // Se muestra al scroll hacia arriba
             pinned: false, // No se queda fijo arriba
@@ -1140,12 +1140,12 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                   Container(
                     padding: EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: AppTheme.primary.withOpacity(0.2),
+                      color: AppTheme.primary.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
                       Icons.receipt_long,
-                      color: Colors.white,
+                      color: AppTheme.primary,
                       size: 20,
                     ),
                   ),
@@ -1158,14 +1158,17 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                         Text(
                           'Gestión de Pedidos',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         Text(
                           'Administración completa',
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
@@ -1174,7 +1177,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
               ),
             ),
             leading: IconButton(
-              icon: Icon(Icons.arrow_back, color: Colors.white),
+              icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
               onPressed: () => Navigator.of(context).pop(),
             ),
             actions: [
@@ -1183,13 +1186,13 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                 margin: EdgeInsets.only(right: 8),
                 padding: EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.2),
+                  color: Colors.red.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: IconButton(
                   icon: Icon(
                     Icons.delete_forever,
-                    color: Colors.white,
+                    color: Colors.red,
                     size: 20,
                   ),
                   onPressed: () => _mostrarDialogoEliminarPedidos(),
@@ -1200,11 +1203,11 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                 margin: EdgeInsets.only(right: 16),
                 padding: EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: AppTheme.primary.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: IconButton(
-                  icon: Icon(Icons.refresh, color: Colors.white, size: 20),
+                  icon: Icon(Icons.refresh, color: AppTheme.primary, size: 20),
                   onPressed: _cargarPedidos,
                   tooltip: 'Actualizar pedidos',
                 ),
@@ -1220,7 +1223,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                 margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppTheme.cardBg,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
                 ),
@@ -1232,13 +1235,13 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                       child: TextField(
                         controller: _busquedaController,
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 16,
                         ),
                         decoration: InputDecoration(
                           hintText: 'Buscar por ID, cliente, mesa o mesero...',
                           hintStyle: TextStyle(
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontSize: 14,
                           ),
                           border: InputBorder.none,
@@ -1253,7 +1256,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                         },
                         icon: Icon(
                           Icons.clear,
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           size: 18,
                         ),
                       ),
@@ -1375,7 +1378,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                       child: Text(
                         'Incluye todas las mesas: físicas (A1, B2...) + especiales (DOMICILIO, CAJA, etc.)',
                         style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 11,
                         ),
                       ),
@@ -1449,7 +1452,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                         children: [
                           Icon(
                             Icons.inbox_outlined,
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             size: 64,
                           ),
                           SizedBox(height: 16),
@@ -1461,7 +1464,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                           Text(
                             'No hay pedidos que coincidan con los filtros seleccionados',
                             style: AppTheme.bodyMedium.copyWith(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -2190,7 +2193,7 @@ class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return Container(color: AppTheme.backgroundDark, child: child);
+    return Container(color: Theme.of(context).scaffoldBackgroundColor, child: child);
   }
 
   @override
@@ -2217,7 +2220,7 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return Container(color: AppTheme.backgroundDark, child: tabBar);
+    return Container(color: Theme.of(context).scaffoldBackgroundColor, child: tabBar);
   }
 
   @override

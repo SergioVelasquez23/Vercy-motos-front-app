@@ -43,6 +43,8 @@ class Factura {
   final String? respuestaDIAN; // XML respuesta de DIAN
   final String? motivoRechazo; // Razón del rechazo si aplica
   final String? trackId; // ID de seguimiento en DIAN
+  /// XmlDocumentKey — hex largo que Matías exige para `GET /api/ubl2.1/documents/pdf/{key}`.
+  final String? xmlDocumentKey;
 
   // ===== CAMPOS FISCALES / TRIBUTARIOS =====
   final String? formaPago; // "Contado", "Crédito"
@@ -87,6 +89,7 @@ class Factura {
     this.respuestaDIAN,
     this.motivoRechazo,
     this.trackId,
+    this.xmlDocumentKey,
     // Tributarios
     this.formaPago,
     this.tipoDescuento,
@@ -132,6 +135,7 @@ class Factura {
     String? respuestaDIAN,
     String? motivoRechazo,
     String? trackId,
+    String? xmlDocumentKey,
     String? formaPago,
     String? tipoDescuento,
     double? baseGravable,
@@ -175,6 +179,7 @@ class Factura {
       respuestaDIAN: respuestaDIAN ?? this.respuestaDIAN,
       motivoRechazo: motivoRechazo ?? this.motivoRechazo,
       trackId: trackId ?? this.trackId,
+      xmlDocumentKey: xmlDocumentKey ?? this.xmlDocumentKey,
       formaPago: formaPago ?? this.formaPago,
       tipoDescuento: tipoDescuento ?? this.tipoDescuento,
       baseGravable: baseGravable ?? this.baseGravable,
@@ -225,6 +230,7 @@ class Factura {
       if (respuestaDIAN != null) 'respuestaDIAN': respuestaDIAN,
       if (motivoRechazo != null) 'motivoRechazo': motivoRechazo,
       if (trackId != null) 'trackId': trackId,
+      if (xmlDocumentKey != null) 'xmlDocumentKey': xmlDocumentKey,
       // Tributarios
       if (formaPago != null) 'formaPago': formaPago,
       if (tipoDescuento != null) 'tipoDescuento': tipoDescuento,
@@ -303,6 +309,9 @@ class Factura {
       respuestaDIAN: json['respuestaDIAN'],
       motivoRechazo: json['motivoRechazo'],
       trackId: json['trackId'],
+      xmlDocumentKey: json['xmlDocumentKey']?.toString()
+          ?? json['XmlDocumentKey']?.toString()
+          ?? json['xml_document_key']?.toString(),
       // Tributarios
       formaPago: json['formaPago'],
       tipoDescuento: json['tipoDescuento'],

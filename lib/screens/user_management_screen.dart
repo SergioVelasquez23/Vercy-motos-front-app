@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/user_management_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/vercy_sidebar_layout.dart';
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -51,10 +50,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Text(
             'Cambiar Rol de ${user['name'] ?? user['nombre'] ?? 'Usuario'}',
-            style: TextStyle(color: AppTheme.textPrimary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -62,18 +61,18 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             children: [
               Text(
                 'Email: ${user['email']}',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
               ),
               SizedBox(height: 8),
               Text(
                 'Rol actual: ${_formatRoleName(selectedRole)}',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
               ),
               SizedBox(height: 24),
               Text(
                 'Seleccionar nuevo rol:',
                 style: TextStyle(
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -83,12 +82,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 return RadioListTile<String>(
                   title: Text(
                     _formatRoleName(role),
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   ),
                   subtitle: Text(
                     _getRoleDescription(role),
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 12,
                     ),
                   ),
@@ -109,7 +108,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               onPressed: () => Navigator.pop(context),
               child: Text(
                 'Cancelar',
-                style: TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               ),
             ),
             ElevatedButton(
@@ -185,16 +184,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Text(
           newStatus ? 'Activar Usuario' : 'Desactivar Usuario',
-          style: TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Text(
           newStatus
               ? '¿Deseas activar a $nombre?'
               : '¿Deseas desactivar a $nombre? No podrá acceder al sistema.',
-          style: TextStyle(color: AppTheme.textSecondary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
         ),
         actions: [
           TextButton(
@@ -286,10 +285,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return VercySidebarLayout(
-      title: 'Gestión de Usuarios',
-      child: Scaffold(
-        backgroundColor: AppTheme.backgroundDark,
+    return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: _isLoading
             ? Center(
                 child: CircularProgressIndicator(
@@ -305,7 +302,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     SizedBox(height: 16),
                     Text(
                       _errorMessage!,
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 16),
@@ -323,7 +320,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         child: Text(
                           'No hay usuarios registrados',
                           style: TextStyle(
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontSize: 16,
                           ),
                         ),
@@ -337,8 +334,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         },
                       ),
               ),
-      ),
-    );
+      );
   }
 
   Widget _buildUserCard(Map<String, dynamic> user) {
@@ -353,7 +349,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
     return Card(
       margin: EdgeInsets.only(bottom: 12),
-      color: AppTheme.cardBg,
+      color: Theme.of(context).colorScheme.surface,
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
@@ -383,7 +379,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       Text(
                         nombre,
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
@@ -392,7 +388,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       Text(
                         email,
                         style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 14,
                         ),
                       ),
@@ -470,13 +466,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   Icon(
                     Icons.calendar_today,
                     size: 14,
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   ),
                   SizedBox(width: 4),
                   Text(
                     'Registrado: ${_formatDate(fechaCreacion)}',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 12,
                     ),
                   ),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../models/bodega.dart';
 import '../services/bodega_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/vercy_sidebar_layout.dart';
 
 /// Pantalla para gestionar bodegas/almacenes/ubicaciones de inventario
 class BodegasScreen extends StatefulWidget {
@@ -111,7 +110,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -135,7 +134,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
                     ? 'Editar Ubicación de Inventario'
                     : 'Nueva Ubicación de Inventario',
                 style: TextStyle(
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -176,7 +175,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
                   Text(
                     'Tipo de Ubicación',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 13,
                     ),
                   ),
@@ -184,18 +183,18 @@ class _BodegasScreenState extends State<BodegasScreen> {
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      color: AppTheme.surfaceDark,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: AppTheme.textSecondary.withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                       ),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: tipoSeleccionado,
                         isExpanded: true,
-                        dropdownColor: AppTheme.cardBg,
-                        style: TextStyle(color: AppTheme.textPrimary),
+                        dropdownColor: Theme.of(context).colorScheme.surface,
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         items: tipos.map((tipo) {
                           return DropdownMenuItem(
                             value: tipo,
@@ -264,7 +263,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: AppTheme.surfaceDark,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -281,7 +280,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
                             Text(
                               'Ubicación Activa',
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 14,
                               ),
                             ),
@@ -306,7 +305,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
               onPressed: guardando ? null : () => Navigator.pop(context),
               child: Text(
                 'Cancelar',
-                style: TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               ),
             ),
             ElevatedButton(
@@ -398,30 +397,30 @@ class _BodegasScreenState extends State<BodegasScreen> {
       children: [
         Text(
           label,
-          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
         ),
         SizedBox(height: 6),
         TextField(
           controller: controller,
-          style: TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           maxLines: maxLines,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(
-              color: AppTheme.textSecondary.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.5),
             ),
             filled: true,
-            fillColor: AppTheme.surfaceDark,
+            fillColor: Theme.of(context).colorScheme.surface,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: AppTheme.textSecondary.withOpacity(0.3),
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: AppTheme.textSecondary.withOpacity(0.3),
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
               ),
             ),
             focusedBorder: OutlineInputBorder(
@@ -456,7 +455,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
     final confirmado = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
@@ -464,7 +463,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
             SizedBox(width: 12),
             Text(
               'Eliminar Ubicación',
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
           ],
         ),
@@ -474,7 +473,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
           children: [
             Text(
               '¿Estás seguro de que deseas eliminar "${bodega.nombre}"?',
-              style: TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
             ),
             SizedBox(height: 12),
             Container(
@@ -504,7 +503,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
             onPressed: () => Navigator.pop(context, false),
             child: Text(
               'Cancelar',
-              style: TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
             ),
           ),
           ElevatedButton(
@@ -532,16 +531,18 @@ class _BodegasScreenState extends State<BodegasScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return VercySidebarLayout(
-      title: 'Ubicaciones de Inventario',
-      child: Container(
-        padding: EdgeInsets.all(24),
+    final isMobile = context.isMobile;
+    return Container(
+        padding: EdgeInsets.all(isMobile ? 12 : 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -549,17 +550,17 @@ class _BodegasScreenState extends State<BodegasScreen> {
                     Text(
                       'Ubicaciones de Inventario',
                       style: TextStyle(
-                        fontSize: 24,
+                        fontSize: isMobile ? 20 : 24,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     SizedBox(height: 4),
                     Text(
                       'Gestiona las bodegas, almacenes y puntos de inventario',
                       style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 14,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                        fontSize: isMobile ? 12 : 14,
                       ),
                     ),
                   ],
@@ -568,42 +569,40 @@ class _BodegasScreenState extends State<BodegasScreen> {
                   onPressed: () => _mostrarDialogoBodega(),
                   icon: Icon(Icons.add_location, color: Colors.white),
                   label: Text(
-                    'Nueva Ubicación',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    isMobile ? 'Nueva' : 'Nueva Ubicación',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primary,
-                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: isMobile ? 14 : 24, vertical: isMobile ? 12 : 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
               ],
             ),
-            SizedBox(height: 24),
+            SizedBox(height: isMobile ? 16 : 24),
 
             // Filtros
             Container(
               padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.cardBg,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.grey.shade800),
               ),
-              child: Row(
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   // Buscador
-                  Expanded(
-                    flex: 3,
+                  SizedBox(
+                    width: isMobile ? double.infinity : 320,
                     child: TextField(
                       controller: _searchController,
                       onChanged: (_) => _aplicarFiltros(),
                       style: TextStyle(
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 14,
                       ),
                       decoration: InputDecoration(
@@ -611,7 +610,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
                         hintStyle: TextStyle(color: Colors.grey.shade500),
                         prefixIcon: Icon(Icons.search, color: Colors.grey),
                         filled: true,
-                        fillColor: AppTheme.surfaceDark,
+                        fillColor: Theme.of(context).colorScheme.surface,
                         contentPadding: EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 12,
@@ -634,21 +633,19 @@ class _BodegasScreenState extends State<BodegasScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(width: 16),
-
                   // Filtro por estado
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      color: AppTheme.surfaceDark,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.grey.shade700),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: _filtroEstado,
-                        dropdownColor: AppTheme.cardBg,
-                        style: TextStyle(color: AppTheme.textPrimary),
+                        dropdownColor: Theme.of(context).colorScheme.surface,
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         icon: Icon(Icons.arrow_drop_down, color: Colors.grey),
                         items: [
                           DropdownMenuItem(
@@ -671,16 +668,12 @@ class _BodegasScreenState extends State<BodegasScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(width: 16),
-
                   // Botón refrescar
                   IconButton(
                     onPressed: _cargarBodegas,
                     icon: Icon(Icons.refresh, color: AppTheme.primary),
                     tooltip: 'Recargar',
                   ),
-
-                  SizedBox(width: 8),
                   Text(
                     '${_bodegasFiltradas.length} ubicaciones',
                     style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
@@ -702,8 +695,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildEmptyState() {
@@ -765,7 +757,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
   Widget _buildBodegaCard(Bodega bodega) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: bodega.activa
@@ -819,7 +811,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
                         Text(
                           bodega.codigo!,
                           style: TextStyle(
-                            color: AppTheme.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontSize: 12,
                           ),
                         ),
@@ -871,7 +863,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
                       child: Text(
                         bodega.descripcion!,
                         style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 12,
                         ),
                         maxLines: 2,
@@ -887,7 +879,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDark.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.surface.withOpacity(0.5),
               borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
             ),
             child: Row(
@@ -951,12 +943,12 @@ class _BodegasScreenState extends State<BodegasScreen> {
       padding: EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
-          Icon(icon, size: 14, color: AppTheme.textSecondary),
+          Icon(icon, size: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
           SizedBox(width: 6),
           Expanded(
             child: Text(
               text,
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
               overflow: TextOverflow.ellipsis,
             ),
           ),

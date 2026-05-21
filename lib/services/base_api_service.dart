@@ -64,19 +64,17 @@ class BaseApiService {
     return '$baseUrl/api/$normalizedEndpoint';
   }
 
-  /// Genera headers con autenticación y configuración de seguridad
+  /// Genera headers con autenticación
+  /// Nota: X-Content-Type-Options / X-Frame-Options / X-XSS-Protection son
+  /// headers de respuesta — enviarlos en requests no aporta seguridad y en web
+  /// dispara un preflight CORS que el backend no admite (request queda colgado).
   Future<Map<String, String>> getHeaders() async {
     final String? token = await getToken();
-    
-    final Map<String, String> headers = {
+
+    return {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
     };
-
-    // Añadir headers de seguridad
-    headers.addAll(ApiConfig.instance.getSecurityHeaders());
-    
-    return headers;
   }
 
   /// Maneja errores de respuesta HTTP de manera estandarizada
@@ -105,7 +103,7 @@ class BaseApiService {
       final headers = await getHeaders();
       final url = buildUrl(endpoint);
       
-      appLog('GET \$url');
+      appLog('GET $url');
 
       // Usar cliente seguro
       final response = await _httpClient
@@ -225,10 +223,6 @@ class BaseApiService {
     try {
       final headers = await getHeaders();
       final url = buildUrl(endpoint);
-
-      // Agregar encabezados de seguridad adicionales
-      final securityHeaders = ApiConfig.instance.getSecurityHeaders();
-      headers.addAll(securityHeaders);
 
       final response = await _httpClient
           .delete(Uri.parse(url), headers: headers)

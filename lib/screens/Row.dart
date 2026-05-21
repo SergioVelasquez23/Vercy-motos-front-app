@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-// Definir colores como constantes
-const Color textDark = Colors.black87;
-const Color textLight = Colors.grey;
+// NOTE: Este archivo es un ejemplo no usado en runtime. Mantener compilable.
 
 // Ejemplo de widget que usa el Row
 class PedidoRowWidget extends StatelessWidget {
@@ -22,15 +20,15 @@ class PedidoRowWidget extends StatelessWidget {
             children: [
               Text(
                 'ID: ${pedido.id}',
-                style: const TextStyle(
-                  color: textDark,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
                 'Mesa: ${pedido.mesa}',
-                style: const TextStyle(color: textLight, fontSize: 9),
+                style: TextStyle(color: Colors.grey, fontSize: 9),
               ),
             ],
           ),

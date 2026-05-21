@@ -1,31 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
+import 'dart:math' as math;
 import '../theme/app_theme.dart';
-import 'productos_screen.dart';
-import 'pedidos_screen_fusion.dart';
-import 'cuadre_caja_screen.dart';
-import 'facturas_compras_screen.dart';
-import 'proveedores_screen.dart';
-import 'historial_inventario_screen.dart';
-import 'configuracion_screen.dart';
-import 'negocio_info_screen.dart';
-import 'gastos_screen.dart';
-import 'ingresos_caja_screen.dart';
-import 'tipos_gasto_screen.dart';
 import '../services/reportes_service.dart';
 import '../services/pedido_service.dart';
 import '../models/dashboard_data.dart';
 import '../providers/user_provider.dart';
 import '../widgets/admin_key_detector.dart';
-import '../widgets/vercy_sidebar_layout.dart';
-import '../widgets/dashboard/stat_card.dart';
 import '../widgets/dashboard/stats_cards_section.dart';
 import '../widgets/dashboard/legend_item.dart';
-import '../utils/payment_calculator.dart';
 import '../utils/snackbar_helper.dart';
-import '../utils/dialogs_helper.dart';
 
 class InfoCardItem {
   final String label;
@@ -69,8 +56,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
   // Datos adicionales para nuevos componentes
   List<Map<String, dynamic>> _pedidosPorHora = [];
-  List<Map<String, dynamic>> _ultimosPedidos = [];
   List<Map<String, dynamic>> _vendedoresDelMes = [];
+  // Top vendidos con stock bajo (KPI nuevo backend)
+  List<Map<String, dynamic>> _topVendidosBajoStock = [];
 
   // Variables para el estado de precarga
   bool _productosPrecargados = false;
@@ -262,13 +250,13 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         return null;
       });
 
-      // Cargar últimos pedidos
-      final ultimosPedidosFuture = _cargarUltimosPedidos().catchError((e) {
+      // Cargar vendedores del mes
+      final vendedoresDelMesFuture = _cargarVendedoresDelMes().catchError((e) {
         return null;
       });
 
-      // Cargar vendedores del mes
-      final vendedoresDelMesFuture = _cargarVendedoresDelMes().catchError((e) {
+      // Cargar top vendidos con bajo stock (KPI reabastecimiento)
+      final topBajoStockFuture = _cargarTopVendidosBajoStock().catchError((e) {
         return null;
       });
 
@@ -279,8 +267,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         topClientesFuture,
         ventasPorDiaFuture,
         pedidosPorHoraFuture,
-        ultimosPedidosFuture,
         vendedoresDelMesFuture,
+        topBajoStockFuture,
       ]);
     } catch (e) {
       // Error handling
@@ -491,90 +479,16 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     }
   }
 
-  Future<void> _cargarUltimosPedidos() async {
+  Future<void> _cargarTopVendidosBajoStock() async {
     try {
-      // Opción 1: Obtener desde reportes service (si funciona)
-      List<Map<String, dynamic>> ultimosPedidos;
-      try {
-        ultimosPedidos = await _reportesService.getUltimosPedidos(10);
-      } catch (e) {
-        // Opción 2: Fallback usando PedidoService directamente
-        final pedidos = await _pedidoService.getAllPedidos();
-        ultimosPedidos = pedidos
-            .take(10)
-            .map(
-              (pedido) => {
-                'pedidoId': pedido.id,
-                'mesa': pedido.mesa,
-                'producto': pedido.items.isNotEmpty
-                    ? pedido.items.first.productoNombre ?? 'Producto N/A'
-                    : 'Sin productos',
-                'fecha': pedido.fecha.toIso8601String(),
-                'cantidad': pedido.items.fold(
-                  0,
-                  (sum, item) => sum + item.cantidad,
-                ),
-                'estado': pedido.estadoTexto,
-                'vendedor': pedido.mesero,
-                'precio': pedido.items.isNotEmpty
-                    ? pedido.items.first.precioUnitario
-                    : 0.0,
-                'subtotal': pedido.total,
-                'total': pedido.total,
-                'tipo': pedido.tipoTexto,
-                'notas': pedido.notas ?? '',
-              },
-            )
-            .toList();
-      }
-
-      // Validar y limpiar los datos antes de usarlos
-      final pedidosValidados = ultimosPedidos.map((pedido) {
-        // Calcular valores si no están presentes o son 0
-        final cantidad = (pedido['cantidad'] as num?)?.toInt() ?? 1;
-        final precioUnitario = (pedido['precio'] as num?)?.toDouble() ?? 0.0;
-        final subtotalOriginal =
-            (pedido['subtotal'] as num?)?.toDouble() ?? 0.0;
-        final totalOriginal = (pedido['total'] as num?)?.toDouble() ?? 0.0;
-
-        // Usar el mayor valor entre subtotal y total, o calcular si ambos son 0
-        double subtotalFinal;
-        if (subtotalOriginal > 0) {
-          subtotalFinal = subtotalOriginal;
-        } else if (totalOriginal > 0) {
-          subtotalFinal = totalOriginal;
-        } else if (precioUnitario > 0) {
-          subtotalFinal = precioUnitario * cantidad;
-        } else {
-          subtotalFinal = 0.0;
-        }
-
-        return {
-          'pedidoId': pedido['pedidoId'] ?? 'N/A',
-          'mesa': pedido['mesa'] ?? 'N/A',
-          'producto': pedido['producto'] ?? 'Producto N/A',
-          'fecha': pedido['fecha'] ?? DateTime.now().toString(),
-          'cantidad': cantidad,
-          'estado': pedido['estado'] ?? 'pendiente',
-          'vendedor': pedido['vendedor'] ?? pedido['mesero'] ?? 'N/A',
-          'precio': precioUnitario,
-          'subtotal': subtotalFinal,
-          'tipo': pedido['tipo'] ?? 'Normal',
-          'notas': pedido['notas'] ?? '',
-        };
-      }).toList();
-
-      if (mounted) {
-        setState(() {
-          _ultimosPedidos = pedidosValidados.cast<Map<String, dynamic>>();
-        });
-      }
+      final lista = await _reportesService.getTopVendidosBajoStock(
+        dias: 7,
+        limite: 10,
+      );
+      if (!mounted) return;
+      setState(() => _topVendidosBajoStock = lista);
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _ultimosPedidos = [];
-        });
-      }
+      if (mounted) setState(() => _topVendidosBajoStock = []);
     }
   }
 
@@ -623,33 +537,33 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Text(
             'Editar Objetivo - $titulo',
-            style: TextStyle(color: AppTheme.textPrimary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 'Ingrese el nuevo objetivo de ventas:',
-                style: TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               ),
               SizedBox(height: 16),
               TextField(
                 controller: controller,
                 keyboardType: TextInputType.number,
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 decoration: InputDecoration(
                   labelText: 'Objetivo (\$)',
-                  labelStyle: TextStyle(color: AppTheme.textSecondary),
+                  labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   prefixText: '\$',
-                  prefixStyle: TextStyle(color: AppTheme.textSecondary),
+                  prefixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   border: OutlineInputBorder(
-                    borderSide: BorderSide(color: AppTheme.textSecondary),
+                    borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: AppTheme.textSecondary),
+                    borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderSide: BorderSide(color: AppTheme.primary),
@@ -663,7 +577,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               onPressed: () => Navigator.of(context).pop(),
               child: Text(
                 'Cancelar',
-                style: TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               ),
             ),
             ElevatedButton(
@@ -832,10 +746,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     if (userProvider.isOnlyMesero) {
         
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushReplacementNamed(context, '/mesero');
+        context.go('/mesero');
       });
       return Scaffold(
-        backgroundColor: AppTheme.backgroundDark,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -856,12 +770,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     */
 
     return AdminKeySequenceDetector(
-      child: VercySidebarLayout(
-        title: '¡Hola! Bienvenido a Vercy Motos',
-        child: Scaffold(
+      child: Scaffold(
           backgroundColor: Colors.transparent,
           body: Container(
-            decoration: BoxDecoration(color: Color(0xFFFAFAFA)),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+            ),
             child: SafeArea(
               child: Column(
                 children: [
@@ -877,7 +791,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                   child: Container(
                                     padding: EdgeInsets.all(40),
                                     decoration: BoxDecoration(
-                                      color: Colors.white,
+                                      color: Theme.of(context).colorScheme.surface,
                                       borderRadius: BorderRadius.circular(20),
                                       boxShadow: [
                                         BoxShadow(
@@ -925,106 +839,35 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                                         Text(
                                                           'Cargando estadísticas del dashboard...',
                                                           style: AppTheme.bodyMedium.copyWith(
-                                                            color: AppTheme.textSecondary,
+                                                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                                           ),
                                                         ),
                                                       ],
                                                     ),
                                                   ),
                                                 )
-                                              : StatsCardsSection(
-                                                  cards: [
-                                                    StatCardData(
-                                                      title: 'Facturado Hoy',
-                                                      value: '\$${_formatNumber(_obtenerTotalCorregido('hoy', _dashboardData!.ventasHoy.total))}',
-                                                      objective: 'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('hoy'))}',
-                                                      percentage: (_obtenerTotalCorregido('hoy', _dashboardData!.ventasHoy.total) / _obtenerObjetivoActual('hoy') * 100).round(),
-                                                      color: AppTheme.primary,
-                                                      periodo: 'hoy',
-                                                    ),
-                                                    StatCardData(
-                                                      title: 'Últimos 7 días',
-                                                      value: '\$${_formatNumber(_obtenerTotalCorregido('semana', _dashboardData!.ventas7Dias.total))}',
-                                                      objective: 'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('semana'))}',
-                                                      percentage: (_obtenerTotalCorregido('semana', _dashboardData!.ventas7Dias.total) / _obtenerObjetivoActual('semana') * 100).round(),
-                                                      color: AppTheme.secondary,
-                                                      periodo: 'semana',
-                                                    ),
-                                                    StatCardData(
-                                                      title: 'Últimos 30 días',
-                                                      value: '\$${_formatNumber(_obtenerTotalCorregido('mes', _dashboardData!.ventas30Dias.total))}',
-                                                      objective: 'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('mes'))}',
-                                                      percentage: (_obtenerTotalCorregido('mes', _dashboardData!.ventas30Dias.total) / _obtenerObjetivoActual('mes') * 100).round(),
-                                                      color: AppTheme.secondary,
-                                                      periodo: 'mes',
-                                                    ),
-                                                    StatCardData(
-                                                      title: 'Año actual',
-                                                      value: '\$${_formatNumber(_obtenerTotalCorregido('año', _dashboardData!.ventasAnio.total))}',
-                                                      objective: 'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('año'))}',
-                                                      percentage: (_obtenerTotalCorregido('año', _dashboardData!.ventasAnio.total) / _obtenerObjetivoActual('año') * 100).round(),
-                                                      color: AppTheme.info,
-                                                      periodo: 'año',
-                                                    ),
-                                                  ],
-                                                  onEditObjective: _mostrarDialogoEditarObjetivo,
-                                                ),
+                                              : _buildResumenSuperior(context),
                                           SizedBox(
                                             height: AppTheme.spacingXLarge,
                                           ),
 
-                                          // Gráfico de ventas por día
+                                          // ── Ventas últimos 7 días (movido aquí abajo) ──
                                           _buildVentasPorDiaChart(context),
                                           SizedBox(
                                             height: AppTheme.spacingXLarge,
                                           ),
 
-                                          // Gráficos en fila o columna según el dispositivo
+                                          // ── Top productos + top clientes ──
                                           context.isMobile
                                               ? Column(
                                                   children: [
-                                                    _buildIngresosVsEgresosChart(
+                                                    _buildTopProductosChart(
                                                       context,
                                                     ),
                                                     SizedBox(
                                                       height:
                                                           AppTheme.spacingLarge,
                                                     ),
-                                                    _buildTopProductosChart(
-                                                      context,
-                                                    ),
-                                                  ],
-                                                )
-                                              : Row(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Expanded(
-                                                      child:
-                                                          _buildIngresosVsEgresosChart(
-                                                            context,
-                                                          ),
-                                                    ),
-                                                    SizedBox(
-                                                      width: AppTheme
-                                                          .spacingXLarge,
-                                                    ),
-                                                    Expanded(
-                                                      child:
-                                                          _buildTopProductosChart(
-                                                            context,
-                                                          ),
-                                                    ),
-                                                  ],
-                                                ),
-                                          SizedBox(
-                                            height: AppTheme.spacingXLarge,
-                                          ),
-
-                                          // Gráficos de clientes en fila o columna según el dispositivo
-                                          context.isMobile
-                                              ? Column(
-                                                  children: [
                                                     _buildTopClientesChart(
                                                       context,
                                                     ),
@@ -1034,6 +877,16 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                                   crossAxisAlignment:
                                                       CrossAxisAlignment.start,
                                                   children: [
+                                                    Expanded(
+                                                      child:
+                                                          _buildTopProductosChart(
+                                                            context,
+                                                          ),
+                                                    ),
+                                                    SizedBox(
+                                                      width: AppTheme
+                                                          .spacingXLarge,
+                                                    ),
                                                     Expanded(
                                                       child:
                                                           _buildTopClientesChart(
@@ -1046,46 +899,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                             height: AppTheme.spacingXLarge,
                                           ),
 
-                                          // Últimos pedidos y vendedores responsivos
-                                          context.isMobile
-                                              ? Column(
-                                                  children: [
-                                                    _buildUltimosPedidos(
-                                                      context,
-                                                    ),
-                                                    SizedBox(
-                                                      height:
-                                                          AppTheme.spacingLarge,
-                                                    ),
-                                                    _buildVendedoresDelMes(
-                                                      context,
-                                                    ),
-                                                  ],
-                                                )
-                                              : Row(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Expanded(
-                                                      flex: 3,
-                                                      child:
-                                                          _buildUltimosPedidos(
-                                                            context,
-                                                          ),
-                                                    ),
-                                                    SizedBox(
-                                                      width: AppTheme
-                                                          .spacingXLarge,
-                                                    ),
-                                                    Expanded(
-                                                      flex: 2,
-                                                      child:
-                                                          _buildVendedoresDelMes(
-                                                            context,
-                                                          ),
-                                                    ),
-                                                  ],
-                                                ),
+                                          // ── Vendedores del mes ──
+                                          _buildVendedoresDelMes(context),
                                           SizedBox(
                                             height: AppTheme.spacingXLarge,
                                           ),
@@ -1124,8 +939,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                 SizedBox(height: 24),
                                 ElevatedButton(
                                   onPressed: () {
-                                    Navigator.pushReplacementNamed(
-                                      context,
+                                    context.go(
                                       '/mesero',
                                     );
                                   },
@@ -1150,456 +964,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                   ),
                 ],
               ),
-            ), // Cierra Scaffold
-          ), // Cierra VercySidebarLayout
-        ), // Cierra AdminKeySequenceDetector
-      ),
-    );
-  }
-
-  Widget _buildTopBar() {
-    return Container(
-      padding: EdgeInsets.all(16.0),
-      color: AppTheme.primary,
-      child: Row(
-        children: [
-          Icon(Icons.restaurant_menu, color: Colors.white, size: 24),
-          SizedBox(width: 12),
-          Text(
-            'Dashboard',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Spacer(),
-          // Indicador de estado de conexión
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: !_isLoading
-                  ? AppTheme.primary.withOpacity(0.2)
-                  : Colors.orange.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: !_isLoading ? AppTheme.primary : Colors.orange,
-                width: 1,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: !_isLoading ? AppTheme.primary : Colors.orange,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                SizedBox(width: 6),
-                Text(
-                  // Mostrar "En vivo" si no está cargando (indica conectividad API)
-                  !_isLoading ? 'En vivo' : 'Conectando...',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: 12),
-          Consumer<UserProvider>(
-            builder: (context, userProvider, child) {
-              return Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  userProvider.userName ?? 'Usuario',
-                  style: TextStyle(color: Colors.white, fontSize: 14),
-                ),
-              );
-            },
-          ),
-          SizedBox(width: 8),
-          IconButton(
-            icon: Icon(Icons.refresh, color: Colors.white),
-            onPressed: _cargarDatos,
-            tooltip: 'Actualizar datos',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavBar() {
-    final userProvider = Provider.of<UserProvider>(context);
-
-    return Container(
-      height: 60,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 4,
-            offset: Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Scrollbar(
-        scrollbarOrientation: ScrollbarOrientation.bottom,
-        thumbVisibility: true,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(children: _buildNavItems(userProvider)),
-        ),
-      ),
-    );
-  }
-
-  List<Widget> _buildNavItems(UserProvider userProvider) {
-    List<Widget> navItems = [];
-
-    // 1. Dashboard - Solo para ADMIN y SUPERADMIN
-    if (userProvider.isAdmin) {
-      navItems.add(_buildNavItem(Icons.dashboard, 'Dashboard', 0, () {}));
-    }
-
-    // 2. Pedidos - Disponible para todos los roles
-    navItems.add(
-      _buildNavItem(Icons.shopping_cart, 'Pedidos', 1, () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => PedidosScreenFusion()),
-        );
-      }),
-    );
-
-    // Los siguientes módulos solo para ADMIN y SUPERADMIN
-    if (userProvider.isAdmin) {
-      // 3. Productos
-      navItems.add(
-        _buildNavItem(Icons.inventory_2, 'Productos', 2, () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => ProductosScreen()),
-          );
-        }),
-      );
-
-      // 4. Inventario (dropdown)
-      navItems.add(
-        _buildDropdownNavItem(Icons.inventory_2_outlined, 'Inventario', 3, [
-          PopupMenuItem<String>(
-            value: 'historial',
-            onTap: () {
-              Future.delayed(Duration.zero, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => HistorialInventarioScreen(),
-                  ),
-                );
-              });
-            },
-            child: Row(
-              children: [
-                Icon(Icons.history, color: Colors.blue, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  'Historial',
-                  style: TextStyle(color: AppTheme.textPrimary),
-                ),
-              ],
-            ),
-          ),
-          PopupMenuItem<String>(
-            value: 'proveedores',
-            onTap: () {
-              Future.delayed(Duration.zero, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ProveedoresScreen()),
-                );
-              });
-            },
-            child: Row(
-              children: [
-                Icon(Icons.local_shipping, color: Colors.purple, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  'Proveedores',
-                  style: TextStyle(color: AppTheme.textPrimary),
-                ),
-              ],
-            ),
-          ),
-        ], tooltip: "Menú de Inventario"),
-      );
-
-      // 5. Facturas Compras
-      navItems.add(
-        _buildNavItem(Icons.receipt_long, 'Facturas Compras', 4, () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => FacturasComprasScreen()),
-          );
-        }),
-      );
-
-      // 6. Gestión de Gastos (dropdown)
-      navItems.add(
-        _buildDropdownNavItem(
-          Icons.account_balance_wallet,
-          'Gastos',
-          5,
-          [
-            PopupMenuItem<String>(
-              value: 'ingresos_caja',
-              onTap: () {
-                Future.delayed(Duration.zero, () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => IngresosCajaScreen(),
-                    ),
-                  );
-                });
-              },
-              child: Row(
-                children: [
-                  Icon(Icons.receipt_long, color: Colors.blue, size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    'Ingresos de Caja',
-                    style: TextStyle(color: AppTheme.textPrimary),
-                  ),
-                ],
-              ),
-            ),
-            PopupMenuItem<String>(
-              value: 'tipos_gastos',
-              onTap: () {
-                Future.delayed(Duration.zero, () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => TiposGastoScreen()),
-                  );
-                });
-              },
-              child: Row(
-                children: [
-                  Icon(Icons.trending_up, color: Colors.orange, size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    'Tipos de Gastos',
-                    style: TextStyle(color: AppTheme.textPrimary),
-                  ),
-                ],
-              ),
-            ),
-            PopupMenuItem<String>(
-              value: 'gestion_gastos',
-              onTap: () {
-                Future.delayed(Duration.zero, () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => GastosScreen()),
-                  );
-                });
-              },
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.account_balance_wallet,
-                    color: AppTheme.secondary,
-                    size: 18,
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    'Gestión de Gastos',
-                    style: TextStyle(color: AppTheme.textPrimary),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          tooltip: "Gestión de Gastos",
-          onCanceled: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => CuadreCajaScreen()),
-            );
-          },
-        ),
-      );
-
-      // 7. Caja
-      navItems.add(
-        _buildNavItem(Icons.account_balance, 'Caja', 6, () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => CuadreCajaScreen()),
-          );
-        }),
-      );
-
-      // 9. Configuración
-      navItems.add(
-        _buildNavItem(Icons.settings, 'Configuración', 8, () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => ConfiguracionScreen()),
-          );
-        }),
-      );
-    }
-
-    // 8. Información del Negocio - Disponible para todos
-    navItems.add(
-      _buildNavItem(Icons.business, 'Mi Negocio', 7, () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const NegocioInfoScreen()),
-        );
-      }),
-    );
-
-    return navItems;
-  }
-
-  Widget _buildNavItem(
-    IconData icon,
-    String label,
-    int index,
-    VoidCallback onTap,
-  ) {
-    bool isSelected = _selectedIndex == index;
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _selectedIndex = index;
-        });
-        onTap();
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        margin: EdgeInsets.symmetric(horizontal: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primary.withOpacity(0.1) : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected ? AppTheme.primary : Colors.grey.withOpacity(0.2),
-            width: isSelected ? 1.5 : 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: AppTheme.primary.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ]
-              : [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: Offset(0, 1),
-                  ),
-                ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.white : AppTheme.textSecondary,
-              size: 20,
-            ),
-            SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? Colors.white : AppTheme.textSecondary,
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDropdownNavItem(
-    IconData icon,
-    String label,
-    int index,
-    List<PopupMenuItem<String>> items, {
-    String? tooltip,
-    VoidCallback? onCanceled,
-  }) {
-    bool isSelected = _selectedIndex == index;
-    return PopupMenuButton<String>(
-      onSelected: (String value) {
-        setState(() {
-          _selectedIndex = index;
-        });
-        // Each menu item handles its own navigation in onTap
-      },
-      offset: Offset(0, 50),
-      itemBuilder: (BuildContext context) => items,
-      tooltip: tooltip ?? "Menú de opciones",
-      position: PopupMenuPosition.under,
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      onCanceled: onCanceled,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        margin: EdgeInsets.symmetric(horizontal: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  color: isSelected ? Colors.white : AppTheme.textSecondary,
-                  size: 20,
-                ),
-                SizedBox(width: 4),
-                Icon(
-                  Icons.arrow_drop_down,
-                  color: isSelected ? Colors.white : AppTheme.textSecondary,
-                  size: 14,
-                ),
-              ],
-            ),
-            SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? Colors.white : AppTheme.textSecondary,
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+            ), // Cierra SafeArea
+          ), // Cierra Container
+        ), // Cierra Scaffold
+      ); // Cierra AdminKeySequenceDetector
   }
 
   Widget _buildStatsCards(BuildContext context) {
@@ -1617,7 +985,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               Text(
                 'Cargando estadísticas del dashboard...',
                 style: AppTheme.bodyMedium.copyWith(
-                  color: AppTheme.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                 ),
               ),
             ],
@@ -1823,11 +1191,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         border: Border.all(
-          color: AppTheme.primaryLight.withOpacity(0.2),
-          width: 1,
+          color: AppTheme.primaryLight.withOpacity(0.5),
+          width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
@@ -1888,118 +1256,136 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           ),
           SizedBox(height: 16),
           SizedBox(
-            height: 200,
+            height: 240,
             child: _ingresosVsEgresos.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(color: AppTheme.primary),
-                        SizedBox(height: 8),
-                        Text(
-                          'Cargando datos...',
-                          style: TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
+                ? _buildEmptyChartState(
+                    'Sin movimientos en el período',
+                    Icons.bar_chart_outlined,
                   )
-                : BarChart(
-                    BarChartData(
-                      alignment: BarChartAlignment.spaceAround,
-                      maxY: _getMaxIngreso() * 1.2,
-                      barTouchData: BarTouchData(
-                        enabled: true,
-                        touchTooltipData: BarTouchTooltipData(
-                          tooltipBgColor: Colors.grey[800],
-                          getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                            final isIngresos = rodIndex == 0;
-                            final valor = rod.toY;
-                            return BarTooltipItem(
-                              '${isIngresos ? "Ingresos" : "Egresos"}\n\$${_formatCurrency(valor)}',
-                              TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      titlesData: FlTitlesData(
-                        show: true,
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (value, meta) {
-                              if (value.toInt() >= 0 &&
-                                  value.toInt() < _ingresosVsEgresos.length) {
-                                return Text(
-                                  _ingresosVsEgresos[value.toInt()]['mes'],
-                                  style: TextStyle(
-                                    color: AppTheme.textSecondary,
-                                    fontSize: 10,
+                : Builder(
+                    builder: (context) {
+                      final maxValor = _getMaxIngreso();
+                      final maxY = _calcularMaxYRedondeado(maxValor);
+                      final intervalo = maxY / 4;
+                      return BarChart(
+                        BarChartData(
+                          alignment: BarChartAlignment.spaceAround,
+                          maxY: maxY,
+                          minY: 0,
+                          barTouchData: BarTouchData(
+                            enabled: true,
+                            touchTooltipData: BarTouchTooltipData(
+                              tooltipBgColor: Colors.grey[800],
+                              getTooltipItem:
+                                  (group, groupIndex, rod, rodIndex) {
+                                final isIngresos = rodIndex == 0;
+                                return BarTooltipItem(
+                                  '${isIngresos ? "Ingresos" : "Egresos"}\n\$${_formatCurrency(rod.toY)}',
+                                  TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 );
-                              }
-                              return Text('');
-                            },
+                              },
+                            ),
                           ),
-                        ),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 40,
-                            getTitlesWidget: (value, meta) {
-                              return Text(
-                                '${(value / 1000).toInt()}K',
-                                style: TextStyle(
-                                  color: AppTheme.textSecondary,
-                                  fontSize: 8,
-                                ),
+                          titlesData: FlTitlesData(
+                            show: true,
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (value, meta) {
+                                  if (value.toInt() >= 0 &&
+                                      value.toInt() <
+                                          _ingresosVsEgresos.length) {
+                                    return Padding(
+                                      padding: EdgeInsets.only(top: 6),
+                                      child: Text(
+                                        _ingresosVsEgresos[value.toInt()]
+                                                ['mes'] ??
+                                            '',
+                                        style: TextStyle(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withOpacity(0.7),
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  return Text('');
+                                },
+                              ),
+                            ),
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: 48,
+                                interval: intervalo > 0 ? intervalo : null,
+                                getTitlesWidget: (value, meta) {
+                                  // No dibujar el tope para evitar superposición
+                                  if (value >= maxY) return SizedBox.shrink();
+                                  return Padding(
+                                    padding: EdgeInsets.only(right: 6),
+                                    child: Text(
+                                      _formatEjeY(value),
+                                      style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withOpacity(0.7),
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            topTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                            rightTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                          ),
+                          gridData: FlGridData(
+                            show: true,
+                            drawVerticalLine: false,
+                            horizontalInterval:
+                                intervalo > 0 ? intervalo : null,
+                            getDrawingHorizontalLine: (value) {
+                              return FlLine(
+                                color: Colors.grey.withOpacity(0.18),
+                                strokeWidth: 1,
                               );
                             },
                           ),
+                          borderData: FlBorderData(show: false),
+                          barGroups:
+                              _ingresosVsEgresos.asMap().entries.map((entry) {
+                            return BarChartGroupData(
+                              x: entry.key,
+                              barRods: [
+                                BarChartRodData(
+                                  toY: (entry.value['ingresos'] ?? 0)
+                                      .toDouble(),
+                                  color: AppTheme.primaryLight,
+                                  width: 10,
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                                BarChartRodData(
+                                  toY: (entry.value['egresos'] ?? 0).toDouble(),
+                                  color: AppTheme.error,
+                                  width: 10,
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              ],
+                            );
+                          }).toList(),
                         ),
-                        topTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        rightTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                      ),
-                      gridData: FlGridData(
-                        show: true,
-                        drawVerticalLine: false,
-                        getDrawingHorizontalLine: (value) {
-                          return FlLine(
-                            color: Colors.grey.withOpacity(0.3),
-                            strokeWidth: 1,
-                          );
-                        },
-                      ),
-                      borderData: FlBorderData(show: false),
-                      barGroups: _ingresosVsEgresos.asMap().entries.map((
-                        entry,
-                      ) {
-                        return BarChartGroupData(
-                          x: entry.key,
-                          barRods: [
-                            BarChartRodData(
-                              toY: (entry.value['ingresos'] ?? 0).toDouble(),
-                              color: AppTheme.primaryLight,
-                              width: 12,
-                            ),
-                            BarChartRodData(
-                              toY: (entry.value['egresos'] ?? 0).toDouble(),
-                              color: AppTheme.error,
-                              width: 12,
-                            ),
-                          ],
-                        );
-                      }).toList(),
-                    ),
+                      );
+                    },
                   ),
           ),
           SizedBox(height: 16),
@@ -2022,11 +1408,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         border: Border.all(
-          color: AppTheme.secondary.withOpacity(0.2),
-          width: 1,
+          color: AppTheme.secondary.withOpacity(0.5),
+          width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
@@ -2098,21 +1484,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           SizedBox(
             height: 160,
             child: _topProductos.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(color: AppTheme.primary),
-                        SizedBox(height: 8),
-                        Text(
-                          'Cargando productos...',
-                          style: TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
+                ? _buildEmptyChartState(
+                    'Aún no hay productos vendidos',
+                    Icons.pie_chart_outline,
                   )
                 : PieChart(
                     PieChartData(
@@ -2142,7 +1516,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                     child: Text(
                       'No hay datos de productos',
                       style: TextStyle(
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontSize: 12,
                       ),
                     ),
@@ -2166,7 +1540,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                               child: Text(
                                 producto['nombre'] ?? 'Producto',
                                 style: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   fontSize: 10,
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -2175,7 +1549,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                             Text(
                               '${(producto['porcentaje'] ?? 0).toInt()}%',
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -2197,9 +1571,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-        border: Border.all(color: AppTheme.metal.withOpacity(0.2), width: 1),
+        border: Border.all(color: AppTheme.metal.withOpacity(0.5), width: 1.2),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -2250,7 +1624,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                       Text(
                         'CLIENTES QUE MÁS COMPRAN',
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
@@ -2259,7 +1633,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                       Text(
                         'MES ACTUAL (SIN CONSUMIDOR FINAL)',
                         style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 11,
                         ),
                       ),
@@ -2273,21 +1647,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           SizedBox(
             height: 160,
             child: _topClientes.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(color: AppTheme.primary),
-                        SizedBox(height: 8),
-                        Text(
-                          'Cargando clientes...',
-                          style: TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
+                ? _buildEmptyChartState(
+                    'Aún no hay clientes con compras',
+                    Icons.people_outline,
                   )
                 : PieChart(
                     PieChartData(
@@ -2317,7 +1679,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                     child: Text(
                       'No hay datos de clientes',
                       style: TextStyle(
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontSize: 12,
                       ),
                     ),
@@ -2341,7 +1703,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                               child: Text(
                                 cliente['nombre'] ?? 'Cliente',
                                 style: TextStyle(
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -2378,7 +1740,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               Text(
                 'PEDIDOS POR HORA',
                 style: TextStyle(
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 16, // Título más grande
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5,
@@ -2390,21 +1752,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           SizedBox(
             height: 280, // Gráfico más alto
             child: _pedidosPorHora.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(color: AppTheme.primary),
-                        SizedBox(height: 8),
-                        Text(
-                          'Cargando pedidos...',
-                          style: TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
+                ? _buildEmptyChartState(
+                    'Sin pedidos por hora aún',
+                    Icons.show_chart,
                   )
                 : LineChart(
                     LineChartData(
@@ -2432,7 +1782,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                     _pedidosPorHora[value.toInt()]['hora'] ??
                                         '',
                                     style: TextStyle(
-                                      color: AppTheme.textSecondary,
+                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                       fontSize: 10,
                                     ),
                                   );
@@ -2450,7 +1800,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                               return Text(
                                 '${value.toInt()}',
                                 style: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   fontSize: 8,
                                 ),
                               );
@@ -2498,9 +1848,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.2), width: 1),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.5), width: 1.2),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -2558,21 +1908,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           SizedBox(
             height: 280,
             child: _ventasPorDia.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(color: AppTheme.primary),
-                        SizedBox(height: 8),
-                        Text(
-                          'Cargando ventas...',
-                          style: TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
+                ? _buildEmptyChartState(
+                    'Sin ventas en los últimos días',
+                    Icons.trending_up,
                   )
                 : BarChart(
                     BarChartData(
@@ -2609,7 +1947,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                       Text(
                                         dia,
                                         style: TextStyle(
-                                          color: AppTheme.textSecondary,
+                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                           fontSize: 10,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -2639,7 +1977,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                               return Text(
                                 '\$${_formatCurrency(value)}',
                                 style: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   fontSize: 8,
                                 ),
                               );
@@ -2680,21 +2018,145 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     );
   }
 
-  Widget _buildUltimosPedidos(BuildContext context) {
+  /// Bloque superior del dashboard:
+  ///   - Columna izquierda (vertical, larga): KPIs avanzados + lista bajo stock
+  ///   - Columna derecha: cards 2×2 (Hoy/7d/30d/Año) sobre Ingresos vs Egresos
+  ///
+  /// En móvil cae a una sola columna apilada.
+  Widget _buildResumenSuperior(BuildContext context) {
+    final cards = StatsCardsSection(
+      cards: [
+        StatCardData(
+          title: 'Facturado Hoy',
+          value:
+              '\$${_formatNumber(_obtenerTotalCorregido('hoy', _dashboardData!.ventasHoy.total))}',
+          objective:
+              'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('hoy'))}',
+          percentage: (_obtenerTotalCorregido(
+                      'hoy', _dashboardData!.ventasHoy.total) /
+                  _obtenerObjetivoActual('hoy') *
+                  100)
+              .round(),
+          color: AppTheme.primary,
+          periodo: 'hoy',
+        ),
+        StatCardData(
+          title: 'Últimos 7 días',
+          value:
+              '\$${_formatNumber(_obtenerTotalCorregido('semana', _dashboardData!.ventas7Dias.total))}',
+          objective:
+              'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('semana'))}',
+          percentage: (_obtenerTotalCorregido(
+                      'semana', _dashboardData!.ventas7Dias.total) /
+                  _obtenerObjetivoActual('semana') *
+                  100)
+              .round(),
+          color: AppTheme.secondary,
+          periodo: 'semana',
+        ),
+        StatCardData(
+          title: 'Últimos 30 días',
+          value:
+              '\$${_formatNumber(_obtenerTotalCorregido('mes', _dashboardData!.ventas30Dias.total))}',
+          objective:
+              'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('mes'))}',
+          percentage: (_obtenerTotalCorregido(
+                      'mes', _dashboardData!.ventas30Dias.total) /
+                  _obtenerObjetivoActual('mes') *
+                  100)
+              .round(),
+          color: AppTheme.secondary,
+          periodo: 'mes',
+        ),
+        StatCardData(
+          title: 'Año actual',
+          value:
+              '\$${_formatNumber(_obtenerTotalCorregido('año', _dashboardData!.ventasAnio.total))}',
+          objective:
+              'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('año'))}',
+          percentage: (_obtenerTotalCorregido(
+                      'año', _dashboardData!.ventasAnio.total) /
+                  _obtenerObjetivoActual('año') *
+                  100)
+              .round(),
+          color: AppTheme.info,
+          periodo: 'año',
+        ),
+      ],
+      onEditObjective: _mostrarDialogoEditarObjetivo,
+    );
+
+    if (context.isMobile) {
+      return Column(
+        children: [
+          cards,
+          SizedBox(height: AppTheme.spacingLarge),
+          _buildKpisAvanzados(context, fillHeight: false),
+          SizedBox(height: AppTheme.spacingLarge),
+          _buildIngresosVsEgresosChart(context),
+        ],
+      );
+    }
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Columna izquierda: cards 2×2 + Ingresos vs Egresos
+          Expanded(
+            flex: 5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                cards,
+                SizedBox(height: AppTheme.spacingLarge),
+                _buildIngresosVsEgresosChart(context),
+              ],
+            ),
+          ),
+          SizedBox(width: AppTheme.spacingXLarge),
+          // Columna derecha: KPIs avanzados largos
+          Expanded(
+            flex: 2,
+            child: _buildKpisAvanzados(context, fillHeight: true),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Tarjeta de KPIs avanzados:
+  ///   - AOV (ticket promedio) del día y del mes
+  ///   - Tiempo promedio de ciclo de ventas (horas)
+  ///   - Listado compacto de productos top vendidos con stock bajo
+  ///
+  /// Si [fillHeight] es true la lista de bajo stock crece para llenar el alto
+  /// disponible (modo columna lateral). Si es false usa un cap fijo (modo móvil
+  /// o cuando el bloque no necesita estirarse).
+  Widget _buildKpisAvanzados(BuildContext context, {bool fillHeight = false}) {
+    final ventasHoy = _dashboardData?.ventasHoy;
+    final ventasMes = _dashboardData?.ventas30Dias;
+    final aovHoy = ventasHoy?.aov ?? 0;
+    final aovMes = ventasMes?.aov ?? 0;
+    final cicloHoy = ventasHoy?.tiempoCicloVentasHoras ?? 0;
+    final cicloMes = ventasMes?.tiempoCicloVentasHoras ?? 0;
+
     return Container(
       padding: EdgeInsets.all(
-        context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
+        context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.2), width: 1),
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        border: Border.all(
+          color: AppTheme.secondary.withOpacity(0.5),
+          width: 1.2,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
             blurRadius: 8,
             offset: Offset(0, 2),
-            spreadRadius: 0,
           ),
         ],
       ),
@@ -2702,15 +2164,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: AppTheme.spacingMedium,
-              vertical: AppTheme.spacingSmall,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+              color: AppTheme.secondary.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: AppTheme.primary.withOpacity(0.15),
+                color: AppTheme.secondary.withOpacity(0.15),
                 width: 0.5,
               ),
             ),
@@ -2718,146 +2177,287 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: EdgeInsets.all(8),
+                  padding: EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: AppTheme.primary.withOpacity(0.15),
+                    color: AppTheme.secondary,
                     shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primary.withOpacity(0.3),
-                        blurRadius: 8,
-                        spreadRadius: 0,
-                      ),
-                    ],
                   ),
-                  child: Icon(Icons.receipt, color: AppTheme.primary, size: 16),
+                  child: Icon(Icons.insights, color: Colors.white, size: 14),
                 ),
-                SizedBox(width: 12),
+                SizedBox(width: 10),
                 Text(
-                  'ÚLTIMOS PEDIDOS',
+                  'INDICADORES CLAVE',
                   style: TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                    color: AppTheme.secondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
                     letterSpacing: 0.5,
                   ),
                 ),
               ],
             ),
           ),
-          SizedBox(height: 20),
-          SizedBox(
-            height: 320, // Lista más alta
-            child: _ultimosPedidos.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(color: AppTheme.primary),
-                        SizedBox(height: 12),
-                        Text(
-                          'Cargando pedidos...',
-                          style: TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: _ultimosPedidos.length,
-                    itemBuilder: (context, index) {
-                      final pedido = _ultimosPedidos[index];
-                      return Padding(
-                        padding: EdgeInsets.only(
-                          bottom: 12,
-                        ), // Más espacio entre elementos
-                        child: Container(
-                          padding: EdgeInsets.all(16), // Más padding interno
-                          decoration: BoxDecoration(
-                            color: AppTheme.backgroundDark,
-                            borderRadius: BorderRadius.circular(
-                              12,
-                            ), // Bordes más redondeados
-                            border: Border.all(
-                              color: Colors.grey.withOpacity(0.2),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 4,
-                                offset: Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Pedido #${pedido['pedidoId']?.toString().substring(0, 8) ?? 'N/A'}',
-                                    style: TextStyle(
-                                      color: AppTheme.textPrimary,
-                                      fontSize: 14, // Texto más grande
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    pedido['estado'] ?? 'N/A',
-                                    style: TextStyle(
-                                      color: _getEstadoColor(pedido['estado']),
-                                      fontSize: 12, // Texto más grande
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 8), // Más espacio
-                              Text(
-                                pedido['producto'] ?? 'Producto N/A',
-                                style: TextStyle(
-                                  color: AppTheme.textSecondary,
-                                  fontSize: 13, // Texto más grande
-                                ),
-                                maxLines: 2, // Más líneas para producto
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              SizedBox(height: 8), // Más espacio
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    _extraerHoraDeFecha(pedido['fecha']),
-                                    style: TextStyle(
-                                      color: AppTheme.textSecondary,
-                                      fontSize: 12, // Texto más grande
-                                    ),
-                                  ),
-                                  Text(
-                                    '\$${_formatCurrency(pedido['subtotal'] ?? 0)}',
-                                    style: TextStyle(
-                                      color: AppTheme.warning,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+          SizedBox(height: 16),
+          // Métricas en 2x2 grid
+          Row(
+            children: [
+              Expanded(
+                child: _buildKpiTile(
+                  icon: Icons.shopping_cart_checkout,
+                  label: 'Ticket promedio',
+                  primary: '\$${_formatNumber(aovHoy)}',
+                  secondary: 'Hoy',
+                  color: AppTheme.primary,
+                ),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: _buildKpiTile(
+                  icon: Icons.timer_outlined,
+                  label: 'Ciclo venta',
+                  primary: _formatHoras(cicloHoy),
+                  secondary: 'Hoy',
+                  color: AppTheme.info,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildKpiTile(
+                  icon: Icons.trending_up,
+                  label: 'AOV mensual',
+                  primary: '\$${_formatNumber(aovMes)}',
+                  secondary: '30 días',
+                  color: AppTheme.secondary,
+                ),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: _buildKpiTile(
+                  icon: Icons.hourglass_bottom,
+                  label: 'Ciclo mensual',
+                  primary: _formatHoras(cicloMes),
+                  secondary: '30 días',
+                  color: AppTheme.warning,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          // Lista compacta de bajo stock
+          Row(
+            children: [
+              Icon(Icons.inventory_2_outlined, size: 16, color: AppTheme.warning),
+              SizedBox(width: 6),
+              Text(
+                'TOP VENDIDOS - STOCK BAJO',
+                style: TextStyle(
+                  color: AppTheme.warning,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              SizedBox(width: 6),
+              if (_topVendidosBajoStock.isNotEmpty)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: AppTheme.warning,
+                    borderRadius: BorderRadius.circular(8),
                   ),
+                  child: Text(
+                    '${_topVendidosBajoStock.length}',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: 8),
+          // Cuando se renderiza como columna lateral (fillHeight=true) la lista
+          // se estira con Expanded; en modo compacto cae a un tope fijo.
+          fillHeight
+              ? Expanded(child: _buildBajoStockList())
+              : ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: 180),
+                  child: _buildBajoStockList(shrinkWrap: true),
+                ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBajoStockList({bool shrinkWrap = false}) {
+    if (_topVendidosBajoStock.isEmpty) {
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.check_circle_outline, size: 18, color: AppTheme.success),
+            SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                'Sin productos top en stock bajo',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return ListView.separated(
+      shrinkWrap: shrinkWrap,
+      padding: EdgeInsets.zero,
+      itemCount: _topVendidosBajoStock.length,
+      separatorBuilder: (_, __) => SizedBox(height: 4),
+      itemBuilder: (context, i) => _buildBajoStockRow(_topVendidosBajoStock[i]),
+    );
+  }
+
+  Widget _buildKpiTile({
+    required IconData icon,
+    required String label,
+    required String primary,
+    required String secondary,
+    required Color color,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: color),
+              SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              primary,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          SizedBox(height: 2),
+          Text(
+            secondary,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildBajoStockRow(Map<String, dynamic> item) {
+    final nombre = item['nombre']?.toString() ?? 'Sin nombre';
+    final vendida = item['cantidadVendida'];
+    final actual = item['cantidadActual'];
+    final minima = item['cantidadMinima'];
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppTheme.warning.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppTheme.warning.withOpacity(0.15)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: AppTheme.warning,
+              shape: BoxShape.circle,
+            ),
+          ),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              nombre,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          SizedBox(width: 8),
+          Text(
+            'Vend: ${vendida ?? 0}',
+            style: TextStyle(
+              color: AppTheme.primary,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          SizedBox(width: 8),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: AppTheme.error.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              '${actual ?? 0}/${minima ?? 0}',
+              style: TextStyle(
+                color: AppTheme.error,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatHoras(double horas) {
+    if (horas <= 0) return '—';
+    if (horas < 1) return '${(horas * 60).toStringAsFixed(0)} min';
+    if (horas < 24) return '${horas.toStringAsFixed(1)} h';
+    final dias = horas / 24;
+    return '${dias.toStringAsFixed(1)} d';
   }
 
   Widget _buildVendedoresDelMes(BuildContext context) {
@@ -2866,11 +2466,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
         border: Border.all(
-          color: AppTheme.secondary.withOpacity(0.2),
-          width: 1,
+          color: AppTheme.secondary.withOpacity(0.5),
+          width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
@@ -2923,7 +2523,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 Text(
                   'TOP VENDEDORES',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
                   ),
@@ -2944,7 +2544,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                         Text(
                           'Cargando vendedores...',
                           style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: AppTheme.textSecondary),
+                              ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                         ),
                       ],
                     ),
@@ -2965,14 +2565,14 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                 : AppTheme.spacingLarge,
                           ),
                           decoration: BoxDecoration(
-                            color: AppTheme.cardBg,
+                            color: Theme.of(context).colorScheme.surface,
                             borderRadius: BorderRadius.circular(
                               AppTheme.radiusMedium,
                             ),
                             border: Border.all(
                               color: puesto <= 3
                                   ? AppTheme.secondary
-                                  : AppTheme.textMuted.withOpacity(0.3),
+                                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3),
                               width: puesto <= 3 ? 2 : 1,
                             ),
                             boxShadow: AppTheme.cardShadow,
@@ -3010,7 +2610,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                           .textTheme
                                           .titleSmall
                                           ?.copyWith(
-                                            color: AppTheme.textPrimary,
+                                            color: Theme.of(context).colorScheme.onSurface,
                                             fontWeight: FontWeight.bold,
                                           ),
                                       overflow: TextOverflow.ellipsis,
@@ -3031,7 +2631,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                               Text(
                                 '${vendedor['cantidadPedidos'] ?? 0} pedidos',
                                 style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: AppTheme.textSecondary),
+                                    ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                               ),
                             ],
                           ),
@@ -3045,19 +2645,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     );
   }
 
-  Color _getEstadoColor(String? estado) {
-    switch (estado?.toLowerCase()) {
-      case 'pagada':
-        return AppTheme.primary;
-      case 'pendiente':
-        return Colors.orange;
-      case 'cancelado':
-        return Colors.red;
-      default:
-        return AppTheme.textSecondary;
-    }
-  }
-
   Color _getPuestoColor(int puesto) {
     switch (puesto) {
       case 1:
@@ -3068,31 +2655,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         return Colors.orange[700]!;
       default:
         return Colors.blue;
-    }
-  }
-
-  String _extraerHoraDeFecha(dynamic fecha) {
-    if (fecha == null) return 'N/A';
-
-    try {
-      String fechaStr = fecha.toString();
-
-      // Si la fecha tiene formato completo (yyyy-MM-dd HH:mm:ss), extraer la hora
-      if (fechaStr.length >= 16) {
-        return fechaStr.substring(11, 16); // HH:mm
-      }
-
-      // Si es solo hora (HH:mm:ss), tomar solo HH:mm
-      if (fechaStr.contains(':') && fechaStr.length >= 5) {
-        List<String> partes = fechaStr.split(':');
-        if (partes.length >= 2) {
-          return '${partes[0]}:${partes[1]}';
-        }
-      }
-
-      return fechaStr.length > 5 ? fechaStr.substring(0, 5) : fechaStr;
-    } catch (e) {
-      return 'N/A';
     }
   }
 
@@ -3110,7 +2672,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         border: Border.all(color: color.withOpacity(0.3), width: 1),
         boxShadow: [
@@ -3192,7 +2754,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           Text(
             value,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppTheme.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
               fontWeight: FontWeight.w800,
               fontSize: context.isMobile ? 28 : 32,
               letterSpacing: -0.5,
@@ -3202,7 +2764,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           Text(
             objective,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppTheme.textSecondary.withOpacity(0.7),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.7),
               fontSize: 12,
             ),
           ),
@@ -3294,7 +2856,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               Text(
                 'FACTURADO ÚLTIMOS 7 DÍAS',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -3358,7 +2920,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                   child: Text(
                                     dia,
                                     style: TextStyle(
-                                      color: AppTheme.textSecondary,
+                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                       fontSize: 10,
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -3380,7 +2942,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                               return Text(
                                 '\$${_formatCurrency(value)}',
                                 style: TextStyle(
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   fontSize: 9,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -3523,6 +3085,50 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     return max > 0 ? max : 1000000;
   }
 
+  /// Redondea el tope del eje Y a un múltiplo "bonito" (1, 2, 2.5, 5 × 10ⁿ)
+  /// para que los gridlines caigan en números legibles.
+  double _calcularMaxYRedondeado(double maxValor) {
+    if (maxValor <= 0) return 1000;
+    final conMargen = maxValor * 1.15;
+    final magnitud =
+        math.pow(10, conMargen.toInt().toString().length - 1).toDouble();
+    final normalizado = conMargen / magnitud;
+    final double factor;
+    if (normalizado <= 1) {
+      factor = 1;
+    } else if (normalizado <= 2) {
+      factor = 2;
+    } else if (normalizado <= 2.5) {
+      factor = 2.5;
+    } else if (normalizado <= 5) {
+      factor = 5;
+    } else {
+      factor = 10;
+    }
+    return factor * magnitud;
+  }
+
+  /// "$1.2M", "$250K", "$50" — formato compacto para el eje Y.
+  String _formatEjeY(double value) {
+    if (value == 0) return '0';
+    final abs = value.abs();
+    String fmt;
+    if (abs >= 1000000) {
+      final v = value / 1000000;
+      fmt = v == v.truncateToDouble()
+          ? '${v.toInt()}M'
+          : '${v.toStringAsFixed(1)}M';
+    } else if (abs >= 1000) {
+      final v = value / 1000;
+      fmt = v == v.truncateToDouble()
+          ? '${v.toInt()}K'
+          : '${v.toStringAsFixed(1)}K';
+    } else {
+      fmt = value.toInt().toString();
+    }
+    return '\$$fmt';
+  }
+
   Widget _buildLegendItem(Color color, String label) {
     return Row(
       children: [
@@ -3534,7 +3140,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         SizedBox(width: 8),
         Text(
           label,
-          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
         ),
       ],
     );
@@ -3548,5 +3154,23 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     } catch (e) {
       return fecha.length > 5 ? fecha.substring(fecha.length - 5) : fecha;
     }
+  }
+
+  /// Estado vacío para gráficas sin datos.
+  Widget _buildEmptyChartState(String message, IconData icon) {
+    final muted = Theme.of(context).colorScheme.onSurface.withOpacity(0.4);
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: muted, size: 32),
+          SizedBox(height: 8),
+          Text(
+            message,
+            style: TextStyle(color: muted, fontSize: 12),
+          ),
+        ],
+      ),
+    );
   }
 }

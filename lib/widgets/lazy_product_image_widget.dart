@@ -170,7 +170,7 @@ class _LazyProductImageWidgetState extends State<LazyProductImageWidget> {
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.black54),
+                  valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                 ),
               ),
             )

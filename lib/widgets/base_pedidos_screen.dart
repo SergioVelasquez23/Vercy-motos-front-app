@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 /// Widget base para mantener consistencia en las pantallas de pedidos
 abstract class BasePedidosScreen extends StatefulWidget {
@@ -16,12 +17,12 @@ abstract class BasePedidosScreen extends StatefulWidget {
 
 abstract class BasePedidosScreenState<T extends BasePedidosScreen>
     extends State<T> {
-  // Colores base consistentes
-  final Color primary = Color(0xFFFF6B00);
-  final Color bgDark = Color(0xFF1E1E1E);
-  final Color cardBg = Color(0xFF252525);
-  final Color textDark = Color(0xFFE0E0E0);
-  final Color textLight = Color(0xFFA0A0A0);
+  // Colores base consistentes (redirigen a AppTheme)
+  Color get primary => AppTheme.primary;
+  Color get bgDark => Theme.of(context).scaffoldBackgroundColor;
+  Color get cardBg => Theme.of(context).colorScheme.surface;
+  Color get textDark => Theme.of(context).colorScheme.onSurface;
+  Color get textLight => Theme.of(context).colorScheme.onSurface.withOpacity(0.6);
 
   @override
   Widget build(BuildContext context) {

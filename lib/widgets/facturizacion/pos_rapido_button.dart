@@ -50,23 +50,19 @@ class _PosRapidoButtonState extends State<PosRapidoButton> {
       final negocioInfoService = NegocioInfoService();
       final negocioInfo = await negocioInfoService.getNegocioInfo();
 
-      // Agregar resolución a los datosAdicionales del pedido si existe
-      if (negocioInfo?.resolutionNumber != null &&
-          negocioInfo!.resolutionNumber!.isNotEmpty) {
-        widget.pedido.datosAdicionales ??= {};
-        widget.pedido.datosAdicionales!['resolutionNumber'] =
-            negocioInfo.resolutionNumber;
+      // Validar que tenemos la información necesaria
+      if (negocioInfo?.resolutionNumber == null ||
+          negocioInfo!.resolutionNumber!.isEmpty) {
+        throw Exception('⚠️ Número de resolución no configurado. Por favor, verifique la configuración del negocio.');
       }
 
-      // Construir payload SIN campo customer (POS rápido)
-      // El backend hace el mapeo a Mathías
-      final payloadCompleto = widget.pedido.toJson();
-
-      // Remover customer para POS rápido
-      payloadCompleto.remove('customer');
-
-      // Cambiar type_document_id a POS (11 o 20 según config)
-      payloadCompleto['type_document_id'] = 11;
+      // Construir documento POS COMPLETO con todos los campos requeridos
+      final payloadCompleto = MatiasService.buildCompletePOSDocument(
+        pedido: widget.pedido,
+        negocioInfo: negocioInfo,
+        resolutionNumber: negocioInfo.resolutionNumber!,
+        type_document_id: 11,
+      );
 
       final resultado = await MatiasService.emitirDocumentoPOS(
         payloadCompleto,

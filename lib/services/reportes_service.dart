@@ -136,6 +136,22 @@ class ReportesService {
     }
   }
 
+  /// Productos más vendidos en los últimos [dias] días que están en stock bajo
+  /// (cantidadActual ≤ cantidadMinima). Útil para reabastecimiento.
+  ///
+  /// Backend: GET /api/top-vendidos-bajo-stock?dias=7&limite=10
+  Future<List<Map<String, dynamic>>> getTopVendidosBajoStock({
+    int dias = 7,
+    int limite = 10,
+  }) async {
+    final response = await _apiService.get<List<Map<String, dynamic>>>(
+      '/api/top-vendidos-bajo-stock?dias=$dias&limite=$limite',
+      (json) => List<Map<String, dynamic>>.from(json),
+    );
+    if (response.isSuccess) return response.data ?? [];
+    return [];
+  }
+
   // Obtener top clientes (excluyendo Consumidor Final)
   Future<List<Map<String, dynamic>>> getTopClientes([int limite = 5]) async {
     final response = await _apiService.get<List<Map<String, dynamic>>>(

@@ -157,7 +157,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: AppTheme.cardBg,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
         width: MediaQuery.of(context).size.width * 0.95,
@@ -175,7 +175,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                   Text(
                     'Pago Parcial - Mesa ${widget.pedido.mesa}',
                     style: TextStyle(
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
@@ -183,7 +183,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                   Text(
                     'Selecciona los productos a pagar',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -198,7 +198,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
               flex: 3,
               child: Container(
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceDark,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
                 ),
@@ -237,7 +237,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                             child: Text(
                               'Productos (${widget.pedido.items.length})',
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                               ),
@@ -246,7 +246,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                           Text(
                             'Total',
                             style: TextStyle(
-                              color: AppTheme.textPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
                             ),
@@ -302,7 +302,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                                         Text(
                                           '${item.productoNombre ?? 'Producto'}',
                                           style: TextStyle(
-                                            color: AppTheme.textPrimary,
+                                            color: Theme.of(context).colorScheme.onSurface,
                                             fontWeight: FontWeight.w600,
                                             fontSize: 15,
                                           ),
@@ -310,7 +310,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                                         Text(
                                           'Precio unitario: ${formatCurrency(item.precioUnitario)}',
                                           style: TextStyle(
-                                            color: AppTheme.textSecondary,
+                                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                             fontSize: 12,
                                           ),
                                         ),
@@ -321,7 +321,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                                           Text(
                                             'Ingredientes: ${item.ingredientesSeleccionados.join(', ')}',
                                             style: TextStyle(
-                                              color: AppTheme.textSecondary,
+                                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                               fontSize: 12,
                                               fontStyle: FontStyle.italic,
                                             ),
@@ -332,7 +332,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                                           Text(
                                             '👤 Agregado por: ${item.agregadoPor}',
                                             style: TextStyle(
-                                              color: AppTheme.textSecondary
+                                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)
                                                   .withOpacity(0.8),
                                               fontSize: 11,
                                               fontStyle: FontStyle.italic,
@@ -345,7 +345,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                                           Text(
                                             item.notas!,
                                             style: TextStyle(
-                                              color: AppTheme.textSecondary,
+                                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                               fontSize: 12,
                                             ),
                                           ),
@@ -362,7 +362,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                                         Text(
                                           'Cantidad',
                                           style: TextStyle(
-                                            color: AppTheme.textSecondary,
+                                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                             fontSize: 12,
                                           ),
                                         ),
@@ -375,7 +375,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                                             keyboardType: TextInputType.number,
                                             textAlign: TextAlign.center,
                                             style: TextStyle(
-                                              color: AppTheme.textPrimary,
+                                              color: Theme.of(context).colorScheme.onSurface,
                                               fontWeight: FontWeight.bold,
                                             ),
                                             decoration: InputDecoration(
@@ -396,7 +396,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                                                   ),
                                               hintText: '0',
                                               hintStyle: TextStyle(
-                                                color: AppTheme.textSecondary,
+                                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                               ),
                                             ),
                                             onChanged: (value) {
@@ -435,7 +435,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                                         Text(
                                           'de ${item.cantidad}',
                                           style: TextStyle(
-                                            color: AppTheme.textSecondary,
+                                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                             fontSize: 10,
                                           ),
                                         ),
@@ -451,7 +451,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                                         Text(
                                           'Total',
                                           style: TextStyle(
-                                            color: AppTheme.textSecondary,
+                                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                             fontSize: 12,
                                           ),
                                         ),
@@ -501,14 +501,14 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                       Text(
                         'Subtotal:',
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 16,
                         ),
                       ),
                       Text(
                         formatCurrency(totalSeleccionado),
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -563,7 +563,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                         Text(
                           'Propina:',
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 16,
                           ),
                         ),
@@ -585,7 +585,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                       Text(
                         'Total a Pagar:',
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
@@ -616,7 +616,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                     Text(
                       'Forma de Pago:',
                       style: TextStyle(
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -644,7 +644,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                             Text(
                               'Pago mixto:',
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 14,
                               ),
                             ),
@@ -678,7 +678,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                     Container(
                       padding: EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppTheme.surfaceDark,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: AppTheme.primary.withOpacity(0.2),
@@ -690,7 +690,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                           Text(
                             'Descuentos:',
                             style: TextStyle(
-                              color: AppTheme.textPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
@@ -780,7 +780,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                       Container(
                         padding: EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppTheme.surfaceDark,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: AppTheme.primary.withOpacity(0.2),
@@ -795,7 +795,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                                 Text(
                                   'Distribución del Pago:',
                                   style: TextStyle(
-                                    color: AppTheme.textPrimary,
+                                    color: Theme.of(context).colorScheme.onSurface,
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -923,7 +923,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                                   Text(
                                     'Total pagado:',
                                     style: TextStyle(
-                                      color: AppTheme.textPrimary,
+                                      color: Theme.of(context).colorScheme.onSurface,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -1132,7 +1132,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
       selectedColor: AppTheme.primary.withOpacity(0.2),
       checkmarkColor: AppTheme.primary,
       labelStyle: TextStyle(
-        color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+        color: isSelected ? AppTheme.primary : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
       ),
     );

@@ -13,6 +13,11 @@ class DocumentoFE {
   final String? facturaId;
   final String estado; // PENDIENTE, ENVIADO, ACEPTADO, RECHAZADO
   final String? cufe;
+  /// XmlDocumentKey — clave hex larga que Matías exige para descargar el PDF
+  /// (`GET /api/ubl2.1/documents/pdf/{XmlDocumentKey}`). En algunos endpoints
+  /// llega bajo el mismo campo que `cufe`, pero cuando viene aparte hay que
+  /// usar este para la consulta del PDF.
+  final String? xmlDocumentKey;
   final String? qrCode;
   final String? qrUrl;
   final String? numero;
@@ -34,6 +39,7 @@ class DocumentoFE {
     this.facturaId,
     required this.estado,
     this.cufe,
+    this.xmlDocumentKey,
     this.qrCode,
     this.qrUrl,
     this.numero,
@@ -55,6 +61,16 @@ class DocumentoFE {
   bool get esAceptado => estado == 'ACEPTADO';
   bool get esRechazado => estado == 'RECHAZADO';
   bool get tieneCufe => cufe != null && cufe!.isNotEmpty;
+
+  /// trackId preferido para descargar el PDF desde Matías.
+  /// Prioriza el XmlDocumentKey (que es lo que el endpoint de PDF acepta)
+  /// y cae a CUFE como respaldo.
+  String? get pdfTrackId {
+    if (xmlDocumentKey != null && xmlDocumentKey!.isNotEmpty) {
+      return xmlDocumentKey;
+    }
+    return cufe;
+  }
 
   factory DocumentoFE.fromJson(Map<String, dynamic> json) {
     DateTime? parseDate(dynamic v) {
@@ -100,6 +116,9 @@ class DocumentoFE {
       facturaId: json['facturaId']?.toString(),
       estado: deriveEstado(),
       cufe: json['cufe']?.toString() ?? json['XmlDocumentKey']?.toString(),
+      xmlDocumentKey: json['XmlDocumentKey']?.toString()
+          ?? json['xmlDocumentKey']?.toString()
+          ?? json['xml_document_key']?.toString(),
       qrCode: json['qrCode']?.toString(),
       qrUrl: json['qrUrl']?.toString(),
       numero: json['numero']?.toString() ?? json['document_number']?.toString(),

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/factura_compra.dart';
 import '../services/factura_compra_service.dart';
 import '../theme/app_theme.dart';
-import 'crear_factura_compra_screen.dart';
-import 'detalle_factura_compra_screen.dart';
 import '../utils/snackbar_helper.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/facturizacion/documento_soporte_dialog.dart';
@@ -154,31 +153,37 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text('Facturas de Compras', style: AppTheme.headlineMedium),
-        backgroundColor: AppTheme.backgroundDark,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
-        iconTheme: IconThemeData(color: AppTheme.textPrimary),
+        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () =>
-              Navigator.pushReplacementNamed(context, '/dashboard'),
+              context.go('/dashboard'),
         ),
         actions: [
-          Tooltip(
-            message: 'Documento Soporte DIAN\n(compra a no obligado a facturar)',
-            child: TextButton.icon(
-              onPressed: _abrirDocumentoSoporte,
-              icon: Icon(Icons.verified_outlined, color: AppTheme.secondary, size: 18),
-              label: Text(
-                'Doc. Soporte',
-                style: TextStyle(color: AppTheme.secondary, fontSize: 12),
-              ),
-            ),
-          ),
+          context.isMobile
+              ? IconButton(
+                  icon: Icon(Icons.verified_outlined, color: AppTheme.secondary),
+                  tooltip: 'Documento Soporte DIAN (compra a no obligado)',
+                  onPressed: _abrirDocumentoSoporte,
+                )
+              : Tooltip(
+                  message: 'Documento Soporte DIAN\n(compra a no obligado a facturar)',
+                  child: TextButton.icon(
+                    onPressed: _abrirDocumentoSoporte,
+                    icon: Icon(Icons.verified_outlined, color: AppTheme.secondary, size: 18),
+                    label: Text(
+                      'Doc. Soporte',
+                      style: TextStyle(color: AppTheme.secondary, fontSize: 12),
+                    ),
+                  ),
+                ),
           IconButton(
-            icon: Icon(Icons.refresh, color: AppTheme.textPrimary),
+            icon: Icon(Icons.refresh, color: Theme.of(context).colorScheme.onSurface),
             onPressed: _cargarFacturas,
           ),
         ],
@@ -210,21 +215,21 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
       margin: EdgeInsets.all(16),
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
           TextField(
             controller: _searchController,
-            style: TextStyle(color: AppTheme.textPrimary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             decoration: InputDecoration(
               hintText: 'Buscar por número, proveedor...',
-              hintStyle: TextStyle(color: AppTheme.textSecondary),
-              prefixIcon: Icon(Icons.search, color: AppTheme.textSecondary),
+              hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+              prefixIcon: Icon(Icons.search, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
-                      icon: Icon(Icons.clear, color: AppTheme.textSecondary),
+                      icon: Icon(Icons.clear, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       onPressed: () {
                         _searchController.clear();
                         _aplicarFiltros();
@@ -234,13 +239,13 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                  color: AppTheme.textSecondary.withOpacity(0.3),
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                 ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                  color: AppTheme.textSecondary.withOpacity(0.3),
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                 ),
               ),
               focusedBorder: OutlineInputBorder(
@@ -253,7 +258,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
           SizedBox(height: 16),
           Row(
             children: [
-              Text('Estado: ', style: TextStyle(color: AppTheme.textPrimary)),
+              Text('Estado: ', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
               SizedBox(width: 8),
               Expanded(
                 child: Scrollbar(
@@ -282,7 +287,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
                                 labelStyle: TextStyle(
                                   color: _filtroEstado == estado
                                       ? AppTheme.primary
-                                      : AppTheme.textSecondary,
+                                      : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 ),
                               ),
                             ),
@@ -297,7 +302,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
           SizedBox(height: 16),
           Row(
             children: [
-              Text('Pago: ', style: TextStyle(color: AppTheme.textPrimary)),
+              Text('Pago: ', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
               SizedBox(width: 8),
               Expanded(
                 child: Scrollbar(
@@ -336,7 +341,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
                                     labelStyle: TextStyle(
                                       color: _filtroPagoCaja == filtro['value']
                                           ? Colors.blue
-                                          : AppTheme.textSecondary,
+                                          : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                     ),
                                   ),
                                 ),
@@ -358,12 +363,12 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.receipt_long, size: 64, color: AppTheme.textSecondary),
+          Icon(Icons.receipt_long, size: 64, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
           SizedBox(height: 16),
           Text(
             'No hay facturas de compras',
             style: TextStyle(
-              color: AppTheme.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -371,7 +376,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
           SizedBox(height: 8),
           Text(
             'Crea tu primera factura de compras',
-            style: TextStyle(color: AppTheme.textSecondary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
           ),
           SizedBox(height: 24),
           ElevatedButton.icon(
@@ -395,7 +400,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
       itemBuilder: (context, index) {
         final factura = _facturasFiltradas[index];
         return Card(
-          color: AppTheme.cardBg,
+          color: Theme.of(context).colorScheme.surface,
           margin: EdgeInsets.only(bottom: 12),
           child: Column(
             children: [
@@ -422,20 +427,20 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
                             Text(
                               factura.numeroFactura,
                               style: TextStyle(
-                                color: AppTheme.textPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontWeight: FontWeight.bold,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
                               factura.proveedorNombre,
-                              style: TextStyle(color: AppTheme.textPrimary),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
                               'NIT: ${factura.proveedorNit ?? 'No especificado'}',
                               style: TextStyle(
-                                color: AppTheme.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 fontSize: 12,
                               ),
                               overflow: TextOverflow.ellipsis,
@@ -444,7 +449,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
                             Text(
                               'Creado: ${_formatearFechaConHora(factura.fechaCreacion)} - Factura: ${_formatearFecha(factura.fechaFactura)}',
                               style: TextStyle(
-                                color: AppTheme.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 fontSize: 12,
                               ),
                             ),
@@ -595,10 +600,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
   }
 
   void _navegarACrearFactura() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => CrearFacturaCompraScreen()),
-    ).then((_) => _cargarFacturas());
+    context.push('/facturas-compras').then((_) => _cargarFacturas());
   }
 
   /// Abre el diálogo de Documento Soporte sin datos pre-llenados (botón global)
@@ -623,12 +625,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
   }
 
   void _mostrarDetalleFactura(FacturaCompra factura) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DetalleFacturaCompraScreen(factura: factura),
-      ),
-    ).then((_) => _cargarFacturas());
+    context.push('/facturas-compras/detalle', extra: factura).then((_) => _cargarFacturas());
   }
 
   // Método para editar una factura
@@ -653,10 +650,10 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Text(
             'Eliminar Factura',
-            style: TextStyle(color: AppTheme.textPrimary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -665,32 +662,32 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
               Text(
                 '¿Estás seguro de que deseas eliminar la factura ${factura.numeroFactura}?\n\n'
                 'Se revertirá el inventario asociado a esta compra.',
-                style: TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               ),
               SizedBox(height: 16),
               TextField(
                 controller: motivoController,
                 maxLines: 3,
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 decoration: InputDecoration(
                   labelText: 'Razón de la eliminación (opcional)',
-                  labelStyle: TextStyle(color: AppTheme.textSecondary),
+                  labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   hintText: 'Ej: Factura duplicada, error de digitación...',
                   hintStyle: TextStyle(
-                    color: AppTheme.textSecondary.withOpacity(0.5),
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.5),
                   ),
                   filled: true,
-                  fillColor: AppTheme.backgroundDark,
+                  fillColor: Theme.of(context).scaffoldBackgroundColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide(
-                      color: AppTheme.textSecondary.withOpacity(0.3),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide(
-                      color: AppTheme.textSecondary.withOpacity(0.3),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
@@ -706,7 +703,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
               onPressed: () => Navigator.of(context).pop(null),
               child: Text(
                 'Cancelar',
-                style: TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               ),
             ),
             TextButton(

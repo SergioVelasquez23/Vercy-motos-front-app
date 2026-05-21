@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../screens/dashboard_screen.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 // Importación condicional para no afectar builds móviles
@@ -93,10 +93,7 @@ class AuthService {
           // Update the user provider with the new token
           await userProvider.setToken(token);
 
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => DashboardScreenV2()),
-          );
+          if (context.mounted) context.go('/dashboard');
         } else {
           throw Exception('La respuesta no contiene el campo "token".');
         }

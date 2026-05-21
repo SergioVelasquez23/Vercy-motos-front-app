@@ -76,7 +76,7 @@ class ProductoCanceladoCard extends StatelessWidget {
                   Text(
                     _formatFecha(productoCancelado.fechaCancelacion),
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
@@ -113,7 +113,7 @@ class ProductoCanceladoCard extends StatelessWidget {
                         Text(
                           '${productoCancelado.itemOriginal.cantidad}x ${productoCancelado.itemOriginal.productoNombre ?? 'Producto'}',
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -124,13 +124,13 @@ class ProductoCanceladoCard extends StatelessWidget {
                             Icon(
                               Icons.receipt_long,
                               size: 16,
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                             SizedBox(width: 4),
                             Text(
                               'Pedido: ${productoCancelado.pedidoId.length >= 8 ? productoCancelado.pedidoId.substring(0, 8) : productoCancelado.pedidoId}',
                               style: TextStyle(
-                                color: AppTheme.textSecondary,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 fontSize: 14,
                               ),
                             ),
@@ -205,7 +205,7 @@ class ProductoCanceladoCard extends StatelessWidget {
                       Text(
                         productoCancelado.descripcionMotivo!,
                         style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 12,
                           fontStyle: FontStyle.italic,
                         ),
@@ -223,13 +223,13 @@ class ProductoCanceladoCard extends StatelessWidget {
                   Icon(
                     Icons.person_outline,
                     size: 18,
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   ),
                   SizedBox(width: 6),
                   Text(
                     'Cancelado por: ',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 13,
                     ),
                   ),
@@ -237,7 +237,7 @@ class ProductoCanceladoCard extends StatelessWidget {
                     child: Text(
                       productoCancelado.canceladoPor,
                       style: TextStyle(
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
@@ -246,7 +246,7 @@ class ProductoCanceladoCard extends StatelessWidget {
                   Text(
                     _formatHora(productoCancelado.fechaCancelacion),
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 12,
                     ),
                   ),
@@ -299,13 +299,13 @@ class ProductoCanceladoCard extends StatelessWidget {
                   width: double.infinity,
                   padding: EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppTheme.textSecondary.withOpacity(0.1),
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     'Observaciones: ${productoCancelado.observaciones}',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 12,
                       fontStyle: FontStyle.italic,
                     ),
@@ -359,7 +359,7 @@ class ProductoCanceladoCard extends StatelessWidget {
                         onPressed: () => onVerDetalle?.call(productoCancelado),
                         icon: Icon(Icons.info_outline),
                         iconSize: 20,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         tooltip: 'Ver detalle',
                       ),
                   ],

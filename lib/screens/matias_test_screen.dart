@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/matias_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/vercy_sidebar_layout.dart';
 
 /// Screen de testing para validar endpoints Matias API punto por punto
 class MatiasTestScreen extends StatefulWidget {
@@ -17,9 +16,7 @@ class _MatiasTestScreenState extends State<MatiasTestScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return VercySidebarLayout(
-      title: '🔌 Testing Matias API',
-      child: Container(
+    return Container(
         padding: EdgeInsets.all(24),
         child: Column(
           children: [
@@ -74,8 +71,7 @@ class _MatiasTestScreenState extends State<MatiasTestScreen> {
               )
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildResultCard(TestResult r) {

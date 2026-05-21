@@ -196,12 +196,16 @@ class _UsersScreenState extends State<UsersScreen> {
           // Barra de búsqueda y botón nuevo
           Container(
             padding: const EdgeInsets.all(16),
-            child: Row(
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Expanded(
+                SizedBox(
+                  width: context.isMobile ? double.infinity : 360,
                   child: TextField(
                     controller: _searchController,
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     decoration: InputDecoration(
                       hintText: 'Buscar usuarios...',
                       hintStyle: TextStyle(color: Colors.grey[400]),
@@ -218,40 +222,25 @@ class _UsersScreenState extends State<UsersScreen> {
                     },
                   ),
                 ),
-                const SizedBox(width: 12),
-                // Botón Refrescar
                 ElevatedButton.icon(
                   onPressed: _isLoading
                       ? null
                       : () {
-                            
                           _cargarDatos();
                         },
-                  icon: const Icon(
-                    Icons.refresh,
-                    color: Colors.white,
-                    size: 20,
-                  ),
+                  icon: const Icon(Icons.refresh, color: Colors.white, size: 20),
                   label: const Text(
                     'Refrescar',
                     style: TextStyle(color: Colors.white),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[600],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   ),
                 ),
-                const SizedBox(width: 12),
-                // Botón Nuevo
                 ElevatedButton.icon(
                   onPressed: () {
-                      
                     _mostrarDialogoUsuario();
                   },
                   icon: const Icon(Icons.add, color: Colors.white),
@@ -261,13 +250,8 @@ class _UsersScreenState extends State<UsersScreen> {
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFF6B00),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   ),
                 ),
               ],
@@ -408,7 +392,7 @@ class _UsersScreenState extends State<UsersScreen> {
                           Text(
                             'Email: ${user.email}',
                             style: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                               fontSize: 14,
                             ),
                           ),
@@ -467,7 +451,7 @@ class _UsersScreenState extends State<UsersScreen> {
           backgroundColor: Colors.grey[900],
           title: Text(
             isEditing ? 'Editar Usuario' : 'Nuevo Usuario',
-            style: TextStyle(color: AppTheme.textPrimary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           ),
           content: SingleChildScrollView(
             child: Column(
@@ -476,7 +460,7 @@ class _UsersScreenState extends State<UsersScreen> {
                 // Nombre
                 TextField(
                   controller: nombreController,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: 'Nombre *',
                     labelStyle: const TextStyle(color: Colors.grey),
@@ -493,7 +477,7 @@ class _UsersScreenState extends State<UsersScreen> {
                 // Email
                 TextField(
                   controller: emailController,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     labelText: 'Correo electrónico *',
@@ -512,7 +496,7 @@ class _UsersScreenState extends State<UsersScreen> {
                 TextField(
                   controller: passwordController,
                   obscureText: true,
-                  style: TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: isEditing
                         ? 'Nueva contraseña (opcional)'
@@ -570,20 +554,20 @@ class _UsersScreenState extends State<UsersScreen> {
           backgroundColor: Colors.grey[900],
           title: Text(
             'Cambiar Rol - ${user.displayName}',
-            style: TextStyle(color: AppTheme.textPrimary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 'Usuario: ${user.email}',
-                style: TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: selectedRoleId,
                 dropdownColor: Colors.grey[800],
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 decoration: InputDecoration(
                   labelText: 'Seleccionar Rol',
                   labelStyle: const TextStyle(color: Colors.grey),
@@ -607,7 +591,7 @@ class _UsersScreenState extends State<UsersScreen> {
                         const SizedBox(width: 8),
                         Text(
                           _getRoleDisplayName(role.nombre),
-                          style: TextStyle(color: AppTheme.textPrimary),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         ),
                       ],
                     ),

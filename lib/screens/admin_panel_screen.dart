@@ -199,10 +199,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       builder: (context) {
         final controller = TextEditingController();
         return AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Text(
             'Eliminar Pedido Específico',
-            style: TextStyle(color: AppTheme.textPrimary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -210,18 +210,18 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               Text(
                 'Ingresa el ID del pedido que deseas eliminar:\n\n'
                 'ADVERTENCIA: Esto eliminará el pedido incluso si está pagado.',
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
               SizedBox(height: 16),
               TextField(
                 controller: controller,
-                style: TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 decoration: InputDecoration(
                   hintText: 'ID del pedido',
-                  hintStyle: TextStyle(color: AppTheme.textSecondary),
+                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   border: OutlineInputBorder(),
                   enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: AppTheme.textSecondary),
+                    borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderSide: BorderSide(color: AppTheme.primary),
@@ -235,7 +235,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               onPressed: () => Navigator.pop(context),
               child: Text(
                 'Cancelar',
-                style: TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               ),
             ),
             ElevatedButton(
@@ -373,18 +373,18 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     return await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            backgroundColor: AppTheme.cardBg,
-            title: Text(title, style: TextStyle(color: AppTheme.textPrimary)),
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            title: Text(title, style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
             content: Text(
               content,
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
                 child: Text(
                   'Cancelar',
-                  style: TextStyle(color: AppTheme.textSecondary),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                 ),
               ),
               ElevatedButton(
@@ -425,9 +425,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: AppTheme.textMuted.withOpacity(0.1)),
+        border: Border.all(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.1)),
         boxShadow: AppTheme.cardShadow,
       ),
       child: Padding(
@@ -451,7 +451,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -462,7 +462,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 margin: EdgeInsets.only(bottom: 8),
                 padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceDark,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -470,7 +470,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   children: [
                     Text(
                       entry.key,
-                      style: TextStyle(color: AppTheme.textSecondary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     ),
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -499,9 +499,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   Widget _buildDateRangeSelector() {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: AppTheme.textMuted.withOpacity(0.1)),
+        border: Border.all(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.1)),
         boxShadow: AppTheme.cardShadow,
       ),
       child: Padding(
@@ -525,7 +525,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -549,7 +549,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                             data: Theme.of(context).copyWith(
                               colorScheme: ColorScheme.dark(
                                 primary: AppTheme.primary,
-                                surface: AppTheme.cardBg,
+                                surface: Theme.of(context).colorScheme.surface,
                               ),
                             ),
                             child: child!,
@@ -579,7 +579,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                             data: Theme.of(context).copyWith(
                               colorScheme: ColorScheme.dark(
                                 primary: AppTheme.primary,
-                                surface: AppTheme.cardBg,
+                                surface: Theme.of(context).colorScheme.surface,
                               ),
                             ),
                             child: child!,
@@ -597,13 +597,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             SizedBox(height: 16),
             Container(
               decoration: BoxDecoration(
-                color: AppTheme.surfaceDark,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: CheckboxListTile(
                 title: Text(
                   'Incluir facturas en eliminación',
-                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
                 ),
                 value: _incluirFacturas,
                 onChanged: (value) => setState(() => _incluirFacturas = value ?? false),
@@ -625,15 +625,15 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       child: Container(
         padding: EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppTheme.surfaceDark,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: date != null ? AppTheme.primary.withOpacity(0.5) : AppTheme.textMuted.withOpacity(0.2),
+            color: date != null ? AppTheme.primary.withOpacity(0.5) : Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.2),
           ),
         ),
         child: Row(
           children: [
-            Icon(icon, color: date != null ? AppTheme.primary : AppTheme.textMuted, size: 20),
+            Icon(icon, color: date != null ? AppTheme.primary : Theme.of(context).colorScheme.onSurface.withOpacity(0.6), size: 20),
             SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -641,13 +641,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 children: [
                   Text(
                     label,
-                    style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6), fontSize: 12),
                   ),
                   SizedBox(height: 4),
                   Text(
                     date != null ? formatDate(date) : 'No seleccionada',
                     style: TextStyle(
-                      color: date != null ? AppTheme.textPrimary : AppTheme.textMuted,
+                      color: date != null ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -663,9 +663,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   Widget _buildActionButtons() {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: AppTheme.textMuted.withOpacity(0.1)),
+        border: Border.all(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.1)),
         boxShadow: AppTheme.cardShadow,
       ),
       child: Padding(
@@ -691,7 +691,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -758,7 +758,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             ),
 
             SizedBox(height: 16),
-            Divider(color: AppTheme.textMuted.withOpacity(0.2)),
+            Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.2)),
             SizedBox(height: 12),
 
             // Zona de peligro
@@ -860,7 +860,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: isSecondary ? AppTheme.surfaceDark : AppTheme.error.withOpacity(0.15),
+          backgroundColor: isSecondary ? Theme.of(context).colorScheme.surface : AppTheme.error.withOpacity(0.15),
           foregroundColor: AppTheme.error,
           elevation: 0,
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -889,7 +889,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         border: Border.all(color: AppTheme.success.withOpacity(0.3)),
         boxShadow: AppTheme.cardShadow,
@@ -915,7 +915,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -925,14 +925,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               width: double.infinity,
               padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.surfaceDark,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: AppTheme.success.withOpacity(0.2)),
               ),
               child: SelectableText(
                 _lastResult!,
                 style: TextStyle(
-                  color: AppTheme.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   fontFamily: 'monospace',
                   fontSize: 12,
                   height: 1.5,
@@ -948,14 +948,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Row(
           children: [
             Container(
               padding: EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Theme.of(context).colorScheme.surface.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(Icons.admin_panel_settings, color: Colors.white, size: 20),
@@ -981,7 +981,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           icon: Container(
             padding: EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Theme.of(context).colorScheme.surface.withOpacity(0.2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(Icons.close, color: Colors.white, size: 18),
@@ -997,7 +997,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   Container(
                     padding: EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: AppTheme.cardBg,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Column(
@@ -1010,7 +1010,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                         Text(
                           'Procesando...',
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontWeight: FontWeight.w500,
                           ),
                         ),

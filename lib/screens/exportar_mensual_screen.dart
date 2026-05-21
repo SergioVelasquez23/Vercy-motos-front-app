@@ -35,8 +35,9 @@ class _ExportarMensualScreenState extends State<ExportarMensualScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Exportar Estadísticas Mensuales'),
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        elevation: 0,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -72,13 +73,13 @@ class _ExportarMensualScreenState extends State<ExportarMensualScreen> {
                   size: 28,
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Exportación Mensual a Excel',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),

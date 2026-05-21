@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
@@ -136,7 +137,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
     final userName = userProvider.userName ?? 'Usuario';
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(),
       body: _mostrarFormulario
           ? _FormularioCrearTraslado(
@@ -153,38 +154,23 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return AppBar(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       title: Row(
         children: [
-          Container(
-            padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(Icons.local_shipping, color: Colors.white, size: 20),
-          ),
+          Icon(Icons.local_shipping, color: AppTheme.primary, size: 24),
           SizedBox(width: 12),
           Text(
             'Traslados',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            style: TextStyle(color: onSurface, fontWeight: FontWeight.bold),
           ),
         ],
       ),
-      flexibleSpace: Container(
-        decoration: BoxDecoration(gradient: AppTheme.primaryGradient),
-      ),
       elevation: 0,
       leading: IconButton(
-        icon: Container(
-          padding: EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(Icons.arrow_back, color: Colors.white, size: 18),
-        ),
-        onPressed: () => Navigator.pushReplacementNamed(context, '/dashboard'),
+        icon: Icon(Icons.arrow_back, color: onSurface),
+        onPressed: () => context.go('/dashboard'),
       ),
     );
   }
@@ -205,7 +191,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
                       SizedBox(height: 16),
                       Text(
                         'Cargando traslados...',
-                        style: TextStyle(color: AppTheme.textSecondary),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       ),
                     ],
                   ),
@@ -257,7 +243,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Theme.of(context).colorScheme.surface.withOpacity(0.2),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -278,21 +264,21 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
       margin: EdgeInsets.symmetric(horizontal: 16),
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: AppTheme.textMuted.withOpacity(0.1)),
+        border: Border.all(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.1)),
       ),
       child: Column(
         children: [
           TextField(
             controller: _searchController,
-            style: TextStyle(color: AppTheme.textPrimary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             decoration: InputDecoration(
               hintText: 'Buscar por número, solicitante, producto...',
-              hintStyle: TextStyle(color: AppTheme.textMuted),
+              hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
               prefixIcon: Icon(Icons.search, color: AppTheme.primary),
               filled: true,
-              fillColor: AppTheme.surfaceDark,
+              fillColor: Theme.of(context).colorScheme.surface,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide.none,
@@ -311,7 +297,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
                 Text(
                   'Estado:',
                   style: TextStyle(
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -347,7 +333,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
                         size: 16,
                         color: isSelected
                             ? AppTheme.primary
-                            : AppTheme.textMuted,
+                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                       ),
                       label: Text(estado['label'] as String),
                       selected: isSelected,
@@ -357,17 +343,17 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
                         );
                         _cargarDatos();
                       },
-                      backgroundColor: AppTheme.surfaceDark,
+                      backgroundColor: Theme.of(context).colorScheme.surface,
                       selectedColor: AppTheme.primary.withOpacity(0.15),
                       side: BorderSide(
                         color: isSelected
                             ? AppTheme.primary
-                            : AppTheme.textMuted.withOpacity(0.3),
+                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3),
                       ),
                       labelStyle: TextStyle(
                         color: isSelected
                             ? AppTheme.primary
-                            : AppTheme.textSecondary,
+                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontWeight: isSelected
                             ? FontWeight.bold
                             : FontWeight.normal,
@@ -393,7 +379,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
             icon: Icons.warehouse,
             label: 'Ubicaciones',
             color: AppTheme.secondary,
-            onPressed: () => Navigator.pushNamed(context, '/bodegas'),
+            onPressed: () => context.push('/bodegas'),
           ),
           SizedBox(width: 12),
           _buildBotonAccion(
@@ -493,9 +479,9 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
     return Container(
       margin: EdgeInsets.fromLTRB(16, 0, 16, 16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: AppTheme.textMuted.withOpacity(0.1)),
+        border: Border.all(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.1)),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
@@ -549,7 +535,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
     return Container(
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: AppTheme.textMuted.withOpacity(0.1)),
+          bottom: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.1)),
         ),
       ),
       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -581,7 +567,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
                       'yy-MM-dd HH:mm',
                     ).format(traslado.fechaSolicitud!)
                   : '-',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -589,7 +575,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
             width: 120,
             child: Text(
               traslado.solicitante ?? '-',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 12),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -606,7 +592,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
             child: Text(
               '${traslado.cantidad?.toStringAsFixed(0) ?? 0}',
               style: TextStyle(
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
                 fontSize: 12,
               ),
@@ -655,13 +641,13 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceDark,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppTheme.textMuted.withOpacity(0.2)),
+        border: Border.all(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.2)),
       ),
       child: Text(
         nombre,
-        style: TextStyle(color: AppTheme.textPrimary, fontSize: 13,
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13,
         ),
       ),
     );
@@ -789,7 +775,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
           Text(
             'No hay traslados',
             style: TextStyle(
-              color: AppTheme.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
@@ -797,7 +783,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
           SizedBox(height: 8),
           Text(
             'Crea tu primer traslado de inventario',
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
           ),
           SizedBox(height: 24),
           ElevatedButton.icon(
@@ -827,7 +813,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
@@ -842,7 +828,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
             SizedBox(width: 12),
             Text(
               'Procesar Traslado',
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
           ],
         ),
@@ -854,22 +840,22 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
               Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceDark,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
                   children: [
                     _buildInfoRow('Número:', traslado.numero ?? '-'),
-                    Divider(color: AppTheme.textMuted.withOpacity(0.2)),
+                    Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.2)),
                     _buildInfoRow('Producto:', traslado.productoNombre ?? '-'),
-                    Divider(color: AppTheme.textMuted.withOpacity(0.2)),
+                    Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.2)),
                     _buildInfoRow('Cantidad:', '${traslado.cantidad}'),
-                    Divider(color: AppTheme.textMuted.withOpacity(0.2)),
+                    Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.2)),
                     _buildInfoRow(
                       'Origen:',
                       traslado.origenBodegaNombre ?? '-',
                     ),
-                    Divider(color: AppTheme.textMuted.withOpacity(0.2)),
+                    Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.2)),
                     _buildInfoRow(
                       'Destino:',
                       traslado.destinoBodegaNombre ?? '-',
@@ -885,7 +871,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancelar',
-              style: TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
             ),
           ),
           ElevatedButton.icon(
@@ -923,11 +909,11 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: AppTheme.textMuted)),
+          Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
           Text(
             value,
             style: TextStyle(
-              color: AppTheme.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1043,7 +1029,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
@@ -1058,7 +1044,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
             SizedBox(width: 12),
             Text(
               'Traslado ${traslado.numero}',
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
           ],
         ),
@@ -1071,7 +1057,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
                 Container(
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceDark,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
@@ -1176,12 +1162,12 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
               children: [
                 Text(
                   label,
-                  style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6), fontSize: 12),
                 ),
                 Text(
                   value,
                   style: TextStyle(
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -1535,7 +1521,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
             icon: Icon(Icons.list_alt),
             label: Text('Ver Traslados'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white.withOpacity(0.2),
+              backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.2),
               foregroundColor: Colors.white,
             ),
           ),
@@ -1548,9 +1534,9 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: AppTheme.textMuted.withOpacity(0.1)),
+        border: Border.all(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.1)),
       ),
       child: Row(
         children: [
@@ -1597,7 +1583,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
         Text(
           label,
           style: TextStyle(
-            color: AppTheme.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
             fontSize: 14,
           ),
@@ -1605,9 +1591,9 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
         SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: AppTheme.surfaceDark,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppTheme.textMuted.withOpacity(0.2)),
+            border: Border.all(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.2)),
           ),
           child: DropdownButtonFormField<String>(
             value: value,
@@ -1621,14 +1607,14 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
             hint: _cargandoBodegas
                 ? Text(
                     'Cargando...',
-                    style: TextStyle(color: AppTheme.textMuted),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                   )
                 : Text(
                     'Seleccione',
-                    style: TextStyle(color: AppTheme.textMuted),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                   ),
-            dropdownColor: AppTheme.cardBg,
-            style: TextStyle(color: AppTheme.textPrimary),
+            dropdownColor: Theme.of(context).colorScheme.surface,
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             items: _bodegas.map((bodega) {
               return DropdownMenuItem(
                 value: bodega.id,
@@ -1656,9 +1642,9 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: AppTheme.textMuted.withOpacity(0.1)),
+        border: Border.all(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1679,7 +1665,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ],
@@ -1790,7 +1776,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
               Text(
                 'Stock del producto',
                 style: TextStyle(
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
@@ -1831,7 +1817,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                           Text(
                             'BODEGA ORIGEN',
                             style: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),
@@ -1926,7 +1912,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
           Text(
             label,
             style: TextStyle(
-              color: AppTheme.textSecondary,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               fontSize: 10,
             ),
           ),
@@ -1964,9 +1950,9 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
         ),
         Container(
           decoration: BoxDecoration(
-            color: AppTheme.surfaceDark,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.vertical(bottom: Radius.circular(8)),
-            border: Border.all(color: AppTheme.textMuted.withOpacity(0.2)),
+            border: Border.all(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.2)),
           ),
           child: RawAutocomplete<Producto>(
             optionsBuilder: (TextEditingValue textEditingValue) {
@@ -1992,7 +1978,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                   return TextField(
                     controller: controller,
                     focusNode: focusNode,
-                    style: TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     onTap: () {
                       // Mostrar opciones al tocar el campo
                       if (controller.text.isEmpty) {
@@ -2009,7 +1995,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                         vertical: 12,
                       ),
                       hintText: 'Buscar o seleccionar producto...',
-                      hintStyle: TextStyle(color: AppTheme.textMuted),
+                      hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                       prefixIcon: Icon(
                         Icons.search,
                         color: AppTheme.primary,
@@ -2022,7 +2008,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                             IconButton(
                               icon: Icon(
                                 Icons.clear,
-                                color: AppTheme.textMuted,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                                 size: 18,
                               ),
                               onPressed: () {
@@ -2036,7 +2022,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                             ),
                           Icon(
                             Icons.arrow_drop_down,
-                            color: AppTheme.textMuted,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                           ),
                           SizedBox(width: 8),
                         ],
@@ -2049,7 +2035,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                 alignment: Alignment.topLeft,
                 child: Material(
                   elevation: 8,
-                  color: AppTheme.cardBg,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
                     width: 500,
@@ -2106,7 +2092,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                                   decoration: BoxDecoration(
                                     border: Border(
                                       bottom: BorderSide(
-                                        color: AppTheme.textMuted.withOpacity(
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(
                                           0.1,
                                         ),
                                       ),
@@ -2139,7 +2125,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                                             Text(
                                               producto.nombre,
                                               style: TextStyle(
-                                                color: AppTheme.textPrimary,
+                                                color: Theme.of(context).colorScheme.onSurface,
                                                 fontWeight: FontWeight.w500,
                                                 fontSize: 13,
                                               ),
@@ -2148,7 +2134,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                                             Text(
                                               'Cod: ${producto.codigo ?? (producto.id.length >= 8 ? producto.id.substring(0, 8) : producto.id)}',
                                               style: TextStyle(
-                                                color: AppTheme.textMuted,
+                                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                                                 fontSize: 10,
                                               ),
                                             ),
@@ -2278,15 +2264,15 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
         ),
         Container(
           decoration: BoxDecoration(
-            color: AppTheme.surfaceDark,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.vertical(bottom: Radius.circular(8)),
-            border: Border.all(color: AppTheme.textMuted.withOpacity(0.2)),
+            border: Border.all(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.2)),
           ),
           child: TextField(
             controller: controller,
             readOnly: readOnly,
             keyboardType: keyboardType,
-            style: TextStyle(color: AppTheme.textPrimary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             onSubmitted: onSubmitted,
             decoration: InputDecoration(
               border: InputBorder.none,
@@ -2295,7 +2281,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                 vertical: 12,
               ),
               hintText: hint,
-              hintStyle: TextStyle(color: AppTheme.textMuted),
+              hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
               suffixIcon: suffixIcon,
             ),
           ),
@@ -2332,9 +2318,9 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
   Widget _buildTablaProductos() {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: AppTheme.textMuted.withOpacity(0.1)),
+        border: Border.all(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.1)),
       ),
       child: Column(
         children: [
@@ -2373,13 +2359,13 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                         children: [
                           Icon(
                             Icons.inventory_2_outlined,
-                            color: AppTheme.textMuted,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                             size: 40,
                           ),
                           SizedBox(height: 8),
                           Text(
                             'No hay productos agregados',
-                            style: TextStyle(color: AppTheme.textMuted),
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                           ),
                         ],
                       ),
@@ -2399,7 +2385,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                         decoration: BoxDecoration(
                           border: Border(
                             bottom: BorderSide(
-                              color: AppTheme.textMuted.withOpacity(0.1),
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.1),
                             ),
                           ),
                         ),
@@ -2409,14 +2395,14 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                               flex: 2,
                               child: Text(
                                 producto.id?.substring(0, 6) ?? '-',
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                               ),
                             ),
                             Expanded(
                               flex: 4,
                               child: Text(
                                 producto.nombre ?? '-',
-                                style: TextStyle(color: AppTheme.textPrimary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -2425,7 +2411,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                               child: Text(
                                 '${item['cantidad']}',
                                 style: TextStyle(
-                                  color: AppTheme.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -2434,14 +2420,14 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                               flex: 2,
                               child: Text(
                                 _origenSeleccionado ?? '-',
-                                style: TextStyle(color: AppTheme.textSecondary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                               ),
                             ),
                             Expanded(
                               flex: 2,
                               child: Text(
                                 _destinoSeleccionado ?? '-',
-                                style: TextStyle(color: AppTheme.textSecondary),
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                               ),
                             ),
                             IconButton(
@@ -2476,9 +2462,9 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: AppTheme.textMuted.withOpacity(0.1)),
+        border: Border.all(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2486,7 +2472,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
           Text(
             'Descripción (opcional)',
             style: TextStyle(
-              color: AppTheme.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -2494,12 +2480,12 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
           TextField(
             controller: _descripcionController,
             maxLines: 3,
-            style: TextStyle(color: AppTheme.textPrimary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             decoration: InputDecoration(
               hintText: 'Observaciones adicionales...',
-              hintStyle: TextStyle(color: AppTheme.textMuted),
+              hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
               filled: true,
-              fillColor: AppTheme.surfaceDark,
+              fillColor: Theme.of(context).colorScheme.surface,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide.none,
@@ -2520,8 +2506,8 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
           icon: Icon(Icons.close),
           label: Text('Cancelar'),
           style: OutlinedButton.styleFrom(
-            foregroundColor: AppTheme.textSecondary,
-            side: BorderSide(color: AppTheme.textMuted),
+            foregroundColor: Colors.white.withOpacity(0.7),
+            side: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
             padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           ),
         ),

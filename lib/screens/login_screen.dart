@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/auth_service.dart';
@@ -234,7 +235,7 @@ class _LoginScreenState extends State<LoginScreen>
 
           // Navegar automáticamente
           await Future.delayed(Duration(milliseconds: 100));
-          Navigator.pushReplacementNamed(context, '/dashboard');
+          context.go('/dashboard');
         } else if (response != null && response['requiresCode'] == true) {
           // Si requiere código 2FA, mostrar el campo
           setState(() {
@@ -361,10 +362,10 @@ class _LoginScreenState extends State<LoginScreen>
             // Redirigir según el rol del usuario
             if (userProvider.isOnlyAsesor) {
               // Los asesores van directamente a su pantalla de pedidos
-              Navigator.pushReplacementNamed(context, '/asesor-pedidos');
+              context.go('/asesor-pedidos');
             } else {
               // Admins y otros roles van al dashboard
-              Navigator.pushReplacementNamed(context, '/dashboard');
+              context.go('/dashboard');
             }
           } catch (e) {
             setState(() {
@@ -413,7 +414,7 @@ class _LoginScreenState extends State<LoginScreen>
         cacheProvider.warmupProductos();
 
         await Future.delayed(Duration(milliseconds: 100));
-        Navigator.pushReplacementNamed(context, '/dashboard');
+        context.go('/dashboard');
       } else {
         setState(() {
           errorMessage = 'Código incorrecto o expirado.';
@@ -431,7 +432,7 @@ class _LoginScreenState extends State<LoginScreen>
     bool isLoading = false;
     await showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.7),
+      barrierColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
@@ -634,7 +635,7 @@ class _LoginScreenState extends State<LoginScreen>
     final isMobile = context.screenWidth < 900;
     
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: Stack(
         children: [
           // Layout principal: dos columnas (desktop) o mobile
@@ -661,8 +662,8 @@ class _LoginScreenState extends State<LoginScreen>
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               colors: [
-                                Colors.black.withOpacity(0.3),
-                                Colors.black.withOpacity(0.5),
+                                Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                               ],
                             ),
                           ),
@@ -684,7 +685,7 @@ class _LoginScreenState extends State<LoginScreen>
                                       fontWeight: FontWeight.bold,
                                       shadows: [
                                         Shadow(
-                                          color: Colors.black.withOpacity(0.6),
+                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                                           offset: Offset(0, 3),
                                           blurRadius: 8,
                                         ),
@@ -701,7 +702,7 @@ class _LoginScreenState extends State<LoginScreen>
                                       fontWeight: FontWeight.w400,
                                       shadows: [
                                         Shadow(
-                                          color: Colors.black.withOpacity(0.5),
+                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                                           offset: Offset(0, 2),
                                           blurRadius: 6,
                                         ),
@@ -729,7 +730,7 @@ class _LoginScreenState extends State<LoginScreen>
           if (_showWakeupOverlay)
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.6),
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                 child: Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -794,7 +795,7 @@ class _LoginScreenState extends State<LoginScreen>
     return SafeArea(
       child: SingleChildScrollView(
         child: Container(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           padding: EdgeInsets.symmetric(
             horizontal: context.isMobile ? 16 : context.isTablet ? 32 : 48,
             vertical: context.isMobile ? 16 : 32,
@@ -823,7 +824,7 @@ class _LoginScreenState extends State<LoginScreen>
                         style: TextStyle(
                           fontSize: context.isMobile ? 28 : context.isTablet ? 32 : 36,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                       SizedBox(height: 8),
@@ -870,7 +871,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   _showPassword
                                       ? Icons.visibility_outlined
                                       : Icons.visibility_off_outlined,
-                                  color: AppTheme.textSecondary,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 ),
                                 onPressed: () {
                                   setState(() {
@@ -921,10 +922,8 @@ class _LoginScreenState extends State<LoginScreen>
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _login,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFF7C3AED), // Morado
-                            disabledBackgroundColor: Color(
-                              0xFF7C3AED,
-                            ).withOpacity(0.6),
+                            backgroundColor: AppTheme.secondaryDark,
+                            disabledBackgroundColor: AppTheme.secondaryDark.withOpacity(0.6),
                             foregroundColor: Colors.white,
                             elevation: _isLoading ? 2 : 4,
                             shape: RoundedRectangleBorder(
@@ -1021,7 +1020,7 @@ class _LoginScreenState extends State<LoginScreen>
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         SizedBox(height: 12),
@@ -1039,7 +1038,7 @@ class _LoginScreenState extends State<LoginScreen>
                             onPressed: _validateCode,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.warning,
-                              foregroundColor: Colors.black,
+                              foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -1047,7 +1046,7 @@ class _LoginScreenState extends State<LoginScreen>
                             child: Text(
                               'Validar Código',
                               style: TextStyle(
-                                color: Colors.black,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -1119,7 +1118,7 @@ class _LoginScreenState extends State<LoginScreen>
         keyboardType: keyboardType,
         obscureText: obscureText,
         onChanged: onChanged,
-        style: TextStyle(fontSize: 14, color: Colors.black87),
+        style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
         decoration: InputDecoration(
           labelText: label,
           labelStyle: TextStyle(color: Colors.grey[500], fontSize: 14),

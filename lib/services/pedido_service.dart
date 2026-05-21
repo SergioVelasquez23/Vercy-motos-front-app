@@ -381,12 +381,12 @@ class PedidoService {
       final headers = await _getHeaders();
       // Por defecto el backend ahora solo trae pedidos de los últimos 7 días
       final response = await http.get(
-        Uri.parse('$baseUrl/api/pedidos'),
+        Uri.parse('$baseUrl/api/pedidos/consultas'),
         headers: headers,
       );
 
-        
-        
+
+
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -407,7 +407,7 @@ class PedidoService {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/api/pedidos?todos=true'),
+        Uri.parse('$baseUrl/api/pedidos/consultas'),
         headers: headers,
       );
 
@@ -428,8 +428,9 @@ class PedidoService {
   Future<List<Pedido>> getPedidosUltimosDias(int dias) async {
     try {
       final headers = await _getHeaders();
+      // El backend no soporta filtro por días; trae todos y filtra client-side
       final response = await http.get(
-        Uri.parse('$baseUrl/api/pedidos?dias=$dias'),
+        Uri.parse('$baseUrl/api/pedidos/consultas'),
         headers: headers,
       );
 
@@ -461,7 +462,7 @@ class PedidoService {
 
       // Intentar primero con el endpoint específico
       final response = await http.get(
-        Uri.parse('$baseUrl/api/pedidos/por-fecha?fecha=$fechaHoy'),
+        Uri.parse('$baseUrl/api/pedidos/consultas/fecha/$fechaHoy'),
         headers: headers,
       );
 
@@ -518,7 +519,7 @@ class PedidoService {
       final headers = await _getHeaders();
       final response = await http.get(
         Uri.parse(
-          '$baseUrl/api/pedidos?tipo=${tipo.toString().split('.').last}',
+          '$baseUrl/api/pedidos/consultas/tipo/${tipo.toString().split('.').last}',
         ),
         headers: headers,
       );
@@ -542,7 +543,7 @@ class PedidoService {
       final headers = await _getHeaders();
       final response = await http.get(
         Uri.parse(
-          '$baseUrl/api/pedidos?estado=${estado.toString().split('.').last}',
+          '$baseUrl/api/pedidos/consultas/estado/${estado.toString().split('.').last}',
         ),
         headers: headers,
       );

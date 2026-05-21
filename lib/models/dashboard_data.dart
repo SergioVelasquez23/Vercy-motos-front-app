@@ -37,11 +37,17 @@ class VentasPeriodo {
   final double objetivo;
   final double total;
   final double porcentaje;
+  /// Average order value: totalVentas / cantidadTotal del periodo.
+  final double aov;
+  /// Promedio (en horas) de fechaPago − fecha sobre pedidos completados.
+  final double tiempoCicloVentasHoras;
 
   VentasPeriodo({
     required this.objetivo,
     required this.total,
     required this.porcentaje,
+    this.aov = 0.0,
+    this.tiempoCicloVentasHoras = 0.0,
   });
 
   factory VentasPeriodo.fromJson(Map<String, dynamic> json) {
@@ -61,6 +67,8 @@ class VentasPeriodo {
       objetivo: (json['objetivo'] ?? 0).toDouble(),
       total: totalVentas,
       porcentaje: (json['porcentaje'] ?? 0).toDouble(),
+      aov: (json['aov'] ?? 0).toDouble(),
+      tiempoCicloVentasHoras: (json['tiempoCicloVentasHoras'] ?? 0).toDouble(),
     );
   }
 }
@@ -72,6 +80,10 @@ class VentasHoy {
   final int cantidad;
   final double porcentaje;
   final int pedidosPagados;
+  /// Average order value: totalVentas / cantidadTotal.
+  final double aov;
+  /// Promedio (en horas) de fechaPago − fecha sobre pedidos completados.
+  final double tiempoCicloVentasHoras;
 
   VentasHoy({
     required this.objetivo,
@@ -80,6 +92,8 @@ class VentasHoy {
     required this.cantidad,
     required this.porcentaje,
     required this.pedidosPagados,
+    this.aov = 0.0,
+    this.tiempoCicloVentasHoras = 0.0,
   });
 
   factory VentasHoy.fromJson(Map<String, dynamic> json) {
@@ -111,6 +125,8 @@ class VentasHoy {
           json['cantidadPedidos'] ??
           json['pedidosPagados'] ??
           0, // Usar cantidadPedidos del backend
+      aov: (json['aov'] ?? 0).toDouble(),
+      tiempoCicloVentasHoras: (json['tiempoCicloVentasHoras'] ?? 0).toDouble(),
     );
   }
 }

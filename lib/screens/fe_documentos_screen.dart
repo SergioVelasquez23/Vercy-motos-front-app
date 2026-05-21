@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/vercy_sidebar_layout.dart';
 import '../../providers/user_provider.dart';
 import '../../services/matias_service.dart';
 import '../../services/factura_service.dart';
@@ -21,24 +21,22 @@ class FEDocumentosScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return VercySidebarLayout(
-      title: 'Facturación Electrónica',
-      child: Scaffold(
-        backgroundColor: AppTheme.backgroundDark,
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildPageHeader(context),
-              const SizedBox(height: 20),
-              _buildBandejaPendientes(context),
-              const SizedBox(height: 28),
-              _buildCards(context),
-              const SizedBox(height: 32),
-              _buildNominaSection(context),
-            ],
-          ),
+    final isMobile = context.isMobile;
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(isMobile ? 12 : 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildPageHeader(context),
+            const SizedBox(height: 20),
+            _buildBandejaPendientes(context),
+            const SizedBox(height: 28),
+            _buildCards(context),
+            const SizedBox(height: 32),
+            _buildNominaSection(context),
+          ],
         ),
       ),
     );
@@ -47,35 +45,46 @@ class FEDocumentosScreen extends StatelessWidget {
   // ──────────────────────────────────────────────────────────────────────────
 
   Widget _buildPageHeader(BuildContext context) {
-    return Row(
+    final isMobile = context.isMobile;
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppTheme.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(Icons.receipt_long, color: AppTheme.primary, size: 30),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Documentos Electrónicos',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
-              Text(
-                'Emite y gestiona todos los documentos electrónicos ante la DIAN',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+              child: Icon(Icons.receipt_long, color: AppTheme.primary, size: isMobile ? 24 : 30),
+            ),
+            const SizedBox(width: 16),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Documentos Electrónicos',
+                    style: TextStyle(
+                      fontSize: isMobile ? 20 : 26,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                  Text(
+                    'Emite y gestiona todos los documentos electrónicos ante la DIAN',
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: isMobile ? 12 : 14),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
         _EstadoAuthChip(),
       ],
@@ -84,7 +93,7 @@ class FEDocumentosScreen extends StatelessWidget {
 
   Widget _buildBandejaPendientes(BuildContext context) {
     return InkWell(
-      onTap: () => Navigator.pushNamed(context, '/documentos-pendientes'),
+      onTap: () => context.push('/documentos-pendientes'),
       borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.all(18),
@@ -124,14 +133,14 @@ class FEDocumentosScreen extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     'Ver documentos pendientes, enviados y rechazados',
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 12,
                     ),
                   ),
@@ -163,7 +172,7 @@ class FEDocumentosScreen extends StatelessWidget {
               icon: Icons.file_present_rounded,
               titulo: 'Documento Soporte',
               descripcion: 'Compras a proveedores\nno obligados a facturar',
-              color: const Color(0xFF00897B),
+              color: AppTheme.success,
               onTap: () => showDialog(
                 context: context,
                 barrierDismissible: false,
@@ -193,7 +202,7 @@ class FEDocumentosScreen extends StatelessWidget {
               descripcion:
                   'Ve a la lista de documentos\npara facturar pedidos POS',
               color: AppTheme.primary,
-              onTap: () => Navigator.pushNamed(context, '/facturas'),
+              onTap: () => context.push('/facturas'),
               badge: 'POS',
               esNavegacion: true,
             ),
@@ -233,7 +242,7 @@ class FEDocumentosScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
         boxShadow: AppTheme.cardShadow,
       ),
@@ -249,7 +258,7 @@ class FEDocumentosScreen extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ],
@@ -257,7 +266,7 @@ class FEDocumentosScreen extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             'Emite, corrige o elimina nóminas individuales ante la DIAN.',
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
           ),
           const SizedBox(height: 16),
           Wrap(
@@ -441,7 +450,7 @@ class _DocCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: AppTheme.cardBg,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: color.withOpacity(0.25)),
           boxShadow: AppTheme.cardShadow,
@@ -482,7 +491,7 @@ class _DocCard extends StatelessWidget {
                   const SizedBox(width: 4),
                   Icon(
                     Icons.arrow_forward_ios,
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     size: 12,
                   ),
                 ],
@@ -494,7 +503,7 @@ class _DocCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 4),
@@ -502,7 +511,7 @@ class _DocCard extends StatelessWidget {
               descripcion,
               style: TextStyle(
                 fontSize: 11,
-                color: AppTheme.textSecondary,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                 height: 1.4,
               ),
             ),
@@ -573,15 +582,15 @@ class _BuscarDSDialogState extends State<_BuscarDSDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: AppTheme.cardBg,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       title: Row(
         children: [
-          Icon(Icons.search, color: const Color(0xFF00897B)),
+          Icon(Icons.search, color: AppTheme.success),
           const SizedBox(width: 10),
           Text(
             'Datos del Documento Soporte',
-            style: TextStyle(color: AppTheme.textPrimary, fontSize: 17),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 17),
           ),
         ],
       ),
@@ -592,7 +601,7 @@ class _BuscarDSDialogState extends State<_BuscarDSDialog> {
           children: [
             Text(
               'Ingresa los datos del DS que deseas ajustar:',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
             ),
             const SizedBox(height: 14),
             _tf(_numeroCtrl, 'Número del DS *'),
@@ -624,7 +633,7 @@ class _BuscarDSDialogState extends State<_BuscarDSDialog> {
           onPressed: () => Navigator.pop(context),
           child: Text(
             'Cancelar',
-            style: TextStyle(color: AppTheme.textSecondary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
           ),
         ),
         ElevatedButton(
@@ -645,7 +654,7 @@ class _BuscarDSDialogState extends State<_BuscarDSDialog> {
             );
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF00897B),
+            backgroundColor: AppTheme.success,
           ),
           child: const Text('Continuar', style: TextStyle(color: Colors.white)),
         ),
@@ -662,16 +671,16 @@ class _BuscarDSDialogState extends State<_BuscarDSDialog> {
     keyboardType: keyboardType,
     decoration: InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+      hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
       filled: true,
-      fillColor: AppTheme.surfaceDark,
+      fillColor: Theme.of(context).colorScheme.surface,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(color: Colors.grey.shade300),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
     ),
-    style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
   );
 }
 
@@ -751,7 +760,7 @@ class _NominaSimpleDialogState extends State<_NominaSimpleDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: AppTheme.cardBg,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 580, maxHeight: 580),
@@ -768,13 +777,13 @@ class _NominaSimpleDialogState extends State<_NominaSimpleDialog> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.close),
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -782,7 +791,7 @@ class _NominaSimpleDialogState extends State<_NominaSimpleDialog> {
               const SizedBox(height: 8),
               Text(
                 'Pega el JSON de la nómina según la estructura de Matias API (ver documentación):',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
               ),
               const SizedBox(height: 12),
               Expanded(
@@ -794,11 +803,11 @@ class _NominaSimpleDialogState extends State<_NominaSimpleDialog> {
                   decoration: InputDecoration(
                     hintText: '{ "sequence": "1", "employee": { ... }, ... }',
                     hintStyle: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 12,
                     ),
                     filled: true,
-                    fillColor: AppTheme.surfaceDark,
+                    fillColor: Theme.of(context).colorScheme.surface,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -843,7 +852,7 @@ class _NominaSimpleDialogState extends State<_NominaSimpleDialog> {
                     onPressed: () => Navigator.pop(context),
                     child: Text(
                       'Cerrar',
-                      style: TextStyle(color: AppTheme.textSecondary),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -978,7 +987,7 @@ class _BuscarFacturaParaNotaDialogState
         : 'Nota Débito';
 
     return AlertDialog(
-      backgroundColor: AppTheme.cardBg,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       title: Row(
         children: [
@@ -991,12 +1000,12 @@ class _BuscarFacturaParaNotaDialogState
           const SizedBox(width: 10),
           Text(
             titulo,
-            style: TextStyle(color: AppTheme.textPrimary, fontSize: 17),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 17),
           ),
           const Spacer(),
           IconButton(
             icon: const Icon(Icons.close),
-            color: AppTheme.textSecondary,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             onPressed: () => Navigator.pop(context),
           ),
         ],
@@ -1008,7 +1017,7 @@ class _BuscarFacturaParaNotaDialogState
           children: [
             Text(
               'Busca la factura sobre la que deseas emitir esta ${widget.tipo == TipoNota.credito ? "nota crédito" : "nota débito"}',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -1018,11 +1027,11 @@ class _BuscarFacturaParaNotaDialogState
                 labelText: 'Número de factura',
                 hintText: 'Ej: FV-001',
                 hintStyle: TextStyle(
-                  color: AppTheme.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   fontSize: 13,
                 ),
                 filled: true,
-                fillColor: AppTheme.surfaceDark,
+                fillColor: Theme.of(context).colorScheme.surface,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide.none,
@@ -1032,7 +1041,7 @@ class _BuscarFacturaParaNotaDialogState
                   vertical: 10,
                 ),
               ),
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
             ),
             const SizedBox(height: 10),
             TextField(
@@ -1042,11 +1051,11 @@ class _BuscarFacturaParaNotaDialogState
                 labelText: 'O CUFE de la factura',
                 hintText: 'Código único CUFE',
                 hintStyle: TextStyle(
-                  color: AppTheme.textSecondary,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   fontSize: 13,
                 ),
                 filled: true,
-                fillColor: AppTheme.surfaceDark,
+                fillColor: Theme.of(context).colorScheme.surface,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide.none,
@@ -1056,7 +1065,7 @@ class _BuscarFacturaParaNotaDialogState
                   vertical: 10,
                 ),
               ),
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
             ),
             if (_error != null) ...[
               const SizedBox(height: 10),
@@ -1080,7 +1089,7 @@ class _BuscarFacturaParaNotaDialogState
           onPressed: () => Navigator.pop(context),
           child: Text(
             'Cancelar',
-            style: TextStyle(color: AppTheme.textSecondary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
           ),
         ),
         ElevatedButton.icon(

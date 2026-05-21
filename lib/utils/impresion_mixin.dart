@@ -4,6 +4,7 @@ import '../services/impresion_service.dart';
 import '../services/pdf_service.dart';
 import '../services/negocio_info_service.dart';
 import '../models/negocio_info.dart';
+import '../theme/app_theme.dart';
 
 /// Mixin que proporciona funcionalidades de impresión reutilizables
 /// para diferentes pantallas de la aplicación
@@ -13,10 +14,10 @@ mixin ImpresionMixin<T extends StatefulWidget> on State<T> {
   final PDFService _pdfService = PDFService();
   final NegocioInfoService _negocioInfoService = NegocioInfoService();
 
-  // Colores del tema
-  static const Color _primary = Color(0xFFFF6B00);
-  static const Color _cardBg = Color(0xFF1E1E1E);
-  static const Color _textLight = Color(0xFFE0E0E0);
+  // Colores del tema (resueltos al usarse dentro de un build/diálogo)
+  Color get _primary => AppTheme.primary;
+  Color get _cardBg => Theme.of(context).colorScheme.surface;
+  Color get _textLight => Theme.of(context).colorScheme.onSurface;
 
   /// Prepara el resumen de un pedido para impresión usando el backend
   Future<Map<String, dynamic>?> prepararResumenPedido(String pedidoId,

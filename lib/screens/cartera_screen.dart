@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/resumen_cartera.dart';
 import '../models/cuenta_por_cobrar.dart';
 import '../models/cuenta_por_pagar.dart';
@@ -6,11 +7,6 @@ import '../models/gasto_programado.dart';
 import '../services/cartera_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
-import '../widgets/vercy_sidebar_layout.dart';
-import 'cuentas_por_cobrar_screen.dart';
-import 'cuentas_por_pagar_screen.dart';
-import 'gastos_programados_screen.dart';
-import 'alertas_screen.dart';
 
 class CarteraScreen extends StatefulWidget {
   const CarteraScreen({Key? key}) : super(key: key);
@@ -61,22 +57,16 @@ class _CarteraScreenState extends State<CarteraScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return VercySidebarLayout(
-      child: Scaffold(
+    return Scaffold(
         appBar: AppBar(
           title: const Text('Gestión de Cartera'),
-          backgroundColor: AppTheme.primary,
-          foregroundColor: AppTheme.white,
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
           elevation: 0,
           actions: [
             IconButton(
               icon: const Icon(Icons.notifications),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AlertasScreen()),
-                );
-              },
+              onPressed: () => context.push('/alertas'),
             ),
             IconButton(
               icon: const Icon(Icons.refresh),
@@ -89,7 +79,6 @@ class _CarteraScreenState extends State<CarteraScreen> {
             : error != null
             ? _buildErrorWidget()
             : _buildContent(),
-      ),
     );
   }
 
@@ -369,12 +358,7 @@ class _CarteraScreenState extends State<CarteraScreen> {
                 'Cuentas por Cobrar',
                 Icons.account_balance,
                 Colors.green,
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const CuentasPorCobrarScreen(),
-                  ),
-                ),
+                () => context.push('/cuentas-por-cobrar'),
               ),
             ),
             const SizedBox(width: 8),
@@ -383,12 +367,7 @@ class _CarteraScreenState extends State<CarteraScreen> {
                 'Cuentas por Pagar',
                 Icons.payment,
                 Colors.orange,
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const CuentasPorPagarScreen(),
-                  ),
-                ),
+                () => context.push('/cuentas-por-pagar'),
               ),
             ),
           ],
@@ -403,12 +382,7 @@ class _CarteraScreenState extends State<CarteraScreen> {
                 'Gastos Programados',
                 Icons.schedule,
                 Colors.blue,
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const GastosProgramadosScreen(),
-                  ),
-                ),
+                () => context.push('/gastos-programados'),
               ),
             ),
             const SizedBox(width: 8),
@@ -417,12 +391,7 @@ class _CarteraScreenState extends State<CarteraScreen> {
                 'Alertas',
                 Icons.notifications,
                 Colors.purple,
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AlertasScreen(),
-                  ),
-                ),
+                () => context.push('/alertas'),
               ),
             ),
           ],

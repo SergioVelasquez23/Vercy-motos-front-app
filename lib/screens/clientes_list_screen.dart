@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:typed_data';
 import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import '../models/cliente.dart';
 import '../services/cliente_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/vercy_sidebar_layout.dart';
 import '../utils/pagination_mixin.dart';
+import '../widgets/common/screen_header.dart';
 
 class ClientesListScreen extends StatefulWidget {
   @override
@@ -85,60 +86,78 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
 
   @override
   Widget build(BuildContext context) {
-    return VercySidebarLayout(
-      title: 'Clientes',
-      child: Container(
-        padding: EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Título
-            Text(
-              'Lista de Clientes',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ScreenHeader(
+          icon: Icons.people,
+          title: 'Lista de Clientes',
+          badge: '${_clientesFiltrados.length}',
+          actions: [
+            ScreenHeaderAction.success(
+              icon: Icons.upload_file,
+              label: 'Carga Masiva',
+              mobileLabel: 'Carga',
+              onPressed: _mostrarDialogoCargaMasiva,
             ),
-            SizedBox(height: 24),
-            _buildFiltros(),
-            SizedBox(height: 16),
-            Expanded(
-              child: _isLoading
-                  ? Center(
-                      child: CircularProgressIndicator(color: AppTheme.primary),
-                    )
-                  : _clientesFiltrados.isEmpty
-                  ? _buildEmptyState()
-                  : _buildClientesList(),
+            ScreenHeaderAction.primary(
+              icon: Icons.person_add,
+              label: 'Nuevo Cliente',
+              mobileLabel: 'Nuevo',
+              onPressed: () => _navegarAFormulario(null),
             ),
           ],
         ),
-      ),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.all(context.isMobile ? 12 : 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildFiltros(),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: _isLoading
+                      ? Center(
+                          child: CircularProgressIndicator(color: AppTheme.primary),
+                        )
+                      : _clientesFiltrados.isEmpty
+                          ? _buildEmptyState()
+                          : _buildClientesList(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildFiltros() {
+    final isMobile = context.isMobile;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade300),
       ),
-      child: Row(
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          // Buscador
-          Expanded(
-            flex: 3,
+          // Buscador — full width móvil
+          SizedBox(
+            width: isMobile ? double.infinity : 360,
             child: TextField(
               controller: _searchController,
-              style: TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: onSurface),
               decoration: InputDecoration(
                 hintText: 'Buscar por nombre, documento o correo...',
-                hintStyle: TextStyle(color: Colors.black),
-                prefixIcon: Icon(Icons.search, color: Colors.black),
+                hintStyle: TextStyle(color: onSurface.withOpacity(0.6)),
+                prefixIcon: Icon(Icons.search, color: onSurface.withOpacity(0.7)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(color: Colors.grey.shade300),
@@ -151,41 +170,31 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(color: AppTheme.primary, width: 2),
                 ),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 filled: true,
-                fillColor: AppTheme.surfaceDark,
+                fillColor: Theme.of(context).colorScheme.surface,
               ),
               onChanged: (value) => _aplicarFiltros(),
             ),
           ),
-          SizedBox(width: 16),
           // Filtro por estado
           Container(
             padding: EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.grey.shade300),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: _filtroEstado,
-                dropdownColor: AppTheme.cardBg,
-                style: TextStyle(color: AppTheme.textPrimary),
-                icon: Icon(Icons.arrow_drop_down, color: Colors.black),
+                dropdownColor: Theme.of(context).colorScheme.surface,
+                style: TextStyle(color: onSurface),
+                icon: Icon(Icons.arrow_drop_down, color: onSurface),
                 items: [
-                  DropdownMenuItem(
-                    value: 'todos',
-                    child: Text('Todos los estados'),
-                  ),
+                  DropdownMenuItem(value: 'todos', child: Text('Todos los estados')),
                   DropdownMenuItem(value: 'activos', child: Text('Activos')),
-                  DropdownMenuItem(
-                    value: 'bloqueados',
-                    child: Text('Bloqueados'),
-                  ),
+                  DropdownMenuItem(value: 'bloqueados', child: Text('Bloqueados')),
                 ],
                 onChanged: (value) {
                   setState(() => _filtroEstado = value!);
@@ -194,7 +203,6 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
               ),
             ),
           ),
-          SizedBox(width: 12),
           // Botón refrescar
           Container(
             decoration: BoxDecoration(
@@ -205,52 +213,6 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
               icon: Icon(Icons.refresh, color: Colors.white),
               onPressed: _cargarClientes,
               tooltip: 'Refrescar',
-            ),
-          ),
-          SizedBox(width: 12),
-          // Contador de clientes
-          Text(
-            '${_clientesFiltrados.length} clientes',
-            style: TextStyle(fontSize: 14, color: Colors.black),
-          ),
-          Spacer(),
-          // Botón Carga Masiva
-          ElevatedButton.icon(
-            onPressed: _mostrarDialogoCargaMasiva,
-            icon: Icon(Icons.upload_file, color: Colors.white),
-            label: Text(
-              'Carga Masiva',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-          SizedBox(width: 12),
-          // Botón Nuevo Cliente
-          ElevatedButton.icon(
-            onPressed: () => _navegarAFormulario(null),
-            icon: Icon(Icons.person_add, color: Colors.white),
-            label: Text(
-              'Nuevo Cliente',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
             ),
           ),
         ],
@@ -269,7 +231,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
             _searchController.text.isEmpty
                 ? 'No hay clientes registrados'
                 : 'No se encontraron clientes',
-            style: TextStyle(fontSize: 16, color: Colors.black),
+            style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurface),
           ),
           SizedBox(height: 16),
           ElevatedButton.icon(
@@ -296,7 +258,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
     return Container(
       margin: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
@@ -350,7 +312,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -365,91 +327,108 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
             ),
         ],
       ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(Icons.badge, size: 14, color: Colors.black),
-              SizedBox(width: 4),
-              Text(
-                '${cliente.tipoIdentificacion}: ${cliente.numeroIdentificacion}',
-                style: TextStyle(color: Colors.black),
-              ),
-              if (cliente.digitoVerificacion != null)
-                Text(
-                  '-${cliente.digitoVerificacion}',
-                  style: TextStyle(color: Colors.black),
+      subtitle: Builder(builder: (context) {
+        final onSurface = Theme.of(context).colorScheme.onSurface;
+        final muted = onSurface.withOpacity(0.7);
+        final saldoColor = cliente.saldoActual > 0 ? AppTheme.warning : AppTheme.success;
+        final cupoColor = cupoDisponiblePorcentaje > 50
+            ? AppTheme.primary
+            : cupoDisponiblePorcentaje > 20
+            ? AppTheme.warning
+            : AppTheme.error;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(Icons.badge, size: 14, color: muted),
+                SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    '${cliente.tipoIdentificacion}: ${cliente.numeroIdentificacion}'
+                    '${cliente.digitoVerificacion != null ? '-${cliente.digitoVerificacion}' : ''}',
+                    style: TextStyle(color: onSurface),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
+              ],
+            ),
+            if (cliente.correo != null) ...[
+              SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.email, size: 14, color: muted),
+                  SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      cliente.correo!,
+                      style: TextStyle(color: onSurface),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ],
-          ),
-          if (cliente.correo != null) ...[
-            SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(Icons.email, size: 14, color: Colors.black),
-                SizedBox(width: 4),
-                Text(
-                  cliente.correo!,
-                  style: TextStyle(color: Colors.black),
-                ),
-              ],
-            ),
-          ],
-          if (cliente.telefono != null) ...[
-            SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(Icons.phone, size: 14, color: Colors.black),
-                SizedBox(width: 4),
-                Text(
-                  cliente.telefono!,
-                  style: TextStyle(color: Colors.black),
-                ),
-              ],
-            ),
-          ],
-          SizedBox(height: 8),
-          Row(
-            children: [
-              // Saldo
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: cliente.saldoActual > 0
-                      ? Colors.orange[100]
-                      : Colors.green[100],
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  'Saldo: \$${cliente.saldoActual.toStringAsFixed(0)}',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                ),
+            if (cliente.telefono != null) ...[
+              SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.phone, size: 14, color: muted),
+                  SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      cliente.telefono!,
+                      style: TextStyle(color: onSurface),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(width: 8),
-              // Cupo disponible
-              if (cliente.cupoCredito > 0) ...[
+            ],
+            SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: cupoDisponiblePorcentaje > 50
-                        ? Colors.blue[100]
-                        : cupoDisponiblePorcentaje > 20
-                        ? Colors.orange[100]
-                        : Colors.red[100],
+                    color: saldoColor.withOpacity(0.18),
                     borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: saldoColor.withOpacity(0.4)),
                   ),
                   child: Text(
-                    'Cupo: \$${cliente.cupoDisponible.toStringAsFixed(0)}',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    'Saldo: \$${cliente.saldoActual.toStringAsFixed(0)}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: saldoColor,
+                    ),
                   ),
                 ),
+                if (cliente.cupoCredito > 0)
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: cupoColor.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: cupoColor.withOpacity(0.4)),
+                    ),
+                    child: Text(
+                      'Cupo: \$${cliente.cupoDisponible.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: cupoColor,
+                      ),
+                    ),
+                  ),
               ],
-            ],
-          ),
-        ],
-      ),
+            ),
+          ],
+        );
+      }),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -482,10 +461,9 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
   }
 
   void _navegarAFormulario(Cliente? cliente) async {
-    final resultado = await Navigator.pushNamed(
-      context,
+    final resultado = await context.push(
       '/clientes/form',
-      arguments: cliente,
+      extra: cliente,
     );
 
     if (resultado == true) {
@@ -494,7 +472,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
   }
 
   void _verDetalle(Cliente cliente) {
-    Navigator.pushNamed(context, '/clientes/detalle', arguments: cliente);
+    context.push('/clientes/detalle', extra: cliente);
   }
 
   Future<void> _toggleEstado(Cliente cliente) async {
@@ -611,7 +589,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -628,7 +606,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
               SizedBox(width: 12),
               Text(
                 'Carga Masiva de Clientes',
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 18),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18),
               ),
             ],
           ),
@@ -640,7 +618,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
               children: [
                 Text(
                   'Sube un archivo Excel (.xlsx o .xls) con los clientes a cargar.',
-                  style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+                  style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                 ),
                 SizedBox(height: 20),
                 Text(
@@ -648,14 +626,14 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 SizedBox(height: 8),
                 Container(
                   padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceDark,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.grey.shade300),
                   ),
@@ -683,14 +661,14 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 SizedBox(height: 8),
                 Container(
                   padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceDark,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.grey.shade300),
                   ),
@@ -734,7 +712,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Cancelar', style: TextStyle(color: AppTheme.textSecondary)),
+              child: Text('Cancelar', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
             ),
             ElevatedButton.icon(
               onPressed: () {
@@ -882,7 +860,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
           onWillPop: () async => false,
           child: Center(
             child: Card(
-              color: AppTheme.cardBg,
+              color: Theme.of(context).colorScheme.surface,
               child: Padding(
                 padding: EdgeInsets.all(32),
                 child: Column(
@@ -893,14 +871,14 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
                     Text(
                       'Cargando clientes...',
                       style: TextStyle(
-                        color: AppTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 16,
                       ),
                     ),
                     SizedBox(height: 8),
                     Text(
                       'Por favor espera, esto puede tardar unos segundos',
-                      style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     ),
                   ],
                 ),
@@ -986,7 +964,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
@@ -1032,7 +1010,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
                         ),
                         Text(
                           'clientes cargados exitosamente',
-                          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                          style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                         ),
                       ],
                     ),
@@ -1053,7 +1031,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
                   height: 150,
                   padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceDark,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.orange.withOpacity(0.3)),
                   ),
@@ -1075,7 +1053,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
                     padding: EdgeInsets.only(top: 8),
                     child: Text(
                       '... y ${errores.length - 10} errores más',
-                      style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                      style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     ),
                   ),
               ],

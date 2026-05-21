@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/user_management_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/vercy_sidebar_layout.dart';
 
 class AutorizacionesScreen extends StatefulWidget {
   const AutorizacionesScreen({super.key});
@@ -94,82 +93,83 @@ class _AutorizacionesScreenState extends State<AutorizacionesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return VercySidebarLayout(
-      title: 'Autorizaciones de Usuarios',
-      child: Container(
-        padding: EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Encabezado
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Usuarios Pendientes de Autorización',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                ElevatedButton.icon(
-                  onPressed: _cargarUsuariosPendientes,
-                  icon: Icon(Icons.refresh, color: Colors.white),
-                  label: Text(
-                    'Recargar',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 24),
-
-            // Contenido
-            if (_isLoading)
-              Center(child: CircularProgressIndicator(color: AppTheme.primary))
-            else if (_usuariosPendientes.isEmpty)
-              Center(
-                child: Container(
-                  padding: EdgeInsets.all(32),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        size: 64,
-                        color: AppTheme.success,
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'No hay usuarios pendientes',
-                        style: TextStyle(fontSize: 18, color: Colors.white),
-                      ),
-                      Text(
-                        'Todos los usuarios han sido autorizados',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade400,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: _usuariosPendientes.map((usuario) {
-                      return _buildTarjetaUsuario(usuario);
-                    }).toList(),
-                  ),
+    final isMobile = context.isMobile;
+    return Container(
+      padding: EdgeInsets.all(isMobile ? 12 : 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Encabezado
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                isMobile ? 'Pendientes de Autorización' : 'Usuarios Pendientes de Autorización',
+                style: TextStyle(
+                  fontSize: isMobile ? 18 : 24,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
-          ],
-        ),
+              ElevatedButton.icon(
+                onPressed: _cargarUsuariosPendientes,
+                icon: Icon(Icons.refresh, color: Colors.white),
+                label: Text(
+                  'Recargar',
+                  style: TextStyle(color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: isMobile ? 16 : 24),
+
+          // Contenido
+          if (_isLoading)
+            Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          else if (_usuariosPendientes.isEmpty)
+            Center(
+              child: Container(
+                padding: EdgeInsets.all(32),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      size: 64,
+                      color: AppTheme.success,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'No hay usuarios pendientes',
+                      style: TextStyle(fontSize: 18, color: Colors.white),
+                    ),
+                    Text(
+                      'Todos los usuarios han sido autorizados',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: _usuariosPendientes.map((usuario) {
+                    return _buildTarjetaUsuario(usuario);
+                  }).toList(),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -188,7 +188,7 @@ class _AutorizacionesScreenState extends State<AutorizacionesScreen> {
       margin: EdgeInsets.only(bottom: 16),
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade700),
       ),

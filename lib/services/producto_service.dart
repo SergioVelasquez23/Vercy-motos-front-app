@@ -1204,7 +1204,12 @@ class ProductoService {
       
       final headers = await _getHeaders();
 
-      // Crear un payload minimalista con solo los campos esenciales
+      // Crear un payload minimalista con solo los campos esenciales.
+      // Formato exigido por el backend:
+      //   controlInventario: bool (no "SI"/"NO")
+      //   stockMinimo / stockOptimo (no inventarioBajo / inventarioOptimo)
+      //   tipoItem (no productoOServicio)
+      //   cantidadAlmacen / cantidadBodega (no almacen / bodega)
       final Map<String, dynamic> productoJson = {
         'nombre': producto.nombre,
         'precio': producto.precio,
@@ -1215,11 +1220,11 @@ class ProductoService {
         'codigoBarras': producto.codigoBarras,
         'marca': producto.marca,
         'localizacion': producto.localizacion,
-        'controlInventario': producto.controlInventario,
-        'inventarioBajo': producto.inventarioBajo,
-        'inventarioOptimo': producto.inventarioOptimo,
+        'controlInventario': producto.controlInventario == 'SI',
+        'stockMinimo': producto.inventarioBajo,
+        'stockOptimo': producto.inventarioOptimo,
       };
-      
+
       // Agregar campos opcionales solo si no son null ni vacíos
       if (producto.categoria?.id != null && producto.categoria!.id.isNotEmpty) {
         productoJson['categoriaId'] = producto.categoria!.id;
@@ -1227,15 +1232,15 @@ class ProductoService {
       if (producto.imagenUrl != null) {
         productoJson['imagenUrl'] = producto.imagenUrl;
       }
-      if (producto.impuestos != null && producto.impuestos! > 0) {
+      if (producto.impuestos > 0) {
         productoJson['impuestos'] = producto.impuestos;
       }
       if (producto.porcentajeImpuesto != null) {
         productoJson['porcentajeImpuesto'] = producto.porcentajeImpuesto;
       }
       if (producto.productoOServicio != null) {
+        // Solo `tipoItem` (en minúscula). `productoOServicio` se eliminó.
         productoJson['tipoItem'] = producto.productoOServicio!.toLowerCase();
-        productoJson['productoOServicio'] = producto.productoOServicio;
       }
       if (producto.nombreProveedor != null) {
         productoJson['nombreProveedor'] = producto.nombreProveedor;
@@ -1243,14 +1248,11 @@ class ProductoService {
       if (producto.nitProveedor != null) {
         productoJson['nitProveedor'] = producto.nitProveedor;
       }
-      // ✅ ENVIAR CON LOS NOMBRES CORRECTOS QUE EL BACKEND ESPERA
       if (producto.almacen != null) {
-        productoJson['cantidadAlmacen'] =
-            producto.almacen; // ✅ Correcto: cantidadAlmacen
+        productoJson['cantidadAlmacen'] = producto.almacen;
       }
       if (producto.bodega != null) {
-        productoJson['cantidadBodega'] =
-            producto.bodega; // ✅ Correcto: cantidadBodega
+        productoJson['cantidadBodega'] = producto.bodega;
       }
 
       // 🔍 LOG: Ver exactamente qué se envía al backend
