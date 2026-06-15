@@ -1,7 +1,8 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/documento_mesa.dart';
 import '../config/endpoints_config.dart';
+import '../utils/api_error.dart';
 
 /// Servicio para gestionar documentos de mesa
 class DocumentoMesaService {
@@ -40,7 +41,7 @@ class DocumentoMesaService {
       }
 
         
-      throw Exception('Error al crear documento: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al crear documento');
     } catch (e) {
         
       rethrow;
@@ -84,7 +85,7 @@ class DocumentoMesaService {
       }
 
         
-      throw Exception('Error al obtener documentos: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener documentos');
     } catch (e) {
         
       rethrow;
@@ -148,7 +149,7 @@ class DocumentoMesaService {
       }
 
         
-      throw Exception('Error al agregar pedido: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al agregar pedido');
     } catch (e) {
         
       rethrow;
@@ -187,7 +188,7 @@ class DocumentoMesaService {
       }
 
         
-      throw Exception('Error al pagar documento: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al pagar documento');
     } catch (e) {
         
       rethrow;
@@ -217,7 +218,7 @@ class DocumentoMesaService {
       }
 
         
-      throw Exception('Error al eliminar documento: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al eliminar documento');
     } catch (e) {
         
       rethrow;

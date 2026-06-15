@@ -461,7 +461,7 @@ class MatiasService {
     return {
       // Campos obligatorios para Matias
       'resolution_number': resolutionNumber,
-      'prefix': negocioInfo.prefijo ?? negocioInfo.prefijoDocumento ?? 'POS',
+      'prefix': negocioInfo.posPrefijo ?? 'POS',
       'document_number': docNum,
       'date': date,
       'time': time,
@@ -473,7 +473,8 @@ class MatiasService {
           : 'Documento POS rápido',
 
       // Operación y moneda
-      'operation_type_id': 10, // Venta estándar
+      // 1 = ESTANDAR (CustomizationID "10") — único válido para POS según DIAN (DEAD02)
+      'operation_type_id': 1,
       'currency_id': 272, // Peso colombiano
 
       // POS - Información de punto de venta
@@ -603,36 +604,6 @@ class MatiasService {
     }
   }
 
-  /// Mapea el string `formaPago` del pedido al `payment_method_id` que espera
-  /// Matías. Los IDs siguen la tabla maestra de Matías (consulta vía
-  /// `lookup/medios-pago` si necesitas validar). Si no se reconoce, cae a 1
-  /// (Efectivo) que es lo más seguro para POS contado.
-  static int _mapFormaPagoToMatiasId(String? formaPago) {
-    if (formaPago == null || formaPago.isEmpty) return 1;
-    final f = formaPago.toLowerCase().trim().replaceAll(' ', '_');
-    switch (f) {
-      case 'efectivo':
-        return 1;
-      case 'tarjeta_credito':
-      case 'credito':
-      case 'tc':
-        return 2;
-      case 'tarjeta_debito':
-      case 'debito':
-      case 'td':
-        return 3;
-      case 'transferencia':
-      case 'transferencia_bancaria':
-      case 'nequi':
-      case 'daviplata':
-      case 'pse':
-        return 4;
-      case 'cheque':
-        return 5;
-      default:
-        return 1; // Default Efectivo
-    }
-  }
 
   /// Construye el array `payments` para el documento POS de Matías a partir
   /// del pedido. Soporta pago único (`formaPago`) y pago mixto
@@ -642,28 +613,76 @@ class MatiasService {
     String total,
     String date,
   ) {
-    // Pago mixto: una entrada por cada pago parcial.
+    // Para DIAN, Σ value_paid debe igualar payable_amount (= total con IVA).
+    // Usamos el `total` calculado del documento, no el monto cobrado en caja,
+    // para evitar el rechazo por discrepancia de totales.
     final parciales = pedido.pagosParciales as List? ?? const [];
     if (parciales.isNotEmpty) {
-      return parciales.map<Map<String, dynamic>>((p) {
+      // Pago mixto: distribuir el total del documento proporcionalmente entre
+      // los medios de pago, pero manteniendo la suma = total.
+      final totalNum = double.tryParse(total) ?? 0.0;
+      final montosParciales = parciales
+          .map<double>((p) => (p.monto as num).toDouble())
+          .toList();
+      final sumaParciales =
+          montosParciales.fold<double>(0, (a, b) => a + b);
+
+      return List<Map<String, dynamic>>.generate(parciales.length, (i) {
+        final p = parciales[i];
+        // Prorratear el total del documento según la proporción de cada pago parcial.
+        final proporcion =
+            sumaParciales > 0 ? montosParciales[i] / sumaParciales : 1.0;
+        final valorPago = i == parciales.length - 1
+            ? totalNum -
+                montosParciales
+                    .sublist(0, i)
+                    .fold<double>(0, (a, b) => a + b * totalNum / sumaParciales)
+            : (totalNum * proporcion);
         return {
-          'payment_method_id': _mapFormaPagoToMatiasId(p.formaPago as String?),
-          'means_payment_id': 10, // Contado — el pedido ya fue pagado
-          'value_paid': (p.monto as num).toStringAsFixed(2),
+          'payment_method_id': 1, // Contado
+          'means_payment_id': _mapFormaPagoToMeansId(p.formaPago as String?),
+          'value_paid': valorPago.toStringAsFixed(2),
           'payment_due_date': date,
         };
-      }).toList();
+      });
     }
 
-    // Pago único: lo que esté en pedido.formaPago.
+    // Pago único: usar el total del documento para que Σvalue_paid = payable_amount.
     return [
       {
-        'payment_method_id': _mapFormaPagoToMatiasId(pedido.formaPago as String?),
-        'means_payment_id': 10, // Contado
+        'payment_method_id': 1, // Contado
+        'means_payment_id': _mapFormaPagoToMeansId(pedido.formaPago as String?),
         'value_paid': total,
         'payment_due_date': date,
       }
     ];
+  }
+
+  /// Mapea formaPago al `means_payment_id` (medio de pago) de Matías.
+  static int _mapFormaPagoToMeansId(String? formaPago) {
+    if (formaPago == null || formaPago.isEmpty) return 10;
+    final f = formaPago.toLowerCase().trim().replaceAll(' ', '_');
+    switch (f) {
+      case 'efectivo':
+        return 10; // Efectivo
+      case 'tarjeta':
+      case 'tarjeta_credito':
+      case 'credito':
+        return 41; // Tarjeta crédito
+      case 'tarjeta_debito':
+      case 'debito':
+        return 42; // Tarjeta débito
+      case 'transferencia':
+      case 'nequi':
+      case 'daviplata':
+      case 'pse':
+        return 47; // Transferencia bancaria
+      case 'datafono':
+      case 'sistecredito':
+        return 41;
+      default:
+        return 10;
+    }
   }
 
   /// Reenvía un POS rechazado por la DIAN.
@@ -801,16 +820,23 @@ class MatiasService {
     return _descargarArchivo('pdf', cufe, token: token);
   }
 
-  /// Obtiene la URL directa del PDF si Matias la expone.
+  /// Obtiene la URL directa del PDF.
   ///
-  /// Usa `GET /api/matias/document-pdf/{trackId}` y lee `data.pdf.url`.
-  /// Devuelve null si no hay URL (en ese caso el caller debe usar
-  /// [descargarPDF] y abrir el binario base64).
+  /// Llama a `GET /api/matias/invoices/{trackId}/pdf` (JSON: {url, base64}).
+  /// Si hay URL directa la devuelve; si no, devuelve null
+  /// (el caller debe usar [descargarPDF] para abrir el base64).
   static Future<String?> obtenerURLPDF(
     String trackId, {
     String? token,
   }) async {
     try {
+      // Intentar vía el endpoint directo de PDF (retorna JSON con url + base64)
+      final pdfData = await _descargarArchivo('pdf', trackId, token: token);
+      if (pdfData != null) {
+        final url = pdfData['url'];
+        if (url != null && url.isNotEmpty) return url;
+      }
+      // Fallback: consultar datos de factura
       final data = await consultarDatosFactura(trackId, token: token);
       final pdf = data?['pdf'];
       if (pdf is Map) {
@@ -858,17 +884,21 @@ class MatiasService {
       if (j['success'] != true) return null;
       final data = j['data'];
       if (data is! Map<String, dynamic>) return null;
+
+      final url = data['url']?.toString();
       final base64 = data['base64']?.toString();
-      if (base64 == null || base64.isEmpty) {
-        appLog('$TAG ⚠️ Respuesta sin campo base64');
+
+      if ((url == null || url.isEmpty) && (base64 == null || base64.isEmpty)) {
+        appLog('$TAG ⚠️ Respuesta sin URL ni base64');
         return null;
       }
-      appLog('$TAG ✅ $tipo descargado: ${base64.length} chars base64');
+      appLog('$TAG ✅ $tipo: url=${url != null ? '✓' : '✗'} base64=${base64 != null ? '${base64.length} chars' : '✗'}');
       return {
         'cufe': data['cufe']?.toString() ?? cufe,
         'mimeType': data['mimeType']?.toString() ??
             (tipo == 'pdf' ? 'application/pdf' : 'application/xml'),
-        'base64': base64,
+        if (url != null && url.isNotEmpty) 'url': url,
+        if (base64 != null && base64.isNotEmpty) 'base64': base64,
       };
     } catch (e) {
       appLog('$TAG ❌ _descargarArchivo($tipo): $e');

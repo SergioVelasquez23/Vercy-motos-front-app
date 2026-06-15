@@ -1,7 +1,8 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/historial_edicion.dart';
 import '../config/api_config.dart';
+import '../utils/api_error.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Servicio para gestionar el historial de ediciones de pedidos
@@ -59,7 +60,7 @@ class HistorialEdicionService {
             )
             .toList();
       } else {
-        throw Exception('Error al obtener historial: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener historial');
       }
     } catch (e) {
         

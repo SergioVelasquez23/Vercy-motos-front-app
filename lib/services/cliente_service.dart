@@ -1,8 +1,9 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import '../models/cliente.dart';
 import '../config/endpoints_config.dart';
+import '../utils/api_error.dart';
 
 class ClienteService {
   final EndpointsConfig _config = EndpointsConfig();
@@ -43,7 +44,7 @@ class ClienteService {
       }
 
         
-      throw Exception('Error al obtener clientes: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener clientes');
     } catch (e) {
         
       rethrow;
@@ -63,7 +64,7 @@ class ClienteService {
         return null;
       }
 
-      throw Exception('Error al obtener cliente: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener cliente');
     } catch (e) {
         
       return null;
@@ -105,7 +106,7 @@ class ClienteService {
         return Cliente.fromJson(json.decode(response.body));
       }
 
-      throw Exception('Error al crear cliente: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al crear cliente');
     } catch (e) {
         
       throw Exception('Error al crear cliente: $e');
@@ -125,7 +126,7 @@ class ClienteService {
         return Cliente.fromJson(json.decode(response.body));
       }
 
-      throw Exception('Error al actualizar cliente: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar cliente');
     } catch (e) {
         
       throw Exception('Error al actualizar cliente: $e');
@@ -220,7 +221,7 @@ class ClienteService {
         return Cliente.fromJson(json.decode(response.body));
       }
 
-      throw Exception('Error al bloquear cliente: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al bloquear cliente');
     } catch (e) {
         
       throw Exception('Error al bloquear cliente: $e');
@@ -236,7 +237,7 @@ class ClienteService {
         return Cliente.fromJson(json.decode(response.body));
       }
 
-      throw Exception('Error al activar cliente: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al activar cliente');
     } catch (e) {
         
       throw Exception('Error al activar cliente: $e');
@@ -259,7 +260,7 @@ class ClienteService {
         return json.decode(response.body);
       }
 
-      throw Exception('Error al verificar cupo: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al verificar cupo');
     } catch (e) {
         
       throw Exception('Error al verificar cupo: $e');
@@ -275,7 +276,7 @@ class ClienteService {
         return json.decode(response.body);
       }
 
-      throw Exception('Error al obtener estadísticas: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener estadísticas');
     } catch (e) {
         
       throw Exception('Error al obtener estadísticas: $e');
@@ -365,7 +366,7 @@ class ClienteService {
         final errorData = json.decode(response.body);
         throw Exception(errorData['message'] ?? 'Error al cargar clientes');
       } catch (_) {
-        throw Exception('Error al cargar clientes: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar clientes');
       }
     } catch (e) {
         
@@ -425,7 +426,7 @@ class ClienteService {
         final errorData = json.decode(response.body);
         throw Exception(errorData['message'] ?? 'Error al cargar clientes');
       } catch (_) {
-        throw Exception('Error al cargar clientes: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar clientes');
       }
     } catch (e) {
         

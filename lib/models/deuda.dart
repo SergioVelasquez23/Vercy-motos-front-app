@@ -1,48 +1,37 @@
-/// Modelo Deuda para gestionar pedidos pendientes entre cuadres
-///
-/// Este modelo representa una deuda que debe persistir entre
-/// diferentes cuadres de caja hasta ser pagada completamente.
-library;
-
 import 'item_pedido.dart';
 
-/// Estado de una deuda
 enum EstadoDeuda {
-  pendiente, // Deuda activa sin pagar
-  parcial, // Deuda parcialmente pagada
-  pagada, // Deuda completamente pagada
-  cancelada, // Deuda cancelada (no se cobrará)
+  pendiente,
+  parcial,
+  pagada,
+  cancelada,
 }
 
-/// Tipo de deuda según origen
 enum TipoDeuda {
-  pedido, // Deuda originada por un pedido normal
-  servicio, // Deuda por servicios adicionales
-  otro, // Otros tipos de deuda
+  pedido,
+  servicio,
+  otro,
 }
 
 class Deuda {
   final String? id;
-  final String descripcion; // Descripción de la deuda
-  final double montoOriginal; // Monto total inicial
-  final double montoPendiente; // Monto que aún falta por pagar
-  final DateTime fechaCreacion; // Cuándo se creó la deuda
-  final DateTime? fechaVencimiento; // Fecha límite de pago (opcional)
-  final String creadoPor; // Usuario que creó la deuda
-  final String cliente; // Nombre del cliente/deudor
-  final String? telefono; // Teléfono del cliente (opcional)
+  final String descripcion;
+  final double montoOriginal; // alias: montoTotal en nueva API
+  final double montoPendiente; // alias: montoDeuda en nueva API
+  final double? montoPagadoReal; // montoPagado directo del backend (nueva API)
+  final DateTime fechaCreacion;
+  final DateTime? fechaVencimiento;
+  final DateTime? fechaUltimoPago;
+  final String creadoPor;
+  final String cliente; // alias: clienteInfo en nueva API
+  final String? telefono;
+  final bool activa; // nueva API: true=activa, false=inactiva
   final EstadoDeuda estado;
   final TipoDeuda tipo;
-
-  // Información del pedido asociado (si aplica)
   final String? pedidoId;
   final String? mesaNombre;
-  final List<ItemPedido> items; // Items que generaron la deuda
-
-  // Historial de pagos
+  final List<ItemPedido> items;
   final List<PagoDeuda> pagos;
-
-  // Notas adicionales
   final String? notas;
 
   const Deuda({
@@ -50,11 +39,14 @@ class Deuda {
     required this.descripcion,
     required this.montoOriginal,
     required this.montoPendiente,
+    this.montoPagadoReal,
     required this.fechaCreacion,
     this.fechaVencimiento,
-    required this.creadoPor,
+    this.fechaUltimoPago,
+    this.creadoPor = '',
     required this.cliente,
     this.telefono,
+    this.activa = true,
     this.estado = EstadoDeuda.pendiente,
     this.tipo = TipoDeuda.pedido,
     this.pedidoId,
@@ -64,88 +56,120 @@ class Deuda {
     this.notas,
   });
 
-  /// Getter para saber si la deuda está vencida
+  // ─── Aliases para nueva API ───────────────────────────────────────────────
+  String get clienteInfo => cliente;
+  double get montoTotal => montoOriginal;
+  double get montoDeuda => montoPendiente;
+
   bool get estaVencida {
     if (fechaVencimiento == null) return false;
     return DateTime.now().isAfter(fechaVencimiento!) &&
-        estado != EstadoDeuda.pagada;
+        estado != EstadoDeuda.pagada &&
+        activa;
   }
 
-  /// Getter para calcular cuánto se ha pagado
-  double get montoPagado => montoOriginal - montoPendiente;
+  double get montoPagado => montoPagadoReal ?? (montoOriginal - montoPendiente);
 
-  /// Getter para calcular porcentaje pagado
   double get porcentajePagado =>
       montoOriginal > 0 ? (montoPagado / montoOriginal) * 100 : 0;
 
-  /// Factory constructor desde JSON
   factory Deuda.fromJson(Map<String, dynamic> json) {
+    // Leer montoTotal o montoOriginal
+    final montoTotalVal = _parseToDouble(json['montoTotal'] ?? json['montoOriginal']);
+    // Leer montoDeuda o montoPendiente
+    final montoDeudaVal = _parseToDouble(json['montoDeuda'] ?? json['montoPendiente']);
+    // Leer clienteInfo o cliente
+    final clienteVal = (json['clienteInfo'] ?? json['cliente'])?.toString() ?? '';
+
+    // Derivar estado de los campos de la nueva API
+    EstadoDeuda estadoVal;
+    final activaVal = json['activa'] as bool? ?? true;
+    if (json['estado'] != null) {
+      estadoVal = _parseEstado(json['estado']);
+    } else {
+      // Derivar de activa + montos
+      if (!activaVal) {
+        estadoVal = EstadoDeuda.cancelada;
+      } else if (montoDeudaVal <= 0) {
+        estadoVal = EstadoDeuda.pagada;
+      } else {
+        final montoPagadoVal = _parseToDouble(json['montoPagado']);
+        estadoVal = montoPagadoVal > 0 ? EstadoDeuda.parcial : EstadoDeuda.pendiente;
+      }
+    }
+
     return Deuda(
       id: json['id']?.toString(),
       descripcion: json['descripcion']?.toString() ?? '',
-      montoOriginal: _parseToDouble(json['montoOriginal']),
-      montoPendiente: _parseToDouble(json['montoPendiente']),
+      montoOriginal: montoTotalVal,
+      montoPendiente: montoDeudaVal,
+      montoPagadoReal: json['montoPagado'] != null ? _parseToDouble(json['montoPagado']) : null,
       fechaCreacion:
           DateTime.tryParse(json['fechaCreacion']?.toString() ?? '') ??
           DateTime.now(),
       fechaVencimiento: json['fechaVencimiento'] != null
           ? DateTime.tryParse(json['fechaVencimiento'].toString())
           : null,
+      fechaUltimoPago: json['fechaUltimoPago'] != null
+          ? DateTime.tryParse(json['fechaUltimoPago'].toString())
+          : null,
       creadoPor: json['creadoPor']?.toString() ?? '',
-      cliente: json['cliente']?.toString() ?? '',
+      cliente: clienteVal,
       telefono: json['telefono']?.toString(),
-      estado: _parseEstado(json['estado']),
+      activa: activaVal,
+      estado: estadoVal,
       tipo: _parseTipo(json['tipo']),
       pedidoId: json['pedidoId']?.toString(),
       mesaNombre: json['mesaNombre']?.toString(),
       items: json['items'] != null
-          ? (json['items'] as List)
-                .map((item) => ItemPedido.fromJson(item))
-                .toList()
+          ? (json['items'] as List).map((i) => ItemPedido.fromJson(i)).toList()
           : [],
       pagos: json['pagos'] != null
-          ? (json['pagos'] as List)
-                .map((pago) => PagoDeuda.fromJson(pago))
-                .toList()
+          ? (json['pagos'] as List).map((p) => PagoDeuda.fromJson(p)).toList()
           : [],
       notas: json['notas']?.toString(),
     );
   }
 
-  /// Convertir a JSON
   Map<String, dynamic> toJson() {
     return {
       if (id != null) 'id': id,
       'descripcion': descripcion,
       'montoOriginal': montoOriginal,
+      'montoTotal': montoOriginal,
       'montoPendiente': montoPendiente,
+      'montoDeuda': montoPendiente,
       'fechaCreacion': fechaCreacion.toIso8601String(),
       if (fechaVencimiento != null)
         'fechaVencimiento': fechaVencimiento!.toIso8601String(),
       'creadoPor': creadoPor,
       'cliente': cliente,
+      'clienteInfo': cliente,
       if (telefono != null) 'telefono': telefono,
+      'activa': activa,
       'estado': estado.name,
       'tipo': tipo.name,
       if (pedidoId != null) 'pedidoId': pedidoId,
       if (mesaNombre != null) 'mesaNombre': mesaNombre,
-      'items': items.map((item) => item.toJson()).toList(),
-      'pagos': pagos.map((pago) => pago.toJson()).toList(),
+      'items': items.map((i) => i.toJson()).toList(),
+      'pagos': pagos.map((p) => p.toJson()).toList(),
       if (notas != null) 'notas': notas,
     };
   }
 
-  /// Crear copia con valores modificados
   Deuda copyWith({
     String? id,
     String? descripcion,
     double? montoOriginal,
     double? montoPendiente,
+    double? montoPagadoReal,
     DateTime? fechaCreacion,
     DateTime? fechaVencimiento,
+    DateTime? fechaUltimoPago,
     String? creadoPor,
     String? cliente,
     String? telefono,
+    bool? activa,
     EstadoDeuda? estado,
     TipoDeuda? tipo,
     String? pedidoId,
@@ -159,11 +183,14 @@ class Deuda {
       descripcion: descripcion ?? this.descripcion,
       montoOriginal: montoOriginal ?? this.montoOriginal,
       montoPendiente: montoPendiente ?? this.montoPendiente,
+      montoPagadoReal: montoPagadoReal ?? this.montoPagadoReal,
       fechaCreacion: fechaCreacion ?? this.fechaCreacion,
       fechaVencimiento: fechaVencimiento ?? this.fechaVencimiento,
+      fechaUltimoPago: fechaUltimoPago ?? this.fechaUltimoPago,
       creadoPor: creadoPor ?? this.creadoPor,
       cliente: cliente ?? this.cliente,
       telefono: telefono ?? this.telefono,
+      activa: activa ?? this.activa,
       estado: estado ?? this.estado,
       tipo: tipo ?? this.tipo,
       pedidoId: pedidoId ?? this.pedidoId,
@@ -174,68 +201,44 @@ class Deuda {
     );
   }
 
-  // Métodos utilitarios estáticos
   static double _parseToDouble(dynamic value) {
     if (value == null) return 0.0;
     if (value is double) return value;
     if (value is int) return value.toDouble();
-    if (value is String) {
-      try {
-        return double.parse(value);
-      } catch (_) {
-        return 0.0;
-      }
-    }
+    if (value is String) return double.tryParse(value) ?? 0.0;
     return 0.0;
   }
 
   static EstadoDeuda _parseEstado(dynamic value) {
-    if (value == null) return EstadoDeuda.pendiente;
-    final str = value.toString().toLowerCase();
-    switch (str) {
-      case 'pendiente':
-        return EstadoDeuda.pendiente;
-      case 'parcial':
-        return EstadoDeuda.parcial;
-      case 'pagada':
-        return EstadoDeuda.pagada;
-      case 'cancelada':
-        return EstadoDeuda.cancelada;
-      default:
-        return EstadoDeuda.pendiente;
+    switch (value?.toString().toLowerCase()) {
+      case 'parcial': return EstadoDeuda.parcial;
+      case 'pagada': return EstadoDeuda.pagada;
+      case 'cancelada': return EstadoDeuda.cancelada;
+      default: return EstadoDeuda.pendiente;
     }
   }
 
   static TipoDeuda _parseTipo(dynamic value) {
-    if (value == null) return TipoDeuda.pedido;
-    final str = value.toString().toLowerCase();
-    switch (str) {
-      case 'pedido':
-        return TipoDeuda.pedido;
-      case 'servicio':
-        return TipoDeuda.servicio;
-      case 'otro':
-        return TipoDeuda.otro;
-      default:
-        return TipoDeuda.pedido;
+    switch (value?.toString().toLowerCase()) {
+      case 'servicio': return TipoDeuda.servicio;
+      case 'otro': return TipoDeuda.otro;
+      default: return TipoDeuda.pedido;
     }
   }
 
   @override
-  String toString() {
-    return 'Deuda(id: $id, cliente: $cliente, montoPendiente: $montoPendiente, estado: $estado)';
-  }
+  String toString() =>
+      'Deuda(id: $id, cliente: $cliente, montoPendiente: $montoPendiente, estado: $estado)';
 }
 
-/// Modelo para representar un pago realizado hacia una deuda
 class PagoDeuda {
   final String? id;
   final String deudaId;
   final double monto;
   final DateTime fecha;
   final String procesadoPor;
-  final String formaPago; // efectivo, tarjeta, transferencia, etc.
-  final String? referencia; // número de referencia del pago
+  final String formaPago;
+  final String? referencia;
   final String? notas;
 
   const PagoDeuda({
@@ -256,8 +259,8 @@ class PagoDeuda {
       monto: Deuda._parseToDouble(json['monto']),
       fecha:
           DateTime.tryParse(json['fecha']?.toString() ?? '') ?? DateTime.now(),
-      procesadoPor: json['procesadoPor']?.toString() ?? '',
-      formaPago: json['formaPago']?.toString() ?? 'efectivo',
+      procesadoPor: (json['procesadoPor'] ?? json['recibidoPor'])?.toString() ?? '',
+      formaPago: (json['formaPago'] ?? json['medioPago'])?.toString() ?? 'efectivo',
       referencia: json['referencia']?.toString(),
       notas: json['notas']?.toString(),
     );
@@ -277,7 +280,6 @@ class PagoDeuda {
   }
 
   @override
-  String toString() {
-    return 'PagoDeuda(monto: $monto, fecha: $fecha, formaPago: $formaPago)';
-  }
+  String toString() =>
+      'PagoDeuda(monto: $monto, fecha: $fecha, formaPago: $formaPago)';
 }

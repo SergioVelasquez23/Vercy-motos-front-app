@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/cuadre_caja.dart';
 import '../config/api_config.dart';
+import '../utils/api_error.dart';
 
 class CuadreCajaService {
   static final CuadreCajaService _instance = CuadreCajaService._internal();
@@ -43,7 +44,7 @@ class CuadreCajaService {
 
         return cuadres;
       } else {
-        throw Exception('Error al obtener cuadres: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener cuadres');
       }
     } catch (e) {
       throw Exception('Error de conexión: $e');
@@ -65,7 +66,7 @@ class CuadreCajaService {
       } else if (response.statusCode == 404) {
         return null;
       } else {
-        throw Exception('Error al obtener cuadre: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener cuadre');
       }
     } catch (e) {
       throw Exception('Error de conexión: $e');
@@ -195,19 +196,21 @@ class CuadreCajaService {
 
   // Obtener la caja activa actual (primera caja abierta)
   Future<CuadreCaja?> getCajaActiva() async {
+    // Try the dedicated /abiertas endpoint first
     try {
-        
       final cajasAbiertas = await getCajasAbiertas();
-
-      if (cajasAbiertas.isEmpty) {
-          
-        return null;
+      if (cajasAbiertas.isNotEmpty) {
+        return cajasAbiertas.first;
       }
+    } catch (_) {}
 
-      final cajaActiva = cajasAbiertas.first;
-      return cajaActiva;
+    // Fallback: get all cuadres and filter client-side
+    try {
+      final todos = await getAllCuadres();
+      final abiertas = todos.where((c) => !c.cerrada).toList();
+      abiertas.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));
+      return abiertas.isNotEmpty ? abiertas.first : null;
     } catch (e) {
-        
       return null;
     }
   }

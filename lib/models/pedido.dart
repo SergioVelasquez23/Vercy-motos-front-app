@@ -270,7 +270,7 @@ class Pedido {
   }
 
   Map<String, dynamic> toJson() => {
-    '_id': id,
+    if (!id.startsWith('temp-')) '_id': id,
     // Usar formato ISO8601 sin 'Z' para evitar conversiones UTC
     'fecha': _formatDateTimeLocal(fecha),
     'tipo': tipo.toJson(),

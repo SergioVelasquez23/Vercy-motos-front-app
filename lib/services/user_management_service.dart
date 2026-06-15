@@ -1,6 +1,7 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
+import '../utils/api_error.dart';
 import '../models/user.dart';
 
 class UserManagementService {
@@ -19,7 +20,7 @@ class UserManagementService {
         final List<dynamic> usersJson = data['users'] ?? data;
         return usersJson.cast<Map<String, dynamic>>();
       } else {
-        throw Exception('Error al obtener usuarios: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener usuarios');
       }
     } catch (e) {
         

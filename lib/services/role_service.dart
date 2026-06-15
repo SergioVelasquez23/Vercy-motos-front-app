@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/constants.dart';
 import '../models/role.dart';
@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:html'
     if (dart.library.io) 'package:vercy_motos/utils/html_stub.dart'
     as html;
+import '../utils/api_error.dart';
 
 class RoleService {
   static String get baseUrl => kDynamicBackendUrl;
@@ -47,7 +48,7 @@ class RoleService {
         final List<dynamic> data = json.decode(response.body);
         return data.map((json) => Role.fromJson(json)).toList();
       } else {
-        throw Exception('Error al cargar roles: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar roles');
       }
     } catch (e) {
         
@@ -76,7 +77,7 @@ class RoleService {
       } else if (response.statusCode == 404) {
         return null;
       } else {
-        throw Exception('Error al obtener rol: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener rol');
       }
     } catch (e) {
         
@@ -104,7 +105,7 @@ class RoleService {
       if (response.statusCode == 201 || response.statusCode == 200) {
         return Role.fromJson(json.decode(response.body));
       } else {
-        throw Exception('Error al crear rol: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al crear rol');
       }
     } catch (e) {
         
@@ -132,7 +133,7 @@ class RoleService {
       if (response.statusCode == 200) {
         return Role.fromJson(json.decode(response.body));
       } else {
-        throw Exception('Error al actualizar rol: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar rol');
       }
     } catch (e) {
         

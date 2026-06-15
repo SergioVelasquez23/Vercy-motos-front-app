@@ -1,7 +1,8 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/cotizacion.dart';
 import '../config/endpoints_config.dart';
+import '../utils/api_error.dart';
 
 class CotizacionService {
   final EndpointsConfig _config = EndpointsConfig();
@@ -40,7 +41,7 @@ class CotizacionService {
       }
 
         
-      throw Exception('Error al obtener cotizaciones: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener cotizaciones');
     } catch (e) {
         
       rethrow;
@@ -60,7 +61,7 @@ class CotizacionService {
         return null;
       }
 
-      throw Exception('Error al obtener cotización: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener cotización');
     } catch (e) {
         
       return null;
@@ -83,7 +84,7 @@ class CotizacionService {
         return Cotizacion.fromJson(json.decode(response.body));
       }
 
-      throw Exception('Error al crear cotización: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al crear cotización');
     } catch (e) {
         
       throw Exception('Error al crear cotización: $e');
@@ -109,7 +110,7 @@ class CotizacionService {
         return Cotizacion.fromJson(json.decode(response.body));
       }
 
-      throw Exception('Error al actualizar cotización: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar cotización');
     } catch (e) {
         
       throw Exception('Error al actualizar cotización: $e');
@@ -142,7 +143,7 @@ class CotizacionService {
         return json.decode(response.body);
       }
 
-      throw Exception('Error al calcular totales: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al calcular totales');
     } catch (e) {
         
       // Si falla el backend, calcular localmente
@@ -168,7 +169,7 @@ class CotizacionService {
         return Cotizacion.fromJson(json.decode(response.body));
       }
 
-      throw Exception('Error al aceptar cotización: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al aceptar cotización');
     } catch (e) {
         
       throw Exception('Error al aceptar cotización: $e');
@@ -184,7 +185,7 @@ class CotizacionService {
         return Cotizacion.fromJson(json.decode(response.body));
       }
 
-      throw Exception('Error al rechazar cotización: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al rechazar cotización');
     } catch (e) {
         
       throw Exception('Error al rechazar cotización: $e');
@@ -204,7 +205,7 @@ class CotizacionService {
         return Cotizacion.fromJson(json.decode(response.body));
       }
 
-      throw Exception('Error al convertir cotización: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al convertir cotización');
     } catch (e) {
         
       throw Exception('Error al convertir cotización: $e');
@@ -281,7 +282,7 @@ class CotizacionService {
         return json.decode(response.body);
       }
 
-      throw Exception('Error al obtener estadísticas: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener estadísticas');
     } catch (e) {
         
       throw Exception('Error al obtener estadísticas: $e');
@@ -351,7 +352,7 @@ class CotizacionService {
         return data;
       }
 
-      throw Exception('Error al generar PDF: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al generar PDF');
     } catch (e) {
       throw Exception('Error al generar PDF: $e');
     }

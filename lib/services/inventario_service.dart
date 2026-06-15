@@ -11,7 +11,7 @@ import 'base_api_service.dart';
 class InventarioService {
   final BaseApiService _apiService = BaseApiService();
   final ApiConfig _apiConfig = ApiConfig();
-  final String _baseEndpoint = 'inventario';
+  final String _baseEndpoint = 'api/inventario';
   final _inventarioActualizadoController = StreamController<bool>.broadcast();
   final Duration _timeout = const Duration(seconds: ApiConfig.requestTimeout);
 

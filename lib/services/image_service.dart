@@ -1,9 +1,10 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:http_parser/http_parser.dart';
 import '../config/api_config.dart';
+import '../utils/api_error.dart';
 
 /// Servicio para manejo de imágenes
 /// Incluye funcionalidades para subir, listar, verificar y eliminar imágenes
@@ -62,7 +63,7 @@ class ImageService {
           
         return images;
       } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
         
@@ -418,7 +419,7 @@ class ImageService {
           
         return jsonData;
       } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
         

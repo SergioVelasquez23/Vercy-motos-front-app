@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'users_screen.dart';
 import '../theme/app_theme.dart';
 import '../providers/theme_provider.dart';
+import '../models/negocio_info.dart';
+import '../services/negocio_info_service.dart';
 
 class ConfiguracionScreen extends StatefulWidget {
   const ConfiguracionScreen({super.key});
@@ -18,7 +20,7 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -57,6 +59,7 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen>
               tabs: const [
                 Tab(icon: Icon(Icons.people), text: 'Usuarios'),
                 Tab(icon: Icon(Icons.palette), text: 'Apariencia'),
+                Tab(icon: Icon(Icons.store_outlined), text: 'Mi Negocio'),
               ],
             ),
           ),
@@ -66,7 +69,7 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen>
               children: const [
                 UsersScreen(),
                 _AparienciaTab(),
-              ],
+              ] + const [_NegocioTab()],
             ),
           ),
         ],

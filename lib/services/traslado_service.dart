@@ -1,7 +1,8 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/api_config.dart';
+import '../utils/api_error.dart';
 import '../models/traslado.dart';
 
 class TrasladoService {
@@ -78,7 +79,7 @@ class TrasladoService {
         
         return data.map((json) => Traslado.fromJson(json)).toList();
       } else {
-        throw Exception('Error al cargar traslados: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar traslados');
       }
     } catch (e) {
         
@@ -103,7 +104,7 @@ class TrasladoService {
             : decoded;
         return Traslado.fromJson(data);
       } else {
-        throw Exception('Error al obtener traslado: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener traslado');
       }
     } catch (e) {
         
@@ -146,11 +147,10 @@ class TrasladoService {
             : decoded;
         return Traslado.fromJson(data);
       } else {
-        final error = json.decode(response.body);
-        throw Exception(error['message'] ?? 'Error al crear traslado');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al crear traslado');
       }
     } catch (e) {
-        
+
       rethrow;
     }
   }
@@ -186,11 +186,10 @@ class TrasladoService {
             : decoded;
         return Traslado.fromJson(data);
       } else {
-        final error = json.decode(response.body);
-        throw Exception(error['message'] ?? 'Error al procesar traslado');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al procesar traslado');
       }
     } catch (e) {
-        
+
       rethrow;
     }
   }
@@ -208,7 +207,7 @@ class TrasladoService {
         final decoded = json.decode(response.body);
         return decoded is Map<String, dynamic> ? decoded : {};
       } else {
-        throw Exception('Error al obtener stock: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener stock');
       }
     } catch (e) {
         
@@ -242,11 +241,10 @@ class TrasladoService {
         final decoded = json.decode(response.body);
         return decoded is Map<String, dynamic> ? decoded : {};
       } else {
-        final error = json.decode(response.body);
-        throw Exception(error['message'] ?? 'Error en traslado rápido');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error en traslado rápido');
       }
     } catch (e) {
-        
+
       rethrow;
     }
   }
@@ -267,12 +265,86 @@ class TrasladoService {
       );
 
       if (response.statusCode != 200 && response.statusCode != 201) {
-        final error = json.decode(response.body);
-        throw Exception(error['message'] ?? 'Error al completar traslado');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al completar traslado');
       }
     } catch (e) {
-        
       rethrow;
+    }
+  }
+
+  // ─── Nuevos endpoints por producto (/api/productos/{id}/traslado) ──────────
+
+  /// POST /api/productos/{productoId}/traslado
+  /// Body: { cantidad, origen, destino, usuario, observaciones }
+  /// Respuesta: { productoNombre, cantidad, origen, destino, stockResultante: { bodega, almacen } }
+  Future<Map<String, dynamic>> trasladarProducto({
+    required String productoId,
+    required double cantidad,
+    required String origen, // "bodega" o "almacen"
+    required String destino, // "bodega" o "almacen"
+    required String usuario,
+    String? observaciones,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final body = json.encode({
+        'cantidad': cantidad,
+        'origen': origen,
+        'destino': destino,
+        'usuario': usuario,
+        if (observaciones != null && observaciones.isNotEmpty)
+          'observaciones': observaciones,
+      });
+
+      final response = await http.post(
+        Uri.parse('${_apiConfig.baseUrl}/api/productos/$productoId/traslado'),
+        headers: headers,
+        body: body,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final decoded = json.decode(response.body);
+        final data = decoded is Map && decoded['data'] != null
+            ? decoded['data']
+            : decoded;
+        return data is Map<String, dynamic> ? data : {};
+      } else {
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al trasladar producto');
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// GET /api/productos/traslados?usuario=&productoId=&limit=
+  Future<List<Map<String, dynamic>>> listarTrasladosProducto({
+    String? usuario,
+    String? productoId,
+    int limit = 50,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final params = <String, String>{'limit': '$limit'};
+      if (usuario != null && usuario.isNotEmpty) params['usuario'] = usuario;
+      if (productoId != null && productoId.isNotEmpty) params['productoId'] = productoId;
+
+      final uri = Uri.parse('${_apiConfig.baseUrl}/api/productos/traslados')
+          .replace(queryParameters: params);
+
+      final response = await http.get(uri, headers: headers);
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final data = decoded is Map && decoded['data'] != null
+            ? decoded['data']
+            : decoded;
+        if (data is List) {
+          return data.cast<Map<String, dynamic>>();
+        }
+      }
+      return [];
+    } catch (e) {
+      return [];
     }
   }
 }

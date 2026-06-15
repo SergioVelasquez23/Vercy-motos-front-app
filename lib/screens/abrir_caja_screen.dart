@@ -97,23 +97,22 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
       );
 
       if (cuadre.id != null) {
+        if (!mounted) return;
         _mostrarExito('Caja abierta exitosamente');
-        // Volver a la pantalla anterior
-        Navigator.of(context).pop(true); // true indica que se abrió exitosamente
+        Navigator.of(context).pop(true);
       } else {
         throw Exception('Error al crear el cuadre');
       }
     } catch (e) {
       String errorMessage = 'Error al abrir caja: $e';
 
-      // Verificar si es el error específico de caja ya abierta
       if (e.toString().contains('Ya existe una caja abierta')) {
         errorMessage =
             'Ya existe una caja abierta. Debe cerrar la caja actual antes de abrir una nueva.';
-        // Actualizar el estado para mostrar la caja abierta
         await _verificarEstadoCaja();
       }
 
+      if (!mounted) return;
       _mostrarError(errorMessage);
     } finally {
       setState(() {

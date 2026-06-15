@@ -15,7 +15,6 @@ import '../services/negocio_info_service.dart';
 import '../services/impresion_service.dart';
 import '../services/inventario_service.dart';
 import '../services/cliente_service.dart';
-import '../services/documento_service.dart';
 import '../services/matias_service.dart';
 import '../models/cliente.dart';
 import '../models/negocio_info.dart';
@@ -31,6 +30,7 @@ import '../utils/busqueda_productos_utils.dart';
 import '../utils/logger.dart';
 import '../utils/snackbar_helper.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/api_error.dart' show errorMessage;
 
 class FacturacionScreen extends StatefulWidget {
   final PedidoAsesor? pedidoAsesor;
@@ -50,7 +50,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   final ImpresionService _impresionService = ImpresionService();
   final InventarioService _inventarioService = InventarioService();
   final ClienteService _clienteService = ClienteService();
-  final DocumentoService _documentoService = DocumentoService();
   final MatiasService _matiasService = MatiasService();
 
   // Controladores de formulario
@@ -108,10 +107,31 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       'label': 'Transferencia',
       'icon': Icons.account_balance,
     },
-    {'value': 'tarjeta', 'label': 'Tarjeta', 'icon': Icons.credit_card},
+    {'value': 'tarjeta', 'label': 'Tarjeta débito', 'icon': Icons.credit_card},
+    {'value': 'tarjeta_credito', 'label': 'Tarjeta crédito', 'icon': Icons.credit_score},
+    {'value': 'cheque', 'label': 'Cheque', 'icon': Icons.receipt_outlined},
     {'value': 'sistecredito', 'label': 'Sistecredito', 'icon': Icons.card_giftcard},
+    {'value': 'credito', 'label': 'A Crédito', 'icon': Icons.account_balance_wallet},
     {'value': 'multiple', 'label': 'Múltiple', 'icon': Icons.payments},
   ];
+
+  // Mapeo de método de pago UI → medioPago DIAN
+  static const Map<String, String> _medioPagoMap = {
+    'efectivo': 'efectivo',
+    'transferencia': 'transferencia',
+    'tarjeta': 'tarjeta debito',
+    'tarjeta_credito': 'tarjeta credito',
+    'cheque': 'cheque',
+    'sistecredito': 'efectivo',
+    'credito': 'efectivo',
+    'multiple': 'efectivo',
+  };
+
+  // Mapeo de método UI → formaPago backend
+  String _mapFormaPagoBackend(String metodo) {
+    if (metodo == 'credito') return 'Crédito';
+    return metodo; // El backend acepta los valores directos para el resto
+  }
 
   // Controladores para pago múltiple
   final TextEditingController _montoEfectivoController = TextEditingController(
@@ -851,15 +871,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           onChanged: (value) => setState(() => _tipoFactura = value!),
         ),
         const SizedBox(height: 4),
-        if (_tipoFactura == 'LOCAL')
-          Text(
-            'Solo local · Sin envío a DIAN',
-            style: TextStyle(
-              fontSize: 11,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-              fontStyle: FontStyle.italic,
-            ),
-          ),
         if (_tipoFactura == 'FACTURA')
           Text(
             'Se enviará a la DIAN como Factura Electrónica',
@@ -3093,7 +3104,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       productoNombre: _productoSeleccionado!.nombre,
       cantidad: cantidad,
       precioUnitario: precioUnitario,
-      origen: _origenSeleccionado, // 📦 Pasar el origen seleccionado
+      porcentajeImpuesto: porcentajeImpuesto,
+      valorImpuesto: valorImpuesto,
+      porcentajeDescuento: porcentajeDescuento,
+      valorDescuento: valorDescuento,
+      origen: _origenSeleccionado,
     );
 
     setState(() {
@@ -3331,6 +3346,30 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               );
             }).toList(),
           ),
+          // Advertencia de crédito
+          if (_metodoPago == 'credito') ...[
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.orange.withOpacity(0.4)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Se creará una deuda automáticamente para este cliente (vence en 30 días). El campo "Cliente" es obligatorio.',
+                      style: TextStyle(color: Colors.orange.shade800, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           // Campos para pago múltiple
           if (_metodoPago == 'multiple') ...[
             SizedBox(height: 20),
@@ -4040,7 +4079,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       final itemsOriginales = List<ItemPedido>.from(
         _items,
       ); // ✅ Copia antes de limpiar
-      final metodoPagoUsado = _metodoPago;
+      final metodoPagoUsado = _mapFormaPagoBackend(_metodoPago);
+      final medioPagoUsado = _medioPagoMap[_metodoPago] ?? 'efectivo';
       final clienteTexto = _clienteController.text;
       final tipoFacturaCapturado = _tipoFactura;
       final fechaFacturaCapturada = _fechaFactura;
@@ -4194,6 +4234,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                 : 'Pago desde facturación',
             descuento: totalDescuentos + totalRetenciones,
             pagoMultiple: metodoPagoUsado == 'multiple',
+            medioPago: medioPagoUsado,
             montoEfectivo: montoEfectivo,
             montoTarjeta: montoTarjeta,
             montoTransferencia: montoTransferencia,
@@ -4221,9 +4262,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             itemsOriginales: itemsOriginales,
           );
 
-          // Solo verificar documento FE para POS y Factura Electrónica, no para Local
-          if (tipoFacturaCapturado != 'LOCAL') {
-            _verificarDocumentoCreado(pedidoPagado);
+          // Enviar directamente a DIAN para POS y Factura Electrónica
+          if (tipoFacturaCapturado == 'POS' || tipoFacturaCapturado == 'FACTURA') {
+            _emitirDocumentoEnDIAN(pedidoPagado, tipoFacturaCapturado);
           }
 
           // Si viene de pedido asesor, marcarlo como facturado
@@ -4485,11 +4526,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(
-                  '❌ Error al procesar factura. Verifica en el listado de pedidos.',
-                ),
+                content: Text('❌ ${errorMessage(e)}'),
                 backgroundColor: Colors.red,
-                duration: Duration(seconds: 6),
+                duration: Duration(seconds: 8),
               ),
             );
           }
@@ -4497,71 +4536,75 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      showErrorSnackBar(context, 'Error: $e');
+      showErrorSnackBar(context, errorMessage(e));
     }
   }
 
-  /// Verifica que el documento se creó correctamente en el backend
-  /// NOTA: Este es un flujo de VERIFICACIÓN solamente. 
-  /// El ENVÍO a DIAN se hace DESPUÉS desde la pantalla de Facturas List
-  void _verificarDocumentoCreado(Pedido pedido) {
+  /// Emite el documento directamente a DIAN en segundo plano tras el pago.
+  /// POS → emitirDocumentoPOS  |  FACTURA → emitirFacturaElectronica
+  void _emitirDocumentoEnDIAN(Pedido pedido, String tipoFactura) {
+    final messenger = ScaffoldMessenger.of(context);
+    final token = Provider.of<UserProvider>(context, listen: false).token;
     Future.microtask(() async {
       try {
-        appLog('📋 [BG] Verificando que documento se creó en backend...');
+        final esPOS = tipoFactura == 'POS';
+        final nombreDoc = esPOS ? 'POS Electrónico' : 'Factura Electrónica';
 
-        // 1️⃣ Obtener el Documento (puede tardar, reintentar hasta 3 veces)
-        int intentos = 3;
-        DocumentoFE? documento;
+        appLog('📋 [DIAN] Emitiendo $nombreDoc para pedido: ${pedido.id}');
 
-        while (documento == null && intentos > 0) {
-          appLog('🔍 [BG] Obtener documento del pedido (intentos: $intentos)...');
-          documento = await _documentoService.getDocumentoPorPedidoId(pedido.id);
+        MatiasDocumentoResult resultado;
 
-          if (documento == null) {
-            intentos--;
-            if (intentos > 0) {
-              await Future.delayed(Duration(seconds: 1));
-            }
+        if (esPOS) {
+          final negocioInfo = await _negocioInfoService.getNegocioInfo();
+          final posResolutionNumber = negocioInfo?.posResolutionNumber ?? '';
+          if (posResolutionNumber.isEmpty) {
+            throw Exception('Número de resolución POS no configurado en NegocioInfo (campo posResolucion)');
           }
+          final posPayload = MatiasService.buildCompletePOSDocument(
+            pedido: pedido,
+            negocioInfo: negocioInfo,
+            resolutionNumber: posResolutionNumber,
+          );
+          resultado = await MatiasService.emitirDocumentoPOS(posPayload, token: token);
+        } else {
+          resultado = await MatiasService.emitirFacturaElectronica(
+            {'pedidoId': pedido.id},
+            token: token,
+          );
         }
 
-        if (documento == null) {
-          appLog('❌ [BG] No se encontró documento para pedidoId: ${pedido.id}');
-          appLog('⚠️ [BG] El backend DEBERÍA crear Documento automáticamente cuando se paga el Pedido');
-          appLog('💡 [BG] Verifica: /api/pedidos/{id}/pagar endpoint crea Documento?');
-          return;
+        appLog('📋 [DIAN] Resultado: success=${resultado.success}, message=${resultado.message}');
+
+        if (!mounted) return;
+        if (resultado.success) {
+          final cufe = resultado.documentKey ?? '';
+          final cufeCorto = cufe.length > 24 ? '${cufe.substring(0, 24)}...' : cufe;
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('✅ $nombreDoc emitida a DIAN.\nCUFE: $cufeCorto'),
+              backgroundColor: Colors.green.shade700,
+              duration: const Duration(seconds: 6),
+            ),
+          );
+        } else {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('⚠️ Error DIAN ($nombreDoc): ${resultado.message}'),
+              backgroundColor: Colors.orange.shade800,
+              duration: const Duration(seconds: 8),
+            ),
+          );
         }
-
-        appLog('✅ [BG] Documento encontrado: ${documento.id}');
-        appLog('📊 [BG] Estado: ${documento.estado}');
-
-        // 2️⃣ Validar que tiene datos de cliente (requeridos para DIAN)
-        appLog('🔐 [BG] Validando datos de cliente...');
-
-        List<String> camposFaltantes = [];
-        if (documento.clienteNombre == null || documento.clienteNombre!.isEmpty) {
-          camposFaltantes.add('clienteNombre');
-        }
-        if (documento.clienteNit == null || documento.clienteNit!.isEmpty) {
-          camposFaltantes.add('clienteNit');
-        }
-
-        if (camposFaltantes.isNotEmpty) {
-          appLog('⚠️ [BG] Documento incompleto, falta: $camposFaltantes');
-          appLog('❌ [BG] NO se puede enviar a DIAN sin estos datos');
-          appLog('💡 [BG] Backend debe copiar datos desde Pedido.datosAdicionales');
-          return;
-        }
-
-        appLog('✅ [BG] Documento LISTO con todos los datos:');
-        appLog('👤 [BG]   Nombre: ${documento.clienteNombre}');
-        appLog('📋 [BG]   NIT: ${documento.clienteNit}');
-
-        appLog('✓ [BG] ===== DOCUMENTO VERIFICADO Y LISTO =====');
-        appLog('💡 [BG] Usuario puede ir a: Facturas -&gt; Facturar -&gt; Enviar a DIAN');
-
       } catch (e) {
-        appLog('❌ [BG] Error verificando documento: $e');
+        appLog('❌ [DIAN] Error al emitir documento: $e');
+        if (!mounted) return;
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('❌ Error al enviar a DIAN: $e'),
+            backgroundColor: Colors.red.shade700,
+            duration: const Duration(seconds: 8),
+          ),
+        );
       }
     });
   }

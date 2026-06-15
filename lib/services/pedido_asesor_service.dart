@@ -1,7 +1,8 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/api_config.dart';
+import '../utils/api_error.dart';
 import '../models/pedido_asesor.dart';
 import '../utils/logger.dart';
 
@@ -208,7 +209,7 @@ class PedidoAsesorService {
         
         return PedidoAsesor.fromJson(data);
       } else {
-        throw Exception('Error al obtener pedido: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener pedido');
       }
     } catch (e) {
         

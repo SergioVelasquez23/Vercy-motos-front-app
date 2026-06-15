@@ -1,7 +1,8 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
+import '../utils/api_error.dart';
 import '../models/bodega.dart';
 
 /// Servicio para gestionar bodegas/almacenes/ubicaciones de inventario
@@ -50,7 +51,7 @@ class BodegaService {
         return data.map((json) => Bodega.fromJson(json)).toList();
       }
 
-      throw Exception('Error al obtener bodegas: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener bodegas');
     } catch (e) {
       // TODO: El endpoint /api/bodegas no existe aún en el backend.
       // Opciones: (A) crear BodegaController en el backend,
@@ -82,7 +83,7 @@ class BodegaService {
         return null;
       }
 
-      throw Exception('Error al obtener bodega: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener bodega');
     } catch (e) {
         
       return null;
@@ -139,7 +140,7 @@ class BodegaService {
               'Error al crear bodega: ${response.statusCode}',
         );
       } catch (_) {
-        throw Exception('Error al crear bodega: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al crear bodega');
       }
     } catch (e) {
         
@@ -195,7 +196,7 @@ class BodegaService {
               'Error al actualizar bodega: ${response.statusCode}',
         );
       } catch (_) {
-        throw Exception('Error al actualizar bodega: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar bodega');
       }
     } catch (e) {
         
@@ -227,7 +228,7 @@ class BodegaService {
         );
       }
 
-      throw Exception('Error al eliminar bodega: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al eliminar bodega');
     } catch (e) {
         
       rethrow;

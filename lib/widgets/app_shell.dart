@@ -241,6 +241,7 @@ class _AppShellState extends State<AppShell> {
             currentRoute: _currentRoute,
             subItems: const [
               _SubMenuItem(icon: Icons.receipt_long, label: 'Resumen', route: '/cartera'),
+              _SubMenuItem(icon: Icons.account_balance_wallet, label: 'Deudas', route: '/deudas'),
               _SubMenuItem(icon: Icons.account_balance, label: 'Cuentas por Cobrar', route: '/cuentas-por-cobrar'),
               _SubMenuItem(icon: Icons.payment, label: 'Cuentas por Pagar', route: '/cuentas-por-pagar'),
             ],
@@ -365,30 +366,33 @@ class _MenuItem extends StatelessWidget {
     final isSelected = currentRoute == route;
     final color = Theme.of(context).colorScheme;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: Material(
         color: isSelected ? color.primary.withOpacity(0.12) : Colors.transparent,
         borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-      ),
-      child: ListTile(
-        leading: Icon(
-          icon,
-          color: isSelected ? color.primary : color.onSurface.withOpacity(0.7),
-          size: 22,
-        ),
-        title: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? color.primary : color.onSurface,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            fontSize: 14,
+        child: ListTile(
+          leading: Icon(
+            icon,
+            color: isSelected ? color.primary : color.onSurface.withOpacity(0.7),
+            size: 22,
+          ),
+          title: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? color.primary : color.onSurface,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              fontSize: 14,
+            ),
+          ),
+          onTap: () => context.go(route),
+          dense: true,
+          visualDensity: const VisualDensity(vertical: -2),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
           ),
         ),
-        onTap: () => context.go(route),
-        dense: true,
-        visualDensity: const VisualDensity(vertical: -2),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14),
       ),
     );
   }

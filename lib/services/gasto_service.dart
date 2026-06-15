@@ -1,9 +1,10 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/gasto.dart';
 import '../models/tipo_gasto.dart';
 import '../config/api_config.dart';
+import '../utils/api_error.dart';
 import '../utils/caja_error_handler.dart';
 import 'alertas_service.dart';
 import '../utils/logger.dart';
@@ -49,7 +50,7 @@ class GastoService {
 
         return gastos;
       } else {
-        throw Exception('Error al obtener gastos: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener gastos');
       }
     } catch (e) {
         

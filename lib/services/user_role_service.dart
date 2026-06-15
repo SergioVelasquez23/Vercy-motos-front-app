@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/constants.dart';
 import '../models/user_role.dart';
@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:html'
     if (dart.library.io) 'package:vercy_motos/utils/html_stub.dart'
     as html;
+import '../utils/api_error.dart';
 
 class UserRoleService {
   static String get baseUrl => kDynamicBackendUrl;
@@ -78,7 +79,7 @@ class UserRoleService {
       } else if (response.statusCode == 404) {
         return null;
       } else {
-        throw Exception('Error al obtener relación: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener relación');
       }
     } catch (e) {
         
@@ -135,7 +136,7 @@ class UserRoleService {
       if (response.statusCode == 200) {
         return UserRole.fromJson(json.decode(response.body));
       } else {
-        throw Exception('Error al actualizar relación: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar relación');
       }
     } catch (e) {
         

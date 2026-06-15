@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:http/http.dart' as http;
 import '../models/resumen_cierre_completo.dart';
 import '../config/api_config.dart';
+import '../utils/api_error.dart';
 
 class ResumenCierreCompletoService {
   final String baseUrl = ApiConfig.instance.baseUrl;
@@ -102,7 +103,7 @@ class ResumenCierreCompletoService {
           );
         }
       } else {
-        throw Exception('Error HTTP ${response.statusCode}: ${response.body}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener resumen de cierre');
       }
     } on TimeoutException catch (e) {
         

@@ -36,6 +36,7 @@ import '../screens/gastos_list_screen.dart';
 import '../screens/productos_list_screen.dart';
 import '../screens/productos_screen.dart';
 import '../screens/cartera_screen.dart';
+import '../screens/deudas_list_screen.dart';
 import '../screens/cuentas_por_cobrar_screen.dart';
 import '../screens/cuentas_por_pagar_screen.dart';
 import '../screens/gastos_programados_screen.dart';
@@ -99,6 +100,7 @@ final GoRouter appRouter = GoRouter(
         GoRoute(path: '/gastos-lista', builder: (c, s) => const GastosListScreen()),
         GoRoute(path: '/proveedores', builder: (c, s) => const ProveedoresListScreen()),
         GoRoute(path: '/cartera', builder: (c, s) => const CarteraScreen()),
+        GoRoute(path: '/deudas', builder: (c, s) => const DeudasListScreen()),
         GoRoute(path: '/cuentas-por-cobrar', builder: (c, s) => const CuentasPorCobrarScreen()),
         GoRoute(path: '/cuentas-por-pagar', builder: (c, s) => const CuentasPorPagarScreen()),
         GoRoute(path: '/gastos-programados', builder: (c, s) => const GastosProgramadosScreen()),

@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/constants.dart';
 import '../config/endpoints_config.dart';
@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../utils/logger.dart';
 import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
+import '../utils/api_error.dart';
 
 class ProveedorService {
   static String get baseUrl => kDynamicBackendUrl;
@@ -70,7 +71,7 @@ class ProveedorService {
 
                    return [];
       } else {
-        throw Exception('Error al cargar proveedores: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar proveedores');
       }
     } catch (e) {
         
@@ -121,7 +122,7 @@ class ProveedorService {
 
                   return [];
       } else {
-        throw Exception('Error al buscar proveedores: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al buscar proveedores');
       }
     } catch (e) {
         
@@ -149,7 +150,7 @@ class ProveedorService {
       if (response.statusCode == 201) {
         return Proveedor.fromJson(json.decode(response.body));
       } else {
-        throw Exception('Error al crear proveedor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al crear proveedor');
       }
     } catch (e) {
         

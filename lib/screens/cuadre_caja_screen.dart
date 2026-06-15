@@ -6,9 +6,7 @@ import '../models/cuadre_caja.dart';
 import '../config/constants.dart';
 
 import '../services/cuadre_caja_service.dart';
-import '../services/resumen_cierre_service.dart';
 
-import 'ingresos_caja_screen.dart';
 import 'resumen_cierre_detallado_screen.dart';
 import '../utils/format_utils.dart';
 import 'contador_efectivo_screen.dart';
@@ -33,9 +31,6 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
   Color get textDark => Theme.of(context).colorScheme.onSurface;
   Color get textLight => Theme.of(context).colorScheme.onSurface.withOpacity(0.5);
   Color get accentOrange => AppTheme.accent;
-
-  // Services
-  final ResumenCierreService _resumenCierreService = ResumenCierreService();
 
   // Controllers para los filtros de búsqueda
   final TextEditingController _desdeController = TextEditingController();
@@ -127,17 +122,12 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
         _cuadreActual =
             cuadres
                 .where(
-                  (cuadre) => cuadre.estado == 'pendiente' && !cuadre.cerrada,
+                  (cuadre) => (cuadre.estado == 'ABIERTA' || cuadre.estado == 'pendiente') && !cuadre.cerrada,
                 )
                 .firstOrNull ??
             (cuadres.isNotEmpty ? cuadres.first : null);
 
         // Cuadres cargados silenciosamente
-
-        // ✅ SOLUCIÓN: Cargar ingresos reales del backend
-        if (_cuadreActual != null && _cuadreActual!.id != null) {
-          _cargarIngresosReales(_cuadreActual!.id!);
-        }
       });
     } catch (e) {
       setState(() {
@@ -147,36 +137,6 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       setState(() {
         _isLoading = false;
       });
-    }
-  }
-
-  // ✅ NUEVA FUNCIÓN: Cargar ingresos reales del backend
-  Future<void> _cargarIngresosReales(String cuadreId) async {
-    try {
-      final resumen = await _resumenCierreService.getResumenCierre(cuadreId);
-
-      setState(() {
-        // Actualizar _totalIngresos con los datos reales del backend
-        _totalIngresos = resumen.movimientosEfectivo.ingresosEfectivo;
-
-        // También actualizar los controladores para mostrar los valores reales
-        _montoEfectivoController.text = resumen
-            .movimientosEfectivo
-            .ventasEfectivo
-            .toStringAsFixed(2);
-        _ingresoEfectivoController.text = resumen
-            .movimientosEfectivo
-            .ingresosEfectivo
-            .toStringAsFixed(2);
-        _montoTransferenciasController.text = '0.00'; // Por ahora solo efectivo
-        _montoTarjetaController.text = '0.00';
-        _montoSistereditoController.text = '0.00';
-        _montoDatafonoController.text = '0.00';
-      });
-
-      // Ingresos reales cargados silenciosamente
-    } catch (e) {
-      // Error al cargar ingresos reales - usar valores por defecto silenciosamente
     }
   }
 
@@ -485,18 +445,6 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       return;
     }
 
-    // Mostrar indicador de carga mientras navega
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(primary),
-        ),
-      ),
-    );
-
-    // Navegar y cerrar el diálogo de carga cuando la pantalla esté lista
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -505,23 +453,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
           nombreCuadre: cuadre.nombre,
         ),
       ),
-    ).then((value) {
-      // Cerrar el diálogo de carga cuando se retorne de la pantalla
-      if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      }
-    }).catchError((error) {
-      // Manejar error y cerrar diálogo de carga
-      if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al cargar el resumen: $error'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    });
+    );
   }
 
   @override

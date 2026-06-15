@@ -1,5 +1,6 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../utils/api_error.dart';
 
 /// Modelo para Departamento de Colombia
 class Departamento {
@@ -117,7 +118,7 @@ class ColombiaLocationService {
         _cachedMunicipios[departamentoId] = municipios;
         return municipios;
       } else {
-        throw Exception('Error al obtener municipios: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener municipios');
       }
     } catch (e) {
       return [];

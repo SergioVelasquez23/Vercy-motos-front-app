@@ -70,7 +70,11 @@ class CuadreCaja {
       efectivoEsperado: (json['efectivoEsperado'] ?? 0).toDouble(),
       diferencia: (json['diferencia'] ?? 0).toDouble(),
       cuadrado: json['cuadrado'] ?? false,
-      cerrada: json['cerrada'] ?? false,
+      cerrada: (json['cerrada'] == true) ||
+          json['estado'] == 'CERRADA' ||
+          json['estado'] == 'cerrada' ||
+          json['estado'] == 'cerrado' ||
+          json['estado'] == 'aprobado',
       tolerancia: (json['tolerancia'] ?? 0).toDouble(),
       observaciones: json['observaciones'],
       estado: json['estado'] ?? 'pendiente',
@@ -189,12 +193,21 @@ class CuadreCaja {
 
   String get estadoFormatted {
     switch (estado) {
+      case 'ABIERTA':
+        return 'Abierta';
+      case 'CERRADA':
+        return 'Cerrada';
+      case 'RECHAZADA':
+        return 'Rechazada';
       case 'aprobado':
         return 'Aprobado';
       case 'rechazado':
         return 'Rechazado';
       case 'pendiente':
-        return 'Pendiente';
+        return 'Abierta';
+      case 'cerrada':
+      case 'cerrado':
+        return 'Cerrada';
       default:
         return estado;
     }

@@ -1,6 +1,7 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
+import '../utils/api_error.dart';
 
 class ImpresionService {
   // Generar resumen de impresión para pedido
@@ -27,7 +28,7 @@ class ImpresionService {
         return null;
       } else {
           
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
         
@@ -75,7 +76,7 @@ class ImpresionService {
         return null;
       } else {
           
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
         
@@ -109,7 +110,7 @@ class ImpresionService {
         return null;
       } else {
           
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
         

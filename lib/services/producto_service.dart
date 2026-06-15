@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:http/http.dart' as http;
@@ -9,6 +9,7 @@ import '../models/categoria.dart';
 import '../models/movimiento_stock.dart';
 import '../models/api_response.dart';
 import '../config/api_config.dart';
+import '../utils/api_error.dart';
 import '../utils/retry_strategy.dart';
 import 'alertas_service.dart';
 import '../providers/datos_cache_provider.dart';
@@ -607,7 +608,7 @@ class ProductoService {
           throw Exception('Error del servidor: ${responseData['message']}');
         }
       } else {
-        throw Exception('Error HTTP ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener productos');
       }
     } catch (e) {
         
@@ -721,7 +722,7 @@ class ProductoService {
 
         return productos;
       } else {
-        throw Exception('Error ${response.statusCode} en endpoint ligero');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener productos (ligero)');
       }
     } catch (e) {
       return await _getProductosBasico();
@@ -830,7 +831,7 @@ class ProductoService {
         final responseData = json.decode(response.body);
         return _parseCategoriaListResponse(responseData);
       } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
         
@@ -909,7 +910,7 @@ class ProductoService {
 
         return productoCreado;
       } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
         
@@ -986,7 +987,7 @@ class ProductoService {
 
         return nuevoProducto;
       } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
         
@@ -1470,7 +1471,7 @@ class ProductoService {
         
         return;
       } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
         
@@ -1506,7 +1507,7 @@ class ProductoService {
       } else {
           
           
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
         
@@ -1545,7 +1546,7 @@ class ProductoService {
       } else {
           
           
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
         
@@ -1564,7 +1565,7 @@ class ProductoService {
       if (response.statusCode == 200) {
           
       } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
         
@@ -1605,7 +1606,7 @@ class ProductoService {
         //   
         return jsonList.map((json) => Producto.fromJson(json)).toList();
       } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
         
@@ -1650,7 +1651,7 @@ class ProductoService {
           
         return null;
       } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
         
@@ -1684,7 +1685,7 @@ class ProductoService {
           
         return jsonList.map((json) => Producto.fromJson(json)).toList();
       } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
         
@@ -1960,7 +1961,7 @@ class ProductoService {
         return await _getProductoBasico(id);
       }
 
-      throw Exception('Error del servidor: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
     } catch (e) {
         
       // Fallback al endpoint básico
@@ -2013,7 +2014,7 @@ class ProductoService {
       } else if (response.statusCode == 404) {
         return null;
       }
-      throw Exception('Error del servidor: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
     } catch (e) {
         
       return null;
@@ -2382,7 +2383,7 @@ class ProductoService {
           
         return await _getIngredientesRequeridosComboBasico(productoId);
       }
-      throw Exception('Error del servidor: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
     } catch (e) {
         
       return await _getIngredientesRequeridosComboBasico(productoId);
@@ -2441,7 +2442,7 @@ class ProductoService {
         // Enriquecer con nombres de ingredientes si están vacíos
         return await _enriquecerIngredientesConNombres(ingredientesBasicos);
       } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
         
@@ -2515,7 +2516,7 @@ class ProductoService {
           
         return await _getIngredientesOpcionalesComboBasico(productoId);
       }
-      throw Exception('Error del servidor: ${response.statusCode}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
     } catch (e) {
         
       return await _getIngredientesOpcionalesComboBasico(productoId);
@@ -2574,7 +2575,7 @@ class ProductoService {
         // Enriquecer con nombres de ingredientes si están vacíos
         return await _enriquecerIngredientesConNombres(ingredientesBasicos);
       } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
         
@@ -2604,7 +2605,7 @@ class ProductoService {
         }
         return false;
       } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
         

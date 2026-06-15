@@ -15,6 +15,7 @@ import '../models/cancelar_producto_request.dart'; // Para cancelaciones selecti
 import '../config/api_config.dart';
 import '../services/cuadre_caja_service.dart'; // Para validar caja abierta
 import '../utils/logger.dart';
+import '../utils/api_error.dart';
 
 class PedidoService {
   static final PedidoService _instance = PedidoService._internal();
@@ -392,7 +393,7 @@ class PedidoService {
         final responseData = json.decode(response.body);
         return _parseListResponse(responseData);
       } else {
-        throw Exception('Error al obtener pedidos: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener pedidos');
       }
     } catch (e) {
         
@@ -438,7 +439,7 @@ class PedidoService {
         final responseData = json.decode(response.body);
         return _parseListResponse(responseData);
       } else {
-        throw Exception('Error al obtener pedidos: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener pedidos');
       }
     } catch (e) {
       throw Exception('Error de conexión: $e');
@@ -679,10 +680,10 @@ class PedidoService {
       if (response.statusCode == 201) {
         return Pedido.fromJson(json.decode(response.body));
       } else {
-        throw Exception('Error al crear pedido: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al crear pedido');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al crear pedido');
     }
   }
 
@@ -761,11 +762,10 @@ class PedidoService {
           throw Exception('Formato de respuesta inválido');
         }
       } else {
-        throw Exception('Error al crear pedido: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al crear pedido');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al crear pedido');
     }
   }
 
@@ -838,11 +838,10 @@ class PedidoService {
           throw Exception('Formato de respuesta inválido');
         }
       } else {
-        throw Exception('Error al actualizar pedido: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar pedido');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al actualizar pedido');
     }
   }
 
@@ -1164,7 +1163,7 @@ class PedidoService {
         final responseData = json.decode(response.body);
         return _parseListResponse(responseData);
       } else {
-        throw Exception('Error al filtrar pedidos: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al filtrar pedidos');
       }
     } catch (e) {
       throw Exception('Error de conexión: $e');
@@ -1176,7 +1175,7 @@ class PedidoService {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/api/pedidos/mesero/$nombreMesero'),
+        Uri.parse('$baseUrl/api/pedidos/consultas/mesero/$nombreMesero'),
         headers: headers,
       );
 
@@ -1302,7 +1301,7 @@ class PedidoService {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/api/pedidos/$pedidoId'),
+        Uri.parse('$baseUrl/api/pedidos/consultas/$pedidoId'),
         headers: headers,
       );
 
@@ -1389,7 +1388,7 @@ class PedidoService {
         
       
       final response = await http.get(
-        Uri.parse('$baseUrl/api/pedidos/mesa/$encodedNombreMesa'),
+        Uri.parse('$baseUrl/api/pedidos/consultas/mesa/$encodedNombreMesa'),
         headers: headers,
       );
 
@@ -1519,11 +1518,10 @@ class PedidoService {
           throw Exception('Formato de respuesta inválido');
         }
       } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al pagar pedido');
       }
     } catch (e) {
-        
-      throw Exception('No se pudo actualizar el estado del pedido: $e');
+      wrapOrThrow(e, context: 'Error al actualizar estado del pedido');
     }
   }
 
@@ -1677,7 +1675,7 @@ class PedidoService {
         
 
       final response = await http.put(
-        Uri.parse('$baseUrl/api/pedidos/$pedidoId/pagar'),
+        Uri.parse('$baseUrl/api/pedidos/pagos/$pedidoId'),
         headers: headers,
         body: json.encode(cancelarData),
       );
@@ -1699,11 +1697,10 @@ class PedidoService {
           throw Exception('Formato de respuesta inválido');
         }
       } else {
-        throw Exception('Error al cancelar pedido: ${response.statusCode}');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al cancelar pedido');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al cancelar pedido');
     }
   }
 
@@ -1721,7 +1718,7 @@ class PedidoService {
 
       // PASO 1: Obtener el pedido actual completo
       final getPedidoResponse = await http.get(
-        Uri.parse('$baseUrl/api/pedidos/$pedidoId'),
+        Uri.parse('$baseUrl/api/pedidos/consultas/$pedidoId'),
         headers: headers,
       );
 
@@ -1794,6 +1791,7 @@ class PedidoService {
     double montoTransferencia = 0.0,
     double montoSistecredito = 0.0, // ✅ AGREGADO: Soporte para Sistecredito
     double montoDatafono = 0.0, // ✅ AGREGADO: Soporte para Datafono
+    String? medioPago, // Medio de pago para DIAN (efectivo, transferencia, etc.)
   }) async {
     // Declarar tipoPago aquí para que sea accesible tanto en el try como en el catch
     String tipoPago = 'pagado';
@@ -1811,11 +1809,11 @@ class PedidoService {
 
       // Construir el objeto según el DTO PagarPedidoRequest
       final Map<String, dynamic> pagarData = {
-        'tipoPago': tipoPago, // Campo requerido
-        'procesadoPor': procesadoPor, // Cambio de 'pagadoPor' a 'procesadoPor'
+        'tipoPago': tipoPago,
+        'procesadoPor': procesadoPor,
         'notas': notas,
-        'descuento':
-            descuento, // ✅ INCLUIR DESCUENTO PARA TODOS LOS TIPOS DE PAGO
+        'descuento': descuento,
+        if (medioPago != null && medioPago.isNotEmpty) 'medioPago': medioPago,
       };
 
       // Solo incluir campos específicos para pagos normales
@@ -1995,7 +1993,7 @@ class PedidoService {
         
          
       final response = await http.put(
-        Uri.parse('$baseUrl/api/pedidos/$pedidoId/pagar'),
+        Uri.parse('$baseUrl/api/pedidos/pagos/$pedidoId'),
         headers: headers,
         body: json.encode(pagarData),
           )
@@ -2106,7 +2104,7 @@ class PedidoService {
           
       }
 
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al pagar pedido');
     }
   }
 
@@ -2165,8 +2163,8 @@ class PedidoService {
         
         
 
-      final response = await http.put(
-        Uri.parse('$baseUrl/api/pedidos/$pedidoId/pagar-parcial'),
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/pedidos/pagos/$pedidoId/parcial'),
         headers: headers,
         body: json.encode(pagoData),
       );
