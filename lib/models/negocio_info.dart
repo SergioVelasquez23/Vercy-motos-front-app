@@ -36,6 +36,7 @@ class NegocioInfo {
 
   // POS y Software DIAN
   final String? resolutionNumber;     // Resolución FACTURA ELECTRÓNICA (FAEL)
+  final String? dsResolutionNumber;   // Resolución DOCUMENTO SOPORTE (DS)
   final String? posResolutionNumber;  // Resolución POS ELECTRÓNICO (ej: 18764109195373)
   final String? posPrefijo;           // Prefijo POS registrado en Matías (ej: "POS")
   final String? softwareOwnerName;
@@ -81,6 +82,7 @@ class NegocioInfo {
     this.utilizoMesas,
     this.envioADomicilio,
     this.resolutionNumber,
+    this.dsResolutionNumber,
     this.posResolutionNumber,
     this.posPrefijo,
     this.softwareOwnerName,
@@ -133,6 +135,7 @@ class NegocioInfo {
       utilizoMesas: json['utilizoMesas'],
       envioADomicilio: json['envioADomicilio'],
       resolutionNumber: json['numeroResolucion'] ?? json['resolutionNumber'],
+      dsResolutionNumber: json['dsResolucion'] ?? json['dsResolutionNumber'],
       posResolutionNumber: json['posResolucion'] ?? json['posResolutionNumber'],
       posPrefijo: json['prefijoPos'] ?? json['posPrefijo'],
       softwareOwnerName: json['softwareOwnerName'],
@@ -181,6 +184,7 @@ class NegocioInfo {
       'utilizoMesas': utilizoMesas,
       'envioADomicilio': envioADomicilio,
       'numeroResolucion': resolutionNumber,
+      'dsResolucion': dsResolutionNumber,
       'posResolucion': posResolutionNumber,
       'prefijoPos': posPrefijo,
       'softwareOwnerName': softwareOwnerName,
@@ -228,6 +232,7 @@ class NegocioInfo {
     bool? utilizoMesas,
     bool? envioADomicilio,
     String? resolutionNumber,
+    String? dsResolutionNumber,
     String? posResolutionNumber,
     String? posPrefijo,
     String? softwareOwnerName,
@@ -275,6 +280,7 @@ class NegocioInfo {
       utilizoMesas: utilizoMesas ?? this.utilizoMesas,
       envioADomicilio: envioADomicilio ?? this.envioADomicilio,
       resolutionNumber: resolutionNumber ?? this.resolutionNumber,
+      dsResolutionNumber: dsResolutionNumber ?? this.dsResolutionNumber,
       posResolutionNumber: posResolutionNumber ?? this.posResolutionNumber,
       posPrefijo: posPrefijo ?? this.posPrefijo,
       softwareOwnerName: softwareOwnerName ?? this.softwareOwnerName,

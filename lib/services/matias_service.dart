@@ -256,7 +256,7 @@ class MatiasService {
     String? token,
   }) async {
     await _ensureAuth();
-    final body = {...payload, 'type_document_id': 5};
+    final body = {...payload, 'type_document_id': 11};
     return _postDocumento('$_base/ds/document', body, token: token);
   }
 
@@ -462,7 +462,7 @@ class MatiasService {
       // Campos obligatorios para Matias
       'resolution_number': resolutionNumber,
       'prefix': negocioInfo.posPrefijo ?? 'POS',
-      'document_number': docNum,
+      // BUG #6: document_number eliminado — POS usa consecutivo automático
       'date': date,
       'time': time,
       'type_document_id': type_document_id,

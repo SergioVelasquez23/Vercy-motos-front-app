@@ -51,17 +51,19 @@ class _PosRapidoButtonState extends State<PosRapidoButton> {
       final negocioInfo = await negocioInfoService.getNegocioInfo();
 
       // Validar que tenemos la información necesaria
-      if (negocioInfo?.resolutionNumber == null ||
-          negocioInfo!.resolutionNumber!.isEmpty) {
-        throw Exception('⚠️ Número de resolución no configurado. Por favor, verifique la configuración del negocio.');
+      final resolucionPOS = negocioInfo?.posResolutionNumber?.isNotEmpty == true
+          ? negocioInfo!.posResolutionNumber!
+          : negocioInfo?.resolutionNumber ?? '';
+      if (resolucionPOS.isEmpty) {
+        throw Exception('⚠️ Número de resolución POS no configurado. Por favor, verifique la configuración del negocio.');
       }
 
       // Construir documento POS COMPLETO con todos los campos requeridos
       final payloadCompleto = MatiasService.buildCompletePOSDocument(
         pedido: widget.pedido,
-        negocioInfo: negocioInfo,
-        resolutionNumber: negocioInfo.resolutionNumber!,
-        type_document_id: 11,
+        negocioInfo: negocioInfo!,
+        resolutionNumber: resolucionPOS,
+        type_document_id: 20, // BUG #7: era 11
       );
 
       final resultado = await MatiasService.emitirDocumentoPOS(

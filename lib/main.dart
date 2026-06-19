@@ -34,20 +34,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Future.microtask(() async {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      await userProvider.initializeFromStorage();
-      if (!context.mounted) return;
-      if (userProvider.isAuthenticated) {
-        final cacheProvider = Provider.of<DatosCacheProvider>(context, listen: false);
-        await cacheProvider.initialize();
-        cacheProvider.warmupProductos();
-        final notifProvider = Provider.of<NotificacionesProvider>(context, listen: false);
-        notifProvider.refresh();
-        notifProvider.startAutoRefresh();
-      }
-    });
-
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp.router(

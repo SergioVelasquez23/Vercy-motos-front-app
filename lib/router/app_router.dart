@@ -8,6 +8,7 @@ import '../models/pedido_asesor.dart';
 import '../widgets/app_shell.dart';
 import '../screens/detalle_factura_compra_screen.dart';
 
+import '../screens/splash_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/dashboard_screen_v2.dart';
 import '../screens/facturacion_screen.dart';
@@ -53,8 +54,12 @@ import '../screens/configuracion_screen.dart';
 ///
 /// Las rutas fuera del shell (login) no muestran sidebar.
 final GoRouter appRouter = GoRouter(
-  initialLocation: '/login',
+  initialLocation: '/splash',
   routes: [
+    GoRoute(
+      path: '/splash',
+      builder: (context, state) => const SplashScreen(),
+    ),
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginScreen(),

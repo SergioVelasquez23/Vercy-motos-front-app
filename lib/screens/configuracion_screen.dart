@@ -492,3 +492,359 @@ class _ThemeOption extends StatelessWidget {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  TAB MI NEGOCIO — Información general + campos DIAN (FE, DS, POS)
+// ─────────────────────────────────────────────────────────────────────────────
+class _NegocioTab extends StatefulWidget {
+  const _NegocioTab();
+
+  @override
+  State<_NegocioTab> createState() => _NegocioTabState();
+}
+
+class _NegocioTabState extends State<_NegocioTab> {
+  final _formKey = GlobalKey<FormState>();
+  final _service = NegocioInfoService();
+  bool _loading = true;
+  bool _saving = false;
+  String? _errorMsg;
+  String? _successMsg;
+  NegocioInfo? _negocio;
+
+  // ── Controladores información general ──
+  final _nombreCtrl = TextEditingController();
+  final _nitCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _telefonoCtrl = TextEditingController();
+  final _direccionCtrl = TextEditingController();
+  final _ciudadCtrl = TextEditingController();
+
+  // ── Controladores DIAN — Factura Electrónica ──
+  final _resolucionFECtrl = TextEditingController();
+  final _prefijoFECtrl = TextEditingController();
+
+  // ── Controladores DIAN — Documento Soporte ──
+  final _resolucionDSCtrl = TextEditingController();
+  final _prefijoDSCtrl = TextEditingController();
+
+  // ── Controladores DIAN — POS ──
+  final _resolucionPOSCtrl = TextEditingController();
+  final _prefijoPOSCtrl = TextEditingController();
+  final _cajeroNombreCtrl = TextEditingController();
+  final _terminalCtrl = TextEditingController();
+  final _tipoCajaCtrl = TextEditingController();
+  final _codigoVentaCtrl = TextEditingController();
+
+  // ── Controladores Software DIAN ──
+  final _softwareOwnerCtrl = TextEditingController();
+  final _softwareCompanyCtrl = TextEditingController();
+  final _softwareNameCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _cargar();
+  }
+
+  @override
+  void dispose() {
+    for (final c in [
+      _nombreCtrl, _nitCtrl, _emailCtrl, _telefonoCtrl, _direccionCtrl, _ciudadCtrl,
+      _resolucionFECtrl, _prefijoFECtrl,
+      _resolucionDSCtrl, _prefijoDSCtrl,
+      _resolucionPOSCtrl, _prefijoPOSCtrl, _cajeroNombreCtrl, _terminalCtrl, _tipoCajaCtrl, _codigoVentaCtrl,
+      _softwareOwnerCtrl, _softwareCompanyCtrl, _softwareNameCtrl,
+    ]) { c.dispose(); }
+    super.dispose();
+  }
+
+  Future<void> _cargar() async {
+    setState(() { _loading = true; _errorMsg = null; });
+    try {
+      final info = await _service.getNegocioInfo();
+      if (info != null) {
+        _negocio = info;
+        _nombreCtrl.text = info.nombre;
+        _nitCtrl.text = info.nitDoc;
+        _emailCtrl.text = info.email;
+        _telefonoCtrl.text = info.telefono ?? '';
+        _direccionCtrl.text = info.direccion;
+        _ciudadCtrl.text = info.ciudad;
+        _resolucionFECtrl.text = info.resolutionNumber ?? '';
+        _prefijoFECtrl.text = info.prefijo ?? '';
+        _resolucionDSCtrl.text = info.dsResolutionNumber ?? '';
+        _prefijoDSCtrl.text = 'DS';
+        _resolucionPOSCtrl.text = info.posResolutionNumber ?? '';
+        _prefijoPOSCtrl.text = info.posPrefijo ?? 'POS';
+        _cajeroNombreCtrl.text = info.posCashierName ?? '';
+        _terminalCtrl.text = info.posTerminalNumber ?? 'T001';
+        _tipoCajaCtrl.text = info.posCashierType ?? 'Dependiente';
+        _codigoVentaCtrl.text = info.posSalesCode ?? 'V001';
+        _softwareOwnerCtrl.text = info.softwareOwnerName ?? '';
+        _softwareCompanyCtrl.text = info.softwareCompanyName ?? '';
+        _softwareNameCtrl.text = info.softwareName ?? 'Vercy POS';
+      }
+    } catch (e) {
+      _errorMsg = e.toString();
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _guardar() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() { _saving = true; _errorMsg = null; _successMsg = null; });
+    try {
+      final base = _negocio ?? NegocioInfo(
+        nombre: '', nitDoc: '', contacto: '', email: '', direccion: '',
+        pais: 'Colombia', departamento: '', ciudad: '',
+        tieneProductosConIngredientes: false, utilizaMesas: false,
+        realizaDomicilios: false, tipoDocumento: 'Factura',
+        prefijoDocumento: 'F', numeroInicialDocumento: 1,
+        fechaCreacion: DateTime.now(), fechaActualizacion: DateTime.now(),
+      );
+      final actualizado = base.copyWith(
+        nombre: _nombreCtrl.text.trim(),
+        nitDoc: _nitCtrl.text.trim(),
+        email: _emailCtrl.text.trim(),
+        telefono: _telefonoCtrl.text.trim(),
+        direccion: _direccionCtrl.text.trim(),
+        ciudad: _ciudadCtrl.text.trim(),
+        resolutionNumber: _resolucionFECtrl.text.trim(),
+        prefijo: _prefijoFECtrl.text.trim(),
+        dsResolutionNumber: _resolucionDSCtrl.text.trim(),
+        posResolutionNumber: _resolucionPOSCtrl.text.trim(),
+        posPrefijo: _prefijoPOSCtrl.text.trim(),
+        posCashierName: _cajeroNombreCtrl.text.trim(),
+        posTerminalNumber: _terminalCtrl.text.trim(),
+        posCashierType: _tipoCajaCtrl.text.trim(),
+        posSalesCode: _codigoVentaCtrl.text.trim(),
+        softwareOwnerName: _softwareOwnerCtrl.text.trim(),
+        softwareCompanyName: _softwareCompanyCtrl.text.trim(),
+        softwareName: _softwareNameCtrl.text.trim(),
+      );
+      _negocio = await _service.saveNegocioInfo(actualizado);
+      setState(() => _successMsg = 'Configuración guardada correctamente');
+    } catch (e) {
+      setState(() => _errorMsg = e.toString());
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Form(
+      key: _formKey,
+      child: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          // ── Mensajes ──
+          if (_errorMsg != null) _banner(_errorMsg!, AppTheme.error, Icons.error_outline),
+          if (_successMsg != null) _banner(_successMsg!, AppTheme.success, Icons.check_circle_outline),
+
+          // ─────────────────────────────────────
+          _sectionHeader(context, Icons.store_outlined, 'Información General'),
+          _field(_nombreCtrl, 'Nombre del negocio *', required: true),
+          _row([
+            _field(_nitCtrl, 'NIT / Documento *', required: true),
+            _field(_telefonoCtrl, 'Teléfono', keyboard: TextInputType.phone),
+          ]),
+          _row([
+            _field(_emailCtrl, 'Correo electrónico', keyboard: TextInputType.emailAddress),
+            _field(_ciudadCtrl, 'Ciudad'),
+          ]),
+          _field(_direccionCtrl, 'Dirección'),
+
+          const SizedBox(height: 8),
+
+          // ─────────────────────────────────────
+          _sectionHeader(context, Icons.receipt_long, 'Factura Electrónica (FE)',
+              subtitle: 'Resolución DIAN para facturas de venta (FAEL)'),
+          _row([
+            _field(_resolucionFECtrl, 'Número de resolución FE', hint: 'ej: 18764099537925'),
+            _field(_prefijoFECtrl, 'Prefijo', hint: 'ej: FAEL'),
+          ]),
+
+          const SizedBox(height: 8),
+
+          // ─────────────────────────────────────
+          _sectionHeader(context, Icons.file_present_rounded, 'Documento Soporte (DS)',
+              subtitle: 'Resolución DIAN para compras a proveedores no obligados'),
+          _row([
+            _field(_resolucionDSCtrl, 'Número de resolución DS', hint: 'ej: 18764109195176'),
+            _field(_prefijoDSCtrl, 'Prefijo DS', hint: 'ej: DS'),
+          ]),
+
+          const SizedBox(height: 8),
+
+          // ─────────────────────────────────────
+          _sectionHeader(context, Icons.point_of_sale, 'POS Electrónico',
+              subtitle: 'Resolución y datos del punto de venta registrados en DIAN'),
+          _row([
+            _field(_resolucionPOSCtrl, 'Número de resolución POS', hint: 'ej: 18764109195373'),
+            _field(_prefijoPOSCtrl, 'Prefijo POS', hint: 'ej: POS'),
+          ]),
+          _row([
+            _field(_cajeroNombreCtrl, 'Nombre cajero/vendedor', hint: 'ej: Vendedor Principal'),
+            _field(_terminalCtrl, 'Terminal número', hint: 'ej: T001'),
+          ]),
+          _row([
+            _field(_tipoCajaCtrl, 'Tipo de caja', hint: 'ej: Dependiente'),
+            _field(_codigoVentaCtrl, 'Código punto de venta', hint: 'ej: V001'),
+          ]),
+
+          const SizedBox(height: 8),
+
+          // ─────────────────────────────────────
+          _sectionHeader(context, Icons.developer_board, 'Software DIAN',
+              subtitle: 'Datos del software registrado ante la DIAN'),
+          _field(_softwareOwnerCtrl, 'Nombre del propietario del software', hint: 'ej: Juan Pérez'),
+          _row([
+            _field(_softwareCompanyCtrl, 'Empresa del software', hint: 'ej: Vercy Motos S.A.S'),
+            _field(_softwareNameCtrl, 'Nombre del software', hint: 'ej: Vercy POS'),
+          ]),
+
+          const SizedBox(height: 24),
+
+          // ── Botón guardar ──
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              onPressed: _saving ? null : _guardar,
+              icon: _saving
+                  ? const SizedBox(
+                      width: 18, height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.save_rounded, color: Colors.white, size: 20),
+              label: Text(
+                _saving ? 'Guardando...' : 'Guardar configuración',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionHeader(BuildContext context, IconData icon, String title, {String? subtitle}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, top: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: AppTheme.primary, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(
+                  fontSize: 15, fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.onSurface,
+                )),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
+                  )),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _field(
+    TextEditingController ctrl,
+    String label, {
+    String? hint,
+    TextInputType keyboard = TextInputType.text,
+    bool required = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextFormField(
+        controller: ctrl,
+        keyboardType: keyboard,
+        style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          hintStyle: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+            fontSize: 12,
+          ),
+          labelStyle: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            fontSize: 13,
+          ),
+          filled: true,
+          fillColor: Theme.of(context).colorScheme.surface,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.15)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: AppTheme.primary, width: 2),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
+        validator: required ? (v) => (v?.trim().isEmpty ?? true) ? 'Campo requerido' : null : null,
+      ),
+    );
+  }
+
+  Widget _row(List<Widget> children) => Padding(
+    padding: const EdgeInsets.only(bottom: 0),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children.map((w) => Expanded(child: Padding(
+        padding: EdgeInsets.only(right: children.last == w ? 0 : 10),
+        child: w,
+      ))).toList(),
+    ),
+  );
+
+  Widget _banner(String msg, Color color, IconData icon) => Container(
+    margin: const EdgeInsets.only(bottom: 14),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: color.withOpacity(0.3)),
+    ),
+    child: Row(
+      children: [
+        Icon(icon, color: color, size: 18),
+        const SizedBox(width: 10),
+        Expanded(child: Text(msg, style: TextStyle(color: color, fontSize: 13))),
+      ],
+    ),
+  );
+}

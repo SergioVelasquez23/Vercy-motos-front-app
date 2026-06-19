@@ -620,6 +620,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
       builder: (_) => DocumentoSoporteDialog(
         proveedorNombreInicial: factura.proveedorNombre,
         proveedorNitInicial: factura.proveedorNit,
+        valorInicial: factura.total,
       ),
     );
   }

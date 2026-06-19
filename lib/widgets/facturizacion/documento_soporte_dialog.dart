@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/matias_service.dart';
 import '../../services/negocio_info_service.dart';
+import '../../services/proveedor_service.dart';
+import '../../models/proveedor.dart';
 import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
 
@@ -27,6 +29,9 @@ class DocumentoSoporteDialog extends StatefulWidget {
   /// Datos opcionales para pre-llenar desde una factura de compra existente.
   final String? proveedorNombreInicial;
   final String? proveedorNitInicial;
+  final String? proveedorEmailInicial;
+  final String? proveedorDireccionInicial;
+  final double? valorInicial;
 
   const DocumentoSoporteDialog({
     Key? key,
@@ -34,6 +39,9 @@ class DocumentoSoporteDialog extends StatefulWidget {
     this.onSuccess,
     this.proveedorNombreInicial,
     this.proveedorNitInicial,
+    this.proveedorEmailInicial,
+    this.proveedorDireccionInicial,
+    this.valorInicial,
   }) : super(key: key);
 
   @override
@@ -61,6 +69,10 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
   String? _errorMsg;
+  bool _esResidente = true;
+
+  // ── Proveedor autocomplete ──
+  List<Proveedor> _proveedores = [];
 
   bool get esAjuste => widget.dsExistente != null;
 
@@ -69,6 +81,9 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
   final _proveedorNitCtrl = TextEditingController();
   final _proveedorEmailCtrl = TextEditingController();
   final _proveedorDireccionCtrl = TextEditingController();
+  // Campos extra para proveedor no-residente
+  final _ciudadExtranjeraCtrl = TextEditingController();
+  final _codigoPaisCtrl = TextEditingController();
 
   // ── Campos documento ──
   final _descripcionCtrl = TextEditingController();
@@ -93,6 +108,32 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
     if (widget.proveedorNitInicial != null) {
       _proveedorNitCtrl.text = widget.proveedorNitInicial!;
     }
+    if (widget.proveedorEmailInicial != null) {
+      _proveedorEmailCtrl.text = widget.proveedorEmailInicial!;
+    }
+    if (widget.proveedorDireccionInicial != null) {
+      _proveedorDireccionCtrl.text = widget.proveedorDireccionInicial!;
+    }
+    if (widget.valorInicial != null && widget.valorInicial! > 0) {
+      _valorCtrl.text = widget.valorInicial!.toStringAsFixed(0);
+    }
+    _cargarProveedores();
+  }
+
+  Future<void> _cargarProveedores() async {
+    try {
+      final lista = await ProveedorService().getProveedores();
+      if (mounted) setState(() => _proveedores = lista);
+    } catch (_) {}
+  }
+
+  void _seleccionarProveedor(Proveedor p) {
+    setState(() {
+      _proveedorNombreCtrl.text = [p.nombre, p.apellidos].where((s) => s != null && s.isNotEmpty).join(' ');
+      _proveedorNitCtrl.text = p.documento ?? '';
+      _proveedorEmailCtrl.text = p.email ?? '';
+      _proveedorDireccionCtrl.text = p.direccion ?? '';
+    });
   }
 
   @override
@@ -101,6 +142,8 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
     _proveedorNitCtrl.dispose();
     _proveedorEmailCtrl.dispose();
     _proveedorDireccionCtrl.dispose();
+    _ciudadExtranjeraCtrl.dispose();
+    _codigoPaisCtrl.dispose();
     _descripcionCtrl.dispose();
     _valorCtrl.dispose();
     _motivoDescCtrl.dispose();
@@ -121,7 +164,9 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
       // Cargar información del negocio para obtener la resolución
       final negocioInfoService = NegocioInfoService();
       final negocioInfo = await negocioInfoService.getNegocioInfo();
-      final resolutionNumber = negocioInfo?.resolutionNumber ?? '';
+      final resolutionNumber = negocioInfo?.dsResolutionNumber?.isNotEmpty == true
+          ? negocioInfo!.dsResolutionNumber!
+          : negocioInfo?.resolutionNumber ?? '';
 
       MatiasDocumentoResult resultado;
 
@@ -138,6 +183,7 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
               : 'Ajuste a DS ${ds.numero}',
           valor: valor,
           resolutionNumber: resolutionNumber,
+          esResidente: _esResidente,
         );
         resultado = await MatiasService.ajustarDocumentoSoporte(
           dsNumero: ds.numero,
@@ -157,6 +203,9 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
           email: _proveedorEmailCtrl.text,
           direccion: _proveedorDireccionCtrl.text,
           resolutionNumber: resolutionNumber,
+          esResidente: _esResidente,
+          ciudadExtranjera: _ciudadExtranjeraCtrl.text,
+          codigoPais: _codigoPaisCtrl.text,
         );
         resultado = await MatiasService.crearDocumentoSoporte(
           payload,
@@ -193,8 +242,11 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
     required String descripcion,
     required double valor,
     required String resolutionNumber,
+    bool esResidente = true,
     String? email,
     String? direccion,
+    String? ciudadExtranjera,
+    String? codigoPais,
   }) {
     final now = DateTime.now();
     final date =
@@ -203,51 +255,58 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
         "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
     final docNum = now.millisecondsSinceEpoch ~/ 1000;
 
+    final customer = <String, dynamic>{
+      'country_id': esResidente ? '45' : (codigoPais?.isNotEmpty == true ? codigoPais! : '239'),
+      'identity_document_id': esResidente ? '3' : '10',
+      'type_organization_id': 2,
+      'tax_regime_id': 2,
+      'tax_level_id': 5,
+      'company_name': proveedorNombre.isNotEmpty ? proveedorNombre : 'PROVEEDOR',
+      'dni': proveedorNit.isNotEmpty ? proveedorNit : '222222222',
+      'email': email ?? '',
+      'address': direccion ?? 'SIN DIRECCIÓN',
+      'postal_code': '000000',
+    };
+    if (esResidente) {
+      customer['city_id'] = '149'; // Bogotá — usuario puede ajustar en config
+    } else {
+      customer['city_name'] = ciudadExtranjera?.isNotEmpty == true ? ciudadExtranjera! : 'Extranjero';
+    }
+
     return {
-      // Campos obligatorios de Matias
       'resolution_number': resolutionNumber,
       'prefix': 'DS',
       'document_number': docNum.toString(),
       'date': date,
       'time': time,
-      'type_document_id': 5,
-      'operation_type_id': 1,
+      'type_document_id': 11,
+      'operation_type_id': esResidente ? 9 : 10,
+      'currency_id': 272,
       'send_email': 1,
-      'graphic_representation': 0,
-      'customer': {
-        'country_id': '45',
-        'identity_document_id': '3',
-        'type_organization_id': 1,
-        'tax_regime_id': 2,
-        'tax_level_id': 5,
-        'company_name': proveedorNombre.isNotEmpty
-            ? proveedorNombre
-            : 'PROVEEDOR',
-        'dni': proveedorNit.isNotEmpty ? proveedorNit : '222222222',
-        'email': email ?? '',
-        'address': direccion ?? 'SIN DIRECCIÓN',
-        'postal_code': '000000',
-      },
+      'graphic_representation': 1,
+      'customer': customer,
       'lines': [
         {
           'invoiced_quantity': '1',
+          'base_quantity': '1',
           'quantity_units_id': '1093',
           'line_extension_amount': valor.toStringAsFixed(2),
           'free_of_charge_indicator': false,
-          'description': descripcion.isNotEmpty
-              ? descripcion
-              : 'Compra a proveedor',
+          'description': descripcion.isNotEmpty ? descripcion : 'Compra a proveedor',
           'code': 'DS001',
           'type_item_identifications_id': '4',
           'reference_price_id': '1',
           'price_amount': valor.toStringAsFixed(2),
-          'base_quantity': '1',
+          'invoice_period': {
+            'start_date': date,
+            'description_code': 1,
+          },
           'tax_totals': [
             {
               'tax_id': '1',
-              'tax_amount': 0,
-              'taxable_amount': valor.toStringAsFixed(2),
               'percent': 0,
+              'tax_amount': '0.00',
+              'taxable_amount': valor.toStringAsFixed(2),
             },
           ],
         },
@@ -256,14 +315,14 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
         'line_extension_amount': valor.toStringAsFixed(2),
         'tax_exclusive_amount': valor.toStringAsFixed(2),
         'tax_inclusive_amount': valor.toStringAsFixed(2),
-        'payable_amount': valor,
+        'payable_amount': valor.toStringAsFixed(2),
       },
       'tax_totals': [
         {
           'tax_id': '1',
-          'tax_amount': 0,
-          'taxable_amount': valor.toStringAsFixed(2),
           'percent': 0,
+          'tax_amount': '0.00',
+          'taxable_amount': valor.toStringAsFixed(2),
         },
       ],
       'payments': [
@@ -271,10 +330,10 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
           'payment_method_id': 1,
           'means_payment_id': 10,
           'value_paid': valor.toStringAsFixed(2),
+          'payment_due_date': date,
         },
       ],
-      'notes':
-          'Documento de soporte - Compra a proveedor no obligado a facturar',
+      'notes': 'Documento soporte - Compra a proveedor no obligado a facturar',
     };
   }
 
@@ -287,7 +346,7 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
       backgroundColor: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560, maxHeight: 620),
+        constraints: const BoxConstraints(maxWidth: 560, maxHeight: 720),
         child: Padding(
           padding: const EdgeInsets.all(28),
           child: Form(
@@ -355,8 +414,48 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (!esAjuste) ...[
+                          _sectionTitle('Tipo de Proveedor'),
+                          const SizedBox(height: 6),
+                          Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: SwitchListTile(
+                              dense: true,
+                              title: Text(
+                                _esResidente
+                                    ? 'Proveedor colombiano (residente)'
+                                    : 'Proveedor extranjero (no residente)',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                ),
+                              ),
+                              subtitle: Text(
+                                _esResidente
+                                    ? 'Operación tipo 9 — NIT/Cédula colombiana'
+                                    : 'Operación tipo 10 — Documento extranjero',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                ),
+                              ),
+                              value: _esResidente,
+                              activeColor: AppTheme.success,
+                              onChanged: (v) => setState(() => _esResidente = v),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
                           _sectionTitle('Datos del Proveedor'),
                           const SizedBox(height: 8),
+                          // ── Buscador rápido desde lista de proveedores ──
+                          if (_proveedores.isNotEmpty)
+                            _ProveedorBuscador(
+                              proveedores: _proveedores,
+                              onSelected: _seleccionarProveedor,
+                            ),
+                          if (_proveedores.isNotEmpty) const SizedBox(height: 10),
                           Row(
                             children: [
                               Expanded(
@@ -396,6 +495,30 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
                               ),
                             ],
                           ),
+                          // Campos extra solo para proveedor no-residente
+                          if (!_esResidente) ...[
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _field(
+                                    _ciudadExtranjeraCtrl,
+                                    'ej: New York',
+                                    label: 'Ciudad (extranjera)',
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _field(
+                                    _codigoPaisCtrl,
+                                    'ej: 239 = USA',
+                                    label: 'Código país DIAN',
+                                    keyboardType: TextInputType.number,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                           const SizedBox(height: 16),
                         ],
 
@@ -608,19 +731,22 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
   Widget _field(
     TextEditingController ctrl,
     String hint, {
+    String? label,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) => TextFormField(
     controller: ctrl,
     keyboardType: keyboardType,
-    decoration: _inputDecoration(hint),
+    decoration: _inputDecoration(hint, label: label),
     style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
     validator: validator,
   );
 
-  InputDecoration _inputDecoration(String hint) => InputDecoration(
+  InputDecoration _inputDecoration(String hint, {String? label}) => InputDecoration(
+    labelText: label,
     hintText: hint,
-    hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
+    hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5), fontSize: 12),
+    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
     filled: true,
     fillColor: Theme.of(context).colorScheme.surface,
     border: OutlineInputBorder(
@@ -633,4 +759,108 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
     ),
     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
   );
+}
+
+// ── Buscador autocomplete de proveedores ─────────────────────────────────────
+
+class _ProveedorBuscador extends StatelessWidget {
+  final List<Proveedor> proveedores;
+  final void Function(Proveedor) onSelected;
+
+  const _ProveedorBuscador({
+    required this.proveedores,
+    required this.onSelected,
+  });
+
+  String _displayName(Proveedor p) =>
+      [p.nombre, p.apellidos].where((s) => s != null && s.isNotEmpty).join(' ');
+
+  @override
+  Widget build(BuildContext context) {
+    return Autocomplete<Proveedor>(
+      optionsBuilder: (TextEditingValue v) {
+        if (v.text.length < 2) return const Iterable.empty();
+        final q = v.text.toLowerCase();
+        return proveedores.where((p) =>
+            _displayName(p).toLowerCase().contains(q) ||
+            (p.documento ?? '').contains(q));
+      },
+      displayStringForOption: (p) => _displayName(p),
+      onSelected: onSelected,
+      fieldViewBuilder: (ctx, ctrl, focusNode, onFieldSubmitted) {
+        return TextField(
+          controller: ctrl,
+          focusNode: focusNode,
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+          decoration: InputDecoration(
+            hintText: 'Buscar proveedor registrado...',
+            hintStyle: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+              fontSize: 12,
+            ),
+            prefixIcon: Icon(Icons.search, size: 18, color: AppTheme.success),
+            suffixText: ctrl.text.isEmpty ? null : 'Selecciona uno',
+            suffixStyle: TextStyle(color: AppTheme.success, fontSize: 11),
+            filled: true,
+            fillColor: AppTheme.success.withOpacity(0.06),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppTheme.success.withOpacity(0.4)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppTheme.success.withOpacity(0.4)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppTheme.success),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          ),
+        );
+      },
+      optionsViewBuilder: (ctx, onSelected2, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(10),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 200, maxWidth: 500),
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                itemCount: options.length,
+                itemBuilder: (_, i) {
+                  final p = options.elementAt(i);
+                  return ListTile(
+                    dense: true,
+                    leading: CircleAvatar(
+                      radius: 16,
+                      backgroundColor: AppTheme.success.withOpacity(0.12),
+                      child: Text(
+                        _displayName(p).isNotEmpty ? _displayName(p)[0].toUpperCase() : '?',
+                        style: TextStyle(color: AppTheme.success, fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    title: Text(
+                      _displayName(p),
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    subtitle: p.documento != null
+                        ? Text(
+                            '${p.tipoId ?? "Doc"}: ${p.documento}',
+                            style: const TextStyle(fontSize: 11),
+                          )
+                        : null,
+                    onTap: () => onSelected2(p),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

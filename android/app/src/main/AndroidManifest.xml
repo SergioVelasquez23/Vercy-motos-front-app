@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     
     <application
-        android:label="serch_restapp"
+        android:label="Vercy Motos"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
         android:usesCleartextTraffic="true"
