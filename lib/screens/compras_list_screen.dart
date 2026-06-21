@@ -127,15 +127,17 @@ class _ComprasListScreenState extends State<ComprasListScreen>
             matchCuentasPorPagar;
       }).toList();
 
-      // Ordenar
+      // Ordenar — usa fechaFactura como clave primaria y fechaCreacion como desempate
       if (_ordenamiento == 'reciente') {
-        _comprasFiltradas.sort(
-          (a, b) => b.fechaCreacion.compareTo(a.fechaCreacion),
-        );
+        _comprasFiltradas.sort((a, b) {
+          final cmp = b.fechaFactura.compareTo(a.fechaFactura);
+          return cmp != 0 ? cmp : b.fechaCreacion.compareTo(a.fechaCreacion);
+        });
       } else if (_ordenamiento == 'antiguo') {
-        _comprasFiltradas.sort(
-          (a, b) => a.fechaCreacion.compareTo(b.fechaCreacion),
-        );
+        _comprasFiltradas.sort((a, b) {
+          final cmp = a.fechaFactura.compareTo(b.fechaFactura);
+          return cmp != 0 ? cmp : a.fechaCreacion.compareTo(b.fechaCreacion);
+        });
       } else if (_ordenamiento == 'mayor') {
         _comprasFiltradas.sort((a, b) => b.total.compareTo(a.total));
       } else if (_ordenamiento == 'menor') {

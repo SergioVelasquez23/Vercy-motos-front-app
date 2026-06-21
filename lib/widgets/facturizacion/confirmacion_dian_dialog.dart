@@ -21,12 +21,14 @@ class ConfirmacionDianDialog extends StatelessWidget {
   final FacturacionResult resultado;
   final String? tipoDocumento; // 'Factura', 'Nota Crédito', etc.
   final VoidCallback? onClose;
+  final Future<void> Function()? onDescargarPDF;
 
   const ConfirmacionDianDialog({
     Key? key,
     required this.resultado,
     this.tipoDocumento,
     this.onClose,
+    this.onDescargarPDF,
   }) : super(key: key);
 
   @override
@@ -204,6 +206,28 @@ class ConfirmacionDianDialog extends StatelessWidget {
               ],
 
               const SizedBox(height: 8),
+
+              // ── Descargar PDF DIAN ──
+              if (onDescargarPDF != null) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => onDescargarPDF!(),
+                    icon: Icon(Icons.picture_as_pdf_rounded,
+                        color: Colors.indigo.shade600, size: 18),
+                    label: const Text('Descargar PDF DIAN'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.indigo.shade700,
+                      side: BorderSide(
+                          color: Colors.indigo.withOpacity(0.35), width: 1.5),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
 
               // ── Botón cerrar ──
               SizedBox(

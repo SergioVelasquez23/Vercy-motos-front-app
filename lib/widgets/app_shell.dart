@@ -260,6 +260,7 @@ class _AppShellState extends State<AppShell> {
             currentRoute: _currentRoute,
             subItems: const [
               _SubMenuItem(icon: Icons.list_alt, label: 'Lista Productos', route: '/productos-lista'),
+              _SubMenuItem(icon: Icons.swap_horiz, label: 'Traslados', route: '/traslados'),
             ],
           ),
           _ExpandableMenuItem(

@@ -9,7 +9,7 @@ class TrasladoService {
   final ApiConfig _apiConfig = ApiConfig();
   final storage = FlutterSecureStorage();
 
-  String get baseUrl => '${_apiConfig.baseUrl}/api/inventario/traslados';
+  String get baseUrl => '${_apiConfig.baseUrl}/api/traslados';
 
   // Obtener headers con token
   Future<Map<String, String>> _getHeaders() async {
@@ -112,23 +112,22 @@ class TrasladoService {
     }
   }
 
-  // Crear traslado
+  // Crear traslado — body real del backend:
+  // { asesor, tipo: "BODEGA_A_ALMACEN"|"ALMACEN_A_BODEGA", observaciones?, items: [{productoId, cantidad}] }
   Future<Traslado> crearTraslado({
-    required String productoId,
-    required String origenBodegaId,
-    required String destinoBodegaId,
-    required double cantidad,
-    required String solicitante,
+    required List<Map<String, dynamic>> items, // [{ productoId, cantidad }]
+    required String origen,   // "BODEGA" o "ALMACEN"
+    required String destino,  // "BODEGA" o "ALMACEN"
+    required String asesor,
     String? observaciones,
   }) async {
     try {
       final headers = await _getHeaders();
+      final tipo = '${origen}_A_$destino'; // e.g. "BODEGA_A_ALMACEN"
       final body = json.encode({
-        'productoId': productoId,
-        'origenBodegaId': origenBodegaId,
-        'destinoBodegaId': destinoBodegaId,
-        'cantidad': cantidad,
-        'solicitante': solicitante,
+        'asesor': asesor,
+        'tipo': tipo,
+        'items': items,
         if (observaciones != null && observaciones.isNotEmpty)
           'observaciones': observaciones,
       });
@@ -141,7 +140,6 @@ class TrasladoService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final decoded = json.decode(response.body);
-        // Manejar respuesta envuelta
         final data = decoded is Map && decoded['data'] != null
             ? decoded['data']
             : decoded;
@@ -150,7 +148,6 @@ class TrasladoService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al crear traslado');
       }
     } catch (e) {
-
       rethrow;
     }
   }

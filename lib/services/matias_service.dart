@@ -332,50 +332,114 @@ class MatiasService {
     required String resolutionNumber,
     int type_document_id = 20, // POS tipo 20
   }) {
-    // Obtener fecha y hora actuales
     final now = DateTime.now();
     final date = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
     final time = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
-    final docNum = (now.millisecondsSinceEpoch ~/ 1000).toString();
 
-    // ── 1) Totales recalculados desde los items ──────────────────────────
     final items = (pedido.items as List?) ?? const [];
+    final descuentoGeneral = _asDouble(pedido.descuentoGeneral);
 
-    double subtotalBruto = 0;     // Σ (cant × precio) — antes de descuentos
-    double totalDescuentosItem = 0;
-    double totalImpuestos = 0;
-
-    // tax_totals agrupados por porcentaje de IVA
-    final Map<int, _TaxGroup> taxGroups = {};
-
+    // ── 1) Primera pasada: subtotal bruto para distribución proporcional ─
+    double subtotalBruto = 0;
     for (final item in items) {
+      subtotalBruto += _asDouble(item.cantidad) * _asDouble(item.precioUnitario);
+    }
+
+    // ── 2) Construir líneas con descuento general distribuido ────────────
+    // El descuento general se reparte proporcionalmente y se incluye en el
+    // allowance_charge de cada línea. El IVA se recalcula sobre la base
+    // DESPUÉS de todos los descuentos (cumple DIAN DEAU06/08/14).
+    final lines = <Map<String, dynamic>>[];
+    final Map<int, _TaxGroup> taxGroups = {};
+    double totalDescuentosItem = 0;
+    double totalImpuestosRecalc = 0;
+    double generalDescDistribuido = 0;
+
+    for (var idx = 0; idx < items.length; idx++) {
+      final item = items[idx];
       final qty = _asDouble(item.cantidad);
       final price = _asDouble(item.precioUnitario);
-      final descValor = _asDouble(item.valorDescuento);
-      final impValor = _asDouble(item.valorImpuesto);
+      final descValorItem = _asDouble(item.valorDescuento);
+
       final impPct = _asDouble(item.porcentajeImpuesto).round();
 
       final lineGross = qty * price;
-      final lineBase = lineGross - descValor; // base gravable
 
-      subtotalBruto += lineGross;
-      totalDescuentosItem += descValor;
-      totalImpuestos += impValor;
+      // Porción del descuento general para esta línea (proporcional al bruto).
+      // La última línea absorbe el residuo para evitar diferencias de centavo.
+      final double generalDiscForLine;
+      if (descuentoGeneral <= 0 || subtotalBruto <= 0) {
+        generalDiscForLine = 0;
+      } else if (idx == items.length - 1) {
+        generalDiscForLine = descuentoGeneral - generalDescDistribuido;
+      } else {
+        generalDiscForLine = descuentoGeneral * lineGross / subtotalBruto;
+        generalDescDistribuido += generalDiscForLine;
+      }
+
+      final totalLineDisc = descValorItem + generalDiscForLine;
+      final lineAfterAllDisc = lineGross - totalLineDisc;
+
+      // IVA recalculado sobre la base completamente descontada
+      final impValorRecalc = lineAfterAllDisc * impPct / 100;
+
+      totalDescuentosItem += descValorItem;
+      totalImpuestosRecalc += impValorRecalc;
 
       final group = taxGroups.putIfAbsent(impPct, () => _TaxGroup(impPct));
-      group.taxableAmount += lineBase;
-      group.taxAmount += impValor;
+      group.taxableAmount += lineAfterAllDisc;
+      group.taxAmount += impValorRecalc;
+
+      final lineMap = <String, dynamic>{
+        'line_number': (idx + 1).toString(),
+        'description': item.productoNombre ?? 'Producto',
+        'code': item.productoId ?? 'PROD',
+        'invoiced_quantity': qty.toStringAsFixed(0),
+        'base_quantity': qty.toStringAsFixed(0),
+        'quantity_units_id': '1093',
+        'price_amount': price.toStringAsFixed(2),
+        'line_extension_amount': lineAfterAllDisc.toStringAsFixed(2),
+        'free_of_charge_indicator': false,
+        'type_item_identifications_id': '4',
+        'reference_price_id': '1',
+        'um': 'UND',
+        'tax_totals': [
+          {
+            'tax_id': '1',
+            'percent': impPct,
+            'tax_amount': impValorRecalc.toStringAsFixed(2),
+            'taxable_amount': lineAfterAllDisc.toStringAsFixed(2),
+          }
+        ],
+      };
+
+      if (totalLineDisc > 0) {
+        lineMap['allowance_charges'] = [
+          {
+            'discount_id': '1',
+            'charge_indicator': false,
+            'allowance_charge_reason': 'Descuento',
+            'amount': totalLineDisc.toStringAsFixed(2),
+            'base_amount': lineGross.toStringAsFixed(2),
+            if (lineGross > 0)
+              'multiplier_factor_numeric':
+                  (totalLineDisc / lineGross * 100).toStringAsFixed(2),
+          }
+        ];
+      }
+
+      lines.add(lineMap);
     }
 
-    final descuentoGeneral = _asDouble(pedido.descuentoGeneral);
-    final baseImponible = subtotalBruto - totalDescuentosItem - descuentoGeneral;
-    final totalFinal = baseImponible + totalImpuestos;
-    final totalFinalStr = totalFinal.toStringAsFixed(2);
+    // ── 3) Cliente ───────────────────────────────────────────────────────
+    final customer = _buildCustomerFromPedido(pedido);
 
-    // Si no hubo items con impuesto, dejar un grupo en 0% para que el
-    // schema no quede vacío.
+    // ── 4) Montos legales ────────────────────────────────────────────────
+    // Todos los descuentos están en líneas → tax_inclusive == payable_amount.
+    // DIAN DEAU06: line_extension + taxes == tax_inclusive_amount ✓
     if (taxGroups.isEmpty) {
-      taxGroups[0] = _TaxGroup(0)..taxableAmount = baseImponible;
+      final base = subtotalBruto - totalDescuentosItem - descuentoGeneral;
+      taxGroups[0] = _TaxGroup(0)..taxableAmount = base;
     }
 
     final taxTotalsList = taxGroups.values
@@ -387,82 +451,24 @@ class MatiasService {
             })
         .toList();
 
-    // ── 2) Construir líneas con IVA y descuento real ─────────────────────
-    final lines = <Map<String, dynamic>>[];
-    for (var idx = 0; idx < items.length; idx++) {
-      final item = items[idx];
-      final qty = _asDouble(item.cantidad);
-      final price = _asDouble(item.precioUnitario);
-      final descValor = _asDouble(item.valorDescuento);
-      final descPct = _asDouble(item.porcentajeDescuento);
-      final impValor = _asDouble(item.valorImpuesto);
-      final impPct = _asDouble(item.porcentajeImpuesto).round();
+    final lineExtensionTotal = subtotalBruto - totalDescuentosItem - descuentoGeneral;
+    final taxInclusiveAmount = lineExtensionTotal + totalImpuestosRecalc;
+    final totalFinalStr = taxInclusiveAmount.toStringAsFixed(2);
 
-      final lineGross = qty * price;
-      final lineBase = lineGross - descValor;
-
-      final lineMap = <String, dynamic>{
-        'line_number': (idx + 1).toString(),
-        'description': item.productoNombre ?? 'Producto',
-        'code': item.productoId ?? 'PROD',
-        'invoiced_quantity': qty.toStringAsFixed(0),
-        'base_quantity': qty.toStringAsFixed(0),
-        'quantity_units_id': '1093', // TODO: leer unidad de medida real del producto
-        'price_amount': price.toStringAsFixed(2),
-        'line_extension_amount': lineBase.toStringAsFixed(2),
-        'free_of_charge_indicator': false,
-        'type_item_identifications_id': '4',
-        'reference_price_id': '1',
-        'um': 'UND',
-        'tax_totals': [
-          {
-            'tax_id': '1',
-            'percent': impPct,
-            'tax_amount': impValor.toStringAsFixed(2),
-            'taxable_amount': lineBase.toStringAsFixed(2),
-          }
-        ],
-      };
-
-      // Solo agregar allowance_charges si hay descuento aplicado.
-      if (descValor > 0) {
-        lineMap['allowance_charges'] = [
-          {
-            'discount_id': '1',
-            'charge_indicator': false, // false = descuento, true = recargo
-            'allowance_charge_reason': 'Descuento',
-            'amount': descValor.toStringAsFixed(2),
-            'base_amount': lineGross.toStringAsFixed(2),
-            if (descPct > 0)
-              'multiplier_factor_numeric': descPct.toStringAsFixed(2),
-          }
-        ];
-      }
-
-      lines.add(lineMap);
-    }
-
-    // ── 3) Cliente: usar datos reales del pedido si existen ──────────────
-    final customer = _buildCustomerFromPedido(pedido);
-
-    // ── 4) Montos legales ────────────────────────────────────────────────
     final legalMonetaryTotals = <String, dynamic>{
-      'line_extension_amount': subtotalBruto.toStringAsFixed(2),
-      'tax_exclusive_amount': baseImponible.toStringAsFixed(2),
-      'tax_inclusive_amount': totalFinal.toStringAsFixed(2),
-      'payable_amount': totalFinal.toStringAsFixed(2),
+      'line_extension_amount': lineExtensionTotal.toStringAsFixed(2),
+      'tax_exclusive_amount': lineExtensionTotal.toStringAsFixed(2),
+      'tax_inclusive_amount': totalFinalStr,
+      'payable_amount': totalFinalStr,
+      if (totalDescuentosItem + descuentoGeneral > 0)
+        'allowance_total_amount':
+            (totalDescuentosItem + descuentoGeneral).toStringAsFixed(2),
     };
-    final totalDescuentos = totalDescuentosItem + descuentoGeneral;
-    if (totalDescuentos > 0) {
-      legalMonetaryTotals['allowance_total_amount'] =
-          totalDescuentos.toStringAsFixed(2);
-    }
 
     return {
-      // Campos obligatorios para Matias
       'resolution_number': resolutionNumber,
       'prefix': negocioInfo.posPrefijo ?? 'POS',
-      // BUG #6: document_number eliminado — POS usa consecutivo automático
+      // document_number omitido — POS usa consecutivo automático de Matias
       'date': date,
       'time': time,
       'type_document_id': type_document_id,
@@ -471,42 +477,29 @@ class MatiasService {
       'notes': customer['company_name'] == 'Consumidor Final'
           ? 'Documento POS rápido - Sin cliente'
           : 'Documento POS rápido',
-
-      // Operación y moneda
-      // 1 = ESTANDAR (CustomizationID "10") — único válido para POS según DIAN (DEAD02)
+      // 1 = ESTANDAR — único válido para POS según DIAN (DEAD02)
       'operation_type_id': 1,
-      'currency_id': 272, // Peso colombiano
-
-      // POS - Información de punto de venta
+      'currency_id': 272,
       'cash_register_number': negocioInfo.posCashierName ?? 'CAJA-01',
       'seller_name': negocioInfo.posCashierName ?? 'Vendedor',
-
-      // Información del software/fabricante
       'software_manufacturer': {
         'owner_name': negocioInfo.softwareOwnerName ?? negocioInfo.nombre ?? 'Software Owner',
         'company_name': negocioInfo.softwareCompanyName ?? negocioInfo.nombre ?? 'Software Company',
         'software_name': negocioInfo.softwareName ?? 'Vercy POS',
       },
-
-      // Punto de venta
       'point_of_sale': {
         'cashier_name': negocioInfo.posCashierName ?? 'Vendedor',
         'terminal_number': negocioInfo.posTerminalNumber ?? 'T001',
         'cashier_type': negocioInfo.posCashierType ?? 'Dependiente',
         'sales_code': negocioInfo.posSalesCode ?? 'V001',
         'address': negocioInfo.direccion ?? 'Sin dirección',
-        'sub_total': subtotalBruto.toStringAsFixed(2),
+        'sub_total': lineExtensionTotal.toStringAsFixed(2),
         'total': totalFinalStr,
       },
-
       'customer': customer,
       'lines': lines,
       'legal_monetary_totals': legalMonetaryTotals,
       'tax_totals': taxTotalsList,
-
-      // Información de pago — lee del pedido en vez de hardcodear "EFECTIVO".
-      // Si hay pagos parciales (pago mixto) crea una entrada por cada uno;
-      // si no, una sola con la formaPago del pedido.
       'payments': _buildPaymentsFromPedido(pedido, totalFinalStr, date),
     };
   }

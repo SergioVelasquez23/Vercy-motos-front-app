@@ -163,76 +163,77 @@ class FacturaCompraService {
 
   Future<String> generarNumeroFactura() async {
     try {
-        
-        
-
       final response = await http.get(
         Uri.parse('$baseUrl/numero-compra'),
         headers: headers,
       );
+
       if (response.statusCode == 200) {
-        final responseBody = response.body;
+        final responseBody = response.body.trim();
+        appLog('📦 /numero-compra body: $responseBody');
+
         if (responseBody.isEmpty) {
-          throw Exception(
-            'Respuesta vacía del servidor para número de factura',
-          );
+          throw Exception('Respuesta vacía del servidor');
         }
 
+        // Respuesta es un string/número plano (sin JSON)
         final dynamic jsonData = json.decode(responseBody);
-          
 
-        String numeroFactura = '';
+        if (jsonData is String && jsonData.isNotEmpty) return jsonData;
+        if (jsonData is num) return jsonData.toString();
 
         if (jsonData is Map<String, dynamic>) {
-          // Verificar si hay error en la respuesta
           if (jsonData.containsKey('success') && jsonData['success'] == false) {
-            final errorMessage =
-                jsonData['message'] ?? 'Error desconocido al generar número';
-              
-            throw Exception(errorMessage);
+            throw Exception(jsonData['message'] ?? 'Error desconocido');
           }
 
-          // Intentar obtener el número de diferentes posibles campos
-          if (jsonData.containsKey('numeroFactura')) {
-            numeroFactura = jsonData['numeroFactura']?.toString() ?? '';
-          } else if (jsonData.containsKey('data') && jsonData['data'] != null) {
-            final data = jsonData['data'];
-            if (data is Map<String, dynamic> &&
-                data.containsKey('numeroFactura')) {
-              numeroFactura = data['numeroFactura']?.toString() ?? '';
-            } else if (data is String) {
-              numeroFactura = data;
+          // Todos los campos conocidos que puede devolver el backend
+          for (final key in [
+            'numeroFactura', 'numero', 'number', 'nextNumber',
+            'consecutivo', 'siguiente', 'compra_numero', 'invoice_number',
+            'compraNumero', 'facturaNumero',
+          ]) {
+            final val = jsonData[key]?.toString() ?? '';
+            if (val.isNotEmpty) return val;
+          }
+
+          // Buscar en 'data' anidado
+          final nested = jsonData['data'];
+          if (nested is Map<String, dynamic>) {
+            for (final key in [
+              'numeroFactura', 'numero', 'number', 'nextNumber',
+              'consecutivo', 'siguiente',
+            ]) {
+              final val = nested[key]?.toString() ?? '';
+              if (val.isNotEmpty) return val;
             }
-          } else if (jsonData.containsKey('numero')) {
-            numeroFactura = jsonData['numero']?.toString() ?? '';
+          } else if (nested is String && nested.isNotEmpty) {
+            return nested;
+          } else if (nested is num) {
+            return nested.toString();
           }
 
-          if (numeroFactura.isEmpty) {
-              
-              
-            throw Exception(
-              'No se encontró número de factura en la respuesta del servidor',
-            );
+          // Último recurso: primer campo con valor no vacío
+          for (final entry in jsonData.entries) {
+            final v = entry.value;
+            if (v != null && v is! bool && v.toString().isNotEmpty) {
+              appLog('⚠️ numero-compra: usando campo "${entry.key}" = $v');
+              return v.toString();
+            }
           }
-        } else if (jsonData is String) {
-          numeroFactura = jsonData;
-        } else {
+
           throw Exception(
-            'Formato de respuesta no válido para número de factura',
+            'Respuesta del servidor no contiene número (claves: ${jsonData.keys.join(", ")})',
           );
         }
 
-          
-        return numeroFactura;
+        throw Exception('Formato de respuesta inesperado: $responseBody');
       } else {
-        final errorMessage =
-            'Error al generar número de factura: ${response.statusCode}';
-          
-          
-        throw Exception(errorMessage);
+        throw Exception(
+          'Error al generar número de factura: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
-        
       throw Exception('Error de conexión: $e');
     }
   }

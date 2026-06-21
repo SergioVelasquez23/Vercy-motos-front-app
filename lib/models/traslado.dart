@@ -1,92 +1,123 @@
+class ItemTraslado {
+  final String? productoId;
+  final String? nombreProducto;
+  final String? referencia;
+  final int cantidad;
+
+  const ItemTraslado({
+    this.productoId,
+    this.nombreProducto,
+    this.referencia,
+    this.cantidad = 0,
+  });
+
+  factory ItemTraslado.fromJson(Map<String, dynamic> json) => ItemTraslado(
+        productoId: json['productoId'],
+        nombreProducto: json['nombreProducto'],
+        referencia: json['referencia'],
+        cantidad: (json['cantidad'] as num?)?.toInt() ?? 0,
+      );
+}
+
 class Traslado {
   String? id;
   String? numero;
-  String? productoId;
-  String? productoNombre;
-  String? origenBodegaId;
-  String? origenBodegaNombre;
-  String? destinoBodegaId;
-  String? destinoBodegaNombre;
-  double? cantidad;
-  String? unidad;
-  String? estado; // PENDIENTE, ACEPTADO, RECHAZADO
-  String? solicitante;
-  String? aprobador;
+
+  // Campos del backend real
+  String? tipo;           // "BODEGA_A_ALMACEN" | "ALMACEN_A_BODEGA"
+  String? asesor;
   String? observaciones;
-  DateTime? fechaSolicitud;
-  DateTime? fechaAprobacion;
-  DateTime? fechaCompletado;
+  String? estado;
+  DateTime? fecha;
+  List<ItemTraslado> items;
+
+  // Campos derivados / compatibilidad con UI existente
+  String? get solicitante => asesor;
+  String? get origenBodegaNombre => _origenFromTipo(tipo);
+  String? get destinoBodegaNombre => _destinoFromTipo(tipo);
+  String? get origenBodegaId => origenBodegaNombre;
+  String? get destinoBodegaId => destinoBodegaNombre;
+  DateTime? get fechaSolicitud => fecha;
+
+  // Primer producto del traslado (para UI de lista de un solo producto)
+  String? get productoNombre =>
+      items.isNotEmpty ? items.first.nombreProducto : null;
+  String? get productoId =>
+      items.isNotEmpty ? items.first.productoId : null;
+  double? get cantidad =>
+      items.fold<int>(0, (sum, i) => sum + i.cantidad).toDouble();
 
   Traslado({
     this.id,
     this.numero,
-    this.productoId,
-    this.productoNombre,
-    this.origenBodegaId,
-    this.origenBodegaNombre,
-    this.destinoBodegaId,
-    this.destinoBodegaNombre,
-    this.cantidad,
-    this.unidad,
-    this.estado,
-    this.solicitante,
-    this.aprobador,
+    this.tipo,
+    this.asesor,
     this.observaciones,
-    this.fechaSolicitud,
-    this.fechaAprobacion,
-    this.fechaCompletado,
+    this.estado,
+    this.fecha,
+    this.items = const [],
   });
 
   factory Traslado.fromJson(Map<String, dynamic> json) {
+    final rawItems = json['items'];
+    final List<ItemTraslado> items = rawItems is List
+        ? rawItems
+            .whereType<Map<String, dynamic>>()
+            .map(ItemTraslado.fromJson)
+            .toList()
+        : [];
+
+    // fecha puede venir como array [y,m,d,h,min,s] o como string ISO
+    DateTime? fecha;
+    final rawFecha = json['fecha'];
+    if (rawFecha is String) {
+      fecha = DateTime.tryParse(rawFecha);
+    } else if (rawFecha is List && rawFecha.length >= 5) {
+      fecha = DateTime(
+        rawFecha[0] as int,
+        rawFecha[1] as int,
+        rawFecha[2] as int,
+        rawFecha[3] as int,
+        rawFecha[4] as int,
+        rawFecha.length > 5 ? rawFecha[5] as int : 0,
+      );
+    }
+
     return Traslado(
       id: json['_id'] ?? json['id'],
       numero: json['numero'],
-      productoId: json['productoId'],
-      productoNombre: json['productoNombre'],
-      origenBodegaId: json['origenBodegaId'],
-      origenBodegaNombre: json['origenBodegaNombre'],
-      destinoBodegaId: json['destinoBodegaId'],
-      destinoBodegaNombre: json['destinoBodegaNombre'],
-      cantidad: json['cantidad']?.toDouble(),
-      unidad: json['unidad'],
-      estado: json['estado'],
-      solicitante: json['solicitante'],
-      aprobador: json['aprobador'],
+      tipo: json['tipo'],
+      asesor: json['asesor'] ?? json['solicitante'],
       observaciones: json['observaciones'],
-      fechaSolicitud: json['fechaSolicitud'] != null
-          ? DateTime.parse(json['fechaSolicitud'])
-          : null,
-      fechaAprobacion: json['fechaAprobacion'] != null
-          ? DateTime.parse(json['fechaAprobacion'])
-          : null,
-      fechaCompletado: json['fechaCompletado'] != null
-          ? DateTime.parse(json['fechaCompletado'])
-          : null,
+      estado: json['estado'],
+      fecha: fecha,
+      items: items,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      if (id != null) '_id': id,
-      if (numero != null) 'numero': numero,
-      'productoId': productoId,
-      'productoNombre': productoNombre,
-      'origenBodegaId': origenBodegaId,
-      'origenBodegaNombre': origenBodegaNombre,
-      'destinoBodegaId': destinoBodegaId,
-      'destinoBodegaNombre': destinoBodegaNombre,
-      'cantidad': cantidad,
-      'unidad': unidad,
-      'estado': estado,
-      'solicitante': solicitante,
-      if (aprobador != null) 'aprobador': aprobador,
-      if (observaciones != null) 'observaciones': observaciones,
-      if (fechaSolicitud != null)
-        'fechaSolicitud': fechaSolicitud!.toIso8601String(),
-      if (fechaAprobacion != null)
-        'fechaAprobacion': fechaAprobacion!.toIso8601String(),
-      if (fechaCompletado != null)
-        'fechaCompletado': fechaCompletado!.toIso8601String(),
-    };
+  Map<String, dynamic> toJson() => {
+        if (id != null) '_id': id,
+        if (tipo != null) 'tipo': tipo,
+        if (asesor != null) 'asesor': asesor,
+        if (observaciones != null) 'observaciones': observaciones,
+        'estado': estado,
+        if (fecha != null) 'fecha': fecha!.toIso8601String(),
+        'items': items
+            .map((i) => {
+                  'productoId': i.productoId,
+                  'nombreProducto': i.nombreProducto,
+                  'cantidad': i.cantidad,
+                })
+            .toList(),
+      };
+
+  static String? _origenFromTipo(String? tipo) {
+    if (tipo == null) return null;
+    return tipo.startsWith('BODEGA') ? 'BODEGA' : 'ALMACEN';
+  }
+
+  static String? _destinoFromTipo(String? tipo) {
+    if (tipo == null) return null;
+    return tipo.endsWith('ALMACEN') ? 'ALMACEN' : 'BODEGA';
   }
 }

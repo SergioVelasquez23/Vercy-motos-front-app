@@ -31,6 +31,10 @@ import '../utils/logger.dart';
 import '../utils/snackbar_helper.dart';
 import '../utils/dialogs_helper.dart';
 import '../utils/api_error.dart' show errorMessage;
+import '../widgets/facturizacion/confirmacion_dian_dialog.dart';
+import '../services/documento_service.dart';
+import '../utils/base64_file_launcher.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class FacturacionScreen extends StatefulWidget {
   final PedidoAsesor? pedidoAsesor;
@@ -1189,528 +1193,334 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   }
 
   Widget _buildDatosExtras() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        children: [
-          InkWell(
-            onTap: () =>
-                setState(() => _datosExtrasExpanded = !_datosExtrasExpanded),
-            child: Container(
-              padding: EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Text(
-                    'Datos extras',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  Spacer(),
-                  Icon(
-                    _datosExtrasExpanded
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                  ),
-                ],
-              ),
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
+            ],
           ),
-          if (_datosExtrasExpanded) ...[
-            Divider(height: 1),
-            Padding(
-              padding: EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  // Primera fila
-                  Row(
+          child: Column(
+            children: [
+              InkWell(
+                onTap: () =>
+                    setState(() => _datosExtrasExpanded = !_datosExtrasExpanded),
+                child: Container(
+                  padding: EdgeInsets.all(16),
+                  child: Row(
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primary,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'ORDEN COMPRA',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            TextField(
-                              controller: _ordenCompraController,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface,
-                                fontSize: 14,
-                              ),
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 16,
-                                ),
-                                filled: true,
-                                fillColor: Theme.of(context).colorScheme.surface,
-                                hintStyle: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                                ),
-                              ),
-                            ),
-                          ],
+                      Text(
+                        'Datos extras',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primary,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'FECHA COMPRA',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            InkWell(
-                              onTap: () async {
-                                final fecha = await showDatePicker(
-                                  context: context,
-                                  initialDate: _fechaCompra ?? DateTime.now(),
-                                  firstDate: DateTime(2020),
-                                  lastDate: DateTime(2030),
-                                );
-                                if (fecha != null) {
-                                  setState(() => _fechaCompra = fecha);
-                                }
-                              },
-                              child: InputDecorator(
-                                decoration: InputDecoration(
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 16,
-                                  ),
-                                  suffixIcon: Icon(
-                                    Icons.calendar_today,
-                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                                  ),
-                                  filled: true,
-                                  fillColor: Theme.of(context).colorScheme.surface,
-                                ),
-                                child: Text(
-                                  _fechaCompra != null
-                                      ? '${_fechaCompra!.day.toString().padLeft(2, '0')}/${_fechaCompra!.month.toString().padLeft(2, '0')}/${_fechaCompra!.year}'
-                                      : 'mm/dd/yyyy',
-                                  style: TextStyle(
-                                    color: _fechaCompra != null
-                                        ? Theme.of(context).colorScheme.onSurface
-                                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primary,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'ORDEN SERVICIO',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            TextField(
-                              controller: _ordenServicioController,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface,
-                                fontSize: 14,
-                              ),
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 16,
-                                ),
-                                filled: true,
-                                fillColor: Theme.of(context).colorScheme.surface,
-                                hintStyle: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primary,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'ORDEN PEDIDO',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            TextField(
-                              controller: _ordenPedidoController,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface,
-                                fontSize: 14,
-                              ),
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 16,
-                                ),
-                                filled: true,
-                                fillColor: Theme.of(context).colorScheme.surface,
-                                hintStyle: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primary,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'VENDEDOR',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            TextField(
-                              controller: _vendedorController,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface,
-                                fontSize: 14,
-                              ),
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 16,
-                                ),
-                                filled: true,
-                                fillColor: Theme.of(context).colorScheme.surface,
-                                hintStyle: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                      Spacer(),
+                      Icon(
+                        _datosExtrasExpanded
+                            ? Icons.keyboard_arrow_up
+                            : Icons.keyboard_arrow_down,
                       ),
                     ],
                   ),
-                  SizedBox(height: 16),
-                  // Segunda fila
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primary,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                '% DCTO PAGO',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            TextField(
-                              controller: _porcentajeDctoPagoController,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface,
-                                fontSize: 14,
-                              ),
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 16,
-                                ),
-                                filled: true,
-                                fillColor: Theme.of(context).colorScheme.surface,
-                                hintStyle: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                                ),
-                              ),
-                              keyboardType: TextInputType.number,
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primary,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'LISTA DE PRECIO',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            DropdownButtonFormField<String>(
-                              value: _listaPrecios,
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 16,
-                                ),
-                                filled: true,
-                                fillColor: Theme.of(context).colorScheme.surface,
-                                hintStyle: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                                ),
-                              ),
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface,
-                                fontSize: 14,
-                              ),
-                              items: ['Detal', 'Mayor', 'Distribuidor']
-                                  .map(
-                                    (lista) => DropdownMenuItem(
-                                      value: lista,
-                                      child: Text(lista),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (value) =>
-                                  setState(() => _listaPrecios = value!),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primary,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                '# GUIA',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            TextField(
-                              controller: _guiaController,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface,
-                                fontSize: 14,
-                              ),
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 16,
-                                ),
-                                filled: true,
-                                fillColor: Theme.of(context).colorScheme.surface,
-                                hintStyle: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primary,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'FECHA DCTO PAGO',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            InkWell(
-                              onTap: () async {
-                                final fecha = await showDatePicker(
-                                  context: context,
-                                  initialDate: _fechaDctoPago ?? DateTime.now(),
-                                  firstDate: DateTime(2020),
-                                  lastDate: DateTime(2030),
-                                );
-                                if (fecha != null) {
-                                  setState(() => _fechaDctoPago = fecha);
-                                }
-                              },
-                              child: InputDecorator(
-                                decoration: InputDecoration(
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 16,
-                                  ),
-                                  suffixIcon: Icon(
-                                    Icons.calendar_today,
-                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                                  ),
-                                  filled: true,
-                                  fillColor: Theme.of(context).colorScheme.surface,
-                                ),
-                                child: Text(
-                                  _fechaDctoPago != null
-                                      ? '${_fechaDctoPago!.year}-${_fechaDctoPago!.month.toString().padLeft(2, '0')}-${_fechaDctoPago!.day.toString().padLeft(2, '0')}'
-                                      : '2026-02-18',
-                                  style: TextStyle(
-                                    color: _fechaDctoPago != null
-                                        ? Theme.of(context).colorScheme.onSurface
-                                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Expanded(child: SizedBox()), // Espaciador para balance
-                    ],
-                  ),
-                ],
+                ),
               ),
+              if (_datosExtrasExpanded) ...[
+                Divider(height: 1),
+                Padding(
+                  padding: EdgeInsets.all(isMobile ? 16 : 24),
+                  child: isMobile
+                      ? _buildDatosExtrasMobile()
+                      : _buildDatosExtrasDesktop(),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildExtraField(String label, Widget input) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppTheme.primary,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 11,
+              color: Colors.white,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        SizedBox(height: 8),
+        input,
+      ],
+    );
+  }
+
+  InputDecoration get _extraInputDecoration => InputDecoration(
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        filled: true,
+        fillColor: Theme.of(context).colorScheme.surface,
+      );
+
+  Widget _buildDatosExtrasMobile() {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: _buildExtraField('ORDEN COMPRA', TextField(
+              controller: _ordenCompraController,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+              decoration: _extraInputDecoration,
+            ))),
+            SizedBox(width: 12),
+            Expanded(child: _buildExtraField('ORDEN SERVICIO', TextField(
+              controller: _ordenServicioController,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+              decoration: _extraInputDecoration,
+            ))),
           ],
-        ],
-      ),
+        ),
+        SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _buildExtraField('ORDEN PEDIDO', TextField(
+              controller: _ordenPedidoController,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+              decoration: _extraInputDecoration,
+            ))),
+            SizedBox(width: 12),
+            Expanded(child: _buildExtraField('VENDEDOR', TextField(
+              controller: _vendedorController,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+              decoration: _extraInputDecoration,
+            ))),
+          ],
+        ),
+        SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _buildExtraField('FECHA COMPRA', InkWell(
+              onTap: () async {
+                final fecha = await showDatePicker(
+                  context: context,
+                  initialDate: _fechaCompra ?? DateTime.now(),
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2030),
+                );
+                if (fecha != null) setState(() => _fechaCompra = fecha);
+              },
+              child: InputDecorator(
+                decoration: _extraInputDecoration.copyWith(
+                  suffixIcon: Icon(Icons.calendar_today, size: 16,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
+                ),
+                child: Text(
+                  _fechaCompra != null
+                      ? '${_fechaCompra!.day.toString().padLeft(2,'0')}/${_fechaCompra!.month.toString().padLeft(2,'0')}/${_fechaCompra!.year}'
+                      : 'Seleccionar',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: _fechaCompra != null
+                        ? Theme.of(context).colorScheme.onSurface
+                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                  ),
+                ),
+              ),
+            ))),
+            SizedBox(width: 12),
+            Expanded(child: _buildExtraField('FECHA DCTO PAGO', InkWell(
+              onTap: () async {
+                final fecha = await showDatePicker(
+                  context: context,
+                  initialDate: _fechaDctoPago ?? DateTime.now(),
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2030),
+                );
+                if (fecha != null) setState(() => _fechaDctoPago = fecha);
+              },
+              child: InputDecorator(
+                decoration: _extraInputDecoration.copyWith(
+                  suffixIcon: Icon(Icons.calendar_today, size: 16,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
+                ),
+                child: Text(
+                  _fechaDctoPago != null
+                      ? '${_fechaDctoPago!.year}-${_fechaDctoPago!.month.toString().padLeft(2,'0')}-${_fechaDctoPago!.day.toString().padLeft(2,'0')}'
+                      : 'Seleccionar',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: _fechaDctoPago != null
+                        ? Theme.of(context).colorScheme.onSurface
+                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                  ),
+                ),
+              ),
+            ))),
+          ],
+        ),
+        SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _buildExtraField('% DCTO PAGO', TextField(
+              controller: _porcentajeDctoPagoController,
+              keyboardType: TextInputType.number,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+              decoration: _extraInputDecoration,
+            ))),
+            SizedBox(width: 12),
+            Expanded(child: _buildExtraField('LISTA DE PRECIO', DropdownButtonFormField<String>(
+              value: _listaPrecios,
+              decoration: _extraInputDecoration,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+              items: ['Detal', 'Mayor', 'Distribuidor']
+                  .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                  .toList(),
+              onChanged: (v) => setState(() => _listaPrecios = v!),
+            ))),
+          ],
+        ),
+        SizedBox(height: 12),
+        _buildExtraField('# GUIA', TextField(
+          controller: _guiaController,
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+          decoration: _extraInputDecoration,
+        )),
+      ],
+    );
+  }
+
+  Widget _buildDatosExtrasDesktop() {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: _buildExtraField('ORDEN COMPRA', TextField(
+              controller: _ordenCompraController,
+              style: TextStyle(color: onSurface, fontSize: 14),
+              decoration: _extraInputDecoration,
+            ))),
+            SizedBox(width: 16),
+            Expanded(child: _buildExtraField('FECHA COMPRA', InkWell(
+              onTap: () async {
+                final fecha = await showDatePicker(
+                  context: context,
+                  initialDate: _fechaCompra ?? DateTime.now(),
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2030),
+                );
+                if (fecha != null) setState(() => _fechaCompra = fecha);
+              },
+              child: InputDecorator(
+                decoration: _extraInputDecoration.copyWith(
+                  suffixIcon: Icon(Icons.calendar_today, color: onSurface.withOpacity(0.6)),
+                ),
+                child: Text(
+                  _fechaCompra != null
+                      ? '${_fechaCompra!.day.toString().padLeft(2,'0')}/${_fechaCompra!.month.toString().padLeft(2,'0')}/${_fechaCompra!.year}'
+                      : 'mm/dd/yyyy',
+                  style: TextStyle(
+                    color: _fechaCompra != null ? onSurface : onSurface.withOpacity(0.5),
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ))),
+            SizedBox(width: 16),
+            Expanded(child: _buildExtraField('ORDEN SERVICIO', TextField(
+              controller: _ordenServicioController,
+              style: TextStyle(color: onSurface, fontSize: 14),
+              decoration: _extraInputDecoration,
+            ))),
+            SizedBox(width: 16),
+            Expanded(child: _buildExtraField('ORDEN PEDIDO', TextField(
+              controller: _ordenPedidoController,
+              style: TextStyle(color: onSurface, fontSize: 14),
+              decoration: _extraInputDecoration,
+            ))),
+            SizedBox(width: 16),
+            Expanded(child: _buildExtraField('VENDEDOR', TextField(
+              controller: _vendedorController,
+              style: TextStyle(color: onSurface, fontSize: 14),
+              decoration: _extraInputDecoration,
+            ))),
+          ],
+        ),
+        SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(child: _buildExtraField('% DCTO PAGO', TextField(
+              controller: _porcentajeDctoPagoController,
+              keyboardType: TextInputType.number,
+              style: TextStyle(color: onSurface, fontSize: 14),
+              decoration: _extraInputDecoration,
+            ))),
+            SizedBox(width: 16),
+            Expanded(child: _buildExtraField('LISTA DE PRECIO', DropdownButtonFormField<String>(
+              value: _listaPrecios,
+              decoration: _extraInputDecoration,
+              style: TextStyle(color: onSurface, fontSize: 14),
+              items: ['Detal', 'Mayor', 'Distribuidor']
+                  .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                  .toList(),
+              onChanged: (v) => setState(() => _listaPrecios = v!),
+            ))),
+            SizedBox(width: 16),
+            Expanded(child: _buildExtraField('# GUIA', TextField(
+              controller: _guiaController,
+              style: TextStyle(color: onSurface, fontSize: 14),
+              decoration: _extraInputDecoration,
+            ))),
+            SizedBox(width: 16),
+            Expanded(child: _buildExtraField('FECHA DCTO PAGO', InkWell(
+              onTap: () async {
+                final fecha = await showDatePicker(
+                  context: context,
+                  initialDate: _fechaDctoPago ?? DateTime.now(),
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2030),
+                );
+                if (fecha != null) setState(() => _fechaDctoPago = fecha);
+              },
+              child: InputDecorator(
+                decoration: _extraInputDecoration.copyWith(
+                  suffixIcon: Icon(Icons.calendar_today, color: onSurface.withOpacity(0.6)),
+                ),
+                child: Text(
+                  _fechaDctoPago != null
+                      ? '${_fechaDctoPago!.year}-${_fechaDctoPago!.month.toString().padLeft(2,'0')}-${_fechaDctoPago!.day.toString().padLeft(2,'0')}'
+                      : '2026-02-18',
+                  style: TextStyle(
+                    color: _fechaDctoPago != null ? onSurface : onSurface.withOpacity(0.5),
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ))),
+            Expanded(child: SizedBox()),
+          ],
+        ),
+      ],
     );
   }
 
@@ -2398,202 +2208,164 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     ),
                   SizedBox(height: 16),
                   // 📦 Fila de selección de BODEGA/ALMACÉN
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 1,
-                        child: DropdownButtonFormField<String>(
-                          value: _origenSeleccionado,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 14,
-                          ),
-                          dropdownColor: Theme.of(context).colorScheme.surface,
-                          decoration: InputDecoration(
-                            labelText: 'Origen',
-                            labelStyle: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                            ),
-                            hintText: 'Seleccionar...',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            filled: true,
-                            fillColor: Theme.of(context).colorScheme.surface,
-                            prefixIcon: Icon(
-                              Icons.warehouse,
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                            ),
-                          ),
-                          items: ['BODEGA', 'ALMACÉN']
-                              .map(
-                                (origen) => DropdownMenuItem(
-                                  value: origen,
-                                  child: Text(origen),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isMobile = constraints.maxWidth < 500;
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _origenSeleccionado,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
+                                fontSize: 14,
+                              ),
+                              dropdownColor: Theme.of(context).colorScheme.surface,
+                              decoration: InputDecoration(
+                                labelText: 'Origen',
+                                labelStyle: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 ),
-                              )
-                              .toList(),
-                          onChanged: (value) => setState(
-                            () => _origenSeleccionado = value ?? 'ALMACÉN',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                filled: true,
+                                fillColor: Theme.of(context).colorScheme.surface,
+                                prefixIcon: Icon(Icons.warehouse,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                              ),
+                              items: ['BODEGA', 'ALMACÉN']
+                                  .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+                                  .toList(),
+                              onChanged: (v) => setState(() => _origenSeleccionado = v ?? 'ALMACÉN'),
+                            ),
                           ),
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        'Selecciona de dónde vender',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                          fontSize: 12,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
+                          if (!isMobile) ...[
+                            SizedBox(width: 12),
+                            Text(
+                              'Selecciona de dónde vender',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                fontSize: 12,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                        ],
+                      );
+                    },
                   ),
                   SizedBox(height: 16),
-                  // Fila de impuestos y descuentos
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 2,
+                  // Fila de impuestos, descuentos y botón agregar
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isMobile = constraints.maxWidth < 500;
+                      final inputDecBase = InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surface,
+                      );
+                      final labelStyle = TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                        fontSize: 12,
+                      );
+                      final fieldStyle = TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 13,
+                      );
+                      final tipoImpuestoField = Expanded(
+                        flex: 3,
                         child: DropdownButtonFormField<String>(
                           value: _tipoImpuesto,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 14,
-                          ),
+                          style: fieldStyle,
                           dropdownColor: Theme.of(context).colorScheme.surface,
-                          decoration: InputDecoration(
-                            labelText: 'Tipo Impuesto',
-                            labelStyle: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                            ),
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            filled: true,
-                            fillColor: Theme.of(context).colorScheme.surface,
+                          decoration: inputDecBase.copyWith(
+                            labelText: 'Tipo Imp.',
+                            labelStyle: labelStyle,
                           ),
                           items: ['IVA', 'IMPOCONSUMO', 'NINGUNO']
-                              .map(
-                                (tipo) => DropdownMenuItem(
-                                  value: tipo,
-                                  child: Text(tipo),
-                                ),
-                              )
+                              .map((t) => DropdownMenuItem(value: t, child: Text(t)))
                               .toList(),
-                          onChanged: (value) =>
-                              setState(() => _tipoImpuesto = value!),
+                          onChanged: (v) => setState(() => _tipoImpuesto = v!),
                         ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        flex: 1,
+                      );
+                      final pctImpField = Expanded(
+                        flex: 2,
                         child: TextField(
                           controller: _porcentajeImpuestoController,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 14,
-                          ),
-                          decoration: InputDecoration(
+                          style: fieldStyle,
+                          decoration: inputDecBase.copyWith(
                             labelText: '% Imp.',
-                            labelStyle: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                            ),
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            filled: true,
-                            fillColor: Theme.of(context).colorScheme.surface,
+                            labelStyle: labelStyle,
                           ),
                           keyboardType: TextInputType.number,
-                          onChanged: (value) => setState(() {}),
+                          onChanged: (_) => setState(() {}),
                         ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
+                      );
+                      final tipoDescField = Expanded(
+                        flex: 3,
                         child: DropdownButtonFormField<String>(
                           value: _porcentajeTipoDescuento,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 14,
-                          ),
+                          style: fieldStyle,
                           dropdownColor: Theme.of(context).colorScheme.surface,
-                          decoration: InputDecoration(
-                            labelText: 'Porcer',
-                            labelStyle: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                            ),
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            filled: true,
-                            fillColor: Theme.of(context).colorScheme.surface,
+                          decoration: inputDecBase.copyWith(
+                            labelText: 'Tipo Dcto.',
+                            labelStyle: labelStyle,
                           ),
                           items: ['Porcentaje', 'Valor']
-                              .map(
-                                (tipo) => DropdownMenuItem(
-                                  value: tipo,
-                                  child: Text(tipo),
-                                ),
-                              )
+                              .map((t) => DropdownMenuItem(value: t, child: Text(t)))
                               .toList(),
-                          onChanged: (value) =>
-                              setState(() => _porcentajeTipoDescuento = value!),
+                          onChanged: (v) => setState(() => _porcentajeTipoDescuento = v!),
                         ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        flex: 1,
+                      );
+                      final pctDctoField = Expanded(
+                        flex: 2,
                         child: TextField(
                           controller: _porcentajeDescuentoController,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 14,
-                          ),
-                          decoration: InputDecoration(
-                            labelText: '% Descue',
-                            labelStyle: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                            ),
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            filled: true,
-                            fillColor: Theme.of(context).colorScheme.surface,
+                          style: fieldStyle,
+                          decoration: inputDecBase.copyWith(
+                            labelText: '% Dcto.',
+                            labelStyle: labelStyle,
                           ),
                           keyboardType: TextInputType.number,
-                          onChanged: (value) => setState(() {}),
+                          onChanged: (_) => setState(() {}),
                         ),
-                      ),
-                      SizedBox(width: 12),
-                      ElevatedButton.icon(
-                        onPressed: _agregarItem,
-                        icon: Icon(Icons.add),
-                        label: Text(
-                          'Agregar',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primary,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 20,
+                      );
+                      final agregarBtn = SizedBox(
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          onPressed: _agregarItem,
+                          icon: Icon(Icons.add, size: 18),
+                          label: Text('Agregar', style: TextStyle(fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primary,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24),
                           ),
                         ),
-                      ),
-                    ],
+                      );
+
+                      if (isMobile) {
+                        return Column(
+                          children: [
+                            Row(children: [tipoImpuestoField, SizedBox(width: 8), pctImpField]),
+                            SizedBox(height: 8),
+                            Row(children: [tipoDescField, SizedBox(width: 8), pctDctoField]),
+                            SizedBox(height: 8),
+                            SizedBox(width: double.infinity, child: agregarBtn),
+                          ],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          tipoImpuestoField, SizedBox(width: 8),
+                          pctImpField, SizedBox(width: 8),
+                          tipoDescField, SizedBox(width: 8),
+                          pctDctoField, SizedBox(width: 12),
+                          agregarBtn,
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
@@ -4578,12 +4350,21 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         if (!mounted) return;
         if (resultado.success) {
           final cufe = resultado.documentKey ?? '';
-          final cufeCorto = cufe.length > 24 ? '${cufe.substring(0, 24)}...' : cufe;
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text('✅ $nombreDoc emitida a DIAN.\nCUFE: $cufeCorto'),
-              backgroundColor: Colors.green.shade700,
-              duration: const Duration(seconds: 6),
+          final factResult = FacturacionResult(
+            success: true,
+            message: resultado.message,
+            cufe: cufe.isNotEmpty ? cufe : null,
+            pdfUrl: (resultado.pdfUrl?.isNotEmpty == true) ? resultado.pdfUrl : null,
+            raw: resultado.raw,
+          );
+          showDialog(
+            context: context,
+            builder: (_) => ConfirmacionDianDialog(
+              resultado: factResult,
+              tipoDocumento: nombreDoc,
+              onDescargarPDF: cufe.isNotEmpty
+                  ? () => _descargarPDFDian(cufe)
+                  : null,
             ),
           );
         } else {
@@ -4607,6 +4388,56 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         );
       }
     });
+  }
+
+  Future<void> _descargarPDFDian(String cufe) async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(const SnackBar(
+      content: Text('Descargando PDF de DIAN...'),
+      duration: Duration(seconds: 2),
+    ));
+    try {
+      final token = Provider.of<UserProvider>(context, listen: false).token;
+      final url = await MatiasService.obtenerURLPDF(cufe, token: token);
+      if (!mounted) return;
+      if (url != null && url.isNotEmpty) {
+        final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        if (!ok && mounted) {
+          messenger.showSnackBar(const SnackBar(
+            content: Text('No se pudo abrir el PDF.'),
+            backgroundColor: Colors.orange,
+          ));
+        }
+        return;
+      }
+      final res = await MatiasService.descargarPDF(cufe, token: token);
+      if (!mounted) return;
+      if (res == null) {
+        messenger.showSnackBar(const SnackBar(
+          content: Text('PDF no disponible. El documento debe estar ACEPTADO por la DIAN.'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 5),
+        ));
+        return;
+      }
+      final ok = await Base64FileLauncher.open(
+        base64: res['base64']!,
+        mimeType: res['mimeType']!,
+      );
+      if (!ok && mounted) {
+        messenger.showSnackBar(const SnackBar(
+          content: Text('No se pudo abrir el PDF.'),
+          backgroundColor: Colors.orange,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(
+          content: Text('Error al descargar PDF: $e'),
+          backgroundColor: Colors.red.shade700,
+        ));
+      }
+    }
   }
 
   // 📦 Registrar movimientos de inventario cuando se factura (venta)

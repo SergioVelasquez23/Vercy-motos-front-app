@@ -189,29 +189,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
     }
   }
 
-  Future<void> _generarNumeroFactura() async {
-    try {
-        
-      setState(() {
-        _numeroFactura = 'Generando...';
-      });
-
-      final numero = await _facturaCompraService.generarNumeroFactura();
-        
-
-      setState(() {
-        _numeroFactura = numero;
-      });
-
-        
-    } catch (e) {
-        
-      setState(() {
-        _numeroFactura = 'Error al generar';
-      });
-
-      showErrorSnackBar(context, 'Error al generar número de factura: $e');
-    }
+  void _generarNumeroFactura() {
+    final now = DateTime.now();
+    final numero =
+        'C-${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-'
+        '${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+    setState(() => _numeroFactura = numero);
   }
 
   Future<void> _cargarProductos() async {
@@ -1632,245 +1615,207 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
           ],
         ),
         SizedBox(height: 8),
-        // Fila 4: Valor total, Tipo Imp, % Imp, Tipo %, % Descuento
-        Row(
-          children: [
-            _buildFieldLabel('Valor total', flex: 1),
-            _buildFieldLabel('', flex: 1), // Dropdown tipo impuesto
-            _buildFieldLabel('% Imp.', flex: 1),
-            _buildFieldLabel('', flex: 1), // Dropdown tipo descuento
-            _buildFieldLabel('% Descuento', flex: 1),
-            SizedBox(width: 60), // Espacio para botones
-          ],
-        ),
-        SizedBox(height: 4),
-        Row(
-          children: [
-            // Valor total calculado
-            Expanded(
-              flex: 1,
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  '\$${valorTotal.toStringAsFixed(0)}',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
-                ),
+        // Fila 4: Valor total, Tipo Imp, % Imp, Tipo %, % Descuento, Destino, botones
+        LayoutBuilder(builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
+          final cs = Theme.of(context).colorScheme;
+
+          Widget valorTotalWidget = Expanded(
+            flex: 2,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              decoration: BoxDecoration(
+                color: cs.surface.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                '\$${valorTotal.toStringAsFixed(0)}',
+                style: TextStyle(color: cs.onSurface, fontSize: 13),
               ),
             ),
-            SizedBox(width: 8),
-            Expanded(
-              flex: 1,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: DropdownButtonFormField<String>(
-                  value: _tipoImpuesto,
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 8,
-                    ),
-                    border: InputBorder.none,
-                  ),
-                  dropdownColor: Theme.of(context).colorScheme.surface,
-                  items: ['--', 'IVA', 'INC']
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _tipoImpuesto = v ?? '--'),
-                ),
+          );
+
+          Widget tipoImpWidget = Expanded(
+            flex: 2,
+            child: Container(
+              decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(4)),
+              child: DropdownButtonFormField<String>(
+                value: _tipoImpuesto,
+                style: TextStyle(color: cs.onSurface, fontSize: 13),
+                decoration: InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8), border: InputBorder.none),
+                dropdownColor: cs.surface,
+                items: ['--', 'IVA', 'INC'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                onChanged: (v) => setState(() => _tipoImpuesto = v ?? '--'),
               ),
             ),
-            SizedBox(width: 8),
-            Expanded(
-              flex: 1,
-              child: TextField(
-                controller: _porcentajeImpuestoController,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 10,
-                  ),
-                  hintText: '0',
-                  hintStyle: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                    fontSize: 13,
-                  ),
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surface,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+          );
+
+          Widget pctImpWidget = Expanded(
+            flex: 2,
+            child: TextField(
+              controller: _porcentajeImpuestoController,
+              style: TextStyle(color: cs.onSurface, fontSize: 13),
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                hintText: '0',
+                hintStyle: TextStyle(color: cs.onSurface.withOpacity(0.7), fontSize: 13),
+                filled: true, fillColor: cs.surface,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide.none),
               ),
             ),
-            SizedBox(width: 8),
-            Expanded(
-              flex: 1,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: DropdownButtonFormField<String>(
-                  value: _tipoDescuento,
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 8,
-                    ),
-                    border: InputBorder.none,
-                  ),
-                  dropdownColor: Theme.of(context).colorScheme.surface,
-                  items: ['%', '\$']
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _tipoDescuento = v ?? '%'),
-                ),
+          );
+
+          Widget tipoDctoWidget = Expanded(
+            flex: 2,
+            child: Container(
+              decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(4)),
+              child: DropdownButtonFormField<String>(
+                value: _tipoDescuento,
+                style: TextStyle(color: cs.onSurface, fontSize: 13),
+                decoration: InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8), border: InputBorder.none),
+                dropdownColor: cs.surface,
+                items: ['%', '\$'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                onChanged: (v) => setState(() => _tipoDescuento = v ?? '%'),
               ),
             ),
-            SizedBox(width: 8),
-            Expanded(
-              flex: 1,
-              child: TextField(
-                controller: _porcentajeDescuentoController,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 10,
-                  ),
-                  hintText: '0',
-                  hintStyle: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                    fontSize: 13,
-                  ),
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surface,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+          );
+
+          Widget pctDctoWidget = Expanded(
+            flex: 2,
+            child: TextField(
+              controller: _porcentajeDescuentoController,
+              style: TextStyle(color: cs.onSurface, fontSize: 13),
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                hintText: '0',
+                hintStyle: TextStyle(color: cs.onSurface.withOpacity(0.7), fontSize: 13),
+                filled: true, fillColor: cs.surface,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide.none),
               ),
             ),
-            SizedBox(width: 8),
-            // 📦 MOSTRAR STOCK DISPONIBLE
-            if (_productoSeleccionado != null)
+          );
+
+          Widget destinoWidget = Expanded(
+            flex: 3,
+            child: Container(
+              decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(4)),
+              child: DropdownButtonFormField<String>(
+                value: _destinoSeleccionado,
+                style: TextStyle(color: cs.onSurface, fontSize: 13),
+                decoration: InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8), border: InputBorder.none, hintText: 'Destino'),
+                dropdownColor: cs.surface,
+                items: ['BODEGA', 'ALMACÉN', 'PARTE Y PARTE'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                onChanged: (v) => setState(() => _destinoSeleccionado = v ?? 'ALMACÉN'),
+              ),
+            ),
+          );
+
+          Widget botonesWidget = Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
               Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(
-                    color: AppTheme.primary.withOpacity(0.3),
-                  ),
+                width: 28, height: 28,
+                decoration: BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+                child: IconButton(icon: Icon(Icons.add, color: Colors.white, size: 16), padding: EdgeInsets.zero, onPressed: _agregarItemDesdeFormulario),
+              ),
+              SizedBox(width: 4),
+              Container(
+                width: 28, height: 28,
+                decoration: BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+                child: IconButton(
+                  icon: Icon(Icons.remove, color: Colors.white, size: 16),
+                  padding: EdgeInsets.zero,
+                  onPressed: () { if (_items.isNotEmpty) _eliminarItem(_items.length - 1); },
                 ),
-                child: Column(
+              ),
+            ],
+          );
+
+          Widget? stockWidget = _productoSeleccionado != null
+              ? Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('ALM ${_productoSeleccionado!.almacen ?? 0}', style: TextStyle(color: AppTheme.primary, fontSize: 10, fontWeight: FontWeight.bold)),
+                      Text('BOD ${_productoSeleccionado!.bodega ?? 0}', style: TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                )
+              : null;
+
+          if (isMobile) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Etiquetas fila 1
+                Row(children: [
+                  _buildFieldLabel('Total', flex: 2),
+                  _buildFieldLabel('Imp.', flex: 2),
+                  _buildFieldLabel('%', flex: 2),
+                  _buildFieldLabel('Dcto', flex: 2),
+                  _buildFieldLabel('%', flex: 2),
+                ]),
+                SizedBox(height: 4),
+                Row(children: [valorTotalWidget, SizedBox(width: 6), tipoImpWidget, SizedBox(width: 6), pctImpWidget, SizedBox(width: 6), tipoDctoWidget, SizedBox(width: 6), pctDctoWidget]),
+                SizedBox(height: 8),
+                // Etiquetas fila 2
+                Row(children: [
+                  _buildFieldLabel('Destino', flex: 3),
+                  if (stockWidget != null) SizedBox(width: 8),
+                  SizedBox(width: 60),
+                ]),
+                SizedBox(height: 4),
+                Row(
                   children: [
-                    Text(
-                      'Stock: ALM ${_productoSeleccionado!.almacen ?? 0}',
-                      style: TextStyle(
-                        color: AppTheme.primary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'BOD ${_productoSeleccionado!.bodega ?? 0}',
-                      style: TextStyle(
-                        color: Colors.orange,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    destinoWidget,
+                    if (stockWidget != null) ...[SizedBox(width: 8), stockWidget],
+                    SizedBox(width: 8),
+                    botonesWidget,
                   ],
                 ),
-              ),
-            SizedBox(width: 8),
-            // 📦 Selector de DESTINO en compras
-            Expanded(
-              flex: 1,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: DropdownButtonFormField<String>(
-                  value: _destinoSeleccionado,
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 8,
-                    ),
-                    border: InputBorder.none,
-                    hintText: 'Destino',
-                  ),
-                  dropdownColor: Theme.of(context).colorScheme.surface,
-                  items: ['BODEGA', 'ALMACÉN', 'PARTE Y PARTE']
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _destinoSeleccionado = v ?? 'ALMACÉN'),
-                ),
-              ),
-            ),
-            SizedBox(width: 8),
-            // Botones + y -
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: Icon(Icons.add, color: Colors.white, size: 16),
-                    padding: EdgeInsets.zero,
-                    onPressed: _agregarItemDesdeFormulario,
-                  ),
-                ),
-                SizedBox(width: 4),
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: Icon(Icons.remove, color: Colors.white, size: 16),
-                    padding: EdgeInsets.zero,
-                    onPressed: () {
-                      if (_items.isNotEmpty) {
-                        _eliminarItem(_items.length - 1);
-                      }
-                    },
-                  ),
-                ),
               ],
-            ),
-          ],
-        ),
+            );
+          }
+
+          // Desktop: todo en una fila
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                _buildFieldLabel('Valor total', flex: 2),
+                _buildFieldLabel('', flex: 2),
+                _buildFieldLabel('% Imp.', flex: 2),
+                _buildFieldLabel('', flex: 2),
+                _buildFieldLabel('% Desc.', flex: 2),
+                _buildFieldLabel('Destino', flex: 3),
+                SizedBox(width: 64),
+              ]),
+              SizedBox(height: 4),
+              Row(
+                children: [
+                  valorTotalWidget, SizedBox(width: 4),
+                  tipoImpWidget, SizedBox(width: 4),
+                  pctImpWidget, SizedBox(width: 4),
+                  tipoDctoWidget, SizedBox(width: 4),
+                  pctDctoWidget, SizedBox(width: 4),
+                  destinoWidget, SizedBox(width: 4),
+                  botonesWidget,
+                ],
+              ),
+              if (stockWidget != null) ...[SizedBox(height: 4), stockWidget],
+            ],
+          );
+        }),
         // 📦 Campos adicionales para PARTE Y PARTE
         if (_destinoSeleccionado == 'PARTE Y PARTE') ...[
           SizedBox(height: 8),
@@ -3712,7 +3657,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         );
 
         // Intentar regenerar el número
-        await _generarNumeroFactura();
+        _generarNumeroFactura();
 
         if (_numeroFactura == null ||
             _numeroFactura!.isEmpty ||

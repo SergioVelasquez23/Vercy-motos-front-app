@@ -793,41 +793,60 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildLoginForm(bool emailValid, BuildContext context) {
     return SafeArea(
-      child: SingleChildScrollView(
-        child: Container(
-          color: Theme.of(context).colorScheme.surface,
-          padding: EdgeInsets.symmetric(
-            horizontal: context.isMobile ? 16 : context.isTablet ? 32 : 48,
-            vertical: context.isMobile ? 16 : 32,
-          ),
-          child: Center(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: Container(
-                  constraints: BoxConstraints(
-                    maxWidth: context.isMobile ? double.infinity : context.isTablet ? 450 : 400,
-                  ),
-                  padding: EdgeInsets.all(context.isMobile ? 20 : 32),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[300]!, width: 1.5),
-                    borderRadius: BorderRadius.circular(16),
-                    color: Colors.white,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Container(
+                color: Theme.of(context).colorScheme.surface,
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.isMobile ? 24 : context.isTablet ? 32 : 48,
+                  vertical: context.isMobile ? 32 : 32,
+                ),
+                child: Center(
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: SlideTransition(
+                      position: _slideAnimation,
+                      child: Container(
+                        constraints: BoxConstraints(
+                          maxWidth: context.isMobile ? double.infinity : context.isTablet ? 450 : 400,
+                        ),
+                        padding: EdgeInsets.all(context.isMobile ? 20 : 32),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[300]!, width: 1.5),
+                          borderRadius: BorderRadius.circular(16),
+                          color: Colors.white,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                      // Logo (solo en mobile, cuando no hay imagen lateral)
+                      if (context.isMobile) ...[
+                        Center(
+                          child: Image.asset(
+                            'assets/images/vercylogo.png',
+                            height: 64,
+                            errorBuilder: (_, __, ___) => Icon(
+                              Icons.two_wheeler,
+                              size: 56,
+                              color: AppTheme.primary,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                      ],
                       // Título
                       Text(
                         'Bienvenido',
                         style: TextStyle(
-                          fontSize: context.isMobile ? 28 : context.isTablet ? 32 : 36,
+                          fontSize: context.isMobile ? 26 : context.isTablet ? 32 : 36,
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
-                      SizedBox(height: 8),
+                      SizedBox(height: 6),
                       Text(
                         'Ingresa a tu cuenta',
                         style: TextStyle(
@@ -836,7 +855,7 @@ class _LoginScreenState extends State<LoginScreen>
                           fontWeight: FontWeight.w400,
                         ),
                       ),
-                      SizedBox(height: context.isMobile ? 24 : 40),
+                      SizedBox(height: context.isMobile ? 20 : 40),
 
                       // Email input
                       _buildInputField(
@@ -1098,6 +1117,9 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
         ),
+      ),
+          );
+        },
       ),
     );
   }

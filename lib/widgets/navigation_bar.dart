@@ -52,6 +52,12 @@ class AppNavigationBar extends StatelessWidget {
               ),
               _buildNavItem(
                 context,
+                icon: Icons.swap_horiz,
+                label: 'Traslados',
+                route: '/traslados',
+              ),
+              _buildNavItem(
+                context,
                 icon: Icons.shopping_bag,
                 label: 'Facturas Compras',
                 route: '/facturas_compras',

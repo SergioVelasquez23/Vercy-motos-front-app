@@ -117,7 +117,9 @@ class FacturaCompra {
       descripcion: json['descripcion'],
       fechaCreacion: json['fechaCreacion'] != null
           ? DateTime.parse(json['fechaCreacion'])
-          : DateTime.now(),
+          : DateTime.parse(
+              json['fecha'] ?? json['fechaFactura'] ?? DateTime.now().toIso8601String(),
+            ),
       fechaActualizacion: json['fechaActualizacion'] != null
           ? DateTime.parse(json['fechaActualizacion'])
           : DateTime.now(),

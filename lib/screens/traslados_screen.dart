@@ -289,81 +289,6 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
               ),
             ),
           ),
-          SizedBox(height: 16),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                Text(
-                  'Estado:',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                SizedBox(width: 12),
-                ...[
-                  {
-                    'label': 'Todos',
-                    'value': 'TODOS',
-                    'icon': Icons.all_inclusive,
-                  },
-                  {
-                    'label': 'Pendiente',
-                    'value': 'PENDIENTE',
-                    'icon': Icons.hourglass_empty,
-                  },
-                  {
-                    'label': 'Aceptado',
-                    'value': 'ACEPTADO',
-                    'icon': Icons.check_circle,
-                  },
-                  {
-                    'label': 'Rechazado',
-                    'value': 'RECHAZADO',
-                    'icon': Icons.cancel,
-                  },
-                ].map((estado) {
-                  final isSelected = _filtroEstado == estado['value'];
-                  return Padding(
-                    padding: EdgeInsets.only(right: 8),
-                    child: FilterChip(
-                      avatar: Icon(
-                        estado['icon'] as IconData,
-                        size: 16,
-                        color: isSelected
-                            ? AppTheme.primary
-                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                      ),
-                      label: Text(estado['label'] as String),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        setState(
-                          () => _filtroEstado = estado['value'] as String,
-                        );
-                        _cargarDatos();
-                      },
-                      backgroundColor: Theme.of(context).colorScheme.surface,
-                      selectedColor: AppTheme.primary.withOpacity(0.15),
-                      side: BorderSide(
-                        color: isSelected
-                            ? AppTheme.primary
-                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3),
-                      ),
-                      labelStyle: TextStyle(
-                        color: isSelected
-                            ? AppTheme.primary
-                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
-                    ),
-                  );
-                }),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -490,17 +415,17 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
             // Encabezado fijo
             Container(
               color: AppTheme.primary.withOpacity(0.1),
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
                 children: [
-                  SizedBox(width: 60, child: _buildColumnHeader('#')),
-                  SizedBox(width: 150, child: _buildColumnHeader('Fecha')),
-                  SizedBox(width: 120, child: _buildColumnHeader('Solicita')),
-                  SizedBox(width: 100, child: _buildColumnHeader('Origen')),
-                  SizedBox(width: 100, child: _buildColumnHeader('Destino')),
-                  SizedBox(width: 80, child: _buildColumnHeader('Cantidad')),
-                  SizedBox(width: 100, child: _buildColumnHeader('Estado')),
-                  SizedBox(width: 120, child: _buildColumnHeader('Acciones')),
+                  Expanded(flex: 2, child: _buildColumnHeader('#')),
+                  Expanded(flex: 5, child: _buildColumnHeader('Fecha')),
+                  Expanded(flex: 4, child: _buildColumnHeader('Asesor')),
+                  Expanded(flex: 3, child: _buildColumnHeader('Origen')),
+                  Expanded(flex: 3, child: _buildColumnHeader('Destino')),
+                  Expanded(flex: 2, child: _buildColumnHeader('Cant.')),
+                  Expanded(flex: 4, child: _buildColumnHeader('Producto')),
+                  Expanded(flex: 3, child: _buildColumnHeader('Acciones')),
                 ],
               ),
             ),
@@ -538,72 +463,63 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
           bottom: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.1)),
         ),
       ),
-      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          SizedBox(
-            width: 60,
+          Expanded(
+            flex: 2,
             child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
               decoration: BoxDecoration(
                 color: AppTheme.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
                 traslado.numero ?? '-',
-                style: TextStyle(
-                  color: AppTheme.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 11),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ),
-          SizedBox(
-            width: 150,
+          Expanded(
+            flex: 5,
             child: Text(
               traslado.fechaSolicitud != null
-                  ? DateFormat(
-                      'yy-MM-dd HH:mm',
-                    ).format(traslado.fechaSolicitud!)
+                  ? DateFormat('yy-MM-dd HH:mm').format(traslado.fechaSolicitud!)
                   : '-',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 11),
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          SizedBox(
-            width: 120,
+          Expanded(
+            flex: 4,
             child: Text(
               traslado.solicitante ?? '-',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 11),
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          SizedBox(
-            width: 100,
-            child: _buildBodegaChip(traslado.origenBodegaNombre ?? '-'),
-          ),
-          SizedBox(
-            width: 100,
-            child: _buildBodegaChip(traslado.destinoBodegaNombre ?? '-'),
-          ),
-          SizedBox(
-            width: 80,
+          Expanded(flex: 3, child: _buildBodegaChip(traslado.origenBodegaNombre ?? '-')),
+          Expanded(flex: 3, child: _buildBodegaChip(traslado.destinoBodegaNombre ?? '-')),
+          Expanded(
+            flex: 2,
             child: Text(
               '${traslado.cantidad?.toStringAsFixed(0) ?? 0}',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 11),
             ),
           ),
-          SizedBox(
-            width: 100,
-            child: _buildEstadoBadge(traslado.estado ?? 'PENDIENTE'),
+          Expanded(
+            flex: 4,
+            child: Text(
+              traslado.items.isNotEmpty
+                  ? traslado.items.map((i) => i.nombreProducto ?? '-').join(', ')
+                  : traslado.productoNombre ?? '-',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 11),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
           ),
-          SizedBox(width: 120, child: _buildAccionesCompactas(traslado),
-          ),
+          Expanded(flex: 3, child: _buildAccionesCompactas(traslado)),
         ],
       ),
     );
@@ -653,51 +569,6 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
     );
   }
 
-  Widget _buildEstadoBadge(String estado) {
-    Color color;
-    IconData icon;
-    switch (estado) {
-      case 'ACEPTADO':
-        color = AppTheme.success;
-        icon = Icons.check_circle;
-        break;
-      case 'RECHAZADO':
-        color = AppTheme.error;
-        icon = Icons.cancel;
-        break;
-      default:
-        color = AppTheme.warning;
-        icon = Icons.hourglass_empty;
-    }
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          SizedBox(width: 6),
-          Text(
-            estado == 'ACEPTADO'
-                ? 'Aceptado'
-                : estado == 'RECHAZADO'
-                ? 'Rechazado'
-                : 'Pendiente',
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildAcciones(Traslado traslado) {
     return Row(
@@ -716,15 +587,6 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
           tooltip: 'Ver detalles',
           onPressed: () => _verDetalles(traslado),
         ),
-        if (traslado.estado == 'PENDIENTE') ...[
-          SizedBox(width: 8),
-          _buildAccionBoton(
-            icon: Icons.check,
-            color: AppTheme.success,
-            tooltip: 'Aceptar',
-            onPressed: () => _mostrarDialogoProcesar(traslado),
-          ),
-        ],
       ],
     );
   }
@@ -1042,9 +904,12 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
               child: Icon(Icons.info_outline, color: Colors.white, size: 20),
             ),
             SizedBox(width: 12),
-            Text(
-              'Traslado ${traslado.numero}',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+            Expanded(
+              child: Text(
+                'Traslado ${traslado.numero ?? traslado.id?.substring(0, 8) ?? ''}',
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
@@ -1061,65 +926,58 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildDetalleItem(
-                        'Producto',
-                        traslado.productoNombre ?? '-',
-                        Icons.inventory_2,
-                      ),
-                      _buildDetalleItem(
-                        'Cantidad',
-                        '${traslado.cantidad} ${traslado.unidad ?? ''}',
-                        Icons.numbers,
-                      ),
-                      _buildDetalleItem(
-                        'Origen',
-                        traslado.origenBodegaNombre ?? '-',
-                        Icons.outbox,
-                      ),
-                      _buildDetalleItem(
-                        'Destino',
-                        traslado.destinoBodegaNombre ?? '-',
-                        Icons.move_to_inbox,
-                      ),
-                      _buildDetalleItem(
-                        'Solicitante',
-                        traslado.solicitante ?? '-',
-                        Icons.person,
-                      ),
-                      _buildDetalleItem(
-                        'Estado',
-                        traslado.estado ?? '-',
-                        Icons.flag,
-                      ),
-                      if (traslado.aprobador != null)
+                      _buildDetalleItem('Asesor', traslado.asesor ?? '-', Icons.person),
+                      _buildDetalleItem('Origen', traslado.origenBodegaNombre ?? '-', Icons.outbox),
+                      _buildDetalleItem('Destino', traslado.destinoBodegaNombre ?? '-', Icons.move_to_inbox),
+                      _buildDetalleItem('Estado', traslado.estado ?? '-', Icons.flag),
+                      if (traslado.fechaSolicitud != null)
                         _buildDetalleItem(
-                          'Aprobador',
-                          traslado.aprobador!,
-                          Icons.verified_user,
+                          'Fecha',
+                          DateFormat('yyyy-MM-dd HH:mm').format(traslado.fechaSolicitud!),
+                          Icons.calendar_today,
                         ),
-                      if (traslado.observaciones != null &&
-                          traslado.observaciones!.isNotEmpty)
-                        _buildDetalleItem(
-                          'Observaciones',
-                          traslado.observaciones!,
-                          Icons.notes,
+                      if (traslado.observaciones != null && traslado.observaciones!.isNotEmpty)
+                        _buildDetalleItem('Observaciones', traslado.observaciones!, Icons.notes),
+                      SizedBox(height: 12),
+                      Text(
+                        'Productos trasladados',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
                         ),
+                      ),
+                      SizedBox(height: 8),
+                      ...traslado.items.map((item) => Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              children: [
+                                Icon(Icons.inventory_2, size: 16, color: AppTheme.primary),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    item.nombreProducto ?? item.productoId ?? '-',
+                                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+                                  ),
+                                ),
+                                Text(
+                                  '× ${item.cantidad}',
+                                  style: TextStyle(
+                                    color: AppTheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )),
                       if (traslado.fechaSolicitud != null)
                         _buildDetalleItem(
                           'Fecha Solicitud',
-                          DateFormat(
-                            'yyyy-MM-dd HH:mm',
-                          ).format(traslado.fechaSolicitud!),
+                          DateFormat('yyyy-MM-dd HH:mm').format(traslado.fechaSolicitud!),
                           Icons.calendar_today,
-                        ),
-                      if (traslado.fechaAprobacion != null)
-                        _buildDetalleItem(
-                          'Fecha Aprobación',
-                          DateFormat(
-                            'yyyy-MM-dd HH:mm',
-                          ).format(traslado.fechaAprobacion!),
-                          Icons.event_available,
                         ),
                     ],
                   ),
@@ -1349,7 +1207,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
       final producto = widget.productos[productoIndex];
       setState(() {
         _productoSeleccionado = producto;
-        _codigoController.text = producto.id ?? '';
+        _codigoController.text = producto.codigo ?? producto.id ?? '';
         _nombreController.text = producto.nombre ?? '';
       });
     } else {
@@ -1427,19 +1285,23 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
     setState(() => _isLoading = true);
 
     try {
-      for (final item in _productosAgregados) {
+      final items = _productosAgregados.map((item) {
         final producto = item['producto'] as Producto;
-        await _trasladoService.crearTraslado(
-          productoId: producto.id!,
-          origenBodegaId: _origenSeleccionado!,
-          destinoBodegaId: _destinoSeleccionado!,
-          cantidad: item['cantidad'],
-          solicitante: widget.userName,
-          observaciones: _descripcionController.text.isEmpty
-              ? null
-              : _descripcionController.text,
-        );
-      }
+        return {
+          'productoId': producto.id,
+          'cantidad': (item['cantidad'] as double).toInt(),
+        };
+      }).toList();
+
+      await _trasladoService.crearTraslado(
+        items: items,
+        origen: _origenSeleccionado!,
+        destino: _destinoSeleccionado!,
+        asesor: widget.userName,
+        observaciones: _descripcionController.text.isEmpty
+            ? null
+            : _descripcionController.text,
+      );
 
       _mostrarExito('Traslados creados exitosamente');
       widget.onTrasladoCreado();
@@ -2225,7 +2087,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
             onSelected: (Producto producto) {
               setState(() {
                 _productoSeleccionado = producto;
-                _codigoController.text = producto.id;
+                _codigoController.text = producto.codigo ?? producto.id;
                 _nombreController.text = producto.nombre;
               });
             },
@@ -2394,7 +2256,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                             Expanded(
                               flex: 2,
                               child: Text(
-                                producto.id?.substring(0, 6) ?? '-',
+                                producto.codigo ?? producto.id?.substring(0, 6) ?? '-',
                                 style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                               ),
                             ),
@@ -2506,8 +2368,8 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
           icon: Icon(Icons.close),
           label: Text('Cancelar'),
           style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.white.withOpacity(0.7),
-            side: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
+            foregroundColor: Theme.of(context).colorScheme.onSurface,
+            side: BorderSide(color: Theme.of(context).colorScheme.outline),
             padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           ),
         ),

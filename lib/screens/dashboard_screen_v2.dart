@@ -1931,6 +1931,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                         bottomTitles: AxisTitles(
                           sideTitles: SideTitles(
                             showTitles: true,
+                            reservedSize: 42,
                             getTitlesWidget: (value, meta) {
                               final index = value.toInt();
                               if (index >= 0 && index < _ventasPorDia.length) {
@@ -1939,33 +1940,30 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                     ((_ventasPorDia[index]['ventas'] as num?)
                                         ?.toDouble() ??
                                     0.0);
-                                return Padding(
-                                  padding: EdgeInsets.only(top: 8),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        dia,
-                                        style: TextStyle(
-                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w500,
-                                        ),
+                                return Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(height: 4),
+                                    Text(
+                                      dia,
+                                      style: TextStyle(
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w500,
                                       ),
-                                      SizedBox(height: 4),
-                                      Text(
-                                        '\$${_formatCurrency(ventas)}',
-                                        style: TextStyle(
-                                          color: AppTheme.primary,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                    ),
+                                    Text(
+                                      '\$${_formatCurrency(ventas)}',
+                                      style: TextStyle(
+                                        color: AppTheme.primary,
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.bold,
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 );
                               }
-                              return Text('');
+                              return const SizedBox.shrink();
                             },
                           ),
                         ),
