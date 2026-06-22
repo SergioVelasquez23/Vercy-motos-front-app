@@ -126,7 +126,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     'tarjeta': 'tarjeta debito',
     'tarjeta_credito': 'tarjeta credito',
     'cheque': 'cheque',
-    'sistecredito': 'efectivo',
+    'sistecredito': 'sistecredito',
     'credito': 'efectivo',
     'multiple': 'efectivo',
   };
@@ -609,8 +609,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                       children: [
                         _buildMainForm(),
                         SizedBox(height: spacing),
-                        _buildMetodoPago(),
-                        SizedBox(height: spacing),
                         _buildDatosExtras(),
                         SizedBox(height: spacing),
                         _buildDatosProducto(),
@@ -623,6 +621,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         SizedBox(height: spacing),
                         _buildRetencionesYAIU(),
                         SizedBox(height: spacing),
+                        _buildDescuentoGeneral(),
+                        SizedBox(height: spacing),
                         TotalesSection(
                           items: _items,
                           retencionController: _retencionController,
@@ -631,6 +631,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                           aiuController: _aiuController,
                           dctoGeneralController: _dctoGeneralController,
                         ),
+                        SizedBox(height: spacing),
+                        _buildMetodoPago(),
                         SizedBox(height: spacing),
                         BotonesAccionFacturacion(
                           items: _items,
@@ -2545,7 +2547,28 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     Expanded(
                       flex: 1,
                       child: Text(
-                        '\$${item.subtotal.toStringAsFixed(0)}',
+                        item.valorImpuesto > 0
+                            ? '\$${item.valorImpuesto.toStringAsFixed(0)}'
+                            : '-',
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 1,
+                      child: Text(
+                        item.valorDescuento > 0
+                            ? '\$${item.valorDescuento.toStringAsFixed(0)}'
+                            : '-',
+                        style: TextStyle(
+                          color: item.valorDescuento > 0 ? Colors.green : Theme.of(context).colorScheme.onSurface,
+                          fontWeight: item.valorDescuento > 0 ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 1,
+                      child: Text(
+                        '\$${(item.subtotal + item.valorImpuesto - item.valorDescuento).toStringAsFixed(0)}',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.onSurface,
@@ -2683,13 +2706,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             ),
                           ],
                         ),
-                        SizedBox(height: 16),
-                        // Tercera fila: Descuento General
-                        _buildRetencionField(
-                          'Dcto. General',
-                          _dctoGeneralController,
-                          'Valor',
-                        ),
                       ],
                     );
                   } else {
@@ -2726,14 +2742,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             '%',
                           ),
                         ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: _buildRetencionField(
-                            'Dcto. General',
-                            _dctoGeneralController,
-                            'Valor',
-                          ),
-                        ),
                       ],
                     );
                   }
@@ -2741,6 +2749,54 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDescuentoGeneral() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Icon(Icons.local_offer, color: AppTheme.primary, size: 22),
+          SizedBox(width: 12),
+          Text(
+            'Descuento General',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+          SizedBox(width: 16),
+          SizedBox(
+            width: 180,
+            child: TextField(
+              controller: _dctoGeneralController,
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 15),
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surface,
+                prefixText: '\$ ',
+                prefixStyle: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
+                hintText: '0',
+                hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -2786,12 +2842,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     final valorUnit = double.tryParse(_valorUnitController.text) ?? 0;
     final porcentajeImp =
         double.tryParse(_porcentajeImpuestoController.text) ?? 0;
-    final porcentajeDesc =
+    final enteredDesc =
         double.tryParse(_porcentajeDescuentoController.text) ?? 0;
 
     final subtotal = cantidad * valorUnit;
     final impuesto = subtotal * (porcentajeImp / 100);
-    final descuento = subtotal * (porcentajeDesc / 100);
+    final descuento = _porcentajeTipoDescuento == 'Valor'
+        ? enteredDesc
+        : subtotal * (enteredDesc / 100);
     final total = subtotal + impuesto - descuento;
 
     return '\$${total.toStringAsFixed(0)}';
@@ -2864,15 +2922,27 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     final precioUnitario = double.tryParse(_valorUnitController.text) ?? 0;
     final porcentajeImpuesto =
         double.tryParse(_porcentajeImpuestoController.text) ?? 0;
-    final porcentajeDescuento =
+    final enteredDescuento =
         double.tryParse(_porcentajeDescuentoController.text) ?? 0;
 
     final subtotal = cantidad * precioUnitario;
     final valorImpuesto = subtotal * (porcentajeImpuesto / 100);
-    final valorDescuento = subtotal * (porcentajeDescuento / 100);
+
+    // Calcular descuento según el tipo seleccionado
+    final double valorDescuento;
+    final double porcentajeDescuento;
+    if (_porcentajeTipoDescuento == 'Valor') {
+      valorDescuento = enteredDescuento;
+      porcentajeDescuento = subtotal > 0 ? (enteredDescuento / subtotal) * 100 : 0;
+    } else {
+      porcentajeDescuento = enteredDescuento;
+      valorDescuento = subtotal * (enteredDescuento / 100);
+    }
 
     final item = ItemPedido(
-      productoId: _productoSeleccionado!.id,
+      productoId: (_productoSeleccionado!.codigo?.isNotEmpty ?? false)
+          ? _productoSeleccionado!.codigo!
+          : _productoSeleccionado!.id,
       productoNombre: _productoSeleccionado!.nombre,
       cantidad: cantidad,
       precioUnitario: precioUnitario,
@@ -3520,14 +3590,16 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
     try {
       final subtotal = _items.fold(0.0, (sum, item) => sum + item.subtotal);
-      final total = subtotal;
+      final totalDctoProductos = _items.fold(0.0, (sum, item) => sum + item.valorDescuento);
+      final dctoGeneral = double.tryParse(_dctoGeneralController.text) ?? 0;
+      final totalDescuentos = totalDctoProductos + dctoGeneral;
+      final total = subtotal - totalDescuentos;
 
       final pedido = Pedido(
         id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
         fecha: _fechaFactura,
         tipo: TipoPedido.normal,
-        mesa:
-            'FACTURACION', // Identificador especial para pedidos de facturación
+        mesa: 'FACTURACION',
         cliente: _clienteController.text,
         mesero:
             Provider.of<UserProvider>(context, listen: false).userName ??
@@ -3539,8 +3611,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         fechaVencimiento: _fechaVencimiento,
         subtotal: subtotal,
         totalImpuestos: 0.0,
-        totalDescuentos: 0.0,
+        totalDescuentos: totalDescuentos,
         totalFinal: total,
+        descuentoGeneral: dctoGeneral,
       );
 
       await _pedidoService.createPedido(pedido);
@@ -3836,7 +3909,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
       // Los impuestos de los items ya están incluidos en el subtotal
       final totalImpuestos = 0.0;
-      final totalDescuentos = dctoGeneral;
+      final totalDctoProductos = _items.fold(0.0, (sum, item) => sum + item.valorDescuento);
+      final totalDescuentos = dctoGeneral + totalDctoProductos;
       final totalRetenciones = retencionValor + reteIVAValor + reteICAValor;
       final total =
           subtotal +

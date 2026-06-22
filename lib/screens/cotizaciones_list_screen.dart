@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/cotizacion.dart';
 import '../models/cliente.dart';
-import '../models/factura.dart';
 import '../services/cotizacion_service.dart';
 import '../services/cliente_service.dart';
 import '../services/pdf_service.dart';
@@ -10,8 +9,6 @@ import '../theme/app_theme.dart';
 import '../utils/logger.dart';
 import '../utils/pagination_mixin.dart';
 import '../widgets/common/screen_header.dart';
-import '../services/factura_service.dart';
-import '../models/item_pedido.dart';
 
 class CotizacionesListScreen extends StatefulWidget {
   @override
@@ -21,7 +18,6 @@ class CotizacionesListScreen extends StatefulWidget {
 class _CotizacionesListScreenState extends State<CotizacionesListScreen>
     with PaginacionMixin<CotizacionesListScreen> {
   final CotizacionService _cotizacionService = CotizacionService();
-  final FacturaService _facturaService = FacturaService();
   final ClienteService _clienteService = ClienteService();
   final PDFService _pdfService = PDFService();
   final TextEditingController _searchController = TextEditingController();
@@ -443,25 +439,6 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
           onPressed: () => _verPDF(cotizacion),
           tooltip: 'Ver PDF',
         ),
-        if (cotizacion.estado == 'activa') ...[
-          IconButton(
-            icon: Icon(Icons.check_circle, color: Colors.green),
-            onPressed: () => _aceptarCotizacion(cotizacion),
-            tooltip: 'Aceptar',
-          ),
-          IconButton(
-            icon: Icon(Icons.cancel, color: Colors.red),
-            onPressed: () => _rechazarCotizacion(cotizacion),
-            tooltip: 'Rechazar',
-          ),
-        ],
-        if (cotizacion.puedeConvertirseAFactura) ...[
-          IconButton(
-            icon: Icon(Icons.receipt, color: AppTheme.secondary),
-            onPressed: () => _convertirAFactura(cotizacion),
-            tooltip: 'Convertir a factura',
-          ),
-        ],
         IconButton(
           icon: Icon(Icons.edit, color: Colors.blue),
           onPressed: () => _navegarAFormulario(cotizacion),
@@ -535,135 +512,6 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
 
     if (resultado == true) {
       _cargarCotizaciones();
-    }
-  }
-
-  Future<void> _aceptarCotizacion(Cotizacion cotizacion) async {
-    try {
-      await _cotizacionService.aceptarCotizacion(cotizacion.id!);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Cotización aceptada'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      _cargarCotizaciones();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
-    }
-  }
-
-  Future<void> _rechazarCotizacion(Cotizacion cotizacion) async {
-    try {
-      await _cotizacionService.rechazarCotizacion(cotizacion.id!);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Cotización rechazada'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      _cargarCotizaciones();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
-    }
-  }
-
-  Future<void> _convertirAFactura(Cotizacion cotizacion) async {
-    if (cotizacion.id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No se puede convertir una cotización sin ID'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        title: Text(
-          'Convertir a factura',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-        ),
-        content: Text(
-          'Se creará una factura a partir de la cotización #${cotizacion.id?.substring(0, 8) ?? ""}\n\nCliente: ${cotizacion.clienteNombre}\nTotal: ${cotizacion.totalFinal}',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancelar'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Convertir', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-    if (confirm != true) return;
-
-    setState(() => _isLoading = true);
-    try {
-      // 1. Crear factura desde la cotización
-      final factura = Factura(
-        clienteNombre: cotizacion.clienteNombre ?? 'Cliente General',
-        clienteNit: null, // Asume null si no existe clienteNit
-        clienteTelefono: cotizacion.clienteTelefono,
-        total: cotizacion.totalFinal,
-        subtotal: cotizacion.subtotal,
-        descuento: cotizacion.totalDescuentos,
-        estadoPago: 'PENDIENTE',
-        items: cotizacion.items
-            ?.map(
-              (i) => ItemPedido(
-                productoId: i.productoId,
-                productoNombre: i.productoNombre,
-                cantidad: i.cantidad,
-                precioUnitario: i.precioUnitario,
-              ),
-            )
-            .toList(),
-        fechaCreacion: DateTime.now(),
-        datosAdicionales: {'origenCotizacion': cotizacion.id},
-      );
-      final facturaCreada = await _facturaService.crearFactura(factura);
-      if (facturaCreada == null) throw Exception('No se pudo crear la factura');
-
-      // 2. Marcar cotización como convertida
-      await _cotizacionService.convertirAFactura(
-        cotizacion.id!,
-        facturaCreada.id!,
-      );
-      await _cargarCotizaciones();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Factura #\${facturaCreada.numero ?? facturaCreada.id} creada exitosamente',
-            ),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al convertir: \$e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
   }
 

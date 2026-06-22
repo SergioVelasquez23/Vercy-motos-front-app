@@ -15,7 +15,7 @@ class BotonesAccionFacturacion extends StatelessWidget {
     required this.isLoading,
     required this.onGuardarBorrador,
     required this.onGuardarYPagar,
-    required this.onGuardarComoDeuda,
+    required this.onGuardarComoDeuda, // kept for API compatibility
   });
 
   @override
@@ -118,27 +118,6 @@ class BotonesAccionFacturacion extends StatelessWidget {
                     ),
                   ),
                 ],
-              ),
-              SizedBox(height: 12),
-              // Segunda fila: Dejar como Deuda
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: isLoading ? null : onGuardarComoDeuda,
-                  icon: Icon(Icons.sticky_note_2_outlined, color: Colors.orange),
-                  label: Text(
-                    'Dejar como Deuda',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.orange,
-                    side: BorderSide(color: Colors.orange, width: 2),
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
               ),
             ],
           ),

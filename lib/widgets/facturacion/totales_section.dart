@@ -23,6 +23,7 @@ class TotalesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final subtotal = items.fold(0.0, (sum, item) => sum + item.subtotal);
+    final totalDctoProductos = items.fold(0.0, (sum, item) => sum + item.valorDescuento);
 
     // Calcular retenciones
     final retencionPct = double.tryParse(retencionController.text) ?? 0;
@@ -37,13 +38,13 @@ class TotalesSection extends StatelessWidget {
     final aiuValor = subtotal * (aiuPct / 100);
 
     final totalImpuestos = 0.0;
-    final totalDescuentos = dctoGeneral;
     final totalRetenciones = retencionValor + reteIVAValor + reteICAValor;
     final total =
         subtotal +
         totalImpuestos +
         aiuValor -
-        totalDescuentos -
+        totalDctoProductos -
+        dctoGeneral -
         totalRetenciones;
 
     return Container(
@@ -58,9 +59,11 @@ class TotalesSection extends StatelessWidget {
       child: Column(
         children: [
           _buildTotalRow('Subtotal', subtotal),
-          _buildTotalRow('Dcto Producto', 0),
+          if (totalDctoProductos > 0)
+            _buildTotalRow('Dcto Producto', -totalDctoProductos),
           _buildTotalRow('Impuesto', totalImpuestos),
-          _buildTotalRow('Dcto General', -totalDescuentos),
+          if (dctoGeneral > 0)
+            _buildTotalRow('Dcto General', -dctoGeneral),
           if (retencionValor > 0)
             _buildTotalRow(
               'Retención (${retencionPct.toStringAsFixed(1)}%)',
