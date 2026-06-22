@@ -499,6 +499,10 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
     String? calidadRetenedor = proveedor?.calidadRetenedor;
     String? banco = proveedor?.banco;
     String? tipoCuenta = proveedor?.tipoCuenta;
+    // Campos DIAN
+    String? tipoRegimenTributario = proveedor?.tipoRegimenTributario;
+    bool esResidenteColombia = proveedor?.esResidenteColombia ?? true;
+    final codigoCiudadDianController = TextEditingController(text: proveedor?.codigoCiudadDian ?? '');
 
     showDialog(
       context: context,
@@ -528,7 +532,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
                   TabBar(
                     indicatorColor: AppTheme.primary,
                     labelColor: AppTheme.primary,
-                    unselectedLabelColor: Colors.grey.shade800,
+                    unselectedLabelColor: Colors.grey.shade400,
                     tabs: [
                       Tab(text: 'Identificación'),
                       Tab(text: 'Contacto'),
@@ -750,6 +754,34 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
                                     ),
                                   ],
                                 ),
+                                // ── Campos DIAN ──
+                                Padding(
+                                  padding: EdgeInsets.only(top: 8, bottom: 4),
+                                  child: Text('DIAN — Documento Soporte',
+                                      style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 13)),
+                                ),
+                                _buildDropdownClaro(
+                                  'Régimen tributario',
+                                  tipoRegimenTributario,
+                                  ['Responsable de IVA', 'No Responsable de IVA', 'Gran Contribuyente'],
+                                  (value) => setDialogState(() => tipoRegimenTributario = value),
+                                ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildCampoDialogoClaro('Código ciudad DIAN', codigoCiudadDianController),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: _buildDropdownClaro(
+                                        'Residente Colombia',
+                                        esResidenteColombia ? 'Sí' : 'No',
+                                        ['Sí', 'No'],
+                                        (v) => setDialogState(() => esResidenteColombia = v == 'Sí'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
                           ),
@@ -899,6 +931,11 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
                           calidadRetenedor: calidadRetenedor,
                           banco: banco,
                           tipoCuenta: tipoCuenta,
+                          tipoRegimenTributario: tipoRegimenTributario,
+                          esResidenteColombia: esResidenteColombia,
+                          codigoCiudadDian: codigoCiudadDianController.text.trim().isEmpty
+                              ? null
+                              : codigoCiudadDianController.text.trim(),
                           numeroCuenta:
                               numeroCuentaController.text.trim().isEmpty
                               ? null
@@ -976,70 +1013,26 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
     );
   }
 
-  Widget _buildCampoDialogo(
-    String label,
-    TextEditingController controller, {
-    int maxLines = 1,
-  }) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 16),
-      child: TextField(
-        controller: controller,
-        maxLines: maxLines,
-        style: TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(color: Colors.grey.shade400),
-          filled: true,
-          fillColor: Theme.of(context).colorScheme.surface,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.grey.shade700),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.grey.shade700),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: AppTheme.primary, width: 2),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildCampoDialogoClaro(
     String label,
     TextEditingController controller, {
     int maxLines = 1,
   }) {
+    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: EdgeInsets.only(bottom: 16),
       child: TextField(
         controller: controller,
         maxLines: maxLines,
-        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+        style: TextStyle(color: cs.onSurface),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface,
-            fontWeight: FontWeight.w500,
-          ),
+          labelStyle: TextStyle(color: cs.onSurface.withValues(alpha:0.6), fontWeight: FontWeight.w500),
           filled: true,
-          fillColor: Colors.grey.shade100,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.grey.shade400),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.grey.shade400),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: AppTheme.primary, width: 2),
-          ),
+          fillColor: cs.surfaceContainerHighest,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: cs.outline)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: cs.outline)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppTheme.primary, width: 2)),
         ),
       ),
     );
@@ -1051,41 +1044,28 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
     List<String> opciones,
     Function(String?) onChanged,
   ) {
+    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: EdgeInsets.only(bottom: 16),
       child: DropdownButtonFormField<String>(
-        value: value,
+        initialValue: value,
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface,
-            fontWeight: FontWeight.w500,
-          ),
+          labelStyle: TextStyle(color: cs.onSurface.withValues(alpha:0.6), fontWeight: FontWeight.w500),
           filled: true,
-          fillColor: Colors.grey.shade100,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.grey.shade400),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.grey.shade400),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: AppTheme.primary, width: 2),
-          ),
+          fillColor: cs.surfaceContainerHighest,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: cs.outline)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: cs.outline)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppTheme.primary, width: 2)),
         ),
-        dropdownColor: Theme.of(context).colorScheme.surface,
-        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+        dropdownColor: cs.surfaceContainerHighest,
+        style: TextStyle(color: cs.onSurface),
         items: [
           DropdownMenuItem<String>(
             value: null,
-            child: Text('--', style: TextStyle(color: Colors.grey.shade600)),
+            child: Text('--', style: TextStyle(color: cs.onSurface.withValues(alpha:0.4))),
           ),
-          ...opciones.map((opcion) {
-            return DropdownMenuItem<String>(value: opcion, child: Text(opcion));
-          }),
+          ...opciones.map((opcion) => DropdownMenuItem<String>(value: opcion, child: Text(opcion))),
         ],
         onChanged: onChanged,
       ),
@@ -1109,7 +1089,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
         ),
         content: Text(
           '¿Estás seguro de que deseas eliminar el proveedor "${proveedor.nombre}"?',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.7)),
         ),
         actions: [
           TextButton(
@@ -1179,7 +1159,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
                 Text(
                   'Columnas requeridas:',
                   style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.7),
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
                   ),
@@ -1208,7 +1188,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
               onPressed: () => Navigator.pop(context),
               child: Text(
                 'Cancelar',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.7)),
               ),
             ),
             ElevatedButton.icon(
@@ -1374,13 +1354,13 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
       children: [
         Text(
           '$label:',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.7), fontSize: 12),
         ),
         SizedBox(width: 8),
         Container(
           padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            color: AppTheme.primary.withOpacity(0.2),
+            color: AppTheme.primary.withValues(alpha:0.2),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(

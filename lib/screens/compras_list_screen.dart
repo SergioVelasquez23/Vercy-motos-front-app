@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../utils/pagination_mixin.dart';
 import '../widgets/common/screen_header.dart';
+import '../widgets/facturizacion/documento_soporte_dialog.dart';
 import 'facturas_compras_screen.dart';
 
 class ComprasListScreen extends StatefulWidget {
@@ -63,8 +64,8 @@ class _ComprasListScreenState extends State<ComprasListScreen>
       setState(() {
         _compras = compras;
         _proveedores = proveedores;
-        _aplicarFiltros();
       });
+      _aplicarFiltros();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -521,91 +522,66 @@ class _ComprasListScreenState extends State<ComprasListScreen>
       return Center(child: CircularProgressIndicator(color: AppTheme.primary));
     }
 
+    const double minWidth = 820;
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade800),
       ),
-      child: Column(
-        children: [
-          // Encabezado de la tabla
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-            ),
-            child: Row(
-              children: [
-                _buildEncabezadoColumna('#', flex: 1),
-                _buildEncabezadoColumna('Factura', flex: 2),
-                _buildEncabezadoColumna('Proveedor', flex: 2),
-                _buildEncabezadoColumna('Expedición', flex: 2),
-                _buildEncabezadoColumna('Vencimiento', flex: 2),
-                _buildEncabezadoColumna(
-                  'Total',
-                  flex: 2,
-                  align: TextAlign.right,
+      child: LayoutBuilder(builder: (context, constraints) {
+        final needScroll = constraints.maxWidth < minWidth;
+        final content = SizedBox(
+          width: needScroll ? minWidth : constraints.maxWidth,
+          child: Column(
+            children: [
+              // Encabezado
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
                 ),
-                _buildEncabezadoColumna(
-                  'Descuento',
-                  flex: 1,
-                  align: TextAlign.right,
+                child: Row(
+                  children: [
+                    _buildEncabezadoColumna('#', flex: 1),
+                    _buildEncabezadoColumna('N° Factura', flex: 3),
+                    _buildEncabezadoColumna('Proveedor', flex: 4),
+                    _buildEncabezadoColumna('Fecha', flex: 2),
+                    _buildEncabezadoColumna('Total', flex: 2, align: TextAlign.right),
+                    _buildEncabezadoColumna('Por pagar', flex: 2, align: TextAlign.right),
+                    _buildEncabezadoColumna('Estado', flex: 2, align: TextAlign.center),
+                    _buildEncabezadoColumna('Acciones', flex: 3, align: TextAlign.center),
+                  ],
                 ),
-                _buildEncabezadoColumna(
-                  'Pagado',
-                  flex: 2,
-                  align: TextAlign.right,
-                ),
-                _buildEncabezadoColumna(
-                  'Por pagar',
-                  flex: 2,
-                  align: TextAlign.right,
-                ),
-                _buildEncabezadoColumna(
-                  'Estado',
-                  flex: 2,
-                  align: TextAlign.center,
-                ),
-                _buildEncabezadoColumna('Destino', flex: 2),
-              ],
-            ),
-          ),
+              ),
 
-          // Filas de la tabla
-          Expanded(
-            child: _comprasFiltradas.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.shopping_cart_outlined,
-                          size: 64,
-                          color: Colors.grey.shade600,
+              // Filas
+              Expanded(
+                child: _comprasFiltradas.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.shopping_cart_outlined, size: 64, color: Colors.grey.shade600),
+                            SizedBox(height: 16),
+                            Text('No hay compras registradas',
+                                style: TextStyle(color: Colors.grey.shade400, fontSize: 16)),
+                          ],
                         ),
-                        SizedBox(height: 16),
-                        Text(
-                          'No hay compras registradas',
-                          style: TextStyle(
-                            color: Colors.grey.shade400,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: _comprasFiltradas.length,
-                    itemBuilder: (context, index) {
-                      final compra = _comprasFiltradas[index];
-                      return _buildFilaTabla(compra, index);
-                    },
-                  ),
+                      )
+                    : ListView.builder(
+                        itemCount: _comprasFiltradas.length,
+                        itemBuilder: (context, index) => _buildFilaTabla(_comprasFiltradas[index], index),
+                      ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+        return needScroll
+            ? SingleChildScrollView(scrollDirection: Axis.horizontal, child: content)
+            : content;
+      }),
     );
   }
 
@@ -629,150 +605,66 @@ class _ComprasListScreenState extends State<ComprasListScreen>
   }
 
   Widget _buildFilaTabla(FacturaCompra compra, int index) {
-    final isEven = index % 2 == 0;
-    final backgroundColor = isEven ? Theme.of(context).colorScheme.surface : Theme.of(context).colorScheme.surface;
-
-    // Calcular valores
-    final pagado =
-        compra.pagadoDesdeCaja || compra.estado.toUpperCase() == 'PAGADA'
+    final cs = Theme.of(context).colorScheme;
+    final pagado = compra.pagadoDesdeCaja || compra.estado.toUpperCase() == 'PAGADA'
         ? compra.total
         : 0.0;
     final porPagar = compra.total - pagado;
-    // Determinar estado
-    String estado;
-    if (compra.pagadoDesdeCaja || compra.estado.toUpperCase() == 'PAGADA') {
-      estado = 'Completa';
-    } else if (!compra.pagadoDesdeCaja && compra.estado.toUpperCase() != 'PENDIENTE') {
-      // Si no salió desde caja pero tiene otro estado, mostrar ese estado
-      estado = compra.estado.toUpperCase() == 'PROCESADA' ? 'Procesada' : 'Hecha';
-    } else if (!compra.pagadoDesdeCaja) {
-      // Si no salió desde caja y es pendiente, mostrar como Procesada
-      estado = 'Procesada';
-    } else {
-      estado = 'Pendiente';
-    }
+    final esPagada = porPagar <= 0;
 
-    // ID corto para mostrar
-    String numeroCompra = 'OC${(index + 1).toString().padLeft(3, '0')}';
-    if (compra.id != null && compra.id!.length >= 4) {
-      numeroCompra =
-          'OC${compra.id!.substring(compra.id!.length - 4).toUpperCase()}';
-    }
+    final numeroCorto = compra.id != null && compra.id!.length >= 4
+        ? 'OC${compra.id!.substring(compra.id!.length - 4).toUpperCase()}'
+        : 'OC${(index + 1).toString().padLeft(3, '0')}';
+
+    final fecha =
+        '${compra.fechaFactura.year}-${compra.fechaFactura.month.toString().padLeft(2, '0')}-${compra.fechaFactura.day.toString().padLeft(2, '0')}';
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
-        color: backgroundColor,
-        border: Border(
-          bottom: BorderSide(color: Colors.grey.shade800, width: 0.5),
-        ),
+        color: cs.surface,
+        border: Border(bottom: BorderSide(color: Colors.grey.shade800, width: 0.5)),
       ),
       child: Row(
         children: [
           // #
           Expanded(
             flex: 1,
-            child: Text(
-              numeroCompra,
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
-            ),
+            child: Text(numeroCorto, style: TextStyle(color: cs.onSurface.withOpacity(0.6), fontSize: 11)),
           ),
 
-          // Factura (con botones editar y eliminar)
+          // N° Factura
           Expanded(
-            flex: 2,
-            child: Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: AppTheme.success,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    icon: Icon(Icons.edit, color: Colors.white, size: 16),
-                    onPressed: () {
-                      context.push('/facturas-compras', extra: compra)
-                          .then((_) => _cargarDatos());
-                    },
-                    tooltip: 'Editar',
-                  ),
-                ),
-                SizedBox(width: 8),
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    icon: Icon(Icons.delete, color: Colors.white, size: 16),
-                    onPressed: () => _confirmarEliminarCompra(compra),
-                    tooltip: 'Eliminar',
-                  ),
-                ),
-              ],
+            flex: 3,
+            child: Text(
+              compra.numeroFactura,
+              style: TextStyle(color: cs.onSurface, fontSize: 12, fontWeight: FontWeight.w500),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
 
           // Proveedor
           Expanded(
-            flex: 2,
+            flex: 4,
             child: Text(
               compra.proveedorNombre,
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+              style: TextStyle(color: cs.onSurface, fontSize: 12),
               overflow: TextOverflow.ellipsis,
             ),
           ),
 
-          // Expedición
+          // Fecha
           Expanded(
             flex: 2,
-            child: Text(
-              '${compra.fechaFactura.year}-${compra.fechaFactura.month.toString().padLeft(2, '0')}-${compra.fechaFactura.day.toString().padLeft(2, '0')}',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
-            ),
-          ),
-
-          // Vencimiento
-          Expanded(
-            flex: 2,
-            child: Text(
-              '${compra.fechaVencimiento.year}-${compra.fechaVencimiento.month.toString().padLeft(2, '0')}-${compra.fechaVencimiento.day.toString().padLeft(2, '0')}',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
-            ),
+            child: Text(fecha, style: TextStyle(color: cs.onSurface.withOpacity(0.7), fontSize: 12)),
           ),
 
           // Total
           Expanded(
             flex: 2,
             child: Text(
-              '\$ ${formatNumberWithDots(compra.total)}',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
-              textAlign: TextAlign.right,
-            ),
-          ),
-
-          // Descuento
-          Expanded(
-            flex: 1,
-            child: Text(
-              '\$ ${formatNumberWithDots(compra.totalDescuentos)}',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
-              textAlign: TextAlign.right,
-            ),
-          ),
-
-          // Pagado
-          Expanded(
-            flex: 2,
-            child: Text(
-              '\$ ${formatNumberWithDots(pagado)}',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+              '\$${formatNumberWithDots(compra.total)}',
+              style: TextStyle(color: cs.onSurface, fontSize: 12, fontWeight: FontWeight.w600),
               textAlign: TextAlign.right,
             ),
           ),
@@ -781,11 +673,8 @@ class _ComprasListScreenState extends State<ComprasListScreen>
           Expanded(
             flex: 2,
             child: Text(
-              '\$ ${formatNumberWithDots(porPagar)}',
-              style: TextStyle(
-                color: porPagar > 0 ? Colors.orange : Colors.white,
-                fontSize: 13,
-              ),
+              '\$${formatNumberWithDots(porPagar)}',
+              style: TextStyle(color: porPagar > 0 ? Colors.orange : AppTheme.success, fontSize: 12, fontWeight: FontWeight.w600),
               textAlign: TextAlign.right,
             ),
           ),
@@ -793,30 +682,75 @@ class _ComprasListScreenState extends State<ComprasListScreen>
           // Estado
           Expanded(
             flex: 2,
-            child: Text(
-              estado,
-              style: TextStyle(
-                color: estado == 'Completa' ? AppTheme.success : Colors.orange,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
+            child: Center(
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: (esPagada ? AppTheme.success : Colors.orange).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  esPagada ? 'Pagada' : 'Pendiente',
+                  style: TextStyle(
+                    color: esPagada ? AppTheme.success : Colors.orange,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-              textAlign: TextAlign.center,
             ),
           ),
 
-          // Destino
+          // Acciones: Editar | Eliminar | DS
           Expanded(
-            flex: 2,
-            child: Text(
-              () {
-              if (compra.items.isEmpty) return 'N/A';
-              final destinos = compra.items.map((i) => i.destino).toSet();
-              return destinos.length == 1 ? destinos.first : 'MIXTO';
-            }(),
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+            flex: 3,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _accionBtn(
+                  icon: Icons.edit,
+                  color: AppTheme.success,
+                  tooltip: 'Editar compra',
+                  onPressed: () => context.push('/facturas-compras', extra: compra).then((_) => _cargarDatos()),
+                ),
+                SizedBox(width: 4),
+                _accionBtn(
+                  icon: Icons.delete,
+                  color: Colors.red,
+                  tooltip: 'Eliminar',
+                  onPressed: () => _confirmarEliminarCompra(compra),
+                ),
+                SizedBox(width: 4),
+                _accionBtn(
+                  icon: Icons.file_present_rounded,
+                  color: AppTheme.primary,
+                  tooltip: 'Documento Soporte',
+                  onPressed: () => showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => DocumentoSoporteDialog(compra: compra),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _accionBtn({required IconData icon, required Color color, required String tooltip, required VoidCallback onPressed}) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(6)),
+          child: Icon(icon, color: color, size: 16),
+        ),
       ),
     );
   }

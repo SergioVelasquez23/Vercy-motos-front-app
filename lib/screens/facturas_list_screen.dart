@@ -520,10 +520,9 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
     }
 
     final isMobile = context.isMobile;
-    // Ancho mínimo para que la tabla siempre tenga espacio para todas las columnas
-    const double minTableWidth = 1100;
+    const double minTableWidth = 1000;
     return Container(
-      margin: EdgeInsets.all(isMobile ? 8 : 24),
+      margin: EdgeInsets.all(isMobile ? 4 : 12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
@@ -553,7 +552,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
         children: [
           // Encabezado de la tabla
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
@@ -745,7 +744,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
     }
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
         color: backgroundColor,
         border: Border(

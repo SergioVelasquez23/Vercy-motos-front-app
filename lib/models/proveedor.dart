@@ -23,6 +23,10 @@ class Proveedor {
   final String? paginaWeb;
   final String? contacto;
   final String? nota;
+  // Campos DIAN para Documento Soporte
+  final String? codigoCiudadDian;       // ej: '149'=Bogotá, '836'=Medellín
+  final bool? esResidenteColombia;       // true→op.type 9, false→op.type 10
+  final String? tipoRegimenTributario;  // 'Responsable de IVA' | 'No Responsable de IVA' | 'Gran Contribuyente'
   final DateTime fechaCreacion;
   final DateTime fechaActualizacion;
 
@@ -51,6 +55,9 @@ class Proveedor {
     this.paginaWeb,
     this.contacto,
     this.nota,
+    this.codigoCiudadDian,
+    this.esResidenteColombia,
+    this.tipoRegimenTributario,
     required this.fechaCreacion,
     required this.fechaActualizacion,
   });
@@ -81,6 +88,9 @@ class Proveedor {
       paginaWeb: json['paginaWeb'],
       contacto: json['contacto'],
       nota: json['nota'],
+      codigoCiudadDian: json['codigoCiudadDian'],
+      esResidenteColombia: json['esResidenteColombia'],
+      tipoRegimenTributario: json['tipoRegimenTributario'],
       fechaCreacion: json['fechaCreacion'] != null
           ? DateTime.parse(json['fechaCreacion'])
           : DateTime.now(),
@@ -116,6 +126,9 @@ class Proveedor {
       'paginaWeb': paginaWeb,
       'contacto': contacto,
       'nota': nota,
+      'codigoCiudadDian': codigoCiudadDian,
+      'esResidenteColombia': esResidenteColombia,
+      'tipoRegimenTributario': tipoRegimenTributario,
       'fechaCreacion': fechaCreacion.toIso8601String(),
       'fechaActualizacion': fechaActualizacion.toIso8601String(),
     };
@@ -189,6 +202,15 @@ class Proveedor {
     }
     if (nota != null && nota!.isNotEmpty) {
       json['nota'] = nota;
+    }
+    if (codigoCiudadDian != null && codigoCiudadDian!.isNotEmpty) {
+      json['codigoCiudadDian'] = codigoCiudadDian;
+    }
+    if (esResidenteColombia != null) {
+      json['esResidenteColombia'] = esResidenteColombia;
+    }
+    if (tipoRegimenTributario != null && tipoRegimenTributario!.isNotEmpty) {
+      json['tipoRegimenTributario'] = tipoRegimenTributario;
     }
 
     return json;

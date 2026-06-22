@@ -612,16 +612,12 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
     );
   }
 
-  /// Abre el diálogo de Documento Soporte pre-llenando el proveedor de la factura
+  /// Abre el diálogo de Documento Soporte pasando la compra completa para auto-fill
   void _abrirDocumentoSoporteParaFactura(FacturaCompra factura) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => DocumentoSoporteDialog(
-        proveedorNombreInicial: factura.proveedorNombre,
-        proveedorNitInicial: factura.proveedorNit,
-        valorInicial: factura.total,
-      ),
+      builder: (_) => DocumentoSoporteDialog(compra: factura),
     );
   }
 
