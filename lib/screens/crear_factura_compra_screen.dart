@@ -1803,12 +1803,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               SizedBox(height: 4),
               Row(
                 children: [
-                  valorTotalWidget, SizedBox(width: 4),
-                  tipoImpWidget, SizedBox(width: 4),
-                  pctImpWidget, SizedBox(width: 4),
-                  tipoDctoWidget, SizedBox(width: 4),
-                  pctDctoWidget, SizedBox(width: 4),
-                  destinoWidget, SizedBox(width: 4),
+                  valorTotalWidget, SizedBox(width: 2),
+                  tipoImpWidget, SizedBox(width: 2),
+                  pctImpWidget, SizedBox(width: 2),
+                  tipoDctoWidget, SizedBox(width: 2),
+                  pctDctoWidget, SizedBox(width: 2),
+                  destinoWidget, SizedBox(width: 2),
                   botonesWidget,
                 ],
               ),
@@ -3755,14 +3755,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         
         
 
-      // Si el total es 0 pero hay items con subtotales, usar la suma directa de subtotales
+      // Si el total es 0 pero hay items con subtotales, usar la suma directa de subtotales + IVA
       if (totalFinal <= 0 && itemsVerificados.isNotEmpty) {
-        final sumaDirectaSubtotales = itemsVerificados.fold<double>(
+        final sumaDirecta = itemsVerificados.fold<double>(
           0,
-          (sum, item) => sum + item.subtotal,
+          (sum, item) => sum + item.subtotal + item.valorImpuesto - item.valorDescuento,
         );
-        if (sumaDirectaSubtotales > 0) {
-          totalFinal = sumaDirectaSubtotales;
+        if (sumaDirecta > 0) {
+          totalFinal = sumaDirecta;
         }
       }
 

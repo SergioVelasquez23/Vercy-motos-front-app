@@ -1,4 +1,4 @@
-import '../widgets/imagen_producto_widget.dart';
+ import '../widgets/imagen_producto_widget.dart';
 import '../widgets/lazy_product_image_widget.dart';
 import '../widgets/optimized_loading_widget.dart';
 import '../config/performance_config.dart';

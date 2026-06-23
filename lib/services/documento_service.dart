@@ -4,6 +4,13 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/endpoints_config.dart';
 import '../utils/logger.dart';
 
+String? _xmlKeyFromNombreXml(String? nombreXml) {
+  if (nombreXml == null || nombreXml.isEmpty) return null;
+  return nombreXml.endsWith('.xml')
+      ? nombreXml.substring(0, nombreXml.length - 4)
+      : nombreXml;
+}
+
 /// Modelo de un Documento/Ticket de facturación electrónica.
 ///
 /// Estados posibles: PENDIENTE → ENVIADO → ACEPTADO | RECHAZADO
@@ -118,7 +125,9 @@ class DocumentoFE {
       cufe: json['cufe']?.toString() ?? json['XmlDocumentKey']?.toString(),
       xmlDocumentKey: json['XmlDocumentKey']?.toString()
           ?? json['xmlDocumentKey']?.toString()
-          ?? json['xml_document_key']?.toString(),
+          ?? json['xml_document_key']?.toString()
+          // nombre_xml = "{XmlDocumentKey}.xml" — strip extension to get the key
+          ?? _xmlKeyFromNombreXml(json['nombre_xml']?.toString()),
       qrCode: json['qrCode']?.toString(),
       qrUrl: json['qrUrl']?.toString(),
       numero: json['numero']?.toString() ?? json['document_number']?.toString(),
@@ -510,7 +519,8 @@ class DocumentoService {
 
               // Verificar si este documento tiene el pedidoId buscado
               final pedidosIds = docData['pedidosIds'];
-              if (pedidosIds is List && pedidosIds.contains(pedidoId)) {
+              final docPedidoId = docData['pedidoId']?.toString() ?? docData['order_number']?.toString();
+              if ((pedidosIds is List && pedidosIds.contains(pedidoId)) || docPedidoId == pedidoId) {
                 appLog('✅ [DOCUMENTO] Encontrado en posición $i: ${doc.id}');
                 appLog('📄 [DOCUMENTO] Documento: numero=${doc.numero ?? doc.numeroElectronico}, cliente=${doc.clienteNombre}');
                 documentoEncontrado = doc;

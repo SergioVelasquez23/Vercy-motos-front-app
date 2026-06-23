@@ -7,7 +7,9 @@
       "Read(//home/sergiovelasquez/**)",
       "Bash(awk -F: '$2 >= 3528 && $2 <= 3700 {print}')",
       "Bash(/home/sergiovelasquez/flutter/bin/dart analyze *)",
-      "Bash(python3)"
+      "Bash(python3)",
+      "Read(//c/Users/sergio/Documents/vercy/src/**)",
+      "Bash(xargs grep -l \"traslado\\\\|bodega\" -i)"
     ],
     "additionalDirectories": [
       "/home/sergiovelasquez/Documentos/flutter_app_new/lib/widgets"

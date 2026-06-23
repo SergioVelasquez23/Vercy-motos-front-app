@@ -479,7 +479,7 @@ class MatiasService {
           : 'Documento POS rápido',
       // 1 = ESTANDAR — único válido para POS según DIAN (DEAD02)
       'operation_type_id': 1,
-      'currency_id': 272,
+      'currency_id': 35, // 35 = COP (Peso Colombiano)
       'cash_register_number': negocioInfo.posCashierName ?? 'CAJA-01',
       'seller_name': negocioInfo.posCashierName ?? 'Vendedor',
       'software_manufacturer': {
@@ -835,6 +835,8 @@ class MatiasService {
       if (pdf is Map) {
         final url = pdf['url']?.toString();
         if (url != null && url.isNotEmpty) return url;
+      } else if (pdf is String && pdf.isNotEmpty) {
+        return pdf; // el backend devuelve la URL directamente como string
       }
       return null;
     } catch (e) {
@@ -1243,6 +1245,7 @@ class MatiasDocumentoResult {
       documentKey:
           data['cufe']?.toString() ??
           data['cune']?.toString() ??
+          data['XmlDocumentKey']?.toString() ??
           data['xmlDocumentKey']?.toString(),
       pdfUrl: data['pdf']?.toString(),
       raw: j,

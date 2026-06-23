@@ -321,16 +321,6 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
             isPrimary: true,
             onPressed: () => setState(() => _mostrarFormulario = true),
           ),
-          SizedBox(width: 12),
-          _buildBotonAccion(
-            icon: Icons.print,
-            label: '',
-            color: AppTheme.secondary,
-            onPressed: () {
-              _mostrarMensaje('Función de impresión en desarrollo');
-            },
-            isIconOnly: true,
-          ),
         ],
       ),
     );
@@ -419,12 +409,19 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
               child: Row(
                 children: [
                   Expanded(flex: 2, child: _buildColumnHeader('#')),
+                  const SizedBox(width: 8),
                   Expanded(flex: 5, child: _buildColumnHeader('Fecha')),
+                  const SizedBox(width: 8),
                   Expanded(flex: 4, child: _buildColumnHeader('Asesor')),
+                  const SizedBox(width: 8),
                   Expanded(flex: 3, child: _buildColumnHeader('Origen')),
+                  const SizedBox(width: 8),
                   Expanded(flex: 3, child: _buildColumnHeader('Destino')),
+                  const SizedBox(width: 8),
                   Expanded(flex: 2, child: _buildColumnHeader('Cant.')),
+                  const SizedBox(width: 8),
                   Expanded(flex: 4, child: _buildColumnHeader('Producto')),
+                  const SizedBox(width: 8),
                   Expanded(flex: 3, child: _buildColumnHeader('Acciones')),
                 ],
               ),
@@ -481,6 +478,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
               ),
             ),
           ),
+          const SizedBox(width: 8),
           Expanded(
             flex: 5,
             child: Text(
@@ -491,6 +489,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          const SizedBox(width: 8),
           Expanded(
             flex: 4,
             child: Text(
@@ -499,8 +498,11 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          const SizedBox(width: 8),
           Expanded(flex: 3, child: _buildBodegaChip(traslado.origenBodegaNombre ?? '-')),
+          const SizedBox(width: 8),
           Expanded(flex: 3, child: _buildBodegaChip(traslado.destinoBodegaNombre ?? '-')),
+          const SizedBox(width: 8),
           Expanded(
             flex: 2,
             child: Text(
@@ -508,6 +510,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 11),
             ),
           ),
+          const SizedBox(width: 8),
           Expanded(
             flex: 4,
             child: Text(
@@ -519,6 +522,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
               maxLines: 1,
             ),
           ),
+          const SizedBox(width: 8),
           Expanded(flex: 3, child: _buildAccionesCompactas(traslado)),
         ],
       ),
@@ -1583,14 +1587,6 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                         color: AppTheme.primary,
                         onPressed: _agregarProducto,
                         tooltip: 'Agregar producto',
-                      ),
-                      SizedBox(width: 8),
-                      _buildBotonCircular(
-                        icon: Icons.qr_code_scanner,
-                        color: AppTheme.secondary,
-                        onPressed: () =>
-                            _mostrarMensaje('Escáner en desarrollo'),
-                        tooltip: 'Escanear código',
                       ),
                     ],
                   ),

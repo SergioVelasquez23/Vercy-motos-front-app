@@ -14,11 +14,13 @@ import '../theme/app_theme.dart';
 class GastosScreen extends StatefulWidget {
   final String? cuadreCajaId;
   final bool mostrarFormulario;
+  final VoidCallback? onGastoGuardado;
 
   const GastosScreen({
     super.key,
     this.cuadreCajaId,
     this.mostrarFormulario = false,
+    this.onGastoGuardado,
   });
 
   @override
@@ -419,6 +421,11 @@ class _GastosScreenState extends State<GastosScreen> {
         _showSuccess('Gasto creado exitosamente');
       }
 
+      // Si hay callback (modo modal), usarlo en vez de navegar
+      if (widget.onGastoGuardado != null && mounted) {
+        widget.onGastoGuardado!();
+        return;
+      }
       // Si vino con mostrarFormulario=true (desde menú), navegar a la lista
       if (widget.mostrarFormulario && mounted) {
         context.go('/gastos-lista');

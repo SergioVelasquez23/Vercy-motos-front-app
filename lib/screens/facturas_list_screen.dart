@@ -14,7 +14,6 @@ import '../services/pdf_service.dart';
 import '../services/negocio_info_service.dart';
 import '../services/matias_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/facturizacion/facturacion_electronica_menu.dart';
 import '../utils/logger.dart';
 import '../utils/pagination_mixin.dart';
 import '../widgets/common/screen_header.dart';
@@ -181,9 +180,12 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
       '🔍 Filtros actuales - Tipo: "$_filtroTipo", Número: "$_filtroNumero", Cliente: "$_filtroCliente"',
     );
     
-    // Agregar pedidos pagados filtrados (solo para tipo POS o vacío)
-    if (_filtroTipo.isEmpty || _filtroTipo == 'POS') {
+    // Agregar pedidos pagados filtrados (POS, FE, o todos)
+    if (_filtroTipo.isEmpty || _filtroTipo == 'POS' || _filtroTipo == 'FE') {
       for (var pedido in _pedidosPagados) {
+        final esFEPedido = pedido.tipoFactura == 'FACTURA';
+        if (_filtroTipo == 'POS' && esFEPedido) continue;
+        if (_filtroTipo == 'FE' && !esFEPedido) continue;
         if (_filtroNumero.isNotEmpty) {
           if (!pedido.id.toLowerCase().contains(_filtroNumero.toLowerCase())) {
             continue;
@@ -520,7 +522,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
     }
 
     final isMobile = context.isMobile;
-    const double minTableWidth = 1000;
+    const double minTableWidth = 1150;
     return Container(
       margin: EdgeInsets.all(isMobile ? 4 : 12),
       decoration: BoxDecoration(
@@ -641,7 +643,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   ),
                 ),
                 Expanded(
-                  flex: 6,
+                  flex: 8,
                   child: Text(
                     'Acciones',
                     style: TextStyle(
@@ -719,6 +721,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
     double saldo;
     bool isPagado;
     bool esPedido = documento is Pedido;
+    bool esFEDoc = false;
 
     if (documento is Factura) {
       numero = documento.numero ?? 'N/A';
@@ -732,7 +735,8 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
       final safeId = documento.id.length >= 8
           ? documento.id.substring(0, 8).toUpperCase()
           : documento.id.toUpperCase();
-      numero = 'POS-$safeId';
+      esFEDoc = documento.tipoFactura == 'FACTURA';
+      numero = esFEDoc ? 'FE-$safeId' : 'POS-$safeId';
       clienteNombre = documento.cliente ?? 'CONSUMIDOR FINAL';
       fecha = documento.fechaPago ?? documento.fecha;
       total = documento.total;
@@ -758,23 +762,24 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
             flex: 2,
             child: Row(
               children: [
-                if (esPedido)
+                if (esPedido) ...[
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                     margin: EdgeInsets.only(right: 4),
                     decoration: BoxDecoration(
-                      color: AppTheme.primary.withOpacity(0.2),
+                      color: (esFEDoc ? AppTheme.success : AppTheme.primary).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      'POS',
+                      esFEDoc ? 'FE' : 'POS',
                       style: TextStyle(
-                        color: AppTheme.primary,
+                        color: esFEDoc ? AppTheme.success : AppTheme.primary,
                         fontSize: 9,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
+                ],
                 Expanded(
                   child: Text(
                     numero,
@@ -844,8 +849,8 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: isPagado
-                    ? AppTheme.success.withOpacity(0.2)
-                    : AppTheme.warning.withOpacity(0.2),
+                    ? AppTheme.success.withValues(alpha:0.2)
+                    : AppTheme.warning.withValues(alpha:0.2),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
@@ -873,43 +878,21 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
 
           // Acciones
           Expanded(
-            flex: 6,
+            flex: 5,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Flexible(
-                  child: FacturacionElectronicaMenu(
-                    documento: documento,
-                    onRefresh: _cargarDocumentos,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: AccionesMatiasMenu(
-                    documento: documento,
-                    onRefresh: _cargarDocumentos,
-                  ),
-                ),
                 IconButton(
                   padding: const EdgeInsets.all(4),
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  icon: Icon(
-                    Icons.picture_as_pdf,
-                    color: Colors.red.shade400,
-                    size: 20,
-                  ),
+                  constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                  icon: Icon(Icons.picture_as_pdf, color: Colors.red.shade400, size: 18),
                   onPressed: () => _verPDF(documento),
                   tooltip: 'Ver PDF',
                 ),
                 IconButton(
                   padding: const EdgeInsets.all(4),
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  icon: Icon(
-                    Icons.print,
-                    color: AppTheme.primary,
-                    size: 20,
-                  ),
+                  constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                  icon: Icon(Icons.print, color: AppTheme.primary, size: 18),
                   onPressed: () => _imprimirDocumento(documento),
                   tooltip: 'Imprimir',
                 ),
@@ -1113,8 +1096,8 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
         'productos': documento.items
             .map(
               (item) => {
-                'codigo': item.productoId ?? '',
-                'nombre': item.productoNombre ?? 'Producto',
+                'codigo': item.productoId,
+                'nombre': item.productoNombre,
                 'cantidad': item.cantidad,
                 'precio': item.precioUnitario,
                 'precioUnitario': item.precioUnitario,
@@ -1162,8 +1145,8 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
         'cantidadProductos': documento.items.length,
         'metodoPago': documento.formaPago ?? 'EFECTIVO',
         'formaPago': _formatearFormaPagoPdf(documento.formaPago ?? 'EFECTIVO'),
-        'vendedor': documento.mesero ?? 'Sin Vendedor',
-        'mesero': documento.mesero ?? 'Sin Vendedor',
+        'vendedor': documento.mesero,
+        'mesero': documento.mesero,
         // Desglose de pagos mixtos
         if (documento.pagosParciales.isNotEmpty)
           'pagosParciales': documento.pagosParciales
@@ -1232,8 +1215,8 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
             documento.items
                 ?.map(
                   (item) => {
-                    'codigo': item.productoId ?? '',
-                    'nombre': item.productoNombre ?? 'Producto',
+                    'codigo': item.productoId,
+                    'nombre': item.productoNombre,
                     'cantidad': item.cantidad,
                     'precio': item.precioUnitario,
                     'precioUnitario': item.precioUnitario,
@@ -1269,6 +1252,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
         esFactura: true,
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al generar PDF: $e'),
@@ -1283,6 +1267,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
       final resumen = await _crearResumenDocumento(documento);
       await _pdfService.imprimirFactura(resumen);
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al imprimir: $e'),
@@ -1335,7 +1320,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
           children: [
             Text(
               'Personaliza el nombre del archivo PDF:',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.7), fontSize: 13),
             ),
             SizedBox(height: 12),
             TextField(
@@ -1344,7 +1329,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: InputDecoration(
                 hintText: 'Nombre del archivo',
-                hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.7)),
                 filled: true,
                 fillColor: Theme.of(context).colorScheme.surface,
                 border: OutlineInputBorder(
@@ -1352,7 +1337,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   borderSide: BorderSide.none,
                 ),
                 suffixText: '.pdf',
-                suffixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                suffixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.7)),
               ),
             ),
           ],
@@ -1362,7 +1347,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
               'Cancelar',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.7)),
             ),
           ),
           ElevatedButton.icon(
@@ -1409,7 +1394,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
         final bytes = utf8.encode(csv);
         final blob = html.Blob([bytes], 'text/csv');
         final url = html.Url.createObjectUrlFromBlob(blob);
-        final anchor = html.document.createElement('a') as html.AnchorElement
+        (html.document.createElement('a') as html.AnchorElement)
           ..href = url
           ..download = 'facturas_\${DateTime.now().millisecondsSinceEpoch}.csv'
           ..click();

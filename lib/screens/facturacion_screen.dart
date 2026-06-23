@@ -640,6 +640,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                           onGuardarBorrador: _guardarComoBorrador,
                           onGuardarYPagar: _guardarYPagar,
                           onGuardarComoDeuda: _guardarComoDeuda,
+                          dctoGeneralController: _dctoGeneralController,
                         ),
                         SizedBox(height: 80),
                       ],
@@ -3590,10 +3591,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
     try {
       final subtotal = _items.fold(0.0, (sum, item) => sum + item.subtotal);
+      final totalImpuestosBorrador = _items.fold(0.0, (sum, item) => sum + item.valorImpuesto);
       final totalDctoProductos = _items.fold(0.0, (sum, item) => sum + item.valorDescuento);
       final dctoGeneral = double.tryParse(_dctoGeneralController.text) ?? 0;
       final totalDescuentos = totalDctoProductos + dctoGeneral;
-      final total = subtotal - totalDescuentos;
+      final total = subtotal + totalImpuestosBorrador - totalDescuentos;
 
       final pedido = Pedido(
         id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
@@ -3610,7 +3612,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         tipoFactura: _tipoFactura,
         fechaVencimiento: _fechaVencimiento,
         subtotal: subtotal,
-        totalImpuestos: 0.0,
+        totalImpuestos: totalImpuestosBorrador,
         totalDescuentos: totalDescuentos,
         totalFinal: total,
         descuentoGeneral: dctoGeneral,
@@ -3712,7 +3714,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                   SizedBox(height: 8),
                   _buildDeudaInfoRow(
                     'Total:',
-                    '\$${_items.fold(0.0, (sum, item) => sum + item.subtotal).toStringAsFixed(0)}',
+                    '\$${_items.fold(0.0, (sum, item) => sum + item.subtotal + item.valorImpuesto - item.valorDescuento).toStringAsFixed(0)}',
                   ),
                   SizedBox(height: 8),
                   _buildDeudaInfoRow(
@@ -3754,7 +3756,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
     // 🚀 CAPTURAR DATOS ANTES DE LIMPIAR
     final subtotal = _items.fold(0.0, (sum, item) => sum + item.subtotal);
-    final total = subtotal;
+    final totalImpuestosDeuda = _items.fold(0.0, (sum, item) => sum + item.valorImpuesto);
+    final totalDctoDeuda = _items.fold(0.0, (sum, item) => sum + item.valorDescuento);
+    final total = subtotal + totalImpuestosDeuda - totalDctoDeuda;
     final userName =
         Provider.of<UserProvider>(context, listen: false).userName ?? 'Sistema';
     final itemsOriginales = List<ItemPedido>.from(_items);
@@ -3804,8 +3808,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           tipoFactura: tipoFacturaCapturado,
           fechaVencimiento: fechaVencimientoCapturada,
           subtotal: subtotal,
-          totalImpuestos: 0.0,
-          totalDescuentos: 0.0,
+          totalImpuestos: totalImpuestosDeuda,
+          totalDescuentos: totalDctoDeuda,
           totalFinal: total,
           notas:
               'DEUDA - Registrada el ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
@@ -3907,8 +3911,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       final reteICAValor = subtotal * (reteICAPct / 100);
       final aiuValor = subtotal * (aiuPct / 100);
 
-      // Los impuestos de los items ya están incluidos en el subtotal
-      final totalImpuestos = 0.0;
+      final totalImpuestos = _items.fold(0.0, (sum, item) => sum + item.valorImpuesto);
       final totalDctoProductos = _items.fold(0.0, (sum, item) => sum + item.valorDescuento);
       final totalDescuentos = dctoGeneral + totalDctoProductos;
       final totalRetenciones = retencionValor + reteIVAValor + reteICAValor;

@@ -247,22 +247,6 @@ class _ComprasListScreenState extends State<ComprasListScreen>
             ),
           ),
 
-          // Botón Excel
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.primary,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: IconButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Exportar Excel - Próximamente')),
-                );
-              },
-              icon: Icon(Icons.file_download, color: Colors.white),
-              tooltip: 'Exportar Excel',
-            ),
-          ),
         ],
       ),
     );

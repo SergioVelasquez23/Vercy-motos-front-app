@@ -169,56 +169,6 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
               onChanged: (_) => _aplicarFiltros(),
             ),
           ),
-          // Botón Saldar masivo
-          if (!isMobile)
-            ElevatedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Saldar masivo - Próximamente')),
-                );
-              },
-              child: Text(
-                'Saldar masivo',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primary,
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-            ),
-          // Botón Excel
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.primary,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: IconButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Exportar Excel - Próximamente')),
-                );
-              },
-              icon: Icon(Icons.file_download, color: Colors.white),
-              tooltip: 'Exportar Excel',
-            ),
-          ),
-          // Botón PDF
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.primary,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: IconButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Exportar PDF - Próximamente')),
-                );
-              },
-              icon: Icon(Icons.picture_as_pdf, color: Colors.white),
-              tooltip: 'Exportar PDF',
-            ),
-          ),
         ],
       ),
     );

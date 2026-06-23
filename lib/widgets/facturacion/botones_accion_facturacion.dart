@@ -8,6 +8,7 @@ class BotonesAccionFacturacion extends StatelessWidget {
   final VoidCallback onGuardarBorrador;
   final VoidCallback onGuardarYPagar;
   final VoidCallback onGuardarComoDeuda;
+  final TextEditingController? dctoGeneralController;
 
   const BotonesAccionFacturacion({
     super.key,
@@ -15,12 +16,17 @@ class BotonesAccionFacturacion extends StatelessWidget {
     required this.isLoading,
     required this.onGuardarBorrador,
     required this.onGuardarYPagar,
-    required this.onGuardarComoDeuda, // kept for API compatibility
+    required this.onGuardarComoDeuda,
+    this.dctoGeneralController,
   });
 
   @override
   Widget build(BuildContext context) {
-    final subtotal = items.fold(0.0, (sum, item) => sum + item.subtotal);
+    final baseSubtotal = items.fold(0.0, (sum, item) => sum + item.subtotal);
+    final totalImpuestos = items.fold(0.0, (sum, item) => sum + item.valorImpuesto);
+    final totalDctoProductos = items.fold(0.0, (sum, item) => sum + item.valorDescuento);
+    final dctoGeneral = double.tryParse(dctoGeneralController?.text ?? '') ?? 0;
+    final subtotal = baseSubtotal + totalImpuestos - totalDctoProductos - dctoGeneral;
 
     return Container(
       padding: EdgeInsets.all(20),

@@ -37,7 +37,7 @@ class TotalesSection extends StatelessWidget {
     final reteICAValor = subtotal * (reteICAPct / 100);
     final aiuValor = subtotal * (aiuPct / 100);
 
-    final totalImpuestos = 0.0;
+    final totalImpuestos = items.fold(0.0, (sum, item) => sum + item.valorImpuesto);
     final totalRetenciones = retencionValor + reteIVAValor + reteICAValor;
     final total =
         subtotal +

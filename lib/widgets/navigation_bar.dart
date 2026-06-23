@@ -34,12 +34,6 @@ class AppNavigationBar extends StatelessWidget {
               ),
               _buildNavItem(
                 context,
-                icon: Icons.receipt_long,
-                label: 'Pedidos',
-                route: '/pedidos',
-              ),
-              _buildNavItem(
-                context,
                 icon: Icons.two_wheeler,
                 label: 'Productos',
                 route: '/productos',

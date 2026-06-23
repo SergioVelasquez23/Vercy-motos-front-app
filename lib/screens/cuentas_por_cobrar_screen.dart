@@ -660,21 +660,6 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  if (cuenta.clienteTelefono != null)
-                    TextButton.icon(
-                      onPressed: () {
-                        // Aquí podrías implementar funcionalidad de WhatsApp
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Funcionalidad de WhatsApp próximamente',
-                            ),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.message),
-                      label: const Text('WhatsApp'),
-                    ),
                   ElevatedButton.icon(
                     onPressed: () => _registrarAbono(cuenta),
                     icon: const Icon(Icons.payment),

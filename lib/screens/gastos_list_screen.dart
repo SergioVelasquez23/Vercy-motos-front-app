@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../models/gasto.dart';
+import '../screens/gastos_screen.dart';
 import '../services/gasto_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
@@ -148,7 +148,30 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
               icon: Icons.add,
               label: 'Crear Gasto',
               mobileLabel: 'Crear',
-              onPressed: () => context.push('/gastos'),
+              onPressed: () => showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (ctx) => Dialog(
+                  insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: 900,
+                        maxHeight: MediaQuery.of(context).size.height * 0.9,
+                      ),
+                      child: GastosScreen(
+                        mostrarFormulario: true,
+                        onGastoGuardado: () {
+                          Navigator.of(ctx).pop();
+                          _cargarDatos();
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -215,22 +238,6 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
               backgroundColor: AppTheme.primary,
               padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24, vertical: isMobile ? 12 : 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-          ),
-          // Botón Excel
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.primary,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: IconButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Exportar Excel - Próximamente')),
-                );
-              },
-              icon: Icon(Icons.file_download, color: Colors.white),
-              tooltip: 'Exportar Excel',
             ),
           ),
         ],
@@ -726,29 +733,6 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
                   ),
                 ),
                 // PDF
-                Container(
-                  width: 32,
-                  height: 32,
-                  margin: EdgeInsets.only(right: 4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.success,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    icon: Icon(
-                      Icons.picture_as_pdf,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Generar PDF - Próximamente')),
-                      );
-                    },
-                    tooltip: 'Generar PDF',
-                  ),
-                ),
                 // Eliminar
                 Container(
                   width: 32,

@@ -208,10 +208,22 @@ class _UsersScreenState extends State<UsersScreen> {
                     style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     decoration: InputDecoration(
                       hintText: 'Buscar usuarios...',
-                      hintStyle: TextStyle(color: Colors.grey[400]),
-                      prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
+                      hintStyle: TextStyle(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.4)),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.4),
+                      ),
                       filled: true,
-                      fillColor: Colors.grey[800],
+                      fillColor: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -322,113 +334,109 @@ class _UsersScreenState extends State<UsersScreen> {
         ? [userRoleNames.first]
         : [];
 
+    final cs = Theme.of(context).colorScheme;
+    final initials = user.displayName.isNotEmpty
+        ? user.displayName[0].toUpperCase()
+        : '?';
+    final nombre = (user.nombre != null && user.nombre!.isNotEmpty)
+        ? user.nombre!
+        : 'Sin nombre';
+
     return Card(
-      color: Colors.grey[850],
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
           children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: const Color(0xFFFF6B00),
-                  radius: 24,
-                  child: Text(
-                    user.displayName.isNotEmpty
-                        ? user.displayName[0].toUpperCase()
-                        : '?',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+            CircleAvatar(
+              backgroundColor: const Color(0xFFFF6B00),
+              radius: 22,
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    nombre,
+                    style: TextStyle(
+                      color: cs.onSurface,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        user.nombre != null && user.nombre!.isNotEmpty
-                            ? user.nombre!
-                            : 'Sin nombre',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                        ),
-                      ),
-                      Text(
-                        user.email,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        children: displayedRoles
-                            .map(
-                              (role) => Chip(
-                                label: Text(role),
-                                backgroundColor: Colors.blueGrey[700],
-                                labelStyle: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            )
-                            .toList(),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Email: ${user.email}',
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                              fontSize: 14,
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              IconButton(
-                                onPressed: () =>
-                                    _mostrarDialogoUsuario(user: user),
-                                icon: const Icon(
-                                  Icons.edit,
-                                  color: Color(0xFFFF6B00),
-                                ),
-                                tooltip: 'Editar Usuario',
-                              ),
-                              IconButton(
-                                onPressed: () => _mostrarDialogoRol(user),
-                                icon: const Icon(
-                                  Icons.admin_panel_settings,
-                                  color: Colors.blue,
-                                ),
-                                tooltip: 'Cambiar Rol',
-                              ),
-                              IconButton(
-                                onPressed: () => _confirmarEliminar(user),
-                                icon: const Icon(
-                                  Icons.delete,
-                                  color: Colors.red,
-                                ),
-                                tooltip: 'Eliminar',
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
+                  const SizedBox(height: 2),
+                  Text(
+                    user.email,
+                    style: TextStyle(
+                      color: cs.onSurface.withValues(alpha: 0.6),
+                      fontSize: 13,
+                    ),
                   ),
+                  if (displayedRoles.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      children: displayedRoles
+                          .map((role) => Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFF6B00)
+                                      .withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: const Color(0xFFFF6B00)
+                                        .withValues(alpha: 0.4),
+                                  ),
+                                ),
+                                child: Text(
+                                  role,
+                                  style: const TextStyle(
+                                    color: Color(0xFFFF6B00),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ))
+                          .toList(),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  onPressed: () => _mostrarDialogoUsuario(user: user),
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  color: const Color(0xFFFF6B00),
+                  tooltip: 'Editar',
+                  visualDensity: VisualDensity.compact,
+                ),
+                IconButton(
+                  onPressed: () => _mostrarDialogoRol(user),
+                  icon: const Icon(Icons.shield_outlined, size: 20),
+                  color: Colors.blue,
+                  tooltip: 'Cambiar Rol',
+                  visualDensity: VisualDensity.compact,
+                ),
+                IconButton(
+                  onPressed: () => _confirmarEliminar(user),
+                  icon: const Icon(Icons.delete_outline, size: 20),
+                  color: Colors.red,
+                  tooltip: 'Eliminar',
+                  visualDensity: VisualDensity.compact,
                 ),
               ],
             ),

@@ -315,7 +315,7 @@ class _DocumentosPendientesScreenState
       final res = await MatiasService.descargarPDF(trackId);
       if (!mounted) return;
       if (res == null) {
-        _mostrarError('PDF no disponible. El documento debe estar ACEPTADO por la DIAN.');
+        _mostrarError('PDF no disponible. Verifica que el documento esté ACEPTADO y que el XmlDocumentKey esté disponible en Matias.');
         return;
       }
       final ok = await Base64FileLauncher.open(
@@ -479,6 +479,7 @@ class _DocumentosPendientesScreenState
       builder: (_) => NotaCreditoDebitoDialog(
         facturaNumero: doc.numero ?? doc.id,
         facturaCufe: doc.cufe!,
+        facturaXmlKey: doc.xmlDocumentKey,
         facturaFecha:
             doc.fechaCreacion?.toIso8601String().split('T')[0] ??
             DateTime.now().toIso8601String().split('T')[0],
@@ -499,6 +500,7 @@ class _DocumentosPendientesScreenState
       builder: (_) => NotaCreditoDebitoDialog(
         facturaNumero: doc.numero ?? doc.id,
         facturaCufe: doc.cufe!,
+        facturaXmlKey: doc.xmlDocumentKey,
         facturaFecha:
             doc.fechaCreacion?.toIso8601String().split('T')[0] ??
             DateTime.now().toIso8601String().split('T')[0],
