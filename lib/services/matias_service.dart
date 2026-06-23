@@ -212,7 +212,11 @@ class MatiasService {
         'uuid': facturaCufe,
         'date': facturaFecha,
       },
-      'discrepancy_response': {'reference_id': motivoId, 'description': motivo},
+      'discrepancy_response': {
+        'reference_id': motivoId,
+        'response_id': motivoId,
+        'description': motivo,
+      },
     };
     return _postDocumento('$_base/notes/credit', body, token: token);
   }
@@ -241,7 +245,12 @@ class MatiasService {
         'uuid': facturaCufe,
         'date': facturaFecha,
       },
-      'discrepancy_response': {'reference_id': motivoId, 'description': motivo},
+      'discrepancy_response': {
+        'reference_id': motivoId,
+        // ND response_id catalog: 1=Intereses→9, 2=Gastos→10, 3=Cambio valor→11
+        'response_id': {1: 9, 2: 10, 3: 11}[motivoId] ?? motivoId,
+        'description': motivo,
+      },
     };
     return _postDocumento('$_base/notes/debit', body, token: token);
   }
@@ -479,7 +488,7 @@ class MatiasService {
           : 'Documento POS rápido',
       // 1 = ESTANDAR — único válido para POS según DIAN (DEAD02)
       'operation_type_id': 1,
-      'currency_id': 35, // 35 = COP (Peso Colombiano)
+      'currency_id': 272,
       'cash_register_number': negocioInfo.posCashierName ?? 'CAJA-01',
       'seller_name': negocioInfo.posCashierName ?? 'Vendedor',
       'software_manufacturer': {

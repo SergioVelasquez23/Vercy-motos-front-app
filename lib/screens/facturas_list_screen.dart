@@ -1,12 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:provider/provider.dart';
 import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import '../models/cliente.dart';
 import '../models/factura.dart';
 import '../models/pedido.dart';
 import '../models/item_pedido.dart';
 import '../models/negocio_info.dart';
+import '../providers/datos_cache_provider.dart';
 import '../services/cliente_service.dart';
 import '../services/factura_service.dart';
 import '../services/pedido_service.dart';
@@ -1007,6 +1009,17 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
   }
 
   Future<Map<String, dynamic>> _crearResumenDocumento(dynamic documento) async {
+    // Mapa productoId → código interno para mostrar en PDF
+    final codigoPorId = <String, String>{};
+    try {
+      final cache = Provider.of<DatosCacheProvider>(context, listen: false);
+      for (final p in cache.productos ?? []) {
+        if (p.codigo != null && p.codigo!.isNotEmpty) {
+          codigoPorId[p.id] = p.codigo!;
+        }
+      }
+    } catch (_) {}
+
     // Intentar obtener info del negocio, pero no fallar si no existe
     NegocioInfo? negocioInfo;
     try {
@@ -1096,7 +1109,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
         'productos': documento.items
             .map(
               (item) => {
-                'codigo': item.productoId,
+                'codigo': codigoPorId[item.productoId] ?? '',
                 'nombre': item.productoNombre,
                 'cantidad': item.cantidad,
                 'precio': item.precioUnitario,
@@ -1215,7 +1228,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
             documento.items
                 ?.map(
                   (item) => {
-                    'codigo': item.productoId,
+                    'codigo': codigoPorId[item.productoId] ?? '',
                     'nombre': item.productoNombre,
                     'cantidad': item.cantidad,
                     'precio': item.precioUnitario,

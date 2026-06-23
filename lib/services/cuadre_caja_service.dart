@@ -233,7 +233,7 @@ class CuadreCajaService {
       final headers = await _getHeaders();
 
       final response = await http.get(
-        Uri.parse('$baseUrl/api/cuadres-caja/efectivo-esperado'),
+        Uri.parse('$baseUrl/api/cuadres-caja/reportes/efectivo-esperado'),
         headers: headers,
       );
 
@@ -553,7 +553,7 @@ class CuadreCajaService {
       final body = {'aprobador': aprobador};
 
       final response = await http.put(
-        Uri.parse('$baseUrl/api/cuadres-caja/$id/aprobar'),
+        Uri.parse('$baseUrl/api/cuadres-caja/operaciones/$id/aprobar'),
         headers: headers,
         body: json.encode(body),
       );
@@ -584,7 +584,7 @@ class CuadreCajaService {
       };
 
       final response = await http.put(
-        Uri.parse('$baseUrl/api/cuadres-caja/$id/rechazar'),
+        Uri.parse('$baseUrl/api/cuadres-caja/operaciones/$id/rechazar'),
         headers: headers,
         body: json.encode(body),
       );
@@ -621,7 +621,7 @@ class CuadreCajaService {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/api/cuadres-caja/debug-pedidos'),
+        Uri.parse('$baseUrl/api/cuadres-caja/reportes/debug-pedidos'),
         headers: headers,
       );
 
@@ -642,7 +642,7 @@ class CuadreCajaService {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/api/cuadres-caja/detalles-ventas'),
+        Uri.parse('$baseUrl/api/cuadres-caja/reportes/detalles-ventas'),
         headers: headers,
       );
 
@@ -663,7 +663,7 @@ class CuadreCajaService {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/api/cuadres-caja/todos-pedidos-hoy'),
+        Uri.parse('$baseUrl/api/cuadres-caja/reportes/todos-pedidos-hoy'),
         headers: headers,
       );
 
@@ -701,7 +701,7 @@ class CuadreCajaService {
 
         
       final response = await http.get(
-        Uri.parse('$baseUrl/api/pedidos/cuadre/${cajaActiva.id}/pagados'),
+        Uri.parse('$baseUrl/api/pedidos/consultas/cuadre/${cajaActiva.id}/pagados'),
         headers: headers,
       );
 
@@ -815,7 +815,7 @@ class CuadreCajaService {
         
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/api/cuadres-caja/resumen-ventas-hoy'),
+        Uri.parse('$baseUrl/api/cuadres-caja/reportes/detalles-ventas'),
         headers: headers,
       );
 
@@ -849,7 +849,7 @@ class CuadreCajaService {
         
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/api/cuadres-caja/cuadre-completo'),
+        Uri.parse('$baseUrl/api/cuadres-caja/reportes/cuadre-completo'),
         headers: headers,
       );
 
@@ -877,7 +877,7 @@ class CuadreCajaService {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/api/cuadres-caja/$cuadreId/resumen-cierre'),
+        Uri.parse('$baseUrl/api/cuadres-caja/reportes/$cuadreId/resumen-cierre'),
         headers: headers,
       );
 

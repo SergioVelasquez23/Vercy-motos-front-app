@@ -359,7 +359,7 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
       'time': time,
       'type_document_id': 11,
       'operation_type_id': _esResidente ? 9 : 10,
-      'currency_id': 35, // 35 = COP (Peso Colombiano)
+      'currency_id': 272,
       'send_email': 1,
       'graphic_representation': 1,
       'notes': notes,
@@ -536,7 +536,7 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
       'time': time,
       'type_document_id': 11,
       'operation_type_id': esResidente ? 9 : 10,
-      'currency_id': 35, // 35 = COP (Peso Colombiano)
+      'currency_id': 272,
       'send_email': 1,
       'graphic_representation': 1,
       'customer': customer,

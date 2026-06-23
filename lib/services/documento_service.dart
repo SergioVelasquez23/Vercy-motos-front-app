@@ -4,13 +4,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/endpoints_config.dart';
 import '../utils/logger.dart';
 
-String? _xmlKeyFromNombreXml(String? nombreXml) {
-  if (nombreXml == null || nombreXml.isEmpty) return null;
-  return nombreXml.endsWith('.xml')
-      ? nombreXml.substring(0, nombreXml.length - 4)
-      : nombreXml;
-}
-
 /// Modelo de un Documento/Ticket de facturación electrónica.
 ///
 /// Estados posibles: PENDIENTE → ENVIADO → ACEPTADO | RECHAZADO
@@ -69,15 +62,9 @@ class DocumentoFE {
   bool get esRechazado => estado == 'RECHAZADO';
   bool get tieneCufe => cufe != null && cufe!.isNotEmpty;
 
-  /// trackId preferido para descargar el PDF desde Matías.
-  /// Prioriza el XmlDocumentKey (que es lo que el endpoint de PDF acepta)
-  /// y cae a CUFE como respaldo.
-  String? get pdfTrackId {
-    if (xmlDocumentKey != null && xmlDocumentKey!.isNotEmpty) {
-      return xmlDocumentKey;
-    }
-    return cufe;
-  }
+  /// trackId para descargar el PDF desde Matías.
+  /// El endpoint /invoices/{id}/pdf acepta CUFE; XmlDocumentKey es solo para XML.
+  String? get pdfTrackId => cufe ?? xmlDocumentKey;
 
   factory DocumentoFE.fromJson(Map<String, dynamic> json) {
     DateTime? parseDate(dynamic v) {
@@ -125,9 +112,7 @@ class DocumentoFE {
       cufe: json['cufe']?.toString() ?? json['XmlDocumentKey']?.toString(),
       xmlDocumentKey: json['XmlDocumentKey']?.toString()
           ?? json['xmlDocumentKey']?.toString()
-          ?? json['xml_document_key']?.toString()
-          // nombre_xml = "{XmlDocumentKey}.xml" — strip extension to get the key
-          ?? _xmlKeyFromNombreXml(json['nombre_xml']?.toString()),
+          ?? json['xml_document_key']?.toString(),
       qrCode: json['qrCode']?.toString(),
       qrUrl: json['qrUrl']?.toString(),
       numero: json['numero']?.toString() ?? json['document_number']?.toString(),

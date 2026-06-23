@@ -548,30 +548,6 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _isLoading
-                                ? null
-                                : () => _generarInforme('agrupado'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.success,
-                              foregroundColor: Colors.white,
-                              disabledBackgroundColor: AppTheme.success
-                                  .withOpacity(0.5),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              elevation: 0,
-                            ),
-                            icon: const Icon(Icons.summarize),
-                            label: const Text(
-                              'Generar informe agrupado',
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ],

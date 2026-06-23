@@ -607,7 +607,7 @@ class PedidoService {
       // Intentar primero con el endpoint específico optimizado
       final response = await http
           .get(
-            Uri.parse('$baseUrl/api/pedidos/mesa/$mesa/activos'),
+            Uri.parse('$baseUrl/api/pedidos/mesas/$mesa/activos'),
             headers: headers,
           )
           .timeout(const Duration(seconds: 10));
@@ -2263,7 +2263,7 @@ class PedidoService {
       }
 
       final response = await http.put(
-        Uri.parse('$baseUrl/api/pedidos/$pedidoId/mover-mesa'),
+        Uri.parse('$baseUrl/api/pedidos/mesas/$pedidoId/mover'),
         headers: headers,
         body: json.encode(requestData),
       );
@@ -2343,7 +2343,7 @@ class PedidoService {
         
 
       final response = await http.post(
-        Uri.parse('$baseUrl/api/pedidos/mover-productos-especificos'),
+        Uri.parse('$baseUrl/api/pedidos/mesas/mover-productos'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

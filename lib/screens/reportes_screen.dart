@@ -338,23 +338,6 @@ class _ReportesScreenState extends State<ReportesScreen>
         ),
         backgroundColor: primary,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.save_alt),
-            onPressed: () {
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Exportando reporte...'),
-                    backgroundColor: primary,
-                  ),
-                );
-              }
-            },
-            tooltip: 'Exportar',
-          ),
-          SizedBox(width: 16),
-        ],
       ),
       body: Column(
         children: [
@@ -475,37 +458,6 @@ class _ReportesScreenState extends State<ReportesScreen>
             text: 'Clientes',
             iconColor: primary,
             onTap: () => _tabController.animateTo(4),
-            trailingIcon: null,
-          ),
-          Divider(color: Colors.grey.withOpacity(0.3)),
-          _buildDrawerItem(
-            icon: Icons.picture_as_pdf,
-            text: 'Exportar a PDF',
-            iconColor: primary,
-            onTap: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Exportando a PDF...'),
-                  backgroundColor: primary,
-                ),
-              );
-            },
-            trailingIcon: null,
-          ),
-          _buildDrawerItem(
-            icon: Icons.table_chart,
-            text: 'Exportar a Excel',
-            iconColor: primary,
-            onTap: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Exportando a Excel...'),
-                  backgroundColor: primary,
-                ),
-              );
-            },
             trailingIcon: null,
           ),
           Spacer(),
@@ -973,27 +925,6 @@ class _ReportesScreenState extends State<ReportesScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ElevatedButton.icon(
-                  icon: Icon(Icons.search),
-                  label: Text('Generar reporte'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primary,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Generando reporte...'),
-                        backgroundColor: primary,
-                      ),
-                    );
-                  },
-                ),
-                SizedBox(width: 16),
                 ElevatedButton.icon(
                   icon: Icon(Icons.refresh),
                   label: Text('Limpiar filtros'),
@@ -2021,26 +1952,6 @@ class _ReportesScreenState extends State<ReportesScreen>
                         color: textDark,
                       ),
                     ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Esta funcionalidad requiere un nuevo endpoint en el API para obtener el historial de pedidos.',
-                      style: TextStyle(color: textLight),
-                    ),
-                    SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Implementación pendiente: Consulta de pedidos',
-                            ),
-                            backgroundColor: primary,
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(backgroundColor: primary),
-                      child: Text('Implementar API de pedidos'),
-                    ),
                   ],
                 ),
               ),
@@ -2102,26 +2013,6 @@ class _ReportesScreenState extends State<ReportesScreen>
                         fontWeight: FontWeight.bold,
                         color: textDark,
                       ),
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Esta funcionalidad requiere un nuevo endpoint en el API para obtener información sobre clientes.',
-                      style: TextStyle(color: textLight),
-                    ),
-                    SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Implementación pendiente: Consulta de clientes',
-                            ),
-                            backgroundColor: primary,
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(backgroundColor: primary),
-                      child: Text('Implementar API de clientes'),
                     ),
                   ],
                 ),

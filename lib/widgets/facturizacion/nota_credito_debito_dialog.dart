@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/matias_service.dart';
+import '../../services/negocio_info_service.dart';
 import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/factura.dart';
@@ -44,10 +45,21 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
   String? _errorMsg;
+  String _resolutionNumber = '';
 
   int _motivoId = 1;
   final _motivoDescCtrl = TextEditingController();
   final _valorCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    NegocioInfoService().getNegocioInfo().then((info) {
+      if (mounted && info?.resolutionNumber != null) {
+        setState(() => _resolutionNumber = info!.resolutionNumber!);
+      }
+    });
+  }
 
   TipoNota get _tipo {
     if (widget.tipo != null) return widget.tipo!;
@@ -166,13 +178,26 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
     }
   }
 
+  String _nowDate() {
+    final d = DateTime.now();
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+
+  String _nowTime() {
+    final d = DateTime.now();
+    return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}:${d.second.toString().padLeft(2, '0')}';
+  }
+
   Map<String, dynamic> _buildPayload(Factura factura, double valor) {
     return {
-      'resolution_number': '',
+      'resolution_number': _resolutionNumber,
       'prefix': '',
       'operation_type_id': 1,
+      'currency_id': 272,
       'send_email': 1,
       'graphic_representation': 0,
+      'date': _nowDate(),
+      'time': _nowTime(),
       'customer': {
         'country_id': '45',
         'identity_document_id': '3',
@@ -194,18 +219,21 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
 
   Map<String, dynamic> _buildPayloadFromParams(String facturaNumero, double valor) {
     return {
-      'resolution_number': '',
+      'resolution_number': _resolutionNumber,
       'prefix': '',
       'operation_type_id': 1,
+      'currency_id': 272,
       'send_email': 1,
       'graphic_representation': 0,
+      'date': _nowDate(),
+      'time': _nowTime(),
       'customer': {
         'country_id': '45',
         'identity_document_id': '3',
         'type_organization_id': 1,
         'tax_regime_id': 2,
         'tax_level_id': 5,
-        'company_name': 'Cliente',
+        'company_name': 'Consumidor Final',
         'dni': '222222222',
         'email': '',
         'address': 'SIN DIRECCIÓN',

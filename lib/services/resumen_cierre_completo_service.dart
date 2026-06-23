@@ -23,7 +23,7 @@ class ResumenCierreCompletoService {
 
       final response = await http
           .get(
-            Uri.parse('$baseUrl/api/cuadres-caja/$cuadreId/resumen-cierre'),
+            Uri.parse('$baseUrl/api/cuadres-caja/reportes/$cuadreId/resumen-cierre'),
             headers: await _getHeaders(),
           )
           .timeout(Duration(seconds: 30)); // Agregar timeout
@@ -121,7 +121,7 @@ class ResumenCierreCompletoService {
     try {
       final response = await http
           .get(
-            Uri.parse('$baseUrl/api/cuadres-caja/$cuadreId/resumen-cierre'),
+            Uri.parse('$baseUrl/api/cuadres-caja/reportes/$cuadreId/resumen-cierre'),
             headers: await _getHeaders(),
           )
           .timeout(Duration(seconds: 30));
