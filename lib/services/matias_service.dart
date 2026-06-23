@@ -441,7 +441,7 @@ class MatiasService {
     }
 
     // ── 3) Cliente ───────────────────────────────────────────────────────
-    final customer = _buildCustomerFromPedido(pedido);
+    final customer = buildCustomerFromPedido(pedido);
 
     // ── 4) Montos legales ────────────────────────────────────────────────
     // Todos los descuentos están en líneas → tax_inclusive == payable_amount.
@@ -523,7 +523,7 @@ class MatiasService {
 
   /// Construye el bloque `customer` del documento. Si el pedido tiene cliente
   /// real (en `datosAdicionales`) lo usa; si no, retorna "Consumidor Final".
-  static Map<String, dynamic> _buildCustomerFromPedido(dynamic pedido) {
+  static Map<String, dynamic> buildCustomerFromPedido(dynamic pedido) {
     final datos = pedido.datosAdicionales as Map<String, dynamic>?;
     final nombreCliente = (datos?['clienteNombreCompleto']?.toString()
             ?? pedido.cliente?.toString()
@@ -786,8 +786,8 @@ class MatiasService {
 
   /// Obtener URL pública del código QR del documento.
   ///
-  /// No hay endpoint dedicado: el QR viene incluido en la respuesta de
-  /// GET /api/matias/document-pdf/{trackId} dentro de `data.qr`.
+  /// Usa consultarDatosFactura (GET /api/matias/invoices/{trackId}/pdf).
+  /// Nota: el endpoint /invoices/pdf no retorna QR — siempre retorna null.
   /// Retorna: URL del QR (o la cadena qrDian como fallback) o null.
   static Future<String?> obtenerQRDocumento(
     String trackId, {
@@ -914,38 +914,44 @@ class MatiasService {
   //  📥 PDF / EMAIL / CONTADOR (Matias API)
   // ──────────────────────────────────────────────────────────────────────────
 
-  /// Consulta datos completos de la factura electrónica (PDF, QR, UUID, CUFE).
+  /// Consulta datos completos de la factura electrónica (PDF, CUFE).
   ///
-  /// Backend: GET /api/matias/document-pdf/{trackId}
+  /// Backend: GET /api/matias/invoices/{trackId}/pdf
   /// [trackId] puede ser CUFE/CUNE/XmlDocumentKey retornado al emitir.
-  /// Retorna Map con claves: trackId, uuid, cufe, qr, pdf, message.
+  /// Retorna Map normalizado con claves: cufe, pdf: {url, path, data}, qr: null.
   static Future<Map<String, dynamic>?> consultarDatosFactura(
     String trackId, {
     String? token,
   }) async {
     try {
       await _ensureAuth();
-      appLog('$TAG 📥 GET /document-pdf/$trackId (len=${trackId.length})');
+      appLog('$TAG 📥 GET /invoices/$trackId/pdf (len=${trackId.length})');
       final res = await http.get(
-        Uri.parse('$_base/document-pdf/$trackId'),
+        Uri.parse('$_base/invoices/$trackId/pdf'),
         headers: _headers(token: token),
       ).timeout(_timeout, onTimeout: () {
         throw TimeoutException('Timeout consultando datos del documento');
       });
 
       if (res.statusCode != 200) {
-        appLog('$TAG ❌ document-pdf: ${res.statusCode} - ${res.body}');
+        appLog('$TAG ❌ invoices/pdf: ${res.statusCode} - ${res.body}');
         appLog('$TAG    → trackId enviado: "$trackId"');
-        appLog('$TAG    → Si ves 500: bug del backend (MatiasApiClient.getPdfDocumentBytes lee bytes en vez de JSON)');
         return null;
       }
       final j = jsonDecode(res.body) as Map<String, dynamic>;
       if (j['success'] != true) return null;
-      final data = j['data'] as Map<String, dynamic>?;
-      appLog('$TAG ✅ Datos factura obtenidos para $trackId — keys: ${data?.keys.toList()}');
-      if (data?['pdf'] != null) {
-        appLog('$TAG    → pdf field: ${data!['pdf']}');
-      }
+      final raw = j['data'] as Map<String, dynamic>?;
+      // Normalizar al esquema esperado por los callers: pdf:{url,path,data}, qr:null
+      final data = <String, dynamic>{
+        'cufe': raw?['cufe'],
+        'pdf': {
+          'url': raw?['url'],
+          'path': raw?['path'],
+          'data': raw?['base64'],
+        },
+        'qr': null,
+      };
+      appLog('$TAG ✅ Datos factura obtenidos para $trackId — url=${raw?['url']}');
       return data;
     } catch (e) {
       appLog('$TAG ❌ consultarDatosFactura: $e');

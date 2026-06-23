@@ -25,7 +25,7 @@ import '../providers/facturacion_draft_provider.dart';
 import '../widgets/facturacion/observaciones_section.dart';
 import '../widgets/facturacion/totales_section.dart';
 import '../widgets/facturacion/botones_accion_facturacion.dart';
-import '../dialogs/dialogo_pago.dart';
+
 import '../utils/busqueda_productos_utils.dart';
 import '../utils/logger.dart';
 import '../utils/snackbar_helper.dart';
@@ -85,8 +85,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   final TextEditingController _guiaController = TextEditingController();
 
   // Controladores adicionales para Autocomplete
-  TextEditingController? _nombreProductoAutocompleteController;
-  TextEditingController? _codigoAutocompleteController;
+
+
 
   // Variables de estado
   String _tipoFactura = 'LOCAL';
@@ -417,10 +417,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     _aiuController.dispose();
     _dctoGeneralController.dispose();
     _observacionesController.dispose();
-    // ⚠️ NO llamar dispose() en los controladores de Autocomplete: son referencias
-    // al TextEditingController interno que el widget Autocomplete crea y dispone él mismo.
-    _nombreProductoAutocompleteController = null;
-    _codigoAutocompleteController = null;
+
 
     // 🔴 Cerrar canal de sincronización entre pestañas
     _productosChannel?.close();
@@ -1695,25 +1692,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 .take(15);
                           },
                           displayStringForOption: (Producto producto) =>
-                              (producto.codigo?.isNotEmpty ?? false) 
-                                  ? producto.codigo!
-                                  : producto.id,
+                              producto.codigo ?? '',
                           onSelected: (Producto producto) {
                             setState(() {
                               _productoSeleccionado = producto;
-                              _codigoController.text = (producto.codigo?.isNotEmpty ?? false)
-                                  ? producto.codigo!
-                                  : producto.id;
+                              _codigoController.text = producto.codigo ?? '';
                               _nombreProductoController.text = producto.nombre;
                               _valorUnitController.text = producto.precio.toString();
-                            });
-                            
-                            // ✅ Limpiar ambos controladores inmediatamente
-                            Future.delayed(Duration(milliseconds: 100), () {
-                              if (mounted) {
-                                _codigoController.clear();
-                                _codigoAutocompleteController?.clear();
-                              }
                             });
                           },
                           fieldViewBuilder:
@@ -1723,9 +1708,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 FocusNode focusNode,
                                 VoidCallback onFieldSubmitted,
                               ) {
-                                // Capturar referencia del controlador interno  
-                                _codigoAutocompleteController =
-                                    textEditingController;
                                 // Sincronizar con el controlador principal
                                 WidgetsBinding.instance.addPostFrameCallback((_) {
                                   textEditingController.text = _codigoController.text;
@@ -1829,19 +1811,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                           onSelected: (Producto producto) {
                             setState(() {
                               _productoSeleccionado = producto;
-                              _codigoController.text = (producto.codigo?.isNotEmpty ?? false)
-                                  ? producto.codigo!
-                                  : producto.id;
+                              _codigoController.text = producto.codigo ?? '';
                               _nombreProductoController.text = producto.nombre;
                               _valorUnitController.text = producto.precio.toString();
-                            });
-                            
-                            // ✅ Limpiar ambos controladores inmediatamente
-                            Future.delayed(Duration(milliseconds: 100), () {
-                              if (mounted) {
-                                _nombreProductoController.clear();
-                                _nombreProductoAutocompleteController?.clear();
-                              }
                             });
                           },
                           fieldViewBuilder:
@@ -1851,10 +1823,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 FocusNode focusNode,
                                 VoidCallback onFieldSubmitted,
                               ) {
-                                // Capturar referencia del controlador interno
-                                _nombreProductoAutocompleteController =
-                                    textEditingController;
-                                
                                 return TextField(
                                   controller: textEditingController,
                                   focusNode: focusNode,
@@ -4417,7 +4385,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           resultado = await MatiasService.emitirDocumentoPOS(posPayload, token: token);
         } else {
           resultado = await MatiasService.emitirFacturaElectronica(
-            {'pedidoId': pedido.id},
+            {
+              'pedidoId': pedido.id,
+              'customer': MatiasService.buildCustomerFromPedido(pedido),
+            },
             token: token,
           );
         }

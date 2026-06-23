@@ -211,7 +211,6 @@ class _AppShellState extends State<AppShell> {
             onToggle: () => _toggleMenu('Pedidos'),
             currentRoute: _currentRoute,
             subItems: const [
-              _SubMenuItem(icon: Icons.receipt_long, label: 'Todos los Pedidos', route: '/pedidos'),
               _SubMenuItem(icon: Icons.delete_sweep, label: 'Eliminar Pedidos', route: '/eliminar-pedidos'),
             ],
           ),

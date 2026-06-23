@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import '../config/api_config.dart';
@@ -25,7 +26,7 @@ class NegocioInfoService {
       if (response.statusCode == 200) {
         final body = json.decode(response.body);
         final data = body['data'] ?? body;
-          
+        debugPrint('=== GET /api/negocio RESPUESTA ===\n${json.encode(data)}\n==================================');
         return NegocioInfo.fromJson(data);
       } else if (response.statusCode == 404) {
           
@@ -61,7 +62,10 @@ class NegocioInfoService {
         fechaActualizacion: DateTime.now(),
       );
 
-      final bodyJson = json.encode(negocioToSave.toJson());
+      // Remove null values so PUT doesn't overwrite existing backend data
+      final rawMap = negocioToSave.toJson();
+      rawMap.removeWhere((_, v) => v == null);
+      final bodyJson = json.encode(rawMap);
       print(
         '=== DATOS ENVIADOS AL BACKEND ===\n$bodyJson\n=================================',
       );
@@ -71,9 +75,10 @@ class NegocioInfoService {
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = json.decode(response.body);
-          
-        return NegocioInfo.fromJson(data);
+        final body = json.decode(response.body);
+        // Handle both {"data": {...}} and plain {...} responses
+        final data = body is Map && body.containsKey('data') ? body['data'] : body;
+        return NegocioInfo.fromJson(data as Map<String, dynamic>);
       } else {
                      
         throw Exception(

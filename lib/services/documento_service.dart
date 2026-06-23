@@ -4,6 +4,18 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/endpoints_config.dart';
 import '../utils/logger.dart';
 
+String? _extractXmlKeyFromJsonData(dynamic jsonData) {
+  if (jsonData == null) return null;
+  try {
+    final Map<String, dynamic> parsed =
+        jsonData is String ? jsonDecode(jsonData) : Map<String, dynamic>.from(jsonData as Map);
+    return parsed['XmlDocumentKey']?.toString()
+        ?? parsed['xmlDocumentKey']?.toString();
+  } catch (_) {
+    return null;
+  }
+}
+
 /// Modelo de un Documento/Ticket de facturación electrónica.
 ///
 /// Estados posibles: PENDIENTE → ENVIADO → ACEPTADO | RECHAZADO
@@ -31,6 +43,10 @@ class DocumentoFE {
   final String? pdfUrl;
   final String? xmlUrl;
   final String? tipoDocumento; // FACTURA, NOTA_CREDITO, NOTA_DEBITO, etc.
+  /// UUID interno de Matías (campo `uuid` en el list response). Distinto del
+  /// CUFE de la DIAN. Es el identificador nativo de Matías para operaciones
+  /// como descarga de PDF cuando el backend ya no tiene la caché.
+  final String? matiasUuid;
   final Map<String, dynamic>? raw;
 
   const DocumentoFE({
@@ -53,6 +69,7 @@ class DocumentoFE {
     this.pdfUrl,
     this.xmlUrl,
     this.tipoDocumento,
+    this.matiasUuid,
     this.raw,
   });
 
@@ -62,9 +79,8 @@ class DocumentoFE {
   bool get esRechazado => estado == 'RECHAZADO';
   bool get tieneCufe => cufe != null && cufe!.isNotEmpty;
 
-  /// trackId para descargar el PDF desde Matías.
-  /// El endpoint /invoices/{id}/pdf acepta CUFE; XmlDocumentKey es solo para XML.
-  String? get pdfTrackId => cufe ?? xmlDocumentKey;
+  /// trackId primario para descargar el PDF: XmlDocumentKey → CUFE.
+  String? get pdfTrackId => xmlDocumentKey ?? cufe;
 
   factory DocumentoFE.fromJson(Map<String, dynamic> json) {
     DateTime? parseDate(dynamic v) {
@@ -101,6 +117,25 @@ class DocumentoFE {
       return 'ENVIADO';
     }
 
+    String deriveTipoDocumento() {
+      final explicit = json['tipoDocumento']?.toString();
+      if (explicit != null && explicit.isNotEmpty) return explicit;
+      // Inferir por type_document_id de Matías: 20 = POS
+      final typeId = json['type_document_id'];
+      if (typeId == 20 || typeId == '20') return 'POS';
+      // Inferir por nombre_xml: "p" prefix = POS, "nc"/"nd" = notas
+      final xmlName = json['nombre_xml']?.toString().toLowerCase() ?? '';
+      if (xmlName.startsWith('pos') || xmlName.startsWith('p0s')) return 'POS';
+      if (xmlName.startsWith('nc')) return 'NOTA_CREDITO';
+      if (xmlName.startsWith('nd')) return 'NOTA_DEBITO';
+      // Inferir por numero: POS8, NC2, ND3, FAEL16
+      final numero = json['numero']?.toString() ?? '';
+      if (numero.startsWith('POS')) return 'POS';
+      if (numero.startsWith('NC')) return 'NOTA_CREDITO';
+      if (numero.startsWith('ND')) return 'NOTA_DEBITO';
+      return 'FACTURA';
+    }
+
     return DocumentoFE(
       id: json['_id']?.toString() ??
           json['id']?.toString() ??
@@ -112,7 +147,8 @@ class DocumentoFE {
       cufe: json['cufe']?.toString() ?? json['XmlDocumentKey']?.toString(),
       xmlDocumentKey: json['XmlDocumentKey']?.toString()
           ?? json['xmlDocumentKey']?.toString()
-          ?? json['xml_document_key']?.toString(),
+          ?? json['xml_document_key']?.toString()
+          ?? _extractXmlKeyFromJsonData(json['jsonData']),
       qrCode: json['qrCode']?.toString(),
       qrUrl: json['qrUrl']?.toString(),
       numero: json['numero']?.toString() ?? json['document_number']?.toString(),
@@ -136,7 +172,8 @@ class DocumentoFE {
       motivoRechazo: json['motivoRechazo']?.toString(),
       pdfUrl: json['pdfUrl']?.toString(),
       xmlUrl: json['xmlUrl']?.toString(),
-      tipoDocumento: json['tipoDocumento']?.toString(),
+      tipoDocumento: deriveTipoDocumento(),
+      matiasUuid: json['uuid']?.toString(),
       raw: json,
     );
   }

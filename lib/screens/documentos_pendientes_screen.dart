@@ -269,60 +269,41 @@ class _DocumentosPendientesScreenState
   // ── Descargas y consultas ─────────────────────────────────────────────────
 
   Future<void> _descargarPDF(DocumentoFE doc) async {
-    // Matías exige XmlDocumentKey para el endpoint de PDF; si no está
-    // disponible (documentos viejos) caemos a CUFE.
-    final trackId = doc.pdfTrackId;
-
-    // 🔍 DIAGNOSTIC: dejar evidencia clara de qué se está enviando.
-    appLog('───── PDF DOWNLOAD DEBUG ─────');
-    appLog('  doc.cufe            = ${doc.cufe}');
-    appLog('  doc.xmlDocumentKey  = ${doc.xmlDocumentKey}');
-    appLog('  doc.pdfTrackId      = $trackId');
-    appLog('  origen del trackId  = ${doc.xmlDocumentKey != null && doc.xmlDocumentKey!.isNotEmpty ? "XmlDocumentKey" : "cufe (fallback)"}');
-    appLog('  raw keys disponibles= ${doc.raw?.keys.toList()}');
-    // Si hay un campo "XmlDocumentKey" en el raw que no detectamos, lo logueamos
-    final raw = doc.raw;
-    if (raw != null) {
-      final candidatos = ['XmlDocumentKey', 'xmlDocumentKey', 'xml_document_key', 'cufe', 'CUFE', 'cune', 'trackId', 'track_id'];
-      for (final k in candidatos) {
-        if (raw.containsKey(k)) {
-          appLog('    raw["$k"] = ${raw[k]}');
-        }
-      }
-    }
-    appLog('───────────────────────────────');
-
-    if (trackId == null || trackId.isEmpty) {
-      _mostrarError('No se puede descargar: Documento sin XmlDocumentKey/CUFE');
-      return;
-    }
-
     setState(() => _isLoading = true);
     try {
-      // 1) Intentar URL directa de Matias (más fiable que el binario base64).
-      final url = await MatiasService.obtenerURLPDF(trackId);
-      if (!mounted) return;
-      if (url != null && url.isNotEmpty) {
-        final ok = await launchUrl(
-          Uri.parse(url),
-          mode: LaunchMode.externalApplication,
-        );
-        if (!ok && mounted) _mostrarError('No se pudo abrir el PDF.');
+      // Si no tenemos XmlDocumentKey en el listado, pedimos el doc completo al backend
+      String? xmlKey = doc.xmlDocumentKey;
+      if ((xmlKey == null || xmlKey.isEmpty) && doc.id.isNotEmpty) {
+        appLog('📥 xmlDocumentKey null — buscando doc completo por id: ${doc.id}');
+        final full = await DocumentoService().getDocumentoPorId(doc.id);
+        xmlKey = full?.xmlDocumentKey;
+      }
+      final trackId = xmlKey ?? doc.cufe;
+      if (trackId == null || trackId.isEmpty) {
+        if (mounted) _mostrarError('No se puede descargar: documento sin XmlDocumentKey ni CUFE');
         return;
       }
-
-      // 2) Fallback: descargar binario base64 desde el backend.
+      appLog('📥 Descargando PDF con XmlDocumentKey: $trackId');
       final res = await MatiasService.descargarPDF(trackId);
       if (!mounted) return;
-      if (res == null) {
-        _mostrarError('PDF no disponible. Verifica que el documento esté ACEPTADO y que el XmlDocumentKey esté disponible en Matias.');
-        return;
+      if (res != null) {
+        final url = res['url'];
+        final base64 = res['base64'];
+        if (url != null && url.isNotEmpty) {
+          final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+          if (!ok && mounted) _mostrarError('No se pudo abrir el PDF.');
+          return;
+        }
+        if (base64 != null && base64.isNotEmpty) {
+          final ok = await Base64FileLauncher.open(
+            base64: base64,
+            mimeType: res['mimeType'] ?? 'application/pdf',
+          );
+          if (!ok && mounted) _mostrarError('No se pudo abrir el PDF.');
+          return;
+        }
       }
-      final ok = await Base64FileLauncher.open(
-        base64: res['base64']!,
-        mimeType: res['mimeType']!,
-      );
-      if (!ok && mounted) _mostrarError('No se pudo abrir el PDF.');
+      if (mounted) _mostrarError('PDF no disponible para este documento.');
     } catch (e) {
       if (mounted) _mostrarError('Error al descargar PDF: $e');
     } finally {
@@ -353,7 +334,7 @@ class _DocumentosPendientesScreenState
                 'Se enviará la factura electrónica al correo indicado.',
                 style: TextStyle(
                   fontSize: 13,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
               const SizedBox(height: 12),
@@ -587,7 +568,7 @@ class _DocumentosPendientesScreenState
           SizedBox(height: 4),
           SelectableText(
             value,
-            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
           ),
         ],
       ),
@@ -654,7 +635,7 @@ class _DocumentosPendientesScreenState
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.1),
+              color: AppTheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.inbox_rounded, color: AppTheme.primary, size: isMobile ? 22 : 28),
@@ -681,7 +662,7 @@ class _DocumentosPendientesScreenState
                       child: Text(
                         '$totalPendientes pendientes · $totalRechazados rechazados',
                         style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                           fontSize: 13,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -692,8 +673,8 @@ class _DocumentosPendientesScreenState
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: _webhookService.isConnected
-                            ? Colors.green.withOpacity(0.1)
-                            : Colors.orange.withOpacity(0.1),
+                            ? Colors.green.withValues(alpha: 0.1)
+                            : Colors.orange.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Row(
@@ -787,29 +768,27 @@ class _DocumentosPendientesScreenState
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(label),
-                  if (count > 0) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: activo
-                            ? Colors.white.withOpacity(0.3)
-                            : color.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '$count',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: activo ? Colors.white : color,
-                        ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: activo
+                          ? Colors.white.withValues(alpha: 0.3)
+                          : color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '$count',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: activo ? Colors.white : color,
                       ),
                     ),
-                  ],
+                  ),
                 ],
               ),
               selectedColor: color,
@@ -835,20 +814,20 @@ class _DocumentosPendientesScreenState
           Icon(
             Icons.check_circle_outline,
             size: 64,
-            color: AppTheme.success.withOpacity(0.5),
+            color: AppTheme.success.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
             _filtroEstado.isEmpty
                 ? 'No hay documentos en la bandeja'
                 : 'No hay documentos ${_filtroEstado.toLowerCase()}s',
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 16),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7), fontSize: 16),
           ),
           const SizedBox(height: 8),
           Text(
             'Los documentos aparecerán aquí cuando se cobre un pedido',
             style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.6),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7).withValues(alpha: 0.6),
               fontSize: 13,
             ),
           ),
@@ -914,7 +893,7 @@ class _DocumentoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _borderColor.withOpacity(0.3)),
+        border: Border.all(color: _borderColor.withValues(alpha: 0.3)),
         boxShadow: AppTheme.cardShadow,
       ),
       child: Row(
@@ -945,7 +924,7 @@ class _DocumentoCard extends StatelessWidget {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: AppTheme.primary.withOpacity(0.1),
+                          color: AppTheme.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -978,7 +957,7 @@ class _DocumentoCard extends StatelessWidget {
                     Icon(
                       Icons.person_outline,
                       size: 14,
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                     const SizedBox(width: 4),
                     Expanded(
@@ -1008,7 +987,7 @@ class _DocumentoCard extends StatelessWidget {
                   Text(
                     _formatFecha(documento.fechaCreacion!),
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                       fontSize: 11,
                     ),
                   ),
@@ -1022,7 +1001,7 @@ class _DocumentoCard extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppTheme.error.withOpacity(0.08),
+                      color: AppTheme.error.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Row(
@@ -1088,30 +1067,26 @@ class _DocumentoCard extends StatelessWidget {
       );
     }
     if (documento.esEnviado) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.blue.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.blue,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Procesando',
-              style: TextStyle(color: Colors.blue, fontSize: 12),
-            ),
-          ],
-        ),
+      // Si ya tiene CUFE el documento fue aceptado por la DIAN aunque el
+      // backend no haya actualizado el estado todavía.
+      if (documento.tieneCufe) {
+        return _MenuDescargas(
+          documento: documento,
+          onDescargarPDF: () => onDescargarPDF(documento),
+          onDescargarQR: () => onDescargarQR(documento),
+          onDescargarXML: () => onDescargarXML(documento),
+          onConsultarStatus: () => onConsultarStatus(documento),
+          onCrearNotaCredito: () => onCrearNotaCredito(documento),
+          onCrearNotaDebito: () => onCrearNotaDebito(documento),
+          onReenviarCorreo: () => onReenviarCorreo(documento),
+        );
+      }
+      // Sin CUFE: realmente en tránsito → mostrar botón para consultar estado
+      return _AccionButton(
+        label: 'Consultar estado',
+        icon: Icons.refresh,
+        color: Colors.blue,
+        onTap: () => onConsultarStatus(documento),
       );
     }
     if (documento.esAceptado) {
@@ -1163,9 +1138,9 @@ class _EstadoBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(
         estado,
@@ -1251,28 +1226,6 @@ class _MenuDescargas extends StatelessWidget {
             ],
           ),
           onTap: onDescargarPDF,
-        ),
-        PopupMenuItem<void>(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.qr_code_2, size: 18, color: AppTheme.primary),
-              SizedBox(width: 12),
-              Text('Código QR'),
-            ],
-          ),
-          onTap: onDescargarQR,
-        ),
-        PopupMenuItem<void>(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.code, size: 18, color: Colors.orange),
-              SizedBox(width: 12),
-              Text('XML'),
-            ],
-          ),
-          onTap: onDescargarXML,
         ),
         PopupMenuDivider(),
         PopupMenuItem<void>(

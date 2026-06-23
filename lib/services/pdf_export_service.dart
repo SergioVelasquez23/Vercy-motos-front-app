@@ -199,7 +199,7 @@ class PdfExportService {
                   children: [
                     _buildRow(
                       'Fondo Inicial',
-                      currencyFormat.format(resumen.cuadreInfo.fondoInicial),
+                      currencyFormat.format(resumen.movimientosEfectivo.fondoInicial),
                     ),
                     _buildRow(
                       'Efectivo Esperado',
@@ -499,8 +499,9 @@ class PdfExportService {
     NumberFormat currencyFormat,
   ) {
     final balanceFinal =
-        resumen.cuadreInfo.fondoInicial +
-        resumen.resumenVentas.totalVentas -
+        resumen.movimientosEfectivo.fondoInicial +
+        resumen.resumenVentas.totalVentas +
+        resumen.movimientosEfectivo.totalIngresosCaja -
         resumen.resumenGastos.totalGastos -
         resumen.resumenCompras.totalComprasDesdeCaja;
 
@@ -530,7 +531,7 @@ class PdfExportService {
           pw.SizedBox(height: 10),
           _buildRow(
             'Fondo Inicial',
-            currencyFormat.format(resumen.cuadreInfo.fondoInicial),
+            currencyFormat.format(resumen.movimientosEfectivo.fondoInicial),
           ),
           _buildRow(
             '+ Total Ventas',
@@ -554,9 +555,9 @@ class PdfExportService {
           _buildRow(
             '= Subtotal Ingresos',
             currencyFormat.format(
-              resumen.cuadreInfo.fondoInicial +
+              resumen.movimientosEfectivo.fondoInicial +
                   resumen.resumenVentas.totalVentas +
-                  resumen.movimientosEfectivo.ingresosEfectivo,
+                  resumen.movimientosEfectivo.totalIngresosCaja,
             ),
             bold: true,
           ),

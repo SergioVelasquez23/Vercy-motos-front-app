@@ -711,7 +711,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                   padding: EdgeInsets.all(16),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: _getCrossAxisCount(context),
-                    childAspectRatio: 0.85,
+                    childAspectRatio: 0.65,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
                   ),

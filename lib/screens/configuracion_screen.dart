@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'users_screen.dart';
 import '../theme/app_theme.dart';
 import '../providers/theme_provider.dart';
@@ -332,7 +333,10 @@ class _NegocioTabState extends State<_NegocioTab> {
         _ciudadCtrl.text = info.ciudad;
         _resolucionFECtrl.text = info.resolutionNumber ?? '';
         _prefijoFECtrl.text = info.prefijo ?? '';
-        _resolucionDSCtrl.text = info.dsResolutionNumber ?? '';
+        final prefs = await SharedPreferences.getInstance();
+        _resolucionDSCtrl.text = info.dsResolutionNumber?.isNotEmpty == true
+            ? info.dsResolutionNumber!
+            : (prefs.getString('dsResolutionNumber') ?? '');
         _prefijoDSCtrl.text = 'DS';
         _resolucionPOSCtrl.text = info.posResolutionNumber ?? '';
         _prefijoPOSCtrl.text = info.posPrefijo ?? 'POS';
@@ -384,6 +388,25 @@ class _NegocioTabState extends State<_NegocioTab> {
         softwareName: _softwareNameCtrl.text.trim(),
       );
       _negocio = await _service.saveNegocioInfo(actualizado);
+      // Refrescar controllers con los valores guardados por si el backend
+      // no los retorna en la respuesta (campos DIAN nuevos).
+      _resolucionFECtrl.text = actualizado.resolutionNumber ?? _resolucionFECtrl.text;
+      _prefijoFECtrl.text = actualizado.prefijo ?? _prefijoFECtrl.text;
+      final dsVal = actualizado.dsResolutionNumber ?? _resolucionDSCtrl.text;
+      _resolucionDSCtrl.text = dsVal;
+      if (dsVal.isNotEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('dsResolutionNumber', dsVal);
+      }
+      _resolucionPOSCtrl.text = actualizado.posResolutionNumber ?? _resolucionPOSCtrl.text;
+      _prefijoPOSCtrl.text = actualizado.posPrefijo ?? _prefijoPOSCtrl.text;
+      _cajeroNombreCtrl.text = actualizado.posCashierName ?? _cajeroNombreCtrl.text;
+      _terminalCtrl.text = actualizado.posTerminalNumber ?? _terminalCtrl.text;
+      _tipoCajaCtrl.text = actualizado.posCashierType ?? _tipoCajaCtrl.text;
+      _codigoVentaCtrl.text = actualizado.posSalesCode ?? _codigoVentaCtrl.text;
+      _softwareOwnerCtrl.text = actualizado.softwareOwnerName ?? _softwareOwnerCtrl.text;
+      _softwareCompanyCtrl.text = actualizado.softwareCompanyName ?? _softwareCompanyCtrl.text;
+      _softwareNameCtrl.text = actualizado.softwareName ?? _softwareNameCtrl.text;
       setState(() => _successMsg = 'Configuración guardada correctamente');
     } catch (e) {
       setState(() => _errorMsg = e.toString());

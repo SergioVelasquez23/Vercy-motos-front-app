@@ -261,7 +261,7 @@ class _UsersScreenState extends State<UsersScreen> {
                     style: TextStyle(color: Colors.white),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6B00),
+                    backgroundColor: AppTheme.primary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   ),
@@ -301,7 +301,7 @@ class _UsersScreenState extends State<UsersScreen> {
                   )
                 : RefreshIndicator(
                     onRefresh: _cargarDatos,
-                    color: const Color(0xFFFF6B00),
+                    color: AppTheme.primary,
                     child: ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       itemCount: _filteredUsers.length,
@@ -350,7 +350,7 @@ class _UsersScreenState extends State<UsersScreen> {
         child: Row(
           children: [
             CircleAvatar(
-              backgroundColor: const Color(0xFFFF6B00),
+              backgroundColor: AppTheme.primary,
               radius: 22,
               child: Text(
                 initials,
@@ -391,11 +391,11 @@ class _UsersScreenState extends State<UsersScreen> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 10, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFFF6B00)
+                                  color: AppTheme.primary
                                       .withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
-                                    color: const Color(0xFFFF6B00)
+                                    color: AppTheme.primary
                                         .withValues(alpha: 0.4),
                                   ),
                                 ),
@@ -420,7 +420,7 @@ class _UsersScreenState extends State<UsersScreen> {
                 IconButton(
                   onPressed: () => _mostrarDialogoUsuario(user: user),
                   icon: const Icon(Icons.edit_outlined, size: 20),
-                  color: const Color(0xFFFF6B00),
+                  color: AppTheme.primary,
                   tooltip: 'Editar',
                   visualDensity: VisualDensity.compact,
                 ),
@@ -456,7 +456,7 @@ class _UsersScreenState extends State<UsersScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: Colors.grey[900],
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Text(
             isEditing ? 'Editar Usuario' : 'Nuevo Usuario',
             style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
@@ -539,7 +539,7 @@ class _UsersScreenState extends State<UsersScreen> {
                 password: passwordController.text,
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF6B00),
+                backgroundColor: AppTheme.primary,
               ),
               child: const Text(
                 'Guardar',
@@ -559,7 +559,7 @@ class _UsersScreenState extends State<UsersScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: Colors.grey[900],
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Text(
             'Cambiar Rol - ${user.displayName}',
             style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
@@ -626,7 +626,7 @@ class _UsersScreenState extends State<UsersScreen> {
                   ? () => _cambiarRolUsuario(user, selectedRoleId!)
                   : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF6B00),
+                backgroundColor: AppTheme.primary,
               ),
               child: const Text(
                 'Cambiar Rol',
@@ -876,7 +876,7 @@ class _UsersScreenState extends State<UsersScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: const Text(
           'Confirmar eliminación',
           style: TextStyle(color: Colors.white),

@@ -719,16 +719,33 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                   activeColor: Colors.red,
                 ),
               ),
-              // ID
+              // ID (número de factura o código interno)
               Expanded(
                 flex: 3,
-                child: SelectableText(
-                  pedido.id,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontSize: 11,
-                    fontFamily: 'monospace',
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (pedido.numeroFactura != null)
+                      SelectableText(
+                        pedido.numeroFactura!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    SelectableText(
+                      pedido.id,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(
+                          alpha: pedido.numeroFactura != null ? 0.4 : 1.0,
+                        ),
+                        fontSize: 10,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ],
                 ),
               ),
               // Cliente

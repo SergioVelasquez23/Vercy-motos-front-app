@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/matias_service.dart';
-import '../../services/negocio_info_service.dart';
+
 import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/factura.dart';
@@ -45,20 +45,18 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
   String? _errorMsg;
-  String _resolutionNumber = '';
 
   int _motivoId = 1;
   final _motivoDescCtrl = TextEditingController();
   final _valorCtrl = TextEditingController();
+  late final TextEditingController _resolutionCtrl = TextEditingController();
+  late final TextEditingController _prefixCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    NegocioInfoService().getNegocioInfo().then((info) {
-      if (mounted && info?.resolutionNumber != null) {
-        setState(() => _resolutionNumber = info!.resolutionNumber!);
-      }
-    });
+    _prefixCtrl.text = widget.tipoNota == 'debito' ? 'ND' : 'NC';
+    _resolutionCtrl.text = '18760000001';
   }
 
   TipoNota get _tipo {
@@ -100,6 +98,8 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
   void dispose() {
     _motivoDescCtrl.dispose();
     _valorCtrl.dispose();
+    _resolutionCtrl.dispose();
+    _prefixCtrl.dispose();
     super.dispose();
   }
 
@@ -127,9 +127,11 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
           ? _motivoDescCtrl.text
           : _motivos.firstWhere((m) => m.$1 == _motivoId).$2;
 
+      debugPrint('🔑 [NC] resolution_number al emitir: "${_resolutionCtrl.text}" | prefix: "${_prefixCtrl.text}"');
       final payload = factura != null
           ? _buildPayload(factura, valor)
           : _buildPayloadFromParams(facturaNumero, valor);
+      debugPrint('🔑 [NC] payload keys: ${payload.keys.toList()} | resolution_number = ${payload['resolution_number']}');
 
       MatiasDocumentoResult resultado;
       if (esCredito) {
@@ -190,8 +192,8 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
 
   Map<String, dynamic> _buildPayload(Factura factura, double valor) {
     return {
-      'resolution_number': _resolutionNumber,
-      'prefix': '',
+      'resolution_number': _resolutionCtrl.text.trim(),
+      'prefix': _prefixCtrl.text.trim(),
       'operation_type_id': 1,
       'currency_id': 272,
       'send_email': 1,
@@ -219,8 +221,8 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
 
   Map<String, dynamic> _buildPayloadFromParams(String facturaNumero, double valor) {
     return {
-      'resolution_number': _resolutionNumber,
-      'prefix': '',
+      'resolution_number': _resolutionCtrl.text.trim(),
+      'prefix': _prefixCtrl.text.trim(),
       'operation_type_id': 1,
       'currency_id': 272,
       'send_email': 1,
@@ -428,6 +430,47 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
                         ),
                       ),
                       const SizedBox(height: 18),
+
+                      // ── Resolución + Prefijo ──
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _label('Número de resolución'),
+                                const SizedBox(height: 6),
+                                TextFormField(
+                                  controller: _resolutionCtrl,
+                                  keyboardType: TextInputType.number,
+                                  decoration: _inputDeco('Ej: 18760000001'),
+                                  style: TextStyle(color: cs.onSurface, fontSize: 14),
+                                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 1,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _label('Prefijo'),
+                                const SizedBox(height: 6),
+                                TextFormField(
+                                  controller: _prefixCtrl,
+                                  decoration: _inputDeco('NC / ND'),
+                                  style: TextStyle(color: cs.onSurface, fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
 
                       // ── Motivo ──
                       _label('Motivo'),
