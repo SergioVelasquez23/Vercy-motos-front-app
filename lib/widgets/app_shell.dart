@@ -153,11 +153,12 @@ class _AppShellState extends State<AppShell> {
             tooltip: 'Cambiar tema',
             onPressed: () => Provider.of<ThemeProvider>(context, listen: false).toggle(),
           ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Configuración',
-            onPressed: () => context.push('/configuracion'),
-          ),
+          if (!Provider.of<UserProvider>(context, listen: false).isAsesor)
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              tooltip: 'Configuración',
+              onPressed: () => context.push('/configuracion'),
+            ),
           if (!isMobile || context.screenWidth > 500) ...[
             const SizedBox(width: 8),
             CircleAvatar(
@@ -199,7 +200,6 @@ class _AppShellState extends State<AppShell> {
           _MenuItem(icon: Icons.request_quote, label: 'Cotización', route: '/cotizaciones', currentRoute: _currentRoute),
           _MenuItem(icon: Icons.people, label: 'Clientes', route: '/clientes', currentRoute: _currentRoute),
           _MenuItem(icon: Icons.description, label: 'Documentos', route: '/facturas-lista', currentRoute: _currentRoute),
-          _MenuItem(icon: Icons.account_balance, label: 'Facturas DIAN', route: '/facturacion-electronica', currentRoute: _currentRoute),
         ],
         if (!userProvider.isAsesor) ...[
           _MenuItem(icon: Icons.receipt, label: 'Facturar', route: '/facturar', currentRoute: _currentRoute),

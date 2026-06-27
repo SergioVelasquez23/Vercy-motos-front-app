@@ -31,10 +31,10 @@ class DashboardScreenV2 extends StatefulWidget {
 
 class _DashboardScreenV2State extends State<DashboardScreenV2>
     with WidgetsBindingObserver {
-  late StreamSubscription<bool> _pedidoCompletadoSubscription;
-  late StreamSubscription<bool> _pedidoPagadoSubscription;
-  late Timer _autoRefreshTimer;
-  late Timer _dayChangeDetectorTimer;
+  StreamSubscription<bool>? _pedidoCompletadoSubscription;
+  StreamSubscription<bool>? _pedidoPagadoSubscription;
+  Timer? _autoRefreshTimer;
+  Timer? _dayChangeDetectorTimer;
   int _selectedIndex = 0;
   bool _isLoading = true;
 
@@ -195,10 +195,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     // Remover observer
     WidgetsBinding.instance.removeObserver(this);
 
-    _pedidoCompletadoSubscription.cancel();
-    _pedidoPagadoSubscription.cancel();
-    _autoRefreshTimer.cancel();
-    _dayChangeDetectorTimer.cancel();
+    _pedidoCompletadoSubscription?.cancel();
+    _pedidoPagadoSubscription?.cancel();
+    _autoRefreshTimer?.cancel();
+    _dayChangeDetectorTimer?.cancel();
 
     super.dispose();
   }
