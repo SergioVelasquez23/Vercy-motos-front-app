@@ -1,6 +1,4 @@
 // Constantes generales para la aplicación
-import 'package:flutter/foundation.dart';
-
 // Configuración de API
 const String kBackendUrl =
     'https://vercy-motos-app-048m.onrender.com'; // URL del backend en producción (Render)
@@ -10,10 +8,10 @@ const String kLocalBackendUrl = 'http://localhost:8081';
 
 // URL dinámica que considera el entorno de desarrollo
 String get kDynamicBackendUrl {
-  if (kDebugMode) {
-    return kLocalBackendUrl; // Siempre local en debug
+  if (const bool.fromEnvironment('dart.vm.product') == false) {
+    return kLocalBackendUrl; // local en debug
   }
-  return kBackendUrl; // Producción en release
+  return kBackendUrl; // producción en release
 }
 
 // Colores principales de la aplicación

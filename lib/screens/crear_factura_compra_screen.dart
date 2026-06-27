@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../utils/submit_guard.dart';
 import '../models/factura_compra.dart';
 import '../models/proveedor.dart';
 import '../models/producto.dart';
@@ -30,7 +31,7 @@ class CrearFacturaCompraScreen extends StatefulWidget {
       _CrearFacturaCompraScreenState();
 }
 
-class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
+class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> with SubmitGuard {
   final _formKey = GlobalKey<FormState>();
   final FacturaCompraService _facturaCompraService = FacturaCompraService();
   final ProveedorService _proveedorService = ProveedorService();
@@ -889,63 +890,60 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   ),
                   SizedBox(width: 16),
                   Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
-                        ),
-                      ),
-                      child: DropdownButtonFormField<Proveedor>(
-                        value: _proveedorSeleccionado,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 14,
-                        ),
-                        decoration: InputDecoration(
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          border: InputBorder.none,
-                          hintText: 'Seleccionar proveedor',
-                          hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-                        ),
-                        dropdownColor: Theme.of(context).colorScheme.surface,
-                        isExpanded: true,
-                        items: [
-                          DropdownMenuItem<Proveedor>(
-                            value: null,
-                            child: Text(
-                              'Proveedor general',
-                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                    child: Autocomplete<Proveedor>(
+                      displayStringForOption: (p) => p.nombre,
+                      optionsBuilder: (TextEditingValue value) {
+                        if (value.text.isEmpty) return _proveedores;
+                        final q = value.text.toLowerCase();
+                        return _proveedores.where((p) =>
+                          p.nombre.toLowerCase().contains(q) ||
+                          (p.documento ?? '').toLowerCase().contains(q),
+                        );
+                      },
+                      onSelected: (Proveedor valor) {
+                        setState(() {
+                          _proveedorSeleccionado = valor;
+                          _proveedorNitController.text = valor.documento ?? '';
+                          _proveedorNombreController.text = valor.nombre;
+                        });
+                      },
+                      fieldViewBuilder: (context, ctrl, focusNode, onSubmit) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (_proveedorSeleccionado != null && ctrl.text.isEmpty) {
+                            ctrl.text = _proveedorSeleccionado!.nombre;
+                          }
+                        });
+                        return TextField(
+                          controller: ctrl,
+                          focusNode: focusNode,
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
+                          decoration: InputDecoration(
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3)),
                             ),
+                            hintText: 'Buscar proveedor...',
+                            hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+                            prefixIcon: Icon(Icons.search, color: AppTheme.primary, size: 18),
+                            suffixIcon: ctrl.text.isNotEmpty
+                                ? IconButton(
+                                    icon: Icon(Icons.clear, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+                                    onPressed: () {
+                                      ctrl.clear();
+                                      setState(() {
+                                        _proveedorSeleccionado = null;
+                                        _proveedorNitController.clear();
+                                        _proveedorNombreController.clear();
+                                      });
+                                    },
+                                  )
+                                : null,
+                            filled: true,
+                            fillColor: Theme.of(context).colorScheme.surface,
                           ),
-                          ..._proveedores.map((proveedor) {
-                            return DropdownMenuItem<Proveedor>(
-                              value: proveedor,
-                              child: Text(
-                                proveedor.nombre,
-                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                              ),
-                            );
-                          }),
-                        ],
-                        onChanged: (Proveedor? valor) {
-                          setState(() {
-                            _proveedorSeleccionado = valor;
-                            if (valor != null) {
-                              _proveedorNitController.text =
-                                  valor.documento ?? '';
-                              _proveedorNombreController.text = valor.nombre;
-                            } else {
-                              _proveedorNitController.clear();
-                              _proveedorNombreController.clear();
-                            }
-                          });
-                        },
-                      ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -2526,56 +2524,65 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               enabled: false,
             ),
             SizedBox(height: 16),
-            DropdownButtonFormField<Proveedor>(
-              initialValue: _proveedorSeleccionado,
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-              decoration: InputDecoration(
-                labelText: 'Proveedor',
-                labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-                hintText: 'Seleccionar proveedor',
-                hintStyle: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.7),
-                ),
-                border: OutlineInputBorder(),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: AppTheme.primary),
-                ),
-              ),
-              dropdownColor: Theme.of(context).colorScheme.surface,
-              items: [
-                DropdownMenuItem<Proveedor>(
-                  value: null,
-                  child: Text(
-                    'Proveedor general',
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-                  ),
-                ),
-                ..._proveedores.map((proveedor) {
-                  return DropdownMenuItem<Proveedor>(
-                    value: proveedor,
-                    child: Text(
-                      proveedor.nombre,
-                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                    ),
-                  );
-                }),
-              ],
-              onChanged: (Proveedor? valor) {
+            Autocomplete<Proveedor>(
+              displayStringForOption: (p) => p.nombre,
+              optionsBuilder: (TextEditingValue value) {
+                if (value.text.isEmpty) return _proveedores;
+                final q = value.text.toLowerCase();
+                return _proveedores.where((p) =>
+                  p.nombre.toLowerCase().contains(q) ||
+                  (p.documento ?? '').toLowerCase().contains(q),
+                );
+              },
+              onSelected: (Proveedor valor) {
                 setState(() {
                   _proveedorSeleccionado = valor;
-                  if (valor != null) {
-                    _proveedorNitController.text = valor.documento ?? '';
-                    _proveedorNombreController.text = valor.nombre;
-                  } else {
-                    _proveedorNitController.clear();
-                    _proveedorNombreController.clear();
+                  _proveedorNitController.text = valor.documento ?? '';
+                  _proveedorNombreController.text = valor.nombre;
+                });
+              },
+              fieldViewBuilder: (context, ctrl, focusNode, onSubmit) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (_proveedorSeleccionado != null && ctrl.text.isEmpty) {
+                    ctrl.text = _proveedorSeleccionado!.nombre;
+                  } else if (_proveedorSeleccionado == null && _proveedorNombreController.text.isNotEmpty && ctrl.text.isEmpty) {
+                    ctrl.text = _proveedorNombreController.text;
                   }
                 });
+                return TextField(
+                  controller: ctrl,
+                  focusNode: focusNode,
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                  decoration: InputDecoration(
+                    labelText: 'Proveedor',
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+                    hintText: 'Buscar proveedor...',
+                    hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+                    border: OutlineInputBorder(),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: AppTheme.primary),
+                    ),
+                    prefixIcon: Icon(Icons.search, color: AppTheme.primary, size: 18),
+                    suffixIcon: ctrl.text.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(Icons.clear, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+                            onPressed: () {
+                              ctrl.clear();
+                              setState(() {
+                                _proveedorSeleccionado = null;
+                                _proveedorNitController.clear();
+                                _proveedorNombreController.clear();
+                              });
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surface,
+                  ),
+                );
               },
             ),
             SizedBox(height: 16),
@@ -3260,7 +3267,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         OutlinedButton(
           onPressed: _guardandoFactura
               ? null
-              : _guardarComoBorrador,
+              : () => runGuarded(_guardarComoBorrador),
           style: OutlinedButton.styleFrom(
             side: BorderSide(color: AppTheme.primary),
             padding: EdgeInsets.symmetric(horizontal: 48, vertical: 16),
@@ -3281,7 +3288,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
         // Botón Comprar
         ElevatedButton(
-          onPressed: _guardandoFactura ? null : _guardarFactura,
+          onPressed: _guardandoFactura ? null : () => runGuarded(_guardarFactura),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppTheme.primary,
             padding: EdgeInsets.symmetric(horizontal: 64, vertical: 16),

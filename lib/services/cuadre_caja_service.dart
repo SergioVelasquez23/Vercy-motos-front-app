@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/cuadre_caja.dart';
 import '../config/api_config.dart';
 import '../utils/api_error.dart';
+import '../utils/logger.dart';
 
 class CuadreCajaService {
   static final CuadreCajaService _instance = CuadreCajaService._internal();
@@ -34,9 +35,17 @@ class CuadreCajaService {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        List<dynamic> jsonList = responseData['data'] ?? [];
+        final rawData = responseData['data'];
+        List<dynamic> jsonList;
+        if (rawData is List) {
+          jsonList = rawData;
+        } else if (rawData is Map) {
+          jsonList = (rawData['content'] as List?) ?? [];
+        } else {
+          jsonList = [];
+        }
         final cuadres = jsonList
-            .map((json) => CuadreCaja.fromJson(json))
+            .map((j) => CuadreCaja.fromJson(j))
             .toList();
 
         // Ordenar cuadres por fecha de apertura descendente (más recientes primero)
@@ -175,10 +184,22 @@ class CuadreCajaService {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        List<dynamic> jsonList = responseData['data'] ?? [];
+        // El data puede ser List o Map (paginado); manejar ambos
+        final rawData = responseData['data'];
+        List<dynamic> jsonList;
+        if (rawData is List) {
+          jsonList = rawData;
+        } else if (rawData is Map) {
+          // Spring Page: {"content": [...], ...}
+          jsonList = (rawData['content'] as List?) ?? [];
+        } else {
+          jsonList = [];
+        }
+        appLog('[CajaService] /abiertas → ${jsonList.length} cajas raw');
         final cuadres = jsonList
-            .map((json) => CuadreCaja.fromJson(json))
+            .map((j) => CuadreCaja.fromJson(j))
             .toList();
+        appLog('[CajaService] IDs obtenidos: ${cuadres.map((c) => c.id).toList()}');
 
         // Ordenar cuadres por fecha de apertura descendente (más recientes primero)
         cuadres.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));

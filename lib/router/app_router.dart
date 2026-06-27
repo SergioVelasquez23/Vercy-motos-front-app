@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../providers/user_provider.dart';
 import '../models/cliente.dart';
 import '../models/cotizacion.dart';
 import '../models/factura_compra.dart';
@@ -49,12 +50,15 @@ import '../screens/documentos_pendientes_screen.dart';
 import '../screens/matias_test_screen.dart';
 import '../screens/configuracion_screen.dart';
 
-/// GoRouter configurado con un ShellRoute que mantiene la sidebar y topbar
-/// persistentes mientras se navega entre pantallas.
-///
-/// Las rutas fuera del shell (login) no muestran sidebar.
-final GoRouter appRouter = GoRouter(
+GoRouter buildAppRouter(UserProvider userProvider) => GoRouter(
   initialLocation: '/splash',
+  refreshListenable: userProvider,
+  redirect: (context, state) {
+    final path = state.uri.path;
+    final isPublic = path == '/login' || path == '/splash';
+    if (!userProvider.isAuthenticated && !isPublic) return '/login';
+    return null;
+  },
   routes: [
     GoRoute(
       path: '/splash',
@@ -70,7 +74,16 @@ final GoRouter appRouter = GoRouter(
         GoRoute(path: '/dashboard', builder: (c, s) => const DashboardScreenV2()),
         GoRoute(
           path: '/facturar',
-          builder: (c, s) => FacturacionScreen(pedidoAsesor: s.extra as PedidoAsesor?),
+          builder: (c, s) {
+            final extra = s.extra;
+            if (extra is Map<String, dynamic>) {
+              return FacturacionScreen(
+                pedidoAsesor: extra['pedidoAsesor'] as PedidoAsesor?,
+                trasladoId: extra['trasladoId'] as String?,
+              );
+            }
+            return FacturacionScreen(pedidoAsesor: extra as PedidoAsesor?);
+          },
         ),
         GoRoute(path: '/asesor-pedidos', builder: (c, s) => const AsesorPedidosScreen()),
         GoRoute(path: '/admin-pedidos-asesor', builder: (c, s) => const AdminPedidosAsesorScreen()),

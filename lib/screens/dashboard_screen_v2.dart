@@ -42,8 +42,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   final ReportesService _reportesService = ReportesService();
   final PedidoService _pedidoService = PedidoService();
 
-  // Datos del dashboard
+  // Datos del dashboard (solo POS + FE, excluye LOCAL)
   DashboardData? _dashboardData;
+  // Datos totales (incluye LOCAL) — solo visibles en panel admin
+  DashboardData? _dashboardDataTotal;
 
   // Almacenamiento temporal de objetivos modificados
   final Map<String, double> _objetivosTemporales = {};
@@ -137,16 +139,13 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           (_) {},
         );
 
-        // Timer de auto-refresco (cada 5 minutos)
-        _autoRefreshTimer = Timer.periodic(Duration(minutes: 5), (timer) {
+        // Timer de auto-refresco (cada 15 minutos)
+        _autoRefreshTimer = Timer.periodic(Duration(minutes: 15), (timer) {
           _cargarDatos();
-          if (mounted) {
-            setState(() {});
-          }
         });
 
-        // Timer para detectar cambios de día y semana (verifica cada minuto)
-        _dayChangeDetectorTimer = Timer.periodic(Duration(minutes: 1), (timer) {
+        // Timer para detectar cambios de día y semana (verifica cada 5 minutos)
+        _dayChangeDetectorTimer = Timer.periodic(Duration(minutes: 5), (timer) {
           _verificarYActualizarPorCambioDeDia();
           _verificarYActualizarPorCambioDeSemanA();
         });
@@ -206,6 +205,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
   Future<void> _cargarDatos({bool forceRefresh = false}) async {
     if (!mounted) return;
+    if (_isLoading && !forceRefresh) return;
 
     setState(() => _isLoading = true);
 
@@ -321,28 +321,35 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
   Future<void> _cargarEstadisticas({bool forceRefresh = false}) async {
     try {
-      // Obtener datos del dashboard desde el servicio
-      final dashboardData = await _reportesService.getDashboard(
-        forceRefresh: forceRefresh,
-      );
+      // Cargar en paralelo: filtrado (POS+FE) y total (incluyendo LOCAL)
+      final results = await Future.wait([
+        _reportesService.getDashboard(forceRefresh: forceRefresh, soloElectronicos: true),
+        _reportesService.getDashboard(forceRefresh: forceRefresh, soloElectronicos: false),
+      ]);
 
-      if (dashboardData != null && mounted) {
-        // Limpiar objetivos temporales ya que tenemos datos frescos del backend
-        if (_objetivosTemporales.isNotEmpty) {
-          setState(() {
-            _dashboardData = dashboardData;
-            _objetivosTemporales.clear(); // Limpiar objetivos temporales
-          });
+      final dashboardData = results[0];
+      final dashboardDataTotal = results[1];
+
+      if (mounted) {
+        if (dashboardData != null) {
+          if (_objetivosTemporales.isNotEmpty) {
+            setState(() {
+              _dashboardData = dashboardData;
+              _dashboardDataTotal = dashboardDataTotal;
+              _objetivosTemporales.clear();
+            });
+          } else {
+            setState(() {
+              _dashboardData = dashboardData;
+              _dashboardDataTotal = dashboardDataTotal;
+            });
+          }
+          await _calcularTotalesCorregidos();
         } else {
           setState(() {
-            _dashboardData = dashboardData;
+            _dashboardDataTotal = dashboardDataTotal;
           });
         }
-
-        // Calcular totales corregidos después de cargar dashboard data
-        await _calcularTotalesCorregidos();
-      } else if (mounted) {
-        // Mantener los datos existentes o usar null
       }
     } catch (e) {
       // No propagamos el error para evitar que falle toda la UI
@@ -901,6 +908,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
                                           // ── Vendedores del mes ──
                                           _buildVendedoresDelMes(context),
+                                          SizedBox(
+                                            height: AppTheme.spacingXLarge,
+                                          ),
+
+                                          // ── Panel total (incluye LOCAL) ──
+                                          _buildPanelTotalVentas(context),
                                           SizedBox(
                                             height: AppTheme.spacingXLarge,
                                           ),
@@ -2118,6 +2131,121 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             flex: 2,
             child: _buildKpisAvanzados(context, fillHeight: true),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Panel de ventas totales (incluye LOCAL + POS + FE) — visible solo en admin.
+  /// Complementa las cards principales que solo muestran POS + FE.
+  Widget _buildPanelTotalVentas(BuildContext context) {
+    final data = _dashboardDataTotal;
+    final colorHeader = AppTheme.secondary;
+
+    Widget _simpleCard(String titulo, double valor) {
+      return Expanded(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+            border: Border.all(color: colorHeader.withOpacity(0.25), width: 1),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                titulo,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                data != null ? '\$${_formatNumber(valor)}' : '—',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final rows = context.isMobile
+        ? Column(children: [
+            Row(children: [
+              _simpleCard('Hoy (total)', data?.ventasHoy.total ?? 0),
+              SizedBox(width: AppTheme.spacingSmall),
+              _simpleCard('7 días (total)', data?.ventas7Dias.total ?? 0),
+            ]),
+            SizedBox(height: AppTheme.spacingSmall),
+            Row(children: [
+              _simpleCard('30 días (total)', data?.ventas30Dias.total ?? 0),
+              SizedBox(width: AppTheme.spacingSmall),
+              _simpleCard('Año (total)', data?.ventasAnio.total ?? 0),
+            ]),
+          ])
+        : Row(children: [
+            _simpleCard('Hoy (total)', data?.ventasHoy.total ?? 0),
+            SizedBox(width: AppTheme.spacingMedium),
+            _simpleCard('7 días (total)', data?.ventas7Dias.total ?? 0),
+            SizedBox(width: AppTheme.spacingMedium),
+            _simpleCard('30 días (total)', data?.ventas30Dias.total ?? 0),
+            SizedBox(width: AppTheme.spacingMedium),
+            _simpleCard('Año (total)', data?.ventasAnio.total ?? 0),
+          ]);
+
+    return Container(
+      padding: EdgeInsets.all(
+        context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        border: Border.all(color: colorHeader.withOpacity(0.4), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: colorHeader,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.bar_chart, color: Colors.white, size: 14),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'VENTAS TOTALES (INCLUYE LOCAL)',
+                style: TextStyle(
+                  color: colorHeader,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          rows,
         ],
       ),
     );

@@ -10,6 +10,8 @@ import 'dart:typed_data';
 
 class Window {
   final LocalStorage localStorage = LocalStorage();
+  // ignore: avoid_unused_constructor_parameters
+  void open(String url, String name, [String? options]) {}
 }
 
 class LocalStorage {

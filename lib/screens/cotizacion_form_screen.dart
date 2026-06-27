@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/cotizacion.dart';
+import '../utils/submit_guard.dart';
 import '../models/item_cotizacion.dart';
 import '../models/cliente.dart';
 import '../models/producto.dart';
@@ -20,7 +21,7 @@ class CotizacionFormScreen extends StatefulWidget {
   _CotizacionFormScreenState createState() => _CotizacionFormScreenState();
 }
 
-class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
+class _CotizacionFormScreenState extends State<CotizacionFormScreen> with SubmitGuard {
   final CotizacionService _cotizacionService = CotizacionService();
   final ClienteService _clienteService = ClienteService();
   final ProductoService _productoService = ProductoService();
@@ -1028,7 +1029,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
           Expanded(
             flex: 2,
             child: ElevatedButton(
-              onPressed: _isLoading ? null : _guardarCotizacion,
+              onPressed: _isLoading ? null : () => runGuarded(_guardarCotizacion),
               child: _isLoading
                   ? SizedBox(
                       height: 20,

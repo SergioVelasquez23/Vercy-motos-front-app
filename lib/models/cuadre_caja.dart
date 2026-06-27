@@ -58,10 +58,12 @@ class CuadreCaja {
 
   factory CuadreCaja.fromJson(Map<String, dynamic> json) {
     return CuadreCaja(
-      id: json['_id'],
+      id: json['_id'] ?? json['id'],
       nombre: json['nombre'] ?? '',
       responsable: json['responsable'] ?? '',
-      fechaApertura: DateTime.parse(json['fechaApertura']),
+      fechaApertura: json['fechaApertura'] != null
+          ? DateTime.parse(json['fechaApertura'])
+          : DateTime.now(),
       fechaCierre: json['fechaCierre'] != null
           ? DateTime.parse(json['fechaCierre'])
           : null,
@@ -73,8 +75,7 @@ class CuadreCaja {
       cerrada: (json['cerrada'] == true) ||
           json['estado'] == 'CERRADA' ||
           json['estado'] == 'cerrada' ||
-          json['estado'] == 'cerrado' ||
-          json['estado'] == 'aprobado',
+          json['estado'] == 'cerrado',
       tolerancia: (json['tolerancia'] ?? 0).toDouble(),
       observaciones: json['observaciones'],
       estado: json['estado'] ?? 'pendiente',

@@ -313,6 +313,18 @@ class TrasladoService {
     }
   }
 
+  /// DELETE /api/traslados/{id}
+  Future<void> eliminarTraslado(String id) async {
+    final headers = await _getHeaders();
+    final response = await http.delete(
+      Uri.parse('$baseUrl/$id'),
+      headers: headers,
+    );
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al eliminar traslado');
+    }
+  }
+
   /// GET /api/productos/traslados?usuario=&productoId=&limit=
   Future<List<Map<String, dynamic>>> listarTrasladosProducto({
     String? usuario,

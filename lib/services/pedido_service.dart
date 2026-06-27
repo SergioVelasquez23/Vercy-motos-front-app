@@ -33,9 +33,7 @@ class PedidoService {
   // ✅ NUEVO: Cache para evitar correcciones de estado en bucle
   final Map<String, DateTime> _estadoCorregidoCache = {};
   
-  // ✅ CACHE: CuadreId activo para evitar llamar getAllCuadres() cada vez
   String? _cuadreIdActivo;
-  DateTime? _cuadreIdCacheTime;
 
   final InventarioService _inventarioService = InventarioService();
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
@@ -163,32 +161,19 @@ class PedidoService {
     }
   }
 
-  /// Obtener cuadreId activo con caché (válido por 5 minutos)
-  /// Esto evita llamar a getAllCuadres() en cada creación de pedido
+  /// Obtener cuadreId activo — siempre consulta el backend (sin cache)
+  /// para evitar que un cuadreId de caja cerrada sea enviado en pedidos.
   Future<String?> _getCuadreIdActivo() async {
     try {
-      // Si hay caché válido (menos de 30 minutos), usarlo
-      if (_cuadreIdActivo != null && _cuadreIdCacheTime != null) {
-        final diferencia = DateTime.now().difference(_cuadreIdCacheTime!);
-        if (diferencia.inMinutes < 30) {
-          return _cuadreIdActivo;
-        }
-      }
-
-      // ⚡ OPTIMIZADO: Usar getCajaActiva() en lugar de getAllCuadres()
-      // Endpoint optimizado: /api/cuadres-caja/abiertas (solo cajas activas, no todo el histórico)
       final cajaActiva = await _cuadreCajaService.getCajaActiva();
+      appLog('[PedidoService] cajaActiva.id = ${cajaActiva?.id}');
 
       if (cajaActiva != null) {
-        // Guardar en caché
         _cuadreIdActivo = cajaActiva.id;
-        _cuadreIdCacheTime = DateTime.now();
         return _cuadreIdActivo;
       }
 
-      // Limpiar caché si no hay caja activa
       _cuadreIdActivo = null;
-      _cuadreIdCacheTime = null;
       return null;
     } catch (e) {
       appLog('⚠️ Error obteniendo cuadreId activo: $e');
@@ -196,10 +181,8 @@ class PedidoService {
     }
   }
 
-  /// Limpiar caché de cuadreId (llamar cuando se cierre la caja)
   void limpiarCacheCuadreId() {
     _cuadreIdActivo = null;
-    _cuadreIdCacheTime = null;
   }
 
   /// 🔥 Pre-calentar: obtener cuadreId activo anticipadamente para que

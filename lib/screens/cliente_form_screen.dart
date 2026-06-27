@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/cliente.dart';
 import '../services/cliente_service.dart';
+import '../utils/submit_guard.dart';
 import '../services/colombia_location_service.dart';
 import '../theme/app_theme.dart';
 
@@ -13,7 +14,7 @@ class ClienteFormScreen extends StatefulWidget {
   _ClienteFormScreenState createState() => _ClienteFormScreenState();
 }
 
-class _ClienteFormScreenState extends State<ClienteFormScreen> {
+class _ClienteFormScreenState extends State<ClienteFormScreen> with SubmitGuard {
   final ClienteService _clienteService = ClienteService();
   final ColombiaLocationService _locationService = ColombiaLocationService();
   final _formKey = GlobalKey<FormState>();
@@ -929,7 +930,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
           Expanded(
             flex: 2,
             child: ElevatedButton(
-              onPressed: _isLoading ? null : _guardarCliente,
+              onPressed: _isLoading ? null : () => runGuarded(_guardarCliente),
               child: _isLoading
                   ? SizedBox(
                       height: 20,

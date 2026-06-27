@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/proveedor.dart';
 import '../services/proveedor_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/submit_guard.dart';
 
 class ProveedoresScreen extends StatefulWidget {
   const ProveedoresScreen({super.key});
@@ -10,7 +11,7 @@ class ProveedoresScreen extends StatefulWidget {
   _ProveedoresScreenState createState() => _ProveedoresScreenState();
 }
 
-class _ProveedoresScreenState extends State<ProveedoresScreen> {
+class _ProveedoresScreenState extends State<ProveedoresScreen> with SubmitGuard {
   final TextEditingController _searchController = TextEditingController();
   final ProveedorService _proveedorService = ProveedorService();
 
@@ -189,7 +190,7 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
                 ),
                 onPressed: _guardandoProveedor
                     ? null
-                    : () async {
+                    : () => runGuarded(() async {
                         if (nombreController.text.trim().isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('El nombre es requerido')),
@@ -266,7 +267,7 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
                         } finally {
                           if (mounted) setState(() => _guardandoProveedor = false);
                         }
-                      },
+                      }),
                 child: Text(_guardandoProveedor
                     ? 'Guardando...'
                     : (esEdicion ? 'Actualizar' : 'Crear')),

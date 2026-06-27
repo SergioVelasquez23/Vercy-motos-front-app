@@ -220,15 +220,21 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
               }
             }
           }
-          // ✅ USAR EL VALOR DEL BACKEND DIRECTAMENTE - SIN RECALCULAR NADA
+          // Efectivo esperado = ventas en efectivo + fondo inicial
           if (cuadreCompleto.containsKey('efectivoEsperado')) {
-            _efectivoEsperado = (cuadreCompleto['efectivoEsperado'] ?? 0.0)
+            final ventasEfectivo = (cuadreCompleto['efectivoEsperado'] ?? 0.0)
                 .toDouble();
+            final fondo = (cuadreCompleto['fondoInicial'] ??
+                    _cajaActual?.fondoInicial ??
+                    0.0)
+                .toDouble();
+            _efectivoEsperado = ventasEfectivo + fondo;
             appLog('');
             appLog('✅ ═══════════════════════════════════════════════════');
             appLog('💰 EFECTIVO ESPERADO ESTABLECIDO:');
-            appLog('   Valor del backend: $_efectivoEsperado');
-            appLog('   Fuente: cuadreCompleto[efectivoEsperado]');
+            appLog('   Ventas efectivo: $ventasEfectivo');
+            appLog('   Fondo inicial: $fondo');
+            appLog('   Total: $_efectivoEsperado');
             appLog('═══════════════════════════════════════════════════');
             appLog('');
           } else {

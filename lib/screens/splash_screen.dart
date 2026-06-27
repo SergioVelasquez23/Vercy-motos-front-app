@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../providers/notificaciones_provider.dart';
+import '../services/keep_alive_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -67,7 +68,12 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     final userProvider = Provider.of<UserProvider>(context, listen: false);
-    await userProvider.initializeFromStorage();
+
+    // Inicialización y animación mínima en paralelo
+    await Future.wait([
+      userProvider.initializeFromStorage(),
+      Future.delayed(const Duration(milliseconds: 700)),
+    ]);
 
     if (!mounted) return;
 
@@ -81,9 +87,10 @@ class _SplashScreenState extends State<SplashScreen>
           Provider.of<NotificacionesProvider>(context, listen: false);
       notifProvider.refresh();
       notifProvider.startAutoRefresh();
-    }
 
-    await Future.delayed(const Duration(milliseconds: 1400));
+      // Mantener el backend de Render despierto con pings cada 10 min
+      KeepAliveService().startKeepAlive();
+    }
 
     if (!mounted) return;
 

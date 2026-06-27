@@ -207,6 +207,7 @@ class MatiasService {
     final body = {
       ...invoicePayload,
       'type_document_id': 5,
+      'operation_type_id': 12,
       'billing_reference': {
         'number': facturaNumero,
         'uuid': facturaCufe,
@@ -218,6 +219,7 @@ class MatiasService {
         'description': motivo,
       },
     };
+    body.remove('resolution_number');
     return _postDocumento('$_base/notes/credit', body, token: token);
   }
 

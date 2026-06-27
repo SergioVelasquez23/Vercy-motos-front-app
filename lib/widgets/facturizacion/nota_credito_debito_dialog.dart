@@ -56,7 +56,7 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
   void initState() {
     super.initState();
     _prefixCtrl.text = widget.tipoNota == 'debito' ? 'ND' : 'NC';
-    _resolutionCtrl.text = '18760000001';
+    _resolutionCtrl.text = '';
   }
 
   TipoNota get _tipo {
@@ -192,9 +192,8 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
 
   Map<String, dynamic> _buildPayload(Factura factura, double valor) {
     return {
-      'resolution_number': _resolutionCtrl.text.trim(),
       'prefix': _prefixCtrl.text.trim(),
-      'operation_type_id': 1,
+      'operation_type_id': esCredito ? 12 : 1,
       'currency_id': 272,
       'send_email': 1,
       'graphic_representation': 0,
@@ -221,9 +220,8 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
 
   Map<String, dynamic> _buildPayloadFromParams(String facturaNumero, double valor) {
     return {
-      'resolution_number': _resolutionCtrl.text.trim(),
       'prefix': _prefixCtrl.text.trim(),
-      'operation_type_id': 1,
+      'operation_type_id': esCredito ? 12 : 1,
       'currency_id': 272,
       'send_email': 1,
       'graphic_representation': 0,
@@ -445,9 +443,8 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
                                 TextFormField(
                                   controller: _resolutionCtrl,
                                   keyboardType: TextInputType.number,
-                                  decoration: _inputDeco('Ej: 18760000001'),
+                                  decoration: _inputDeco('Vacío = usa la resolución activa'),
                                   style: TextStyle(color: cs.onSurface, fontSize: 14),
-                                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
                                 ),
                               ],
                             ),

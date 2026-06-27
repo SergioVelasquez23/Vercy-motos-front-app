@@ -126,7 +126,7 @@ class NotificacionesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void startAutoRefresh({Duration interval = const Duration(minutes: 5)}) {
+  void startAutoRefresh({Duration interval = const Duration(minutes: 15)}) {
     stopAutoRefresh();
     _autoRefreshTimer = Timer.periodic(interval, (_) => refresh());
   }

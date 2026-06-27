@@ -1,4 +1,5 @@
- import '../widgets/imagen_producto_widget.dart';
+import '../utils/submit_guard.dart';
+import '../widgets/imagen_producto_widget.dart';
 import '../widgets/lazy_product_image_widget.dart';
 import '../widgets/optimized_loading_widget.dart';
 import '../config/performance_config.dart';
@@ -41,7 +42,7 @@ class ProductosScreen extends StatefulWidget {
   _ProductosScreenState createState() => _ProductosScreenState();
 }
 
-class _ProductosScreenState extends State<ProductosScreen> {
+class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
   static String get _backendBaseUrl => kBackendUrl;
   final ImageService _imageService = ImageService();
   final ProductoService _productoService = ProductoService();
@@ -2798,7 +2799,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   ),
                   onPressed: _guardandoProducto
                       ? null
-                      : () async {
+                      : () => runGuarded(() async {
                           // Validar campos
                           if (nombreController.text.isEmpty ||
                               precioController.text.isEmpty) {
@@ -3237,7 +3238,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               });
                             }
                           }
-                        },
+                        }),
                 ),
               ],
             );
@@ -4069,20 +4070,21 @@ class _ProductosScreenState extends State<ProductosScreen> {
       );
     }
 
-    // Leer el archivo como bytes
-    final reader = html.FileReader();
-    reader.readAsArrayBuffer(file);
-    await reader.onLoad.first;
+    try {
+      // Leer el archivo como bytes
+      final reader = html.FileReader();
+      reader.readAsArrayBuffer(file);
+      await reader.onLoad.first;
 
-    final bytes = reader.result as Uint8List;
-      
+      final bytes = reader.result as Uint8List;
 
-    // Enviar el archivo
-    await _cargarArchivoExcelBytes(bytes, file.name);
-
-    // Cerrar diálogo de carga
-    if (mounted) {
-      Navigator.pop(context);
+      // Enviar el archivo
+      await _cargarArchivoExcelBytes(bytes, file.name);
+    } finally {
+      // Siempre cerrar el diálogo, sin importar si hubo error o timeout
+      if (mounted) {
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -4154,12 +4156,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
       );
     }
 
-      
-    await _cargarArchivoExcel(file.path!);
-
-    // Cerrar diálogo de carga
-    if (mounted) {
-      Navigator.pop(context);
+    try {
+      await _cargarArchivoExcel(file.path!);
+    } finally {
+      if (mounted) {
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -4168,35 +4170,45 @@ class _ProductosScreenState extends State<ProductosScreen> {
     List<int> bytes,
     String fileName,
   ) async {
+    final cacheProvider = Provider.of<DatosCacheProvider>(context, listen: false);
     try {
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('$_backendBaseUrl/api/productos/carga-masiva-ambos'),
       );
 
-      // Agregar el archivo desde bytes
       request.files.add(
         http.MultipartFile.fromBytes('archivo', bytes, filename: fileName),
       );
 
-      // Enviar la petición
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
+      // Timeout de 5 min para archivos grandes
+      var streamedResponse = await request.send().timeout(
+        const Duration(minutes: 5),
+        onTimeout: () => throw Exception('Tiempo de espera agotado. El archivo puede ser muy grande o el servidor está lento.'),
+      );
+      var response = await http.Response.fromStream(streamedResponse).timeout(
+        const Duration(minutes: 2),
+        onTimeout: () => throw Exception('No se pudo leer la respuesta del servidor.'),
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
+        // Invalidar caché y forzar recarga fresca desde el backend
+        cacheProvider.limpiarProductos();
+        await cacheProvider.forceRefreshProductos();
+
         if (mounted) {
+          setState(() {
+            _productosCache = List<Producto>.from(cacheProvider.productos ?? []);
+            _aplicarFiltrosYPaginacion();
+          });
           showSuccessSnackBar(context, '✨ Bodega y Almacén actualizados exitosamente');
         }
-
-        // Recargar los productos
-        await _cargarDatosDesdeCache();
       } else {
         throw Exception(
           'Error al cargar productos: ${response.statusCode} - ${response.body}',
         );
       }
     } catch (e) {
-        
       if (mounted) {
         showErrorSnackBar(context, 'Error al cargar productos: $e');
       }
@@ -4205,33 +4217,42 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
   // Método para cargar el archivo Excel al backend usando path (para desktop/mobile)
   Future<void> _cargarArchivoExcel(String filePath) async {
+    final cacheProvider = Provider.of<DatosCacheProvider>(context, listen: false);
     try {
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('$_backendBaseUrl/api/productos/carga-masiva-ambos'),
       );
 
-      // Agregar el archivo
       request.files.add(await http.MultipartFile.fromPath('archivo', filePath));
 
-      // Enviar la petición
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
+      var streamedResponse = await request.send().timeout(
+        const Duration(minutes: 5),
+        onTimeout: () => throw Exception('Tiempo de espera agotado.'),
+      );
+      var response = await http.Response.fromStream(streamedResponse).timeout(
+        const Duration(minutes: 2),
+        onTimeout: () => throw Exception('No se pudo leer la respuesta del servidor.'),
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
+        // Invalidar caché y forzar recarga fresca desde el backend
+        cacheProvider.limpiarProductos();
+        await cacheProvider.forceRefreshProductos();
+
         if (mounted) {
+          setState(() {
+            _productosCache = List<Producto>.from(cacheProvider.productos ?? []);
+            _aplicarFiltrosYPaginacion();
+          });
           showSuccessSnackBar(context, '✨ Bodega y Almacén actualizados exitosamente');
         }
-
-        // Recargar los productos
-        await _cargarDatosDesdeCache();
       } else {
         throw Exception(
           'Error al cargar productos: ${response.statusCode} - ${response.body}',
         );
       }
     } catch (e) {
-        
       if (mounted) {
         showErrorSnackBar(context, 'Error al cargar productos: $e');
       }
@@ -4768,11 +4789,18 @@ class _ProductosScreenState extends State<ProductosScreen> {
         ),
       );
 
-      // Mostrar diálogo de impresión
-      await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => pdf.save(),
-        name: 'Codigo_Barras_${producto.nombre}.pdf',
-      );
+      final bytes = await pdf.save();
+      if (kIsWeb) {
+        final blob = html.Blob([bytes], 'application/pdf');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        html.window.open(url, '_blank');
+        Future.delayed(const Duration(seconds: 3), () => html.Url.revokeObjectUrl(url));
+      } else {
+        await Printing.sharePdf(
+          bytes: bytes,
+          filename: 'Codigo_Barras_${producto.nombre}.pdf',
+        );
+      }
 
       if (mounted) {
         showSuccessSnackBar(context, 'Código de barras generado correctamente');

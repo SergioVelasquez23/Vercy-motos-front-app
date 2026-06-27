@@ -1250,29 +1250,31 @@ class _MenuDescargas extends StatelessWidget {
           ),
           onTap: onConsultarStatus,
         ),
-        PopupMenuDivider(),
-        PopupMenuItem<void>(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.note_add, size: 18, color: Colors.green),
-              SizedBox(width: 12),
-              Text('Nota Crédito'),
-            ],
+        if (documento.tipoDocumento?.toLowerCase() != 'pos') ...[
+          PopupMenuDivider(),
+          PopupMenuItem<void>(
+            onTap: onCrearNotaCredito,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.note_add, size: 18, color: Colors.green),
+                SizedBox(width: 12),
+                Text('Nota Crédito'),
+              ],
+            ),
           ),
-          onTap: onCrearNotaCredito,
-        ),
-        PopupMenuItem<void>(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.note_add, size: 18, color: Colors.red),
-              SizedBox(width: 12),
-              Text('Nota Débito'),
-            ],
+          PopupMenuItem<void>(
+            onTap: onCrearNotaDebito,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.note_add, size: 18, color: Colors.red),
+                SizedBox(width: 12),
+                Text('Nota Débito'),
+              ],
+            ),
           ),
-          onTap: onCrearNotaDebito,
-        ),
+        ],
       ],
     );
   }

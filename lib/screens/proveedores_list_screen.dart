@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import '../utils/submit_guard.dart';
 import 'dart:typed_data';
 import '../models/proveedor.dart';
 import '../services/proveedor_service.dart';
@@ -15,7 +16,7 @@ class ProveedoresListScreen extends StatefulWidget {
 }
 
 class _ProveedoresListScreenState extends State<ProveedoresListScreen>
-    with PaginacionMixin<ProveedoresListScreen> {
+    with PaginacionMixin<ProveedoresListScreen>, SubmitGuard {
   final ProveedorService _proveedorService = ProveedorService();
 
   // Controladores de filtros
@@ -834,7 +835,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
             ElevatedButton(
               onPressed: _guardandoProveedor
                   ? null
-                  : () async {
+                  : () => runGuarded(() async {
                       if (nombresController.text.trim().isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -935,7 +936,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
                       } finally {
                         setDialogState(() => _guardandoProveedor = false);
                       }
-                    },
+                    }),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.success,
                 padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),

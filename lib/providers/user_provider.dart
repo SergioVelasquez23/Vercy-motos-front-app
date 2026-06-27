@@ -7,7 +7,6 @@ import 'dart:html'
     if (dart.library.io) 'package:vercy_motos/utils/html_stub.dart'
     as html;
 import '../utils/jwt_utils.dart';
-import 'datos_cache_provider.dart';
 
 class UserProvider extends ChangeNotifier {
   String? _token;
@@ -15,6 +14,7 @@ class UserProvider extends ChangeNotifier {
   String? _userId;
   String? _userName;
   String? _userEmail;
+  bool _initialized = false;
 
   final storage = FlutterSecureStorage();
 
@@ -23,6 +23,7 @@ class UserProvider extends ChangeNotifier {
   String? get userId => _userId;
   String? get userName => _userName;
   String? get userEmail => _userEmail;
+  bool get isInitialized => _initialized;
 
   bool get isAuthenticated => _token != null;
 
@@ -62,6 +63,8 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<void> initializeFromStorage() async {
+    if (_initialized) return;
+
     String? storedToken;
 
     if (kIsWeb) {
@@ -71,19 +74,23 @@ class UserProvider extends ChangeNotifier {
     }
 
     if (storedToken != null) {
-      await setToken(storedToken);
+      await setToken(storedToken, saveToStorage: false);
     }
+
+    _initialized = true;
+    notifyListeners();
   }
 
-  Future<void> setToken(String token) async {
+  Future<void> setToken(String token, {bool saveToStorage = true}) async {
     _token = token;
 
     try {
       // Extract user information from token
       final payload = JwtUtils.decodeToken(token);
-      _userId = payload['_id'];
-      _userName = payload['name'];
-      _userEmail = payload['email'];
+      _userId = payload['_id'] ?? payload['id'] ?? payload['userId'];
+      _userName = payload['name'] ?? payload['nombre'] ?? payload['username'] ??
+          payload['email'];
+      _userEmail = payload['email'] ?? payload['correo'] ?? payload['userEmail'];
 
       // Extract roles
       if (payload.containsKey('roles')) {
@@ -105,24 +112,17 @@ class UserProvider extends ChangeNotifier {
         }
       } else {
         _roles = [];
-      } // Save token to storage
-      if (kIsWeb) {
-        html.window.localStorage['jwt_token'] = token;
-      } else {
-        await storage.write(key: 'jwt_token', value: token);
+      }
+
+      if (saveToStorage) {
+        if (kIsWeb) {
+          html.window.localStorage['jwt_token'] = token;
+        } else {
+          await storage.write(key: 'jwt_token', value: token);
+        }
       }
 
       notifyListeners();
-
-      // Inicializar cache de datos cuando se autentica
-      try {
-        final cacheProvider = DatosCacheProvider();
-        await cacheProvider.initialize();
-        // 🔥 WARMUP: Precargar productos en background
-        cacheProvider.warmupProductos();
-      } catch (e) {
-          
-      }
     } catch (e) {
       _roles = [];
     }

@@ -16,6 +16,7 @@ import '../services/impresion_service.dart';
 import '../services/inventario_service.dart';
 import '../services/cliente_service.dart';
 import '../services/matias_service.dart';
+import '../services/traslado_service.dart';
 import '../models/cliente.dart';
 import '../models/negocio_info.dart';
 import '../theme/app_theme.dart';
@@ -36,10 +37,17 @@ import '../services/documento_service.dart';
 import '../utils/base64_file_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+// Cache de clientes compartido entre instancias de FacturacionScreen
+List<Cliente> _clientesCached = [];
+DateTime? _clientesCacheTime;
+const _clientesCacheTTL = Duration(minutes: 5);
+
 class FacturacionScreen extends StatefulWidget {
   final PedidoAsesor? pedidoAsesor;
+  // Si viene de un traslado, su ID para eliminarlo tras el pago
+  final String? trasladoId;
 
-  const FacturacionScreen({super.key, this.pedidoAsesor});
+  const FacturacionScreen({super.key, this.pedidoAsesor, this.trasladoId});
   
   @override
   _FacturacionScreenState createState() => _FacturacionScreenState();
@@ -49,6 +57,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   final PedidoService _pedidoService = PedidoService();
   final ProductoService _productoService = ProductoService();
   final PedidoAsesorService _pedidoAsesorService = PedidoAsesorService();
+  final TrasladoService _trasladoService = TrasladoService();
   final PDFService _pdfService = PDFService();
   final NegocioInfoService _negocioInfoService = NegocioInfoService();
   final ImpresionService _impresionService = ImpresionService();
@@ -356,13 +365,22 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   }
 
   Future<void> _cargarClientes() async {
+    // Usar cache si tiene menos de 5 minutos
+    if (_clientesCacheTime != null &&
+        DateTime.now().difference(_clientesCacheTime!) < _clientesCacheTTL &&
+        _clientesCached.isNotEmpty) {
+      setState(() => _clientesDisponibles = _clientesCached);
+      return;
+    }
     try {
       final clientes = await _clienteService.obtenerClientes();
-      setState(() {
-        _clientesDisponibles = clientes;
-      });
+      _clientesCached = clientes;
+      _clientesCacheTime = DateTime.now();
+      if (mounted) setState(() => _clientesDisponibles = clientes);
     } catch (e) {
-        
+      if (_clientesCached.isNotEmpty && mounted) {
+        setState(() => _clientesDisponibles = _clientesCached);
+      }
     }
   }
 
@@ -620,6 +638,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         SizedBox(height: spacing),
                         _buildDescuentoGeneral(),
                         SizedBox(height: spacing),
+                        _buildMetodoPago(),
+                        SizedBox(height: spacing),
                         TotalesSection(
                           items: _items,
                           retencionController: _retencionController,
@@ -628,8 +648,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                           aiuController: _aiuController,
                           dctoGeneralController: _dctoGeneralController,
                         ),
-                        SizedBox(height: spacing),
-                        _buildMetodoPago(),
                         SizedBox(height: spacing),
                         BotonesAccionFacturacion(
                           items: _items,
@@ -1699,6 +1717,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                               _codigoController.text = producto.codigo ?? '';
                               _nombreProductoController.text = producto.nombre;
                               _valorUnitController.text = producto.precio.toString();
+                              if (producto.impuestos > 0) {
+                                _porcentajeImpuestoController.text =
+                                    producto.impuestos.toStringAsFixed(0);
+                              }
                             });
                           },
                           fieldViewBuilder:
@@ -1814,6 +1836,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                               _codigoController.text = producto.codigo ?? '';
                               _nombreProductoController.text = producto.nombre;
                               _valorUnitController.text = producto.precio.toString();
+                              if (producto.impuestos > 0) {
+                                _porcentajeImpuestoController.text =
+                                    producto.impuestos.toStringAsFixed(0);
+                              }
                             });
                           },
                           fieldViewBuilder:
@@ -2295,7 +2321,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                           controller: _porcentajeDescuentoController,
                           style: fieldStyle,
                           decoration: inputDecBase.copyWith(
-                            labelText: '% Dcto.',
+                            labelText: _porcentajeTipoDescuento == 'Porcentaje' ? '% Dcto.' : '\$ Dcto.',
                             labelStyle: labelStyle,
                           ),
                           keyboardType: TextInputType.number,
@@ -2815,11 +2841,15 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         double.tryParse(_porcentajeDescuentoController.text) ?? 0;
 
     final subtotal = cantidad * valorUnit;
-    final impuesto = subtotal * (porcentajeImp / 100);
-    final descuento = _porcentajeTipoDescuento == 'Valor'
-        ? enteredDesc
-        : subtotal * (enteredDesc / 100);
-    final total = subtotal + impuesto - descuento;
+    final double descuento;
+    if (_porcentajeTipoDescuento == 'Porcentaje') {
+      descuento = subtotal * (enteredDesc / 100);
+    } else {
+      descuento = enteredDesc;
+    }
+    final baseGravable = subtotal - descuento;
+    final impuesto = baseGravable * (porcentajeImp / 100);
+    final total = baseGravable + impuesto;
 
     return '\$${total.toStringAsFixed(0)}';
   }
@@ -2895,18 +2925,21 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         double.tryParse(_porcentajeDescuentoController.text) ?? 0;
 
     final subtotal = cantidad * precioUnitario;
-    final valorImpuesto = subtotal * (porcentajeImpuesto / 100);
 
-    // Calcular descuento según el tipo seleccionado
+    // 1. Descuento
     final double valorDescuento;
     final double porcentajeDescuento;
-    if (_porcentajeTipoDescuento == 'Valor') {
+    if (_porcentajeTipoDescuento == 'Porcentaje') {
+      valorDescuento = subtotal * (enteredDescuento / 100);
+      porcentajeDescuento = enteredDescuento;
+    } else { // 'Valor' — monto fijo
       valorDescuento = enteredDescuento;
       porcentajeDescuento = subtotal > 0 ? (enteredDescuento / subtotal) * 100 : 0;
-    } else {
-      porcentajeDescuento = enteredDescuento;
-      valorDescuento = subtotal * (enteredDescuento / 100);
     }
+
+    // 2. IVA sobre el precio ya descontado
+    final baseGravable = subtotal - valorDescuento;
+    final valorImpuesto = baseGravable * (porcentajeImpuesto / 100);
 
     final item = ItemPedido(
       productoId: (_productoSeleccionado!.codigo?.isNotEmpty ?? false)
@@ -2951,8 +2984,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     _valorUnitController.clear();
     _porcentajeImpuestoController.text = '0';
     _porcentajeDescuentoController.text = '0';
-    _origenSeleccionado = 'ALMACÉN'; // 📦 Resetear a ALMACÉN por defecto
+    _origenSeleccionado = 'ALMACÉN';
     _productoSeleccionado = null;
+    _autocompleteResetKey++; // fuerza reset visual de los Autocomplete de código y nombre
   }
 
   Future<void> _buscarProductoPorCodigoBarras(String codigo) async {
@@ -4090,6 +4124,15 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               pedidoAsesorId,
               userName,
             );
+          }
+
+          // Si viene de un traslado, eliminarlo ahora que los items fueron facturados
+          if (widget.trasladoId != null) {
+            try {
+              await _trasladoService.eliminarTraslado(widget.trasladoId!);
+            } catch (_) {
+              // No bloquear el flujo si falla la eliminación del traslado
+            }
           }
 
           // Refrescar cache

@@ -32,7 +32,8 @@ class DatosCacheProvider extends ChangeNotifier {
   // Polling automático
   Timer? _pollingTimer;
   bool _enablePolling = true;
-  final int _pollingIntervalMinutes = 3; // Polling cada 3 minutos
+  // Alineado con _duracionCacheProductos (10 min) para no disparar timers en vano
+  final int _pollingIntervalMinutes = 12;
 
   // Servicios
   final ProductoService _productoService = ProductoService();
@@ -75,10 +76,11 @@ class DatosCacheProvider extends ChangeNotifier {
   }
 
   // 🔥 WARMUP: Precargar productos en background SIN IMÁGENES
+  // No fuerza recarga si el caché es fresco — evita llamadas duplicadas en login
   void warmupProductos() {
-    // Cargar productos en background sin esperar - USAR ENDPOINT LIGERO
+    if (!productosExpired && _productos != null) return;
     _cargarProductos(
-      force: true,
+      force: false,
       silent: false,
       useProgressive: false,
       useLigero: true,

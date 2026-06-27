@@ -991,14 +991,29 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
           ),
         ),
         actions: [
-          ElevatedButton(
+          TextButton(
             onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              foregroundColor: Colors.white,
+            child: Text(
+              'Cerrar',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
             ),
-            child: Text('Cerrar'),
           ),
+          if (traslado.id != null)
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                context.push('/facturar', extra: {
+                  'pedidoAsesor': null,
+                  'trasladoId': traslado.id,
+                });
+              },
+              icon: const Icon(Icons.receipt_long, size: 18),
+              label: const Text('Facturar items'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.success,
+                foregroundColor: Colors.white,
+              ),
+            ),
         ],
       ),
     );
@@ -1137,21 +1152,42 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
   Future<void> _cargarBodegas() async {
     try {
       final bodegas = await _bodegaService.obtenerBodegas();
+      final activas = bodegas.where((b) => b.activa).toList();
       setState(() {
-        // Solo mostrar bodegas activas
-        _bodegas = bodegas.where((b) => b.activa).toList();
+        _bodegas = activas;
         _cargandoBodegas = false;
+        _aplicarDefectosBodegas(activas);
       });
     } catch (e) {
-        
       // Fallback a bodegas por defecto
+      final fallback = [
+        Bodega(id: 'BODEGA', nombre: 'BODEGA', activa: true),
+        Bodega(id: 'ALMACEN', nombre: 'ALMACEN', activa: true),
+      ];
       setState(() {
-        _bodegas = [
-          Bodega(id: 'BODEGA', nombre: 'BODEGA', activa: true),
-          Bodega(id: 'ALMACEN', nombre: 'ALMACEN', activa: true),
-        ];
+        _bodegas = fallback;
         _cargandoBodegas = false;
+        _aplicarDefectosBodegas(fallback);
       });
+    }
+  }
+
+  void _aplicarDefectosBodegas(List<Bodega> bodegas) {
+    // Origen por defecto: primera bodega cuyo nombre contiene "BODEGA"
+    if (_origenSeleccionado == null) {
+      final bodega = bodegas.firstWhere(
+        (b) => b.nombre.toUpperCase().contains('BODEGA'),
+        orElse: () => bodegas.first,
+      );
+      _origenSeleccionado = bodega.id;
+    }
+    // Destino por defecto: primera bodega cuyo nombre contiene "ALMACEN"
+    if (_destinoSeleccionado == null) {
+      final almacen = bodegas.firstWhere(
+        (b) => b.nombre.toUpperCase().contains('ALMACEN'),
+        orElse: () => bodegas.last,
+      );
+      _destinoSeleccionado = almacen.id;
     }
   }
 

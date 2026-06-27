@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import '../utils/submit_guard.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/categoria.dart';
@@ -17,7 +18,7 @@ class CategoriasScreen extends StatefulWidget {
 }
 
 class _CategoriasScreenState extends State<CategoriasScreen>
-    with PaginacionMixin<CategoriasScreen> {
+    with PaginacionMixin<CategoriasScreen>, SubmitGuard {
   final ProductoService _productoService = ProductoService();
   List<Categoria> _categorias = [];
   List<Producto> _productos = [];
@@ -38,14 +39,14 @@ class _CategoriasScreenState extends State<CategoriasScreen>
     });
 
     try {
-      final categorias = await _productoService.getCategorias();
-      final productos = await _productoService.getProductos(
-        useProgressive: true,
-      );
+      final results = await Future.wait([
+        _productoService.getCategorias(),
+        _productoService.getProductos(useProgressive: true),
+      ]);
 
       setState(() {
-        _categorias = categorias;
-        _productos = productos;
+        _categorias = results[0] as List<Categoria>;
+        _productos = results[1] as List<Producto>;
         _isLoading = false;
       });
     } catch (e) {
@@ -387,7 +388,7 @@ class _CategoriasScreenState extends State<CategoriasScreen>
                   ),
                   onPressed: _guardandoCategoria
                       ? null
-                      : () async {
+                      : () => runGuarded(() async {
                           // Validar campos
                           if (nombreController.text.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -473,7 +474,7 @@ class _CategoriasScreenState extends State<CategoriasScreen>
                               });
                             }
                           }
-                        },
+                        }),
                 ),
               ],
             );

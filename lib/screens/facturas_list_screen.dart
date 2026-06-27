@@ -15,6 +15,9 @@ import '../services/pedido_service.dart';
 import '../services/pdf_service.dart';
 import '../services/negocio_info_service.dart';
 import '../services/matias_service.dart';
+import '../services/documento_service.dart';
+import '../providers/user_provider.dart';
+import '../widgets/facturizacion/confirmacion_dian_dialog.dart';
 import '../theme/app_theme.dart';
 import '../utils/logger.dart';
 import '../utils/pagination_mixin.dart';
@@ -898,6 +901,31 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   onPressed: () => _imprimirDocumento(documento),
                   tooltip: 'Imprimir',
                 ),
+                if (esPedido && !esFEDoc)
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'emitir_fe') {
+                        _emitirFacturaElectronica(documento);
+                      }
+                    },
+                    itemBuilder: (_) => [
+                      PopupMenuItem(
+                        value: 'emitir_fe',
+                        child: Row(children: [
+                          Icon(Icons.send, color: AppTheme.success, size: 18),
+                          SizedBox(width: 8),
+                          Text('Emitir Factura Electrónica',
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+                        ]),
+                      ),
+                    ],
+                    color: Theme.of(context).colorScheme.surface,
+                    tooltip: 'Más acciones',
+                    padding: const EdgeInsets.all(4),
+                    constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                    icon: Icon(Icons.more_vert, size: 18,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+                  ),
               ],
             ),
           ),
@@ -1288,6 +1316,57 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
         ),
       );
     }
+  }
+
+  void _emitirFacturaElectronica(Pedido pedido) {
+    final token = Provider.of<UserProvider>(context, listen: false).token;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(const SnackBar(
+      content: Text('Enviando a la DIAN...'),
+      duration: Duration(seconds: 3),
+    ));
+    Future.microtask(() async {
+      try {
+        final resultado = await MatiasService.emitirFacturaElectronica(
+          {
+            'pedidoId': pedido.id,
+            'customer': MatiasService.buildCustomerFromPedido(pedido),
+          },
+          token: token,
+        );
+        if (!mounted) return;
+        if (resultado.success) {
+          final cufe = resultado.documentKey ?? '';
+          final factResult = FacturacionResult(
+            success: true,
+            message: resultado.message,
+            cufe: cufe.isNotEmpty ? cufe : null,
+            pdfUrl: resultado.pdfUrl?.isNotEmpty == true ? resultado.pdfUrl : null,
+            raw: resultado.raw,
+          );
+          showDialog(
+            context: context,
+            builder: (_) => ConfirmacionDianDialog(
+              resultado: factResult,
+              tipoDocumento: 'Factura Electrónica',
+            ),
+          );
+        } else {
+          messenger.showSnackBar(SnackBar(
+            content: Text('⚠️ Error DIAN: ${resultado.message}'),
+            backgroundColor: Colors.orange.shade800,
+            duration: const Duration(seconds: 8),
+          ));
+        }
+      } catch (e) {
+        if (!mounted) return;
+        messenger.showSnackBar(SnackBar(
+          content: Text('❌ Error al enviar a DIAN: $e'),
+          backgroundColor: Colors.red.shade700,
+          duration: const Duration(seconds: 8),
+        ));
+      }
+    });
   }
 
   String _formatearFormaPagoPdf(String formaPago) {

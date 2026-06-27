@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
+import '../utils/submit_guard.dart';
 import '../models/gasto.dart';
 import '../models/tipo_gasto.dart';
 import '../models/cuadre_caja.dart';
@@ -27,7 +28,7 @@ class GastosScreen extends StatefulWidget {
   _GastosScreenState createState() => _GastosScreenState();
 }
 
-class _GastosScreenState extends State<GastosScreen> {
+class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
   // Services
   final GastoService _gastoService = GastoService();
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
@@ -2020,7 +2021,7 @@ class _GastosScreenState extends State<GastosScreen> {
       child: SizedBox(
         width: 320,
         child: ElevatedButton(
-          onPressed: _guardandoGasto ? null : _saveGastoNuevo,
+          onPressed: _guardandoGasto ? null : () => runGuarded(_saveGastoNuevo),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppTheme.primary,
             padding: EdgeInsets.symmetric(vertical: 20),

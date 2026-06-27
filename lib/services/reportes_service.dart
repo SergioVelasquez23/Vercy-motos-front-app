@@ -12,15 +12,17 @@ class ReportesService {
   final PedidoService _pedidoService = PedidoService();
 
   // Obtener dashboard
-  Future<DashboardData?> getDashboard({bool forceRefresh = false}) async {
+  // soloElectronicos=true → backend excluye pedidos LOCAL (solo POS + FACTURA)
+  Future<DashboardData?> getDashboard({bool forceRefresh = false, bool soloElectronicos = false}) async {
     try {
       // Agregar parámetro de timestamp para evitar caching de HTTP
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       // ✅ IMPORTANTE: ignorarCaja=true para que el backend NO filtre por cuadreId
       // Esto evita que "Facturado Hoy" muestre datos de cajas anteriores
+      final filtro = soloElectronicos ? '&soloElectronicos=true' : '';
       final endpoint = forceRefresh
-          ? '/api/reportes/dashboard?_t=$timestamp&ignorarCaja=true'
-          : '/api/reportes/dashboard?ignorarCaja=true';
+          ? '/api/reportes/dashboard?_t=$timestamp&ignorarCaja=true$filtro'
+          : '/api/reportes/dashboard?ignorarCaja=true$filtro';
 
       final response = await _apiService.get<Map<String, dynamic>>(
         endpoint,

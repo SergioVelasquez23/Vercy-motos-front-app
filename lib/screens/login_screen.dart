@@ -7,8 +7,7 @@ import '../services/auth_service.dart';
 import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
-import '../services/producto_service.dart';
-import '../services/pedido_service.dart';
+import '../services/keep_alive_service.dart';
 
 // Extension para validación de email
 extension EmailValidator on String {
@@ -55,9 +54,6 @@ class _LoginScreenState extends State<LoginScreen>
   int _wakeupRemainingSeconds = 300; // 5 minutos
   Timer? _wakeupTicker;
   Timer? _wakeupStepTimer;
-
-  final ProductoService _productoService = ProductoService();
-  final PedidoService _pedidoService = PedidoService();
 
   @override
   void initState() {
@@ -117,9 +113,9 @@ class _LoginScreenState extends State<LoginScreen>
       }
     });
 
-    // Paso de wake-up: cada 20s intentar recargas completas
+    // Paso de wake-up: cada 60s enviar un ping liviano al backend
     _wakeupStepTimer?.cancel();
-    _wakeupStepTimer = Timer.periodic(Duration(seconds: 20), (_) async {
+    _wakeupStepTimer = Timer.periodic(Duration(seconds: 60), (_) async {
       await _performWakeupStep();
     });
 
@@ -140,33 +136,10 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _performWakeupStep() async {
-      
-
+    // Ping liviano para despertar el backend sin saturarlo con recargas de datos
     try {
-      // Limpiar cache de productos para forzar descarga fresca
-      try {
-        _productoService.clearCache();
-      } catch (e) {
-          
-      }
-
-      // Intentar recargas (ignorar errores individuales, seguir con el flujo)
-      try {
-        await _productoService.getProductos(useProgressive: true);
-          
-      } catch (e) {
-          
-      }
-
-      try {
-        await _pedidoService.getAllPedidos();
-          
-      } catch (e) {
-          
-      }
-    } catch (e) {
-        
-    }
+      await KeepAliveService().forcePing();
+    } catch (_) {}
   }
 
   Future<void> _loadSavedCredentials() async {
@@ -232,6 +205,9 @@ class _LoginScreenState extends State<LoginScreen>
             listen: false,
           );
           cacheProvider.warmupProductos();
+
+          // Mantener el backend de Render despierto
+          KeepAliveService().startKeepAlive();
 
           // Navegar automáticamente
           await Future.delayed(Duration(milliseconds: 100));
@@ -357,6 +333,9 @@ class _LoginScreenState extends State<LoginScreen>
             );
             cacheProvider.warmupProductos();
 
+            // Mantener el backend de Render despierto
+            KeepAliveService().startKeepAlive();
+
             await Future.delayed(Duration(milliseconds: 100));
 
             // Redirigir según el rol del usuario
@@ -432,7 +411,7 @@ class _LoginScreenState extends State<LoginScreen>
     bool isLoading = false;
     await showDialog(
       context: context,
-      barrierColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+      barrierColor: Colors.black54,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
@@ -635,7 +614,7 @@ class _LoginScreenState extends State<LoginScreen>
     final isMobile = context.screenWidth < 900;
     
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           // Layout principal: dos columnas (desktop) o mobile
@@ -662,8 +641,8 @@ class _LoginScreenState extends State<LoginScreen>
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               colors: [
-                                Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
-                                Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                                Colors.black.withValues(alpha: 0.3),
+                                Colors.black.withValues(alpha: 0.5),
                               ],
                             ),
                           ),
@@ -685,7 +664,7 @@ class _LoginScreenState extends State<LoginScreen>
                                       fontWeight: FontWeight.bold,
                                       shadows: [
                                         Shadow(
-                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                          color: Colors.black.withValues(alpha: 0.6),
                                           offset: Offset(0, 3),
                                           blurRadius: 8,
                                         ),
@@ -702,7 +681,7 @@ class _LoginScreenState extends State<LoginScreen>
                                       fontWeight: FontWeight.w400,
                                       shadows: [
                                         Shadow(
-                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                                          color: Colors.black.withValues(alpha: 0.5),
                                           offset: Offset(0, 2),
                                           blurRadius: 6,
                                         ),
@@ -730,7 +709,7 @@ class _LoginScreenState extends State<LoginScreen>
           if (_showWakeupOverlay)
             Positioned.fill(
               child: Container(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                color: Colors.black.withValues(alpha: 0.6),
                 child: Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -799,7 +778,7 @@ class _LoginScreenState extends State<LoginScreen>
             child: ConstrainedBox(
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: Container(
-                color: Theme.of(context).colorScheme.surface,
+                color: Colors.white,
                 padding: EdgeInsets.symmetric(
                   horizontal: context.isMobile ? 24 : context.isTablet ? 32 : 48,
                   vertical: context.isMobile ? 32 : 32,
@@ -843,7 +822,7 @@ class _LoginScreenState extends State<LoginScreen>
                         style: TextStyle(
                           fontSize: context.isMobile ? 26 : context.isTablet ? 32 : 36,
                           fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurface,
+                          color: AppTheme.textPrimary,
                         ),
                       ),
                       SizedBox(height: 6),
@@ -890,7 +869,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   _showPassword
                                       ? Icons.visibility_outlined
                                       : Icons.visibility_off_outlined,
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                  color: AppTheme.textMuted,
                                 ),
                                 onPressed: () {
                                   setState(() {
@@ -1039,7 +1018,7 @@ class _LoginScreenState extends State<LoginScreen>
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.onSurface,
+                            color: AppTheme.textPrimary,
                           ),
                         ),
                         SizedBox(height: 12),
@@ -1065,7 +1044,7 @@ class _LoginScreenState extends State<LoginScreen>
                             child: Text(
                               'Validar Código',
                               style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface,
+                                color: Colors.white,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -1140,7 +1119,7 @@ class _LoginScreenState extends State<LoginScreen>
         keyboardType: keyboardType,
         obscureText: obscureText,
         onChanged: onChanged,
-        style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
+        style: TextStyle(fontSize: 14, color: AppTheme.textPrimary),
         decoration: InputDecoration(
           labelText: label,
           labelStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
