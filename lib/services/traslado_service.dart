@@ -9,6 +9,8 @@ class TrasladoService {
   final ApiConfig _apiConfig = ApiConfig();
   final storage = FlutterSecureStorage();
 
+  static const _timeout = Duration(seconds: 30);
+
   String get baseUrl => '${_apiConfig.baseUrl}/api/traslados';
 
   // Obtener headers con token
@@ -47,7 +49,7 @@ class TrasladoService {
         url += '?${params.join('&')}';
       }
 
-      final response = await http.get(Uri.parse(url), headers: headers);
+      final response = await http.get(Uri.parse(url), headers: headers).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -94,7 +96,7 @@ class TrasladoService {
       final response = await http.get(
         Uri.parse('$baseUrl/$id'),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -136,7 +138,7 @@ class TrasladoService {
         Uri.parse(baseUrl),
         headers: headers,
         body: body,
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final decoded = json.decode(response.body);
@@ -173,7 +175,7 @@ class TrasladoService {
         Uri.parse('$baseUrl/procesar'),
         headers: headers,
         body: body,
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -198,7 +200,7 @@ class TrasladoService {
       final response = await http.get(
         Uri.parse('$baseUrl/producto/$productoId/stock'),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -232,7 +234,7 @@ class TrasladoService {
         Uri.parse('$baseUrl/traslado-rapido'),
         headers: headers,
         body: body,
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final decoded = json.decode(response.body);
@@ -259,7 +261,7 @@ class TrasladoService {
         Uri.parse('$baseUrl/$trasladoId/completar'),
         headers: headers,
         body: body,
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al completar traslado');
@@ -297,7 +299,7 @@ class TrasladoService {
         Uri.parse('${_apiConfig.baseUrl}/api/productos/$productoId/traslado'),
         headers: headers,
         body: body,
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final decoded = json.decode(response.body);
@@ -319,7 +321,7 @@ class TrasladoService {
     final response = await http.delete(
       Uri.parse('$baseUrl/$id'),
       headers: headers,
-    );
+    ).timeout(_timeout);
     if (response.statusCode != 200 && response.statusCode != 204) {
       throwBackendError(response.body, response.statusCode, prefix: 'Error al eliminar traslado');
     }
@@ -340,7 +342,7 @@ class TrasladoService {
       final uri = Uri.parse('${_apiConfig.baseUrl}/api/productos/traslados')
           .replace(queryParameters: params);
 
-      final response = await http.get(uri, headers: headers);
+      final response = await http.get(uri, headers: headers).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);

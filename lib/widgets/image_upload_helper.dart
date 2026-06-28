@@ -41,11 +41,13 @@ class _ImageUploadHelperState extends State<ImageUploadHelper> {
     try {
       setState(() => _isLoading = true);
       final imagenes = await _imageService.listImages();
+      if (!mounted) return;
       setState(() {
         _imagenesDisponibles = imagenes;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       _mostrarError('Error cargando imágenes: $e');
     }

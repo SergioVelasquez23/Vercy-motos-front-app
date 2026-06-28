@@ -16,6 +16,8 @@ class BodegaService {
     'Accept': 'application/json',
   };
 
+  static const _timeout = Duration(seconds: 30);
+
   // ====================================
   // 📋 OBTENER TODAS LAS BODEGAS
   // ====================================
@@ -27,7 +29,7 @@ class BodegaService {
       }
 
         
-      final response = await http.get(Uri.parse(url), headers: headers);
+      final response = await http.get(Uri.parse(url), headers: headers).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final dynamic decoded = json.decode(response.body);
@@ -69,7 +71,7 @@ class BodegaService {
       final response = await http.get(
         Uri.parse('$baseUrl/$id'),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -123,7 +125,7 @@ class BodegaService {
         Uri.parse(baseUrl),
         headers: headers,
         body: body,
-      );
+      ).timeout(_timeout);
       if (response.statusCode == 200 || response.statusCode == 201) {
         final decoded = json.decode(response.body);
         final data = decoded is Map && decoded['data'] != null
@@ -179,7 +181,7 @@ class BodegaService {
         Uri.parse('$baseUrl/$id'),
         headers: headers,
         body: json.encode(bodyMap),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -214,7 +216,7 @@ class BodegaService {
       final response = await http.delete(
         Uri.parse('$baseUrl/$id'),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         return true;
@@ -256,10 +258,10 @@ class BodegaService {
           '${_apiConfig.baseUrl}/api/bodegas/stock/producto/$productoId',
         ),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
-        
-                 
+
+
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -312,7 +314,7 @@ class BodegaService {
           '${_apiConfig.baseUrl}/api/bodegas/stock/producto/$productoId',
         ),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -359,7 +361,7 @@ class BodegaService {
       final response = await http.get(
         Uri.parse('$baseUrl/$bodegaId/stock'),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);

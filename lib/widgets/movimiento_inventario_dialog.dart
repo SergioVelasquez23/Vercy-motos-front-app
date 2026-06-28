@@ -164,9 +164,11 @@ class _MovimientoInventarioDialogState
       // Cerrar diálogo
       Navigator.of(context).pop(true);
     } catch (e) {
-      setState(() => _error = kErrorGuardado);
-    } finally {
-      setState(() => _isLoading = false);
+      if (!mounted) return;
+      setState(() {
+        _error = kErrorGuardado;
+        _isLoading = false;
+      });
     }
   }
 

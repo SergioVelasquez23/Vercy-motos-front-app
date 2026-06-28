@@ -11,6 +11,8 @@ class FacturaService {
   factory FacturaService() => _instance;
   FacturaService._internal();
 
+  static const _timeout = Duration(seconds: 30);
+
   final EndpointsConfig _endpoints = EndpointsConfig();
   final storage = FlutterSecureStorage();
 
@@ -82,7 +84,7 @@ class FacturaService {
       final response = await http.get(
         Uri.parse(_endpoints.facturas.lista),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       return _processFacturasResponse(response);
     } catch (e) {
@@ -102,7 +104,7 @@ class FacturaService {
         _endpoints.pedidos.pagados,
       ).replace(queryParameters: queryParams);
 
-      final response = await http.get(uri, headers: headers);
+      final response = await http.get(uri, headers: headers).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -165,7 +167,7 @@ class FacturaService {
         _endpoints.pedidos.pagados,
       ).replace(queryParameters: queryParams);
 
-      final response = await http.get(uri, headers: headers);
+      final response = await http.get(uri, headers: headers).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -187,7 +189,7 @@ class FacturaService {
       final response = await http.get(
         Uri.parse(_endpoints.facturas.factura(id)),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       return _processFacturaResponse(response);
     } catch (e) {
@@ -203,7 +205,7 @@ class FacturaService {
       final response = await http.get(
         Uri.parse(_endpoints.facturas.porNumero(numero)),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       return _processFacturaResponse(response);
     } catch (e) {
@@ -219,7 +221,7 @@ class FacturaService {
       final response = await http.get(
         Uri.parse(_endpoints.facturas.porNit(nit)),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       return _processFacturasResponse(response);
     } catch (e) {
@@ -235,7 +237,7 @@ class FacturaService {
       final response = await http.get(
         Uri.parse(_endpoints.facturas.porTelefono(telefono)),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       return _processFacturasResponse(response);
     } catch (e) {
@@ -251,7 +253,7 @@ class FacturaService {
       final response = await http.get(
         Uri.parse(_endpoints.facturas.pendientesPago),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       return _processFacturasResponse(response);
     } catch (e) {
@@ -267,7 +269,7 @@ class FacturaService {
       final response = await http.get(
         Uri.parse(_endpoints.facturas.ventasDia),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       return _processFacturasResponse(response);
     } catch (e) {
@@ -292,7 +294,7 @@ class FacturaService {
         _endpoints.facturas.ventasPeriodo,
       ).replace(queryParameters: queryParams);
 
-      final response = await http.get(uri, headers: headers);
+      final response = await http.get(uri, headers: headers).timeout(_timeout);
 
       return _processFacturasResponse(response);
     } catch (e) {
@@ -309,7 +311,7 @@ class FacturaService {
         Uri.parse(_endpoints.facturas.lista),
         headers: headers,
         body: json.encode(factura.toJson()),
-      );
+      ).timeout(_timeout);
 
       return _processFacturaResponse(response);
     } catch (e) {
@@ -329,7 +331,7 @@ class FacturaService {
         Uri.parse(_endpoints.facturas.desdePedido(pedidoId)),
         headers: headers,
         body: json.encode(datosFactura),
-      );
+      ).timeout(_timeout);
 
       return _processFacturaResponse(response);
     } catch (e) {
@@ -346,7 +348,7 @@ class FacturaService {
         Uri.parse(_endpoints.facturas.factura(id)),
         headers: headers,
         body: json.encode(factura.toJson()),
-      );
+      ).timeout(_timeout);
 
       return _processFacturaResponse(response);
     } catch (e) {
@@ -362,7 +364,7 @@ class FacturaService {
       final response = await http.put(
         Uri.parse(_endpoints.facturas.emitir(id)),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       return _processFacturaResponse(response);
     } catch (e) {
@@ -382,7 +384,7 @@ class FacturaService {
         Uri.parse(_endpoints.facturas.pagar(id)),
         headers: headers,
         body: json.encode(datosPago),
-      );
+      ).timeout(_timeout);
 
       return _processFacturaResponse(response);
     } catch (e) {
@@ -402,7 +404,7 @@ class FacturaService {
         Uri.parse(_endpoints.facturas.anular(id)),
         headers: headers,
         body: json.encode(datosAnulacion),
-      );
+      ).timeout(_timeout);
 
       return _processFacturaResponse(response);
     } catch (e) {
@@ -418,7 +420,7 @@ class FacturaService {
       final response = await http.delete(
         Uri.parse(_endpoints.facturas.factura(id)),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       return response.statusCode == 204 || response.statusCode == 200;
     } catch (e) {
@@ -434,7 +436,7 @@ class FacturaService {
       final response = await http.get(
         Uri.parse(_endpoints.facturas.resumenImpresion(pedidoId)),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -456,7 +458,7 @@ class FacturaService {
       final response = await http.get(
         Uri.parse(_endpoints.facturas.facturaImpresion(facturaId)),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -476,7 +478,7 @@ class FacturaService {
       final response = await http.get(
         Uri.parse(_endpoints.facturas.resumenVentas),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);

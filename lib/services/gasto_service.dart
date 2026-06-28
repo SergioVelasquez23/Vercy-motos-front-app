@@ -240,7 +240,7 @@ class GastoService {
         Uri.parse('$baseUrl/api/gastos/$id'),
         headers: headers,
         body: json.encode(body),
-      );
+      ).timeout(Duration(seconds: ApiConfig.requestTimeout));
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -283,7 +283,7 @@ class GastoService {
       final response = await http.delete(
         Uri.parse('$baseUrl/api/gastos/$id'),
         headers: headers,
-      );
+      ).timeout(Duration(seconds: ApiConfig.requestTimeout));
 
         
         
@@ -355,7 +355,7 @@ class GastoService {
           '$baseUrl/api/gastos/fechas?inicio=${inicio.toIso8601String()}&fin=${fin.toIso8601String()}',
         ),
         headers: headers,
-      );
+      ).timeout(Duration(seconds: ApiConfig.requestTimeout));
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -378,7 +378,7 @@ class GastoService {
       final response = await http.get(
         Uri.parse('$baseUrl/api/tipos-gasto'),
         headers: headers,
-      );
+      ).timeout(Duration(seconds: ApiConfig.requestTimeout));
 
         
 
@@ -418,7 +418,7 @@ class GastoService {
         Uri.parse('$baseUrl/api/tipos-gasto'),
         headers: headers,
         body: json.encode(body),
-      );
+      ).timeout(Duration(seconds: ApiConfig.requestTimeout));
 
         
 
@@ -454,7 +454,7 @@ class GastoService {
         Uri.parse('$baseUrl/api/tipos-gasto/$id'),
         headers: headers,
         body: json.encode(body),
-      );
+      ).timeout(Duration(seconds: ApiConfig.requestTimeout));
 
         
 
@@ -480,7 +480,7 @@ class GastoService {
       final response = await http.delete(
         Uri.parse('$baseUrl/api/tipos-gasto/$id'),
         headers: headers,
-      );
+      ).timeout(Duration(seconds: ApiConfig.requestTimeout));
 
         
 

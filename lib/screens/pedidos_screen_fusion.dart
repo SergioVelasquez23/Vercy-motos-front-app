@@ -221,6 +221,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
         }).toList();
       }
 
+      if (!mounted) return;
       setState(() {
         _pedidos = pedidos;
         _cajaActiva = cajaActiva;
@@ -229,6 +230,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
       });
       _aplicarFiltros();
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = 'Error al cargar pedidos: $e';
         _isLoading = false;

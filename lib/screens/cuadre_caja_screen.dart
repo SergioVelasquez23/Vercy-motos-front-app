@@ -115,6 +115,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       // Ordenar cuadres por fecha descendente (más recientes primero)
       cuadres.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));
 
+      if (!mounted) return;
       setState(() {
         _cuadresCaja = cuadres;
 
@@ -127,14 +128,12 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                 .firstOrNull ??
             (cuadres.isNotEmpty ? cuadres.first : null);
 
-        // Cuadres cargados silenciosamente
+        _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Error al cargar cuadres: ${e.toString()}';
-      });
-    } finally {
-      setState(() {
         _isLoading = false;
       });
     }
@@ -146,7 +145,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       final response = await http.get(
         Uri.parse('$baseUrl/api/users'),
         headers: await _getHeaders(),
-      );
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         // Parsear JSON de forma más segura
@@ -194,6 +193,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
             final userData =
                 responseData['data'] ?? responseData['users'] ?? [];
             if (userData is List && userData.isNotEmpty) {
+              if (!mounted) return;
               setState(() {
                 _usuariosDisponibles = List<String>.from(
                   userData

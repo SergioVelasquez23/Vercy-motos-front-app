@@ -104,16 +104,18 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
           
       }
 
+      if (!mounted) return;
       setState(() {
         _productos = productos;
         _productosFiltrados = productos;
         _categorias = categorias;
         _clientes = clientes;
+        _isLoading = false;
       });
     } catch (e) {
-      _mostrarError('Error al cargar datos: $e');
-    } finally {
+      if (!mounted) return;
       setState(() => _isLoading = false);
+      _mostrarError('Error al cargar datos: $e');
     }
   }
 

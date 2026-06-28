@@ -37,12 +37,15 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
     setState(() => _loading = true);
     try {
       _ingresos = await _service.obtenerTodos();
+      if (!mounted) return;
       _filtrarIngresos(); // Aplicar filtros al cargar
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error al cargar ingresos: $e')));
     }
+    if (!mounted) return;
     setState(() => _loading = false);
   }
 

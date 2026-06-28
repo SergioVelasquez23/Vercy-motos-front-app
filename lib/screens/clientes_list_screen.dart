@@ -41,12 +41,14 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
 
     try {
       final clientes = await _clienteService.obtenerClientes();
+      if (!mounted) return;
       setState(() {
         _clientes = clientes;
         _aplicarFiltros();
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

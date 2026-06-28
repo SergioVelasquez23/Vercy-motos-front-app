@@ -10,6 +10,7 @@ class DeudaService {
   DeudaService._internal();
 
   final BaseApiService _baseService = BaseApiService();
+  static const _timeout = Duration(seconds: 30);
 
   // ─── Listar deudas ──────────────────────────────────────────────────────────
 
@@ -27,7 +28,7 @@ class DeudaService {
       final uri = Uri.parse(_baseService.buildUrl('/deudas'))
           .replace(queryParameters: params.isNotEmpty ? params : null);
 
-      final response = await http.get(uri, headers: await _baseService.getHeaders());
+      final response = await http.get(uri, headers: await _baseService.getHeaders()).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -45,7 +46,7 @@ class DeudaService {
   Future<List<Deuda>> listarDeudasActivas() async {
     try {
       final uri = Uri.parse(_baseService.buildUrl('/deudas/activas'));
-      final response = await http.get(uri, headers: await _baseService.getHeaders());
+      final response = await http.get(uri, headers: await _baseService.getHeaders()).timeout(_timeout);
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         final data = body['data'] ?? body;
@@ -62,7 +63,7 @@ class DeudaService {
   Future<List<Deuda>> listarDeudasVencidas() async {
     try {
       final uri = Uri.parse(_baseService.buildUrl('/deudas/vencidas'));
-      final response = await http.get(uri, headers: await _baseService.getHeaders());
+      final response = await http.get(uri, headers: await _baseService.getHeaders()).timeout(_timeout);
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         final data = body['data'] ?? body;
@@ -79,7 +80,7 @@ class DeudaService {
   Future<Deuda?> obtenerDetalle(String id) async {
     try {
       final uri = Uri.parse(_baseService.buildUrl('/deudas/$id'));
-      final response = await http.get(uri, headers: await _baseService.getHeaders());
+      final response = await http.get(uri, headers: await _baseService.getHeaders()).timeout(_timeout);
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         final data = body['data'] ?? body;
@@ -112,7 +113,7 @@ class DeudaService {
         uri,
         headers: await _baseService.getHeaders(),
         body: jsonEncode(body),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -137,7 +138,7 @@ class DeudaService {
   Future<List<PagoDeuda>> obtenerHistorialPagos(String deudaId) async {
     try {
       final uri = Uri.parse(_baseService.buildUrl('/deudas/$deudaId/pagos'));
-      final response = await http.get(uri, headers: await _baseService.getHeaders());
+      final response = await http.get(uri, headers: await _baseService.getHeaders()).timeout(_timeout);
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         final data = body['data'] ?? body;
@@ -156,7 +157,7 @@ class DeudaService {
   Future<Map<String, dynamic>> obtenerEstadisticas() async {
     try {
       final uri = Uri.parse(_baseService.buildUrl('/deudas/estadisticas'));
-      final response = await http.get(uri, headers: await _baseService.getHeaders());
+      final response = await http.get(uri, headers: await _baseService.getHeaders()).timeout(_timeout);
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         final data = body['data'] ?? body;
@@ -179,7 +180,7 @@ class DeudaService {
     try {
       final uri = Uri.parse(_baseService.buildUrl('/deudas/$deudaId/estado'))
           .replace(queryParameters: {'activa': activa.toString(), 'modificadoPor': modificadoPor});
-      final response = await http.put(uri, headers: await _baseService.getHeaders());
+      final response = await http.put(uri, headers: await _baseService.getHeaders()).timeout(_timeout);
       return response.statusCode == 200;
     } catch (e) {
       return false;
@@ -210,7 +211,7 @@ class DeudaService {
         Uri.parse(url),
         headers: await _baseService.getHeaders(),
         body: jsonEncode(body),
-      );
+      ).timeout(_timeout);
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         return {'success': true, 'data': data['data'] ?? data, 'message': 'Deuda creada'};

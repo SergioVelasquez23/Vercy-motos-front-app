@@ -6,6 +6,8 @@ import '../utils/api_error.dart';
 
 /// Servicio para gestionar documentos de mesa
 class DocumentoMesaService {
+  static const _timeout = Duration(seconds: 30);
+
   final EndpointsConfig _config = EndpointsConfig();
 
   String get baseUrl => '${_config.currentBaseUrl}/api/documentos-mesa';
@@ -33,7 +35,7 @@ class DocumentoMesaService {
           'Accept': 'application/json',
         },
         body: json.encode(body),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
@@ -62,7 +64,7 @@ class DocumentoMesaService {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);
@@ -104,7 +106,7 @@ class DocumentoMesaService {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -141,7 +143,7 @@ class DocumentoMesaService {
           'Accept': 'application/json',
         },
         body: json.encode(body),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -180,7 +182,7 @@ class DocumentoMesaService {
           'Accept': 'application/json',
         },
         body: json.encode(body),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -207,7 +209,7 @@ class DocumentoMesaService {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         return true;
@@ -239,7 +241,7 @@ class DocumentoMesaService {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);
@@ -282,7 +284,7 @@ class DocumentoMesaService {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);
@@ -323,7 +325,7 @@ class DocumentoMesaService {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         return json.decode(response.body) as Map<String, dynamic>;
@@ -353,7 +355,7 @@ class DocumentoMesaService {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -381,7 +383,7 @@ class DocumentoMesaService {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);
@@ -421,7 +423,7 @@ class DocumentoMesaService {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);

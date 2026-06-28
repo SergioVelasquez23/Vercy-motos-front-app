@@ -13,6 +13,7 @@ import '../utils/api_error.dart';
 
 class UserService {
   static String get baseUrl => kDynamicBackendUrl;
+  static const _timeout = Duration(seconds: 30);
   final storage = FlutterSecureStorage();
 
   // Obtener token del storage
@@ -42,7 +43,7 @@ class UserService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      );
+      ).timeout(_timeout);
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         if (decoded is List) {
@@ -72,7 +73,7 @@ class UserService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      );
+      ).timeout(_timeout);
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         if (decoded is List) {
@@ -102,7 +103,7 @@ class UserService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      );
+      ).timeout(_timeout);
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         if (decoded is List) {
@@ -142,7 +143,7 @@ class UserService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      );
+      ).timeout(_timeout);
       if (response.statusCode == 200) {
         return User.fromJson(json.decode(response.body));
       } else if (response.statusCode == 404) {
@@ -170,7 +171,7 @@ class UserService {
           'Authorization': 'Bearer $token',
         },
         body: json.encode(user.toJsonCreate()),
-      );
+      ).timeout(_timeout);
       if (response.statusCode == 201 || response.statusCode == 200) {
         return User.fromJson(json.decode(response.body));
       } else {
@@ -197,7 +198,7 @@ class UserService {
           'Authorization': 'Bearer $token',
         },
         body: json.encode(payload),
-      );
+      ).timeout(_timeout);
       if (response.statusCode == 200) {
         return User.fromJson(json.decode(response.body));
       } else {
@@ -222,7 +223,7 @@ class UserService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      );
+      ).timeout(_timeout);
       return response.statusCode == 204 || response.statusCode == 200;
     } catch (e) {
         
@@ -243,7 +244,7 @@ class UserService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      );
+      ).timeout(_timeout);
       if (response.statusCode == 200) {
         return User.fromJson(json.decode(response.body));
       } else {

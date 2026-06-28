@@ -9,6 +9,7 @@ import '../utils/logger.dart';
 class PedidoAsesorService {
   final ApiConfig _apiConfig = ApiConfig();
   final storage = FlutterSecureStorage();
+  static const _timeout = Duration(seconds: 30);
 
   String get baseUrl => '${_apiConfig.baseUrl}/api/pedidos-asesor';
 
@@ -51,7 +52,7 @@ class PedidoAsesorService {
         Uri.parse(baseUrl),
         headers: headers,
         body: json.encode(pedidoJson),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final decoded = json.decode(response.body);
@@ -113,7 +114,7 @@ class PedidoAsesorService {
         url += '?${params.join('&')}';
       }
 
-      final response = await http.get(Uri.parse(url), headers: headers);
+      final response = await http.get(Uri.parse(url), headers: headers).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -189,14 +190,14 @@ class PedidoAsesorService {
       final response = await http.get(
         Uri.parse('$baseUrl/$id'),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         final data = decoded is Map && decoded['data'] != null
             ? decoded['data']
             : decoded;
-        
+
         // 🔍 DEBUG: Ver qué devuelve el backend para pedido individual
         appLog('📥 Pedido obtenido (ID: $id):');
         if (data is Map && data['items'] != null) {
@@ -225,7 +226,7 @@ class PedidoAsesorService {
         Uri.parse('$baseUrl/$id'),
         headers: headers,
         body: json.encode(pedido.toJson()),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -254,7 +255,7 @@ class PedidoAsesorService {
         Uri.parse('$baseUrl/$id/facturar'),
         headers: headers,
         body: json.encode({'facturadoPor': facturadoPor}),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -279,7 +280,7 @@ class PedidoAsesorService {
       final response = await http.put(
         Uri.parse('$baseUrl/$id/cancelar'),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -304,7 +305,7 @@ class PedidoAsesorService {
       final response = await http.delete(
         Uri.parse('$baseUrl/$id'),
         headers: headers,
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode != 200 && response.statusCode != 204) {
         final error = json.decode(response.body);

@@ -32,7 +32,7 @@ class AuthService {
           'password': password,
           'roles': ['asesor'], // Rol por defecto para nuevos usuarios
         }),
-      );
+      ).timeout(Duration(seconds: ApiConfig.requestTimeout));
       if (response.statusCode == 200 || response.statusCode == 201) {
         return {'success': true, 'message': 'Usuario registrado exitosamente'};
       } else {
@@ -82,7 +82,7 @@ class AuthService {
         Uri.parse(baseUrl),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
-      );
+      ).timeout(Duration(seconds: ApiConfig.requestTimeout));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -139,7 +139,7 @@ class AuthService {
         Uri.parse(baseUrl),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
-      );
+      ).timeout(Duration(seconds: ApiConfig.requestTimeout));
 
       if (response.statusCode == 200) {
         final data = response.body.isNotEmpty
@@ -184,7 +184,7 @@ class AuthService {
       final response = await http.post(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
-      );
+      ).timeout(Duration(seconds: ApiConfig.requestTimeout));
 
       if (response.statusCode == 200) {
         return response.body.isNotEmpty
@@ -231,7 +231,7 @@ class AuthService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      );
+      ).timeout(Duration(seconds: ApiConfig.requestTimeout));
 
       // Si la respuesta es exitosa, analizamos el contenido para asegurarnos de que el token es válido
       if (response.statusCode == 200) {
