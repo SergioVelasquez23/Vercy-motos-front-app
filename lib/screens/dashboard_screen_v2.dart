@@ -37,6 +37,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   Timer? _dayChangeDetectorTimer;
   int _selectedIndex = 0;
   bool _isLoading = true;
+  bool _cargaEnProgreso = false; // guard contra llamadas duplicadas
 
   // Servicios
   final ReportesService _reportesService = ReportesService();
@@ -150,10 +151,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           _verificarYActualizarPorCambioDeSemanA();
         });
       } else if (userProvider.isAsesor) {
-        // Para asesores, no cargar datos del dashboard, solo marcar como completado
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() { _isLoading = false; });
+      } else {
+        // Cualquier otro rol: detener el spinner (el build mostrará acceso restringido)
+        setState(() { _isLoading = false; });
       }
     });
   }
@@ -205,8 +206,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
   Future<void> _cargarDatos({bool forceRefresh = false}) async {
     if (!mounted) return;
-    if (_isLoading && !forceRefresh) return;
+    if (_cargaEnProgreso && !forceRefresh) return;
 
+    _cargaEnProgreso = true;
     setState(() => _isLoading = true);
 
     try {
@@ -273,6 +275,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     } catch (e) {
       // Error handling
     } finally {
+      _cargaEnProgreso = false;
       if (mounted) {
         setState(() => _isLoading = false);
       }

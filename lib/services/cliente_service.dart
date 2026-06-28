@@ -9,6 +9,7 @@ class ClienteService {
   final EndpointsConfig _config = EndpointsConfig();
 
   String get baseUrl => '${_config.currentBaseUrl}/api/clientes';
+  static const _timeout = Duration(seconds: 30);
 
   // CRUD
 
@@ -22,7 +23,7 @@ class ClienteService {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
           
@@ -54,7 +55,7 @@ class ClienteService {
   /// Obtener cliente por ID
   Future<Cliente?> obtenerClientePorId(String id) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/$id'));
+      final response = await http.get(Uri.parse('$baseUrl/$id')).timeout(_timeout);
 
       if (response.statusCode == 200) {
         return Cliente.fromJson(json.decode(response.body));
@@ -74,7 +75,7 @@ class ClienteService {
   /// Obtener cliente por documento
   Future<Cliente?> obtenerClientePorDocumento(String doc) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/documento/$doc'));
+      final response = await http.get(Uri.parse('$baseUrl/documento/$doc')).timeout(_timeout);
 
       if (response.statusCode == 200) {
         return Cliente.fromJson(json.decode(response.body));
@@ -100,7 +101,7 @@ class ClienteService {
         Uri.parse(baseUrl),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(cliente.toJson()),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         return Cliente.fromJson(json.decode(response.body));
@@ -120,7 +121,7 @@ class ClienteService {
         Uri.parse('$baseUrl/$id'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(cliente.toJson()),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         return Cliente.fromJson(json.decode(response.body));
@@ -158,7 +159,7 @@ class ClienteService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/buscar?q=${Uri.encodeComponent(q)}'),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -175,7 +176,7 @@ class ClienteService {
   /// Obtener clientes activos
   Future<List<Cliente>> obtenerClientesActivos() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/estado/activos'));
+      final response = await http.get(Uri.parse('$baseUrl/estado/activos')).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -192,7 +193,7 @@ class ClienteService {
   /// Obtener clientes con saldo pendiente
   Future<List<Cliente>> obtenerClientesConSaldo() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/con-saldo'));
+      final response = await http.get(Uri.parse('$baseUrl/con-saldo')).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -270,7 +271,7 @@ class ClienteService {
   /// Obtener estadísticas de clientes
   Future<Map<String, dynamic>> obtenerEstadisticas() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/estadisticas'));
+      final response = await http.get(Uri.parse('$baseUrl/estadisticas')).timeout(_timeout);
 
       if (response.statusCode == 200) {
         return json.decode(response.body);

@@ -54,6 +54,7 @@ class FacturacionScreen extends StatefulWidget {
 }
 
 class _FacturacionScreenState extends State<FacturacionScreen> {
+  FacturacionDraftProvider? _draftProvider; // cacheado para dispose() seguro
   final PedidoService _pedidoService = PedidoService();
   final ProductoService _productoService = ProductoService();
   final PedidoAsesorService _pedidoAsesorService = PedidoAsesorService();
@@ -223,11 +224,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     
     // 🔄 Iniciar sincronización automática de inventario
     Future.microtask(() {
-      final draftProvider = Provider.of<FacturacionDraftProvider>(
+      _draftProvider = Provider.of<FacturacionDraftProvider>(
         context,
         listen: false,
       );
-      draftProvider.startSync();
+      _draftProvider!.startSync();
     });
     
     // Si se pasó un pedido de asesor, cargar clientes primero
@@ -398,17 +399,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   void dispose() {
     // ⏸️ Detener sincronización automática
     // NO limpiar el borrador aquí - se mantiene para cuando regresen
-    if (mounted) {
-      try {
-        final draftProvider = Provider.of<FacturacionDraftProvider>(
-          context,
-          listen: false,
-        );
-        draftProvider.stopSync();
-      } catch (e) {
-        appLog('⚠️ Error deteniendo sincronización: $e');
-      }
-    }
+    _draftProvider?.stopSync();
     
     _clienteController.dispose();
     _codigoBarrasController.dispose();

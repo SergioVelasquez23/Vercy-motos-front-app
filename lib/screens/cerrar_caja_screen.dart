@@ -125,12 +125,9 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         appLog('═══════════════════════════════════════════════════');
         appLog('');
         
+        if (!mounted) return;
         setState(() {
           _cuadreCompletoData = cuadreCompleto;
-        });
-
-        // Debug: Mostrar específicamente los campos de cantidad
-        setState(() {
           // Capturar valores individuales
           _ventasEfectivo = (cuadreCompleto['ventasEfectivo'] ?? 0.0)
               .toDouble();
@@ -263,6 +260,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
 
       // Fallback: usar detalles de ventas tradicional
       final detallesVentas = await _cuadreCajaService.getDetallesVentas();
+      if (!mounted) return;
       setState(() {
         // Capturar las ventas brutas y los gastos por separado
         _ventasEfectivo = (detallesVentas['ventasEfectivo'] ?? 0).toDouble();
@@ -286,6 +284,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
       try {
         final ventasPorTipo = await _cuadreCajaService.getVentasPorTipoPago();
 
+        if (!mounted) return;
         setState(() {
           // Actualizar con datos más precisos del endpoint de pedidos
           if (ventasPorTipo['transferencias'] != null) {

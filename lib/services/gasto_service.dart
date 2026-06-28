@@ -35,7 +35,7 @@ class GastoService {
       final response = await http.get(
         Uri.parse('$baseUrl/api/gastos'),
         headers: headers,
-      );
+      ).timeout(Duration(seconds: ApiConfig.requestTimeout));
 
         
         
@@ -65,7 +65,7 @@ class GastoService {
       final response = await http.get(
         Uri.parse('$baseUrl/api/gastos/$id'),
         headers: headers,
-      );
+      ).timeout(Duration(seconds: ApiConfig.requestTimeout));
 
         
 
@@ -88,7 +88,7 @@ class GastoService {
       final response = await http.get(
         Uri.parse('$baseUrl/api/gastos/cuadre/$cuadreId'),
         headers: headers,
-      );
+      ).timeout(Duration(seconds: ApiConfig.requestTimeout));
 
          
       if (response.statusCode == 200) {
@@ -154,7 +154,7 @@ class GastoService {
         Uri.parse('$baseUrl/api/gastos'),
         headers: headers,
         body: json.encode(body),
-      );
+      ).timeout(Duration(seconds: ApiConfig.requestTimeout));
 
         
         
