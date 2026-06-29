@@ -115,16 +115,16 @@ class DatosCacheProvider extends ChangeNotifier {
     _pollingTimer = Timer.periodic(Duration(minutes: _pollingIntervalMinutes), (
       timer,
     ) async {
-        
+      // Si el flag de carga lleva más de un ciclo de polling atascado, es un
+      // cuelgue (tab estuvo suspendido y el Future nunca resolvió). Resetear.
+      if (_isLoadingProductos) {
+        _isLoadingProductos = false;
+        notifyListeners();
+      }
 
-      // Solo recargar productos si expiraron (SILENCIOSO para no interrumpir UI)
       if (productosExpired) {
         await _cargarProductos(silent: true);
       }
-      // Categorías deshabilitadas - no se usan en esta app
-      // if (categoriasExpired) {
-      //   await _cargarCategorias(silent: true);
-      // }
     });
   }
 
@@ -155,17 +155,14 @@ class DatosCacheProvider extends ChangeNotifier {
   Future<void> _cargarProductos({
     bool force = false,
     bool silent = false,
-    bool useProgressive =
-        false, // ⚡ OPTIMIZADO: Por defecto NO usar progresiva (más lento)
-    bool useLigero =
-        true, // ⚡ NUEVO: Por defecto usar endpoint ligero (más rápido)
+    bool useProgressive = false,
+    bool useLigero = true,
   }) async {
-    // ✅ NUEVO: Verificar si necesita actualización
     if (!force && !productosExpired && _productos != null) {
-        
       return;
     }
 
+    // Guard: si lleva más de 60s cargando, probablemente está colgado — resetear.
     if (_isLoadingProductos) return;
 
     _isLoadingProductos = true;

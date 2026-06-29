@@ -43,12 +43,17 @@
 
 <body>
   <script>
+    // Desregistrar cualquier service worker antiguo para evitar que sirva
+    // archivos cacheados al reabrir la pestaña (causa del bug con Ctrl+F5).
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (var r of registrations) { r.unregister(); }
+      });
+    }
+
     window.addEventListener('load', function (ev) {
-      // Download main.dart.js
+      // Sin service worker: siempre carga archivos frescos del servidor.
       _flutter.loader.loadEntrypoint({
-        serviceWorker: {
-          serviceWorkerVersion: serviceWorkerVersion,
-        },
         onEntrypointLoaded: function (engineInitializer) {
           engineInitializer.initializeEngine().then(function (appRunner) {
             appRunner.runApp();
