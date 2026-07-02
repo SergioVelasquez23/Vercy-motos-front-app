@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../models/pedido_asesor.dart';
 import '../services/pedido_asesor_service.dart';
 import '../theme/app_theme.dart';
+import '../providers/user_provider.dart';
 import 'facturacion_screen.dart';
 
 class AdminPedidosAsesorScreen extends StatefulWidget {
@@ -24,6 +26,13 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      if (userProvider.isAsesor) {
+        context.go('/asesor-pedidos');
+        return;
+      }
+    });
     _cargarPedidos();
   }
 

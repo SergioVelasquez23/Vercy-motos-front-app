@@ -5,8 +5,10 @@ import '../models/cuadre_caja.dart';
 import '../services/cuadre_caja_service.dart';
 import '../services/pedido_service.dart';
 import '../services/resumen_cierre_completo_service.dart';
+import '../services/backup_inventario_service.dart';
 import '../models/resumen_cierre_completo.dart';
 import '../utils/format_utils.dart';
+import '../utils/file_download_helper.dart';
 import '../theme/app_theme.dart';
 import '../utils/logger.dart';
 
@@ -33,6 +35,11 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
 
   // Services
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
+  final BackupInventarioService _backupService = BackupInventarioService();
+
+  // Estado de conciliación de inventario
+  List<Map<String, dynamic>>? _conciliacionData;
+  bool _descargandoExcel = false;
 
   // Variables de estado
   bool _isLoading = false;
@@ -715,11 +722,14 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         } else {
           _mostrarExito('Caja cerrada exitosamente - Sin descuadre');
         }
-        
-        // Volver a la pantalla anterior
-        Navigator.of(
-          context,
-        ).pop(true); // true indica que se cerró exitosamente
+
+        // Descargar Excel de conciliación automáticamente y cargar resultado
+        await _descargarExcelYMostrarConciliacion(cuadre.id!);
+
+        // Volver a la pantalla anterior solo si no hay discrepancias o si el usuario ya vio el reporte
+        if (mounted) {
+          Navigator.of(context).pop(true);
+        }
       } else {
         throw Exception('Error al cerrar el cuadre');
       }
@@ -746,7 +756,186 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
     }
   }
 
-  // ✅ ELIMINADO: Función de diálogo de confirmación no necesaria
+  // ===== BACKUP / CONCILIACIÓN DE INVENTARIO =====
+
+  /// Descarga automáticamente el Excel de conciliación y carga el resumen de discrepancias.
+  /// Si el backend aún no tiene el backup listo, reintenta una vez tras 2 segundos.
+  Future<void> _descargarExcelYMostrarConciliacion(String cajaId) async {
+    // Pequeña espera para que el backend termine de guardar el backup
+    await Future.delayed(const Duration(seconds: 2));
+
+    // Descargar Excel en background
+    _iniciarDescargaExcel(cajaId);
+
+    // Cargar la conciliación para mostrar en pantalla
+    try {
+      final conciliacion = await _backupService.getConciliacion(cajaId);
+      if (mounted) {
+        setState(() => _conciliacionData = conciliacion);
+        final discrepancias = _backupService.contarDiscrepancias(conciliacion);
+        if (discrepancias > 0) {
+          _mostrarDialogoDiscrepancias(discrepancias, conciliacion);
+        }
+      }
+    } catch (e) {
+      appLog('⚠️ No se pudo cargar la conciliación: $e');
+    }
+  }
+
+  /// Dispara la descarga del Excel de conciliación sin bloquear la UI.
+  void _iniciarDescargaExcel(String cajaId) async {
+    if (_descargandoExcel) return;
+    setState(() => _descargandoExcel = true);
+    try {
+      final bytes = await _backupService.descargarExcelConciliacion(cajaId);
+      final now = DateTime.now();
+      final nombre =
+          'conciliacion_${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}.xlsx';
+      FileDownloadHelper.downloadFile(
+        bytes,
+        filename: nombre,
+        mimeType:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('📥 Excel de conciliación de inventario descargado'),
+            backgroundColor: Colors.teal,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      appLog('⚠️ No se pudo descargar el Excel de conciliación: $e');
+    } finally {
+      if (mounted) setState(() => _descargandoExcel = false);
+    }
+  }
+
+  /// Muestra un diálogo alertando que hay discrepancias en el inventario.
+  void _mostrarDialogoDiscrepancias(
+      int totalDiscrepancias, List<Map<String, dynamic>> conciliacion) {
+    final faltantes = conciliacion.where((f) => f['estado'] == 'FALTANTE').toList();
+    final sobrantes = conciliacion.where((f) => f['estado'] == 'SOBRANTE').toList();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+            const SizedBox(width: 8),
+            const Text('Discrepancias en Inventario',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Se encontraron $totalDiscrepancias producto(s) con diferencias entre el stock esperado y el real.',
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8)),
+              ),
+              const SizedBox(height: 12),
+              if (faltantes.isNotEmpty) ...[
+                Text('Faltantes (${faltantes.length}):',
+                    style: const TextStyle(
+                        color: Colors.red, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                ...faltantes.take(5).map((f) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                              child: Text(f['nombre'] ?? '',
+                                  style: const TextStyle(fontSize: 12),
+                                  overflow: TextOverflow.ellipsis)),
+                          Text(
+                            f['discrepancia'].toString(),
+                            style: const TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    )),
+                if (faltantes.length > 5)
+                  Text('...y ${faltantes.length - 5} más',
+                      style:
+                          const TextStyle(fontSize: 11, color: Colors.grey)),
+              ],
+              if (sobrantes.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text('Sobrantes (${sobrantes.length}):',
+                    style: const TextStyle(
+                        color: Colors.orange, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                ...sobrantes.take(5).map((f) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                              child: Text(f['nombre'] ?? '',
+                                  style: const TextStyle(fontSize: 12),
+                                  overflow: TextOverflow.ellipsis)),
+                          Text(
+                            '+${f['discrepancia']}',
+                            style: const TextStyle(
+                                color: Colors.orange,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    )),
+                if (sobrantes.length > 5)
+                  Text('...y ${sobrantes.length - 5} más',
+                      style:
+                          const TextStyle(fontSize: 11, color: Colors.grey)),
+              ],
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                    color: Colors.teal.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border:
+                        Border.all(color: Colors.teal.withOpacity(0.3))),
+                child: const Row(
+                  children: [
+                    Icon(Icons.download_done, color: Colors.teal, size: 18),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'El Excel detallado ya está siendo descargado automáticamente.',
+                        style: TextStyle(fontSize: 12, color: Colors.teal),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Entendido', style: TextStyle(color: Colors.teal)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ===== FIN BACKUP / CONCILIACIÓN =====
 
   void _mostrarError(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -944,6 +1133,32 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                       ),
                     ),
                     SizedBox(height: 24),
+
+                    // Indicador de descarga de Excel en progreso
+                    if (_descargandoExcel) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.teal.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.teal.withOpacity(0.4)),
+                        ),
+                        child: const Row(
+                          children: [
+                            SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.teal),
+                            ),
+                            SizedBox(width: 10),
+                            Text('Generando Excel de conciliación...',
+                                style: TextStyle(color: Colors.teal)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
 
                     // Botón para cerrar caja
                     Container(

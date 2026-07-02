@@ -5,6 +5,32 @@
 library;
 
 class DateTimeUtils {
+  /// Hora actual de Colombia (UTC-5 todo el año, sin horario de verano).
+  ///
+  /// Usar en vez de `DateTime.now()` para fechas que se guardan o se muestran
+  /// al usuario (ej. fecha/hora de un pedido o factura), ya que `DateTime.now()`
+  /// depende de la zona horaria configurada en el dispositivo/navegador, que a
+  /// veces queda en UTC en vez de la hora real de Bogotá.
+  ///
+  /// El resultado se devuelve SIN marcar como UTC (isUtc = false) aunque el
+  /// cálculo interno pase por `.toUtc()`. Si quedara marcado como UTC,
+  /// `toIso8601String()` le agregaría una 'Z' (mintiendo que es UTC real) y
+  /// cualquier `.toLocal()` posterior le restaría OTRAS 5 horas al valor,
+  /// duplicando el corrimiento y dañando la hora guardada/mostrada.
+  static DateTime nowColombia() {
+    final colombia = DateTime.now().toUtc().subtract(const Duration(hours: 5));
+    return DateTime(
+      colombia.year,
+      colombia.month,
+      colombia.day,
+      colombia.hour,
+      colombia.minute,
+      colombia.second,
+      colombia.millisecond,
+      colombia.microsecond,
+    );
+  }
+
   /// Parsea una fecha de forma segura desde diferentes tipos de datos
   ///
   /// Parámetros:

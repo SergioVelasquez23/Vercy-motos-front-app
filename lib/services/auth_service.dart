@@ -13,6 +13,7 @@ import '../providers/user_provider.dart';
 import '../utils/jwt_utils.dart';
 import '../utils/connectivity_utils.dart';
 import '../config/api_config.dart';
+import '../utils/api_error.dart';
 
 class AuthService {
   // Registro de usuario - Por defecto se registra como ASESOR
@@ -154,9 +155,16 @@ class AuthService {
         }
 
         return data;
-      } else if (response.statusCode == 401) {
-          
-        return {'error': 'Usuario o contraseña incorrectos', 'status': 401};
+      } else if (response.statusCode == 401 || response.statusCode == 400) {
+        // El backend usa 400 para credenciales inválidas en login (no solo 401).
+        // Si trae un mensaje propio lo respetamos; si no, mostramos el genérico.
+        final backendMsg = parseBackendError(response.body, response.statusCode);
+        final esGenerico = backendMsg.trim().isEmpty ||
+            backendMsg.startsWith('Error ${response.statusCode}');
+        return {
+          'error': esGenerico ? 'Usuario o contraseña incorrectos' : backendMsg,
+          'status': response.statusCode,
+        };
       } else if (response.statusCode == 403) {
         // Autorización pendiente
         return {

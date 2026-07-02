@@ -8,6 +8,7 @@ import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../services/keep_alive_service.dart';
+import 'package:universal_html/html.dart' as html;
 
 // Extension para validación de email
 extension EmailValidator on String {
@@ -51,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen>
   // Wake-up / retry timers
   Timer? _loginWatchdogTimer;
   bool _showWakeupOverlay = false;
-  int _wakeupRemainingSeconds = 300; // 5 minutos
+  int _wakeupRemainingSeconds = 60;
   Timer? _wakeupTicker;
   Timer? _wakeupStepTimer;
 
@@ -98,18 +99,18 @@ class _LoginScreenState extends State<LoginScreen>
       
     setState(() {
       _showWakeupOverlay = true;
-      _wakeupRemainingSeconds = 300;
+      _wakeupRemainingSeconds = 60;
     });
 
-    // Ticker cada segundo para el contador visual
+    // Ticker cada segundo para la barra de progreso
     _wakeupTicker?.cancel();
     _wakeupTicker = Timer.periodic(Duration(seconds: 1), (t) {
       if (!mounted) return;
       setState(() {
-        _wakeupRemainingSeconds = (_wakeupRemainingSeconds - 1).clamp(0, 300);
+        _wakeupRemainingSeconds = (_wakeupRemainingSeconds - 1).clamp(0, 60);
       });
       if (_wakeupRemainingSeconds <= 0) {
-        _stopWakeUpSequence();
+        _reloadPage();
       }
     });
 
@@ -124,7 +125,6 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _stopWakeUpSequence() {
-      
     _wakeupTicker?.cancel();
     _wakeupStepTimer?.cancel();
     _loginWatchdogTimer?.cancel();
@@ -133,6 +133,13 @@ class _LoginScreenState extends State<LoginScreen>
         _showWakeupOverlay = false;
       });
     }
+  }
+
+  void _reloadPage() {
+    _wakeupTicker?.cancel();
+    _wakeupStepTimer?.cancel();
+    _loginWatchdogTimer?.cancel();
+    html.window.location.reload();
   }
 
   Future<void> _performWakeupStep() async {
@@ -986,28 +993,31 @@ class _LoginScreenState extends State<LoginScreen>
                       SizedBox(height: context.isMobile ? 16 : 20),
 
                       // Sign up link
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '¿No tienes cuenta? ',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: context.isMobile ? 12 : 14,
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: _isLoading ? null : _showRegisterDialog,
-                            child: Text(
-                              'Regístrate',
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '¿No tienes cuenta? ',
                               style: TextStyle(
-                                color: AppTheme.primary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
+                                color: Colors.grey[600],
+                                fontSize: context.isMobile ? 12 : 14,
                               ),
                             ),
-                          ),
-                        ],
+                            GestureDetector(
+                              onTap: _isLoading ? null : _showRegisterDialog,
+                              child: Text(
+                                'Regístrate',
+                                style: TextStyle(
+                                  color: AppTheme.primary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
 
                       // Verificación 2FA

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 import '../config/endpoints_config.dart';
 import '../utils/logger.dart';
+import '../utils/datetime_utils.dart';
 
 /// Servicio para integración con API de Facturación Matias
 /// Cubre: Facturas, Nota Crédito, Nota Débito, Doc. Soporte,
@@ -343,7 +344,7 @@ class MatiasService {
     required String resolutionNumber,
     int type_document_id = 20, // POS tipo 20
   }) {
-    final now = DateTime.now();
+    final now = DateTimeUtils.nowColombia();
     final date = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
     final time = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
 
@@ -643,7 +644,7 @@ class MatiasService {
                     .fold<double>(0, (a, b) => a + b * totalNum / sumaParciales)
             : (totalNum * proporcion);
         return {
-          'payment_method_id': 1, // Contado
+          'payment_method_id': 1, // Contado (un pago mixto se paga completo de inmediato)
           'means_payment_id': _mapFormaPagoToMeansId(p.formaPago as String?),
           'value_paid': valorPago.toStringAsFixed(2),
           'payment_due_date': date,
@@ -651,13 +652,25 @@ class MatiasService {
       });
     }
 
+    // Venta a crédito: marcar payment_method_id 2 y usar la fecha de
+    // vencimiento real del pedido (no la fecha de la factura).
+    final esCredito = (pedido.formaPago as String?)?.toLowerCase().trim() == 'credito';
+    String fechaVencimientoStr = date;
+    if (esCredito) {
+      final fechaVencimiento = pedido.fechaVencimiento as DateTime?;
+      if (fechaVencimiento != null) {
+        fechaVencimientoStr =
+            "${fechaVencimiento.year}-${fechaVencimiento.month.toString().padLeft(2, '0')}-${fechaVencimiento.day.toString().padLeft(2, '0')}";
+      }
+    }
+
     // Pago único: usar el total del documento para que Σvalue_paid = payable_amount.
     return [
       {
-        'payment_method_id': 1, // Contado
+        'payment_method_id': esCredito ? 2 : 1, // 1=Contado, 2=Crédito
         'means_payment_id': _mapFormaPagoToMeansId(pedido.formaPago as String?),
         'value_paid': total,
-        'payment_due_date': date,
+        'payment_due_date': fechaVencimientoStr,
       }
     ];
   }

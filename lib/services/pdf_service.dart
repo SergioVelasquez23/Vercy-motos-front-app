@@ -244,15 +244,12 @@ class PDFService {
     );
     final nit = _toSafeString(
       resumen['nit'] ?? negocio?['nit'],
-      '1002576776-7',
     );
     final email = _toSafeString(
       resumen['email'] ?? negocio?['email'],
-      'juandiegocaycedo01@gmail.com',
     );
     final telefono = _toSafeString(
       resumen['telefonoRestaurante'] ?? negocio?['telefono'],
-      '3224640110',
     );
     final direccion = _toSafeString(
       resumen['direccionRestaurante'] ?? negocio?['direccion'],
@@ -448,7 +445,7 @@ class PDFService {
                             padding: const pw.EdgeInsets.all(4),
                             width: double.infinity,
                             child: pw.Text(
-                              'ORDEN DE COMPRA',
+                              'ORDEN DE VENTA',
                               style: pw.TextStyle(font: fontBold, fontSize: 10),
                               textAlign: pw.TextAlign.center,
                             ),
@@ -698,7 +695,8 @@ class PDFService {
       final valorImpuesto =
           (producto['valorImpuesto'] ?? producto['valorIva'] ?? 0.0);
       final subtotal = (precioUnit * cantidad);
-      final totalItem = subtotal - valorDescuento + valorImpuesto;
+      // "TOTAL SIN IVA" = subtotal de la línea sin impuesto (no debe sumar valorImpuesto)
+      final totalItem = subtotal - valorDescuento;
 
       rows.add(
         pw.TableRow(

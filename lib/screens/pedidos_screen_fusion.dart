@@ -11,6 +11,7 @@ import '../services/inventario_service.dart';
 import '../services/notification_service.dart';
 import '../providers/user_provider.dart';
 import '../utils/format_utils.dart';
+import '../utils/datetime_utils.dart';
 import '../theme/app_theme.dart';
 
 class PedidosScreenFusion extends StatefulWidget {
@@ -299,7 +300,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
             responsable: 'Sistema',
             referencia: 'Pedido ${pedido.id} - Mesa ${pedido.mesa}',
             observaciones: 'Restauración automática al eliminar pedido pagado',
-            fecha: DateTime.now(),
+            fecha: DateTimeUtils.nowColombia(),
           );
 
           try {

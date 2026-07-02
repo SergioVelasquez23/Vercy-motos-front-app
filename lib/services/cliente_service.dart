@@ -109,8 +109,7 @@ class ClienteService {
 
       throwBackendError(response.body, response.statusCode, prefix: 'Error al crear cliente');
     } catch (e) {
-        
-      throw Exception('Error al crear cliente: $e');
+      rethrow;
     }
   }
 

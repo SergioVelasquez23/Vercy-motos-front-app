@@ -998,8 +998,10 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
               width: 1,
             ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+          child: Wrap(
+            alignment: WrapAlignment.spaceAround,
+            spacing: 24,
+            runSpacing: 16,
             children: [
               _buildResumenCard(
                 'Cantidad',

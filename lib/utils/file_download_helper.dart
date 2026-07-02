@@ -11,8 +11,8 @@ class FileDownloadHelper {
     String mimeType = 'application/octet-stream',
   }) {
     try {
-      // Crear un Blob con los datos
-      final blob = html.Blob([Uint8List.fromList(bytes)]);
+      // Crear Blob con MIME type correcto para que el browser lo descargue en lugar de abrir una pestaña
+      final blob = html.Blob([Uint8List.fromList(bytes)], mimeType);
 
       // Crear URL del blob
       final url = html.Url.createObjectUrlFromBlob(blob);
@@ -26,9 +26,14 @@ class FileDownloadHelper {
       html.document.body!.children.add(anchor);
       anchor.click();
 
-      // Limpiar
-      html.Url.revokeObjectUrl(url);
-      anchor.remove();
+      // Limpiar con retraso para que el browser tenga tiempo de iniciar la descarga
+      // antes de que se revoque la URL (evita que abra nueva pestaña)
+      Future.delayed(const Duration(milliseconds: 500), () {
+        html.Url.revokeObjectUrl(url);
+        try {
+          anchor.remove();
+        } catch (_) {}
+      });
 
       appLog('✅ Archivo descargado: $filename');
     } catch (e) {

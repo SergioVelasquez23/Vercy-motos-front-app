@@ -189,12 +189,13 @@ class _AppShellState extends State<AppShell> {
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        _MenuItem(
-          icon: Icons.dashboard,
-          label: 'Dashboard',
-          route: '/dashboard',
-          currentRoute: _currentRoute,
-        ),
+        if (!userProvider.isAsesor)
+          _MenuItem(
+            icon: Icons.dashboard,
+            label: 'Dashboard',
+            route: '/dashboard',
+            currentRoute: _currentRoute,
+          ),
         if (userProvider.isAsesor) ...[
           _MenuItem(icon: Icons.shopping_cart, label: 'Crear Pedido', route: '/asesor-pedidos', currentRoute: _currentRoute),
           _MenuItem(icon: Icons.request_quote, label: 'Cotización', route: '/cotizaciones', currentRoute: _currentRoute),

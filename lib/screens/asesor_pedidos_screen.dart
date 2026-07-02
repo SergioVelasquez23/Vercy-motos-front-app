@@ -12,11 +12,13 @@ import '../models/cliente.dart';
 import '../services/pedido_asesor_service.dart';
 import '../services/producto_service.dart';
 import '../services/cliente_service.dart';
+import '../services/traslado_service.dart';
 import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/busqueda_productos_utils.dart';
 import '../utils/logger.dart';
+import '../utils/datetime_utils.dart';
 
 class AsesorPedidosScreen extends StatefulWidget {
   const AsesorPedidosScreen({super.key});
@@ -25,10 +27,12 @@ class AsesorPedidosScreen extends StatefulWidget {
   _AsesorPedidosScreenState createState() => _AsesorPedidosScreenState();
 }
 
-class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
+class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
+    with SingleTickerProviderStateMixin {
   final PedidoAsesorService _pedidoService = PedidoAsesorService();
   final ProductoService _productoService = ProductoService();
   final ClienteService _clienteService = ClienteService();
+  final TrasladoService _trasladoService = TrasladoService();
   
   // Controladores
   final TextEditingController _clienteController = TextEditingController();
@@ -51,26 +55,40 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
   Producto? _productoSeleccionado;
   Cliente? _clienteSeleccionado;
   bool _isLoading = false;
+
+  // Controladores de precio editable (solo items de "mano de obra")
+  final Map<String, TextEditingController> _precioCtrls = {};
   
   // Totales
   double _subtotal = 0;
   double _total = 0;
 
+  // Tabs y lista de pedidos del asesor
+  late TabController _tabController;
+  List<PedidoAsesor> _misPedidos = [];
+  bool _isLoadingPedidos = false;
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _cargarDatos();
+    _cargarMisPedidos();
     _searchController.addListener(_filtrarProductos);
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _clienteController.dispose();
     _telefonoController.dispose();
     _observacionesController.dispose();
     _searchController.dispose();
     _codigoBarrasController.dispose();
     _cantidadController.dispose();
+    for (final ctrl in _precioCtrls.values) {
+      ctrl.dispose();
+    }
     super.dispose();
   }
 
@@ -116,6 +134,25 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
       _mostrarError('Error al cargar datos: $e');
+    }
+  }
+
+  Future<void> _cargarMisPedidos() async {
+    if (!mounted) return;
+    setState(() => _isLoadingPedidos = true);
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final pedidos = await _pedidoService.listarPedidos(
+        asesorId: userProvider.userId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _misPedidos = pedidos;
+        _isLoadingPedidos = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoadingPedidos = false);
     }
   }
 
@@ -170,6 +207,39 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
     appLog('   - Bodega: ${producto.bodega}');
     appLog('   - Almacén: ${producto.almacen}');
     appLog('   - TipoItem: ${producto.productoOServicio}');
+
+    // 🛠️ MANO DE OBRA: no maneja stock real, se salta la validación de stock
+    // y el diálogo de bodega/almacén; en su lugar se pide el precio a cobrar.
+    if (_esManoDeObra(producto)) {
+      final precioIngresado = await _mostrarDialogoPrecioManoDeObra(producto);
+      if (precioIngresado == null) return; // Usuario canceló
+
+      setState(() {
+        _carrito.add(
+          ItemPedido(
+            productoId: producto.id,
+            productoNombre: producto.nombre,
+            cantidad: cantidad,
+            precioUnitario: precioIngresado,
+            origen: 'ALMACÉN',
+          ),
+        );
+        _calcularTotales();
+        _productoSeleccionado = null;
+        _cantidadController.text = '1';
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${producto.nombre} agregado (\$${precioIngresado.toStringAsFixed(0)})',
+          ),
+          backgroundColor: AppTheme.success,
+          duration: Duration(seconds: 1),
+        ),
+      );
+      return;
+    }
 
     // ⚠️ VALIDACIÓN DE STOCK: No aplicar a servicios
     final esServicio = producto.productoOServicio?.toLowerCase() == 'servicio';
@@ -288,9 +358,9 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
       orElse: () => _productos.first, // Fallback
     );
 
-    // ✅ VALIDACIÓN: No aplicar a servicios
+    // ✅ VALIDACIÓN: No aplicar a servicios ni a "Mano de obra" (sin stock real)
     final tipoProducto = producto.productoOServicio?.trim().toLowerCase();
-    final esServicio = tipoProducto == 'servicio';
+    final esServicio = tipoProducto == 'servicio' || _esManoDeObra(producto);
 
     if (!esServicio) {
       // 📦 Validar stock del origen seleccionado
@@ -335,8 +405,58 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
   }
 
   void _eliminarDelCarrito(int index) {
+    final item = _carrito[index];
+    _precioCtrls.remove('${item.productoId}_${item.origen}')?.dispose();
     setState(() {
       _carrito.removeAt(index);
+      _calcularTotales();
+    });
+  }
+
+  // 🔍 Busca el producto original de un item del carrito (por id)
+  Producto? _buscarProducto(String? productoId) {
+    if (productoId == null) return null;
+    for (final p in _productos) {
+      if (p.id == productoId) return p;
+    }
+    return null;
+  }
+
+  // 🛠️ Solo los productos cuyo NOMBRE es "Mano de obra" permiten elegir/editar
+  // el precio unitario manualmente (cada cobro de mano de obra puede variar)
+  // y no manejan stock real, así que se saltan la validación/selección de
+  // bodega o almacén.
+  bool _esManoDeObra(Producto? producto) {
+    final nombre = producto?.nombre.toUpperCase() ?? '';
+    return nombre.contains('MANO') && nombre.contains('OBRA');
+  }
+
+  TextEditingController _ctrlPrecio(ItemPedido item) {
+    final key = '${item.productoId}_${item.origen}';
+    return _precioCtrls.putIfAbsent(
+      key,
+      () => TextEditingController(text: item.precioUnitario.toStringAsFixed(0)),
+    );
+  }
+
+  void _actualizarPrecioItem(int index, String texto) {
+    final nuevoPrecio = double.tryParse(texto.replaceAll(',', '.'));
+    if (nuevoPrecio == null || nuevoPrecio < 0) return;
+    final item = _carrito[index];
+    setState(() {
+      _carrito[index] = ItemPedido(
+        productoId: item.productoId,
+        productoNombre: item.productoNombre,
+        cantidad: item.cantidad,
+        precioUnitario: nuevoPrecio,
+        notas: item.notas,
+        porcentajeImpuesto: item.porcentajeImpuesto,
+        valorImpuesto: item.valorImpuesto,
+        porcentajeDescuento: item.porcentajeDescuento,
+        valorDescuento: item.valorDescuento,
+        origen: item.origen,
+        trasladoId: item.trasladoId,
+      );
       _calcularTotales();
     });
   }
@@ -371,6 +491,55 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
 
+      // Crear traslado para los items que vienen de BODEGA
+      List<ItemPedido> carritoFinal = List.from(_carrito);
+      appLog('🔍 [Traslado] Total items en carrito: ${_carrito.length}');
+      for (final item in _carrito) {
+        appLog('🔍 [Traslado]   - ${item.productoNombre} | origen="${item.origen}" | id=${item.productoId}');
+      }
+      final bodegaItems = _carrito.where((item) => item.origen == 'BODEGA').toList();
+      appLog('🔍 [Traslado] Items de BODEGA encontrados: ${bodegaItems.length}');
+
+      if (bodegaItems.isNotEmpty) {
+        appLog('🔍 [Traslado] Creando traslado con ${bodegaItems.length} item(s)...');
+        try {
+          final traslado = await _trasladoService.crearTraslado(
+            items: bodegaItems
+                .map((item) => {'productoId': item.productoId, 'cantidad': item.cantidad})
+                .toList(),
+            origen: 'BODEGA',
+            destino: 'ALMACEN',
+            asesor: userProvider.userName ?? 'Asesor',
+            observaciones: 'Pedido asesor - cliente: ${_clienteSeleccionado!.razonSocial ?? '${_clienteSeleccionado!.nombres ?? ''} ${_clienteSeleccionado!.apellidos ?? ''}'.trim()}',
+          );
+          appLog('✅ [Traslado] Creado con id: ${traslado.id}');
+          final trasladoId = traslado.id;
+          if (trasladoId != null) {
+            carritoFinal = _carrito.map((item) {
+              if (item.origen == 'BODEGA') {
+                return ItemPedido(
+                  productoId: item.productoId,
+                  productoNombre: item.productoNombre,
+                  cantidad: item.cantidad,
+                  precioUnitario: item.precioUnitario,
+                  notas: item.notas,
+                  origen: item.origen,
+                  trasladoId: trasladoId,
+                );
+              }
+              return item;
+            }).toList();
+          }
+        } catch (e) {
+          appLog('❌ [Traslado] Error al crear traslado: $e');
+          _mostrarError('Error al registrar traslado de bodega: $e');
+          setState(() => _isLoading = false);
+          return;
+        }
+      } else {
+        appLog('ℹ️ [Traslado] Sin items de BODEGA → no se crea traslado');
+      }
+
       final pedido = PedidoAsesor(
         clienteNombre:
             _clienteSeleccionado!.razonSocial ??
@@ -379,11 +548,11 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
         clienteId: _clienteSeleccionado!.id,
         asesorNombre: userProvider.userName ?? 'Asesor',
         asesorId: userProvider.userId,
-        items: _carrito,
+        items: carritoFinal,
         subtotal: _subtotal,
         impuestos: 0,
         total: _total,
-        fechaCreacion: DateTime.now(),
+        fechaCreacion: DateTimeUtils.nowColombia(),
         observaciones: _observacionesController.text.trim().isEmpty
             ? (_telefonoController.text.trim().isNotEmpty
                   ? 'Tel: ${_telefonoController.text.trim()}'
@@ -395,11 +564,6 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
 
       _mostrarExito('Pedido creado exitosamente');
       _limpiarFormulario();
-      
-      // Navegar a la lista de pedidos asesores
-      if (mounted) {
-        context.go('/admin-pedidos-asesor');
-      }
     } catch (e) {
       _mostrarError('Error al guardar pedido: $e');
     } finally {
@@ -432,15 +596,14 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
           tooltip: 'Volver al dashboard',
-          onPressed: () =>
-              context.go('/dashboard'),
+          onPressed: () => context.go('/dashboard'),
         ),
         title: Row(
           children: [
             Icon(Icons.shopping_cart, color: Theme.of(context).colorScheme.onSurface),
             SizedBox(width: 12),
             Text(
-              'Crear Pedido',
+              'Pedidos',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
@@ -452,7 +615,6 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
         elevation: 0,
         automaticallyImplyLeading: true,
         actions: [
-          // Información del usuario
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: Center(
@@ -462,7 +624,6 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
               ),
             ),
           ),
-          // Botón de cerrar sesión
           IconButton(
             icon: Icon(Icons.logout, color: Theme.of(context).colorScheme.onSurface),
             tooltip: 'Cerrar sesión',
@@ -470,84 +631,520 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
           ),
           SizedBox(width: 8),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: AppTheme.primary,
+          unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+          indicatorColor: AppTheme.primary,
+          tabs: const [
+            Tab(icon: Icon(Icons.add_shopping_cart, size: 18), text: 'Nuevo Pedido'),
+            Tab(icon: Icon(Icons.list_alt, size: 18), text: 'Mis Pedidos'),
+          ],
+        ),
       ),
-      body: _isLoading && _productos.isEmpty
-          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
-          : LayoutBuilder(
-              builder: (context, constraints) {
-                // Determinar si es pantalla grande (tablet/desktop)
-                final isLargeScreen = constraints.maxWidth > 800;
+      body: TabBarView(
+        controller: _tabController,
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          _buildNuevoPedidoTab(),
+          _buildMisPedidosTab(),
+        ],
+      ),
+    );
+  }
 
-                if (isLargeScreen) {
-                  // Layout para desktop/tablet - dos columnas
-                  return Row(
-                    children: [
-                      // Panel izquierdo - Productos
-                      Expanded(flex: 3, child: _buildProductosPanel()),
-                      // Panel derecho - Carrito
-                      Container(
-                        width: 400,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface,
-                          border: Border(
-                            left: BorderSide(
-                              color: AppTheme.primary.withOpacity(0.3),
-                              width: 2,
-                            ),
-                          ),
+  Widget _buildNuevoPedidoTab() {
+    return _isLoading && _productos.isEmpty
+        ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
+        : LayoutBuilder(
+            builder: (context, constraints) {
+              final isLargeScreen = constraints.maxWidth > 800;
+              if (isLargeScreen) {
+                return Row(
+                  children: [
+                    Expanded(flex: 3, child: _buildProductosPanel()),
+                    Container(
+                      width: 400,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        border: Border(
+                          left: BorderSide(color: AppTheme.primary.withOpacity(0.3), width: 2),
                         ),
-                        child: _buildCarritoPanel(),
                       ),
-                    ],
-                  );
-                } else {
-                  // Layout para móvil - columna única
-                  return Column(
-                    children: [
-                      // Panel de productos (ocupa la mayor parte)
-                      Expanded(child: _buildProductosPanel()),
-                      // Botón flotante para ver carrito
-                      Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface,
-                          border: Border(
-                            top: BorderSide(
-                              color: AppTheme.primary.withOpacity(0.3),
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () => _mostrarCarritoModal(context),
-                                icon: Icon(
-                                  Icons.shopping_cart,
-                                  color: Colors.white,
-                                ),
-                                label: Text(
-                                  'Ver Pedido (${_carrito.length}) - \$${_total.toStringAsFixed(0)}',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.primary,
-                                  padding: EdgeInsets.symmetric(vertical: 16),
-                                ),
+                      child: _buildCarritoPanel(),
+                    ),
+                  ],
+                );
+              } else {
+                return Column(
+                  children: [
+                    Expanded(child: _buildProductosPanel()),
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        border: Border(top: BorderSide(color: AppTheme.primary.withOpacity(0.3), width: 2)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () => _mostrarCarritoModal(context),
+                              icon: const Icon(Icons.shopping_cart, color: Colors.white),
+                              label: Text(
+                                'Ver Pedido (${_carrito.length}) - \$${_total.toStringAsFixed(0)}',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primary,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
-                  );
-                }
-              },
+                    ),
+                  ],
+                );
+              }
+            },
+          );
+  }
+
+  Widget _buildMisPedidosTab() {
+    if (_isLoadingPedidos) {
+      return Center(child: CircularProgressIndicator(color: AppTheme.primary));
+    }
+    if (_misPedidos.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.inbox_outlined, size: 64, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3)),
+            const SizedBox(height: 16),
+            Text('No tienes pedidos registrados',
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6), fontSize: 16)),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: _cargarMisPedidos,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Actualizar'),
             ),
+          ],
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _cargarMisPedidos,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _misPedidos.length,
+        itemBuilder: (context, index) => _buildPedidoCard(_misPedidos[index]),
+      ),
+    );
+  }
+
+  Widget _buildPedidoCard(PedidoAsesor pedido) {
+    final estado = pedido.estado;
+    final puedeAgregar = estado != 'FACTURADO' && estado != 'CANCELADO';
+    final colorEstado = estado == 'FACTURADO'
+        ? AppTheme.success
+        : estado == 'CANCELADO'
+            ? AppTheme.error
+            : AppTheme.primary;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: AppTheme.primary.withOpacity(0.15)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    pedido.clienteNombre,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: colorEstado.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(estado, style: TextStyle(fontSize: 11, color: colorEstado, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${pedido.items.length} producto(s) · ${_formatFecha(pedido.fechaCreacion)}',
+              style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
+            ),
+            if (pedido.observaciones != null && pedido.observaciones!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  pedido.observaciones!,
+                  style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '\$${pedido.total.toStringAsFixed(0)}',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primary),
+                ),
+                if (puedeAgregar)
+                  ElevatedButton.icon(
+                    onPressed: () => _mostrarAgregarProductosPedido(pedido),
+                    icon: const Icon(Icons.add, size: 16, color: Colors.white),
+                    label: const Text('Agregar productos', style: TextStyle(color: Colors.white, fontSize: 13)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatFecha(DateTime? fecha) {
+    if (fecha == null) return '-';
+    return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year} ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _mostrarAgregarProductosPedido(PedidoAsesor pedido) async {
+    List<ItemPedido> nuevosItems = [];
+    final searchCtrl = TextEditingController();
+    List<Producto> productosFiltrados = List.from(_productos);
+    bool guardando = false;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (ctx, setSheet) {
+          void filtrar(String q) {
+            setSheet(() {
+              productosFiltrados = _productos.where((p) => busquedaInteligente(p, q.toLowerCase())).toList();
+            });
+          }
+
+          Future<void> agregarProducto(Producto producto) async {
+            final origen = await _mostrarDialogoSeleccionarOrigen(ctx, producto, 1);
+            if (origen == null) return;
+            setSheet(() {
+              final idx = nuevosItems.indexWhere((i) => i.productoId == producto.id && i.origen == origen);
+              if (idx >= 0) {
+                nuevosItems[idx] = ItemPedido(
+                  productoId: nuevosItems[idx].productoId,
+                  productoNombre: nuevosItems[idx].productoNombre,
+                  cantidad: nuevosItems[idx].cantidad + 1,
+                  precioUnitario: nuevosItems[idx].precioUnitario,
+                  origen: origen,
+                );
+              } else {
+                nuevosItems.add(ItemPedido(
+                  productoId: producto.id,
+                  productoNombre: producto.nombre,
+                  cantidad: 1,
+                  precioUnitario: producto.precio,
+                  origen: origen,
+                ));
+              }
+            });
+          }
+
+          Future<void> guardar() async {
+            if (nuevosItems.isEmpty || pedido.id == null) return;
+            setSheet(() => guardando = true);
+
+            // Gestionar traslados de bodega en los nuevos items
+            List<ItemPedido> nuevosFinales = List.from(nuevosItems);
+            final bodegaItems = nuevosItems.where((i) => i.origen == 'BODEGA').toList();
+            if (bodegaItems.isNotEmpty) {
+              try {
+                final userProvider = Provider.of<UserProvider>(context, listen: false);
+                final traslado = await _trasladoService.crearTraslado(
+                  items: bodegaItems.map((i) => {'productoId': i.productoId, 'cantidad': i.cantidad}).toList(),
+                  origen: 'BODEGA',
+                  destino: 'ALMACEN',
+                  asesor: userProvider.userName ?? 'Asesor',
+                  observaciones: 'Adición a pedido - cliente: ${pedido.clienteNombre}',
+                );
+                final trasladoId = traslado.id;
+                if (trasladoId != null) {
+                  nuevosFinales = nuevosItems.map((i) {
+                    if (i.origen == 'BODEGA') {
+                      return ItemPedido(
+                        productoId: i.productoId,
+                        productoNombre: i.productoNombre,
+                        cantidad: i.cantidad,
+                        precioUnitario: i.precioUnitario,
+                        origen: i.origen,
+                        trasladoId: trasladoId,
+                      );
+                    }
+                    return i;
+                  }).toList();
+                }
+              } catch (e) {
+                setSheet(() => guardando = false);
+                _mostrarError('Error al registrar traslado: $e');
+                return;
+              }
+            }
+
+            final todosItems = [...pedido.items, ...nuevosFinales];
+            final nuevoTotal = todosItems.fold<double>(0, (sum, i) => sum + i.subtotal);
+            final pedidoActualizado = PedidoAsesor(
+              clienteNombre: pedido.clienteNombre,
+              clienteId: pedido.clienteId,
+              asesorNombre: pedido.asesorNombre,
+              asesorId: pedido.asesorId,
+              items: todosItems,
+              subtotal: nuevoTotal,
+              impuestos: pedido.impuestos,
+              total: nuevoTotal,
+              fechaCreacion: pedido.fechaCreacion,
+              observaciones: pedido.observaciones,
+            );
+
+            try {
+              await _pedidoService.actualizarPedido(pedido.id!, pedidoActualizado);
+              if (Navigator.canPop(sheetCtx)) Navigator.pop(sheetCtx);
+              _cargarMisPedidos();
+              _mostrarExito('Pedido actualizado con ${nuevosFinales.length} producto(s)');
+            } catch (e) {
+              setSheet(() => guardando = false);
+              _mostrarError('Error al actualizar pedido: $e');
+            }
+          }
+
+          final totalNuevos = nuevosItems.fold<double>(0, (s, i) => s + i.subtotal);
+
+          return DraggableScrollableSheet(
+            initialChildSize: 0.92,
+            minChildSize: 0.5,
+            maxChildSize: 0.97,
+            builder: (_, scrollCtrl) => Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+              ),
+              child: Column(
+                children: [
+                  // Handle
+                  Container(
+                    margin: const EdgeInsets.only(top: 8, bottom: 4),
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        Icon(Icons.add_shopping_cart, color: AppTheme.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Agregar a pedido de ${pedido.clienteNombre}',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Theme.of(context).colorScheme.onSurface)),
+                              Text('Pedido actual: ${pedido.items.length} producto(s) · \$${pedido.total.toStringAsFixed(0)}',
+                                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
+                          onPressed: () => Navigator.pop(sheetCtx),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Divider(height: 1, color: AppTheme.primary.withOpacity(0.2)),
+                  // Buscador
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: TextField(
+                      controller: searchCtrl,
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                      decoration: InputDecoration(
+                        hintText: 'Buscar producto...',
+                        hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
+                        prefixIcon: Icon(Icons.search, color: AppTheme.primary),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surface,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppTheme.primary.withOpacity(0.3))),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      onChanged: filtrar,
+                    ),
+                  ),
+                  // Nuevos items seleccionados (si hay)
+                  if (nuevosItems.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Nuevos (${nuevosItems.length})', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.primary)),
+                          const SizedBox(height: 4),
+                          ...nuevosItems.map((i) => Row(
+                            children: [
+                              Expanded(child: Text('${i.productoNombre} x${i.cantidad}', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface))),
+                              Text('\$${i.subtotal.toStringAsFixed(0)}', style: TextStyle(fontSize: 12, color: AppTheme.primary)),
+                              IconButton(
+                                icon: Icon(Icons.remove_circle_outline, size: 16, color: AppTheme.error),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                onPressed: () => setSheet(() => nuevosItems.remove(i)),
+                              ),
+                            ],
+                          )),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                  // Grid de productos
+                  Expanded(
+                    child: productosFiltrados.isEmpty
+                        ? Center(child: Text('Sin productos', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))))
+                        : GridView.builder(
+                            controller: scrollCtrl,
+                            padding: const EdgeInsets.all(12),
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: _getCrossAxisCount(context),
+                              childAspectRatio: 0.65,
+                              crossAxisSpacing: 10,
+                              mainAxisSpacing: 10,
+                            ),
+                            itemCount: productosFiltrados.length,
+                            itemBuilder: (_, i) {
+                              final p = productosFiltrados[i];
+                              return InkWell(
+                                onTap: () => agregarProducto(p),
+                                borderRadius: BorderRadius.circular(10),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.surface,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.inventory_2, color: AppTheme.primary, size: 32),
+                                      const SizedBox(height: 6),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                                        child: Text(p.nombre, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface), textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text('\$${p.precio.toStringAsFixed(0)}', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 13)),
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          _stockBadge('B', p.bodega ?? 0),
+                                          const SizedBox(width: 4),
+                                          _stockBadge('A', p.almacen ?? 0),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                  // Footer con botón guardar
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, -2))],
+                    ),
+                    child: Row(
+                      children: [
+                        if (nuevosItems.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: Text('+\$${totalNuevos.toStringAsFixed(0)}',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary, fontSize: 16)),
+                          ),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: (nuevosItems.isEmpty || guardando) ? null : guardar,
+                            icon: guardando
+                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                : const Icon(Icons.save, color: Colors.white, size: 18),
+                            label: Text(
+                              guardando ? 'Guardando...' : 'Guardar en pedido (${nuevosItems.length})',
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primary,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              disabledBackgroundColor: AppTheme.primary.withOpacity(0.4),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    searchCtrl.dispose();
+  }
+
+  Widget _stockBadge(String label, int qty) {
+    final ok = qty > 0;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      decoration: BoxDecoration(
+        color: (ok ? AppTheme.success : AppTheme.error).withOpacity(0.15),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text('$label:$qty', style: TextStyle(fontSize: 9, color: ok ? AppTheme.success : AppTheme.error, fontWeight: FontWeight.w600)),
     );
   }
 
@@ -1087,8 +1684,9 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                                                                 .numeroIdentificacion
                                                           : nombre,
                                                       style: TextStyle(
-                                                        color: AppTheme
-                                                            .textPrimary,
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurface,
                                                         fontWeight:
                                                             FontWeight.w500,
                                                         fontSize: 13,
@@ -1100,8 +1698,10 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                                                       cliente
                                                           .numeroIdentificacion,
                                                       style: TextStyle(
-                                                        color: AppTheme
-                                                            .textSecondary,
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurface
+                                                            .withOpacity(0.7),
                                                         fontSize: 11,
                                                       ),
                                                     ),
@@ -1415,10 +2015,28 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                   ],
                 ),
                 SizedBox(height: 4),
-                Text(
-                  '\$${item.precioUnitario.toStringAsFixed(0)} c/u',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
-                ),
+                _esManoDeObra(_buscarProducto(item.productoId))
+                    ? SizedBox(
+                        width: 90,
+                        height: 32,
+                        child: TextField(
+                          controller: _ctrlPrecio(item),
+                          keyboardType: TextInputType.numberWithOptions(decimal: true),
+                          style: TextStyle(color: AppTheme.primary, fontSize: 12, fontWeight: FontWeight.w600),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            prefixText: '\$ ',
+                            suffixText: 'c/u',
+                            contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                          ),
+                          onChanged: (v) => _actualizarPrecioItem(index, v),
+                        ),
+                      )
+                    : Text(
+                        '\$${item.precioUnitario.toStringAsFixed(0)} c/u',
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
+                      ),
               ],
             ),
           ),
@@ -1535,6 +2153,93 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(mensaje), backgroundColor: AppTheme.success),
     );
+  }
+
+  // 💲 Mostrar diálogo para ingresar el precio de un item de "Mano de obra"
+  // (no maneja stock real, así que en vez de bodega/almacén se define el cobro)
+  Future<double?> _mostrarDialogoPrecioManoDeObra(Producto producto) async {
+    final precioCtrl = TextEditingController(
+      text: producto.precio > 0 ? producto.precio.toStringAsFixed(0) : '',
+    );
+
+    final precio = await showDialog<double>(
+      context: context,
+      builder: (context) {
+        String? error;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            void confirmar() {
+              final valor = double.tryParse(precioCtrl.text.replaceAll(',', '.'));
+              if (valor == null || valor < 0) {
+                setDialogState(() => error = 'Ingresa un precio válido');
+                return;
+              }
+              Navigator.pop(context, valor);
+            }
+
+            return AlertDialog(
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              title: Row(
+                children: [
+                  Icon(Icons.build, color: AppTheme.primary),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Precio de mano de obra',
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    producto.nombre,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  TextField(
+                    controller: precioCtrl,
+                    autofocus: true,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                    decoration: InputDecoration(
+                      labelText: 'Precio a cobrar',
+                      prefixText: '\$ ',
+                      errorText: error,
+                      border: OutlineInputBorder(),
+                    ),
+                    onSubmitted: (_) => confirmar(),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, null),
+                  child: Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: confirmar,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text('Agregar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    precioCtrl.dispose();
+    return precio;
   }
 
   // 📦 Mostrar diálogo para elegir de dónde descontar (Bodega o Almacén)
@@ -2083,8 +2788,9 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                                                                 .numeroIdentificacion
                                                           : nombre,
                                                       style: TextStyle(
-                                                        color: AppTheme
-                                                            .textPrimary,
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurface,
                                                         fontWeight:
                                                             FontWeight.w500,
                                                         fontSize: 13,
@@ -2096,8 +2802,10 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                                                       cliente
                                                           .numeroIdentificacion,
                                                       style: TextStyle(
-                                                        color: AppTheme
-                                                            .textSecondary,
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurface
+                                                            .withOpacity(0.7),
                                                         fontSize: 11,
                                                       ),
                                                     ),
@@ -2380,6 +3088,56 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
 
+      // Crear traslado para los items que vienen de BODEGA
+      List<ItemPedido> carritoFinal = List.from(_carrito);
+      appLog('🔍 [Traslado/Modal] Total items: ${_carrito.length}');
+      for (final item in _carrito) {
+        appLog('🔍 [Traslado/Modal]   - ${item.productoNombre} | origen="${item.origen}" | id=${item.productoId}');
+      }
+      final bodegaItems = _carrito.where((item) => item.origen == 'BODEGA').toList();
+      appLog('🔍 [Traslado/Modal] Items de BODEGA: ${bodegaItems.length}');
+
+      if (bodegaItems.isNotEmpty) {
+        appLog('🔍 [Traslado/Modal] Creando traslado...');
+        try {
+          final traslado = await _trasladoService.crearTraslado(
+            items: bodegaItems
+                .map((item) => {'productoId': item.productoId, 'cantidad': item.cantidad})
+                .toList(),
+            origen: 'BODEGA',
+            destino: 'ALMACEN',
+            asesor: userProvider.userName ?? 'Asesor',
+            observaciones: 'Pedido asesor - cliente: ${_clienteSeleccionado!.razonSocial ?? '${_clienteSeleccionado!.nombres ?? ''} ${_clienteSeleccionado!.apellidos ?? ''}'.trim()}',
+          );
+          appLog('✅ [Traslado/Modal] Traslado creado: ${traslado.id}');
+          final trasladoId = traslado.id;
+          if (trasladoId != null) {
+            carritoFinal = _carrito.map((item) {
+              if (item.origen == 'BODEGA') {
+                return ItemPedido(
+                  productoId: item.productoId,
+                  productoNombre: item.productoNombre,
+                  cantidad: item.cantidad,
+                  precioUnitario: item.precioUnitario,
+                  notas: item.notas,
+                  origen: item.origen,
+                  trasladoId: trasladoId,
+                );
+              }
+              return item;
+            }).toList();
+          }
+        } catch (e) {
+          appLog('❌ [Traslado/Modal] Error: $e');
+          _mostrarError('Error al registrar traslado de bodega: $e');
+          setState(() => _isLoading = false);
+          setModalState(() {});
+          return;
+        }
+      } else {
+        appLog('ℹ️ [Traslado/Modal] Sin items de BODEGA → no se crea traslado');
+      }
+
       final pedido = PedidoAsesor(
         clienteNombre:
             _clienteSeleccionado!.razonSocial ??
@@ -2388,11 +3146,11 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
         clienteId: _clienteSeleccionado!.id,
         asesorNombre: userProvider.userName ?? 'Asesor',
         asesorId: userProvider.userId,
-        items: _carrito,
+        items: carritoFinal,
         subtotal: _subtotal,
         impuestos: 0,
         total: _total,
-        fechaCreacion: DateTime.now(),
+        fechaCreacion: DateTimeUtils.nowColombia(),
         observaciones: _observacionesController.text.trim().isEmpty
             ? (_telefonoController.text.trim().isNotEmpty
                   ? 'Tel: ${_telefonoController.text.trim()}'
@@ -2410,10 +3168,6 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
       _limpiarFormulario();
       _mostrarExito('Pedido creado exitosamente');
 
-      // Navegar a la lista de pedidos asesores
-      if (mounted) {
-        context.go('/admin-pedidos-asesor');
-      }
     } catch (e) {
       _mostrarError('Error al guardar pedido: $e');
     } finally {
@@ -2481,10 +3235,30 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                   ],
                 ),
                 SizedBox(height: 2),
-                Text(
-                  '\$${item.precioUnitario.toStringAsFixed(0)} x ${item.cantidad}',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 11),
-                ),
+                _esManoDeObra(_buscarProducto(item.productoId))
+                    ? SizedBox(
+                        width: 80,
+                        height: 30,
+                        child: TextField(
+                          controller: _ctrlPrecio(item),
+                          keyboardType: TextInputType.numberWithOptions(decimal: true),
+                          style: TextStyle(color: AppTheme.primary, fontSize: 11, fontWeight: FontWeight.w600),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            prefixText: '\$ ',
+                            contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                          ),
+                          onChanged: (v) {
+                            _actualizarPrecioItem(index, v);
+                            setModalState(() {});
+                          },
+                        ),
+                      )
+                    : Text(
+                        '\$${item.precioUnitario.toStringAsFixed(0)} x ${item.cantidad}',
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 11),
+                      ),
               ],
             ),
           ),

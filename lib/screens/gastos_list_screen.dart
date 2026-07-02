@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/gasto.dart';
-import '../screens/gastos_screen.dart';
 import '../services/gasto_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
@@ -143,37 +142,6 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
           icon: Icons.receipt_long,
           title: 'Lista de Gastos',
           badge: '${_gastosFiltrados.length}',
-          actions: [
-            ScreenHeaderAction.primary(
-              icon: Icons.add,
-              label: 'Crear Gasto',
-              mobileLabel: 'Crear',
-              onPressed: () => showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (ctx) => Dialog(
-                  insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: 900,
-                        maxHeight: MediaQuery.of(context).size.height * 0.9,
-                      ),
-                      child: GastosScreen(
-                        mostrarFormulario: true,
-                        onGastoGuardado: () {
-                          Navigator.of(ctx).pop();
-                          _cargarDatos();
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
         Expanded(
           child: Padding(
@@ -256,8 +224,8 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
         border: Border.all(color: Colors.grey.shade800),
       ),
       child: Wrap(
-        spacing: 12,
-        runSpacing: 12,
+        spacing: 20,
+        runSpacing: 16,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           // Fecha Inicio
@@ -349,6 +317,8 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
                   },
                   activeColor: AppTheme.primary,
                   side: BorderSide(color: Colors.grey.shade500),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
                 ),
                 Text(
                   'Cuentas por\nPagar',
@@ -376,6 +346,8 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
                   },
                   activeColor: AppTheme.primary,
                   side: BorderSide(color: Colors.grey.shade500),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
                 ),
                 Text(
                   'Ver pagos\nparciales',
@@ -869,14 +841,24 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
   Future<void> _eliminarGasto(Gasto gasto) async {
     try {
       if (gasto.id != null) {
-        await _gastoService.deleteGasto(gasto.id!);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gasto eliminado correctamente'),
-            backgroundColor: AppTheme.success,
-          ),
-        );
-        _cargarDatos();
+        final resultado = await _gastoService.deleteGasto(gasto.id!);
+        if (!mounted) return;
+        if (resultado['success'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(resultado['message'] ?? 'Gasto eliminado correctamente'),
+              backgroundColor: AppTheme.success,
+            ),
+          );
+          _cargarDatos();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(resultado['message'] ?? 'No se pudo eliminar el gasto'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

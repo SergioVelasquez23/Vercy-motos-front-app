@@ -1,12 +1,15 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/factura_compra.dart';
+import '../models/factura_compra_pdf_preview.dart';
 import '../models/ingrediente.dart';
 import '../models/movimiento_inventario.dart';
 import 'producto_service.dart';
 import 'inventario_service.dart';
 import '../utils/logger.dart';
+import '../utils/datetime_utils.dart';
 
 class FacturaCompraService {
   static const _timeout = Duration(seconds: 30);
@@ -310,6 +313,62 @@ class FacturaCompraService {
       }
     } catch (e) {
         
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  /// Sube un PDF de factura de compra para que el backend lo interprete según
+  /// la [plantilla] elegida y devuelva una vista previa (NO crea nada todavía:
+  /// ni productos ni la compra). El usuario revisa/edita el resultado antes de
+  /// confirmar.
+  Future<FacturaCompraPdfPreview> previewImportarPdf(
+    Uint8List pdfBytes, {
+    String plantilla = 'AKT',
+    String nombreArchivo = 'factura.pdf',
+  }) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/importar-pdf/preview?plantilla=$plantilla'),
+      );
+
+      final headersSinContentType = Map<String, String>.from(headers)
+        ..remove('Content-Type');
+      request.headers.addAll(headersSinContentType);
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'archivo',
+          pdfBytes,
+          filename: nombreArchivo,
+        ),
+      );
+
+      final streamedResponse = await request.send().timeout(
+        Duration(seconds: 60),
+      );
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        final data = jsonResponse is Map<String, dynamic>
+            ? (jsonResponse['data'] ?? jsonResponse)
+            : jsonResponse;
+        return FacturaCompraPdfPreview.fromJson(data as Map<String, dynamic>);
+      }
+
+      String errorMessage = 'Error al interpretar el PDF: ${response.statusCode}';
+      try {
+        final errorBody = json.decode(response.body);
+        if (errorBody is Map<String, dynamic> && errorBody['message'] != null) {
+          errorMessage = errorBody['message'];
+        }
+      } catch (_) {
+        // Usar mensaje genérico si no se puede parsear
+      }
+      throw Exception(errorMessage);
+    } catch (e) {
+      if (e is Exception) rethrow;
       throw Exception('Error de conexión: $e');
     }
   }
@@ -894,7 +953,7 @@ class FacturaCompraService {
               'Eliminación de compra a ${factura.proveedorNombre} - Reversión de stock en $destino',
           costoUnitario: item.precioUnitario,
           precioTotal: item.subtotal,
-          fecha: DateTime.now(),
+          fecha: DateTimeUtils.nowColombia(),
           facturaNo: factura.numeroFactura,
           proveedor: factura.proveedorNombre,
         );

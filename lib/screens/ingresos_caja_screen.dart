@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../models/ingreso_caja.dart';
 import '../services/ingreso_caja_service.dart';
+import '../utils/datetime_utils.dart';
 
 class IngresosCajaScreen extends StatefulWidget {
   const IngresosCajaScreen({super.key});
@@ -557,7 +558,7 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
                                 concepto: concepto,
                                 monto: monto,
                                 formaPago: formaPago,
-                                fechaIngreso: DateTime.now(),
+                                fechaIngreso: DateTimeUtils.nowColombia(),
                                 responsable: responsable,
                                 observaciones: observaciones,
                               ),

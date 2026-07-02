@@ -23,6 +23,7 @@ import 'item_pedido_unified.dart';
 class ItemPedido extends ItemPedidoUnified {
   // 📦 INFORMACIÓN DE ORIGEN/DESTINO PARA INVENTARIO
   final String origen; // "BODEGA" o "ALMACÉN" - dónde se vende el producto
+  final String? trasladoId; // ID del traslado si el producto vino de BODEGA
 
   // 🏗️ CONSTRUCTOR PRINCIPAL (Compatible con versión anterior)
   const ItemPedido({
@@ -41,6 +42,7 @@ class ItemPedido extends ItemPedidoUnified {
     super.porcentajeDescuento = 0.0,
     super.valorDescuento = 0.0,
     this.origen = "ALMACÉN",
+    this.trasladoId,
   });
 
   // 🏗️ CONSTRUCTOR DE COMPATIBILIDAD (para código legacy)
@@ -55,6 +57,7 @@ class ItemPedido extends ItemPedidoUnified {
     super.agregadoPor,
     super.fechaAgregado,
     this.origen = "ALMACÉN",
+    this.trasladoId,
   }) : super(precioUnitario: precio);
 
   // 🔄 FACTORY FROM JSON (Compatible con múltiples formatos)
@@ -89,6 +92,7 @@ class ItemPedido extends ItemPedidoUnified {
           (json['porcentajeDescuento'] as num?)?.toDouble() ?? 0.0,
       valorDescuento: (json['valorDescuento'] as num?)?.toDouble() ?? 0.0,
       origen: (json['origen'] ?? 'ALMACÉN').toString(),
+      trasladoId: json['trasladoId']?.toString(),
     );
   }
 
@@ -99,8 +103,9 @@ class ItemPedido extends ItemPedidoUnified {
 
     // Agregar campos adicionales para compatibilidad legacy
     baseJson.addAll({
-      'precio': precioUnitario, // Alias para compatibilidad
-      'origen': origen, // Campo de origen/destino
+      'precio': precioUnitario,
+      'origen': origen,
+      if (trasladoId != null) 'trasladoId': trasladoId,
     });
 
     return baseJson;

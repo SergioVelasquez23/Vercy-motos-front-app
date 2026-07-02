@@ -16,6 +16,7 @@ import '../config/api_config.dart';
 import '../services/cuadre_caja_service.dart'; // Para validar caja abierta
 import '../utils/logger.dart';
 import '../utils/api_error.dart';
+import '../utils/datetime_utils.dart';
 
 class PedidoService {
   static final PedidoService _instance = PedidoService._internal();
@@ -364,10 +365,12 @@ class PedidoService {
     try {
       final headers = await _getHeaders();
       // Por defecto el backend ahora solo trae pedidos de los últimos 7 días
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/pedidos/consultas'),
-        headers: headers,
-      );
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/pedidos/consultas'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: ApiConfig.requestTimeout));
 
 
 
@@ -445,10 +448,12 @@ class PedidoService {
         
 
       // Intentar primero con el endpoint específico
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/pedidos/consultas/fecha/$fechaHoy'),
-        headers: headers,
-      );
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/pedidos/consultas/fecha/$fechaHoy'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: ApiConfig.requestTimeout));
 
         
 
@@ -1885,7 +1890,7 @@ class PedidoService {
         // ✅ DESCUENTO YA INCLUIDO ARRIBA: pagarData['descuento'] = descuento;
         pagarData['pagado'] = true;
         pagarData['estado'] = 'Pagado'; // Asegurar que el estado sea explícito
-        pagarData['fechaPago'] = _formatearFechaParaBackend(DateTime.now());
+        pagarData['fechaPago'] = _formatearFechaParaBackend(DateTimeUtils.nowColombia());
         pagarData['totalPagado'] = totalPagado > 0
             ? totalPagado
             : null; // Enviar solo si es diferente de 0

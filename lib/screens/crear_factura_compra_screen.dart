@@ -14,6 +14,7 @@ import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/busqueda_productos_utils.dart';
 import '../utils/logger.dart';
+import '../utils/datetime_utils.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../dialogs/dialogo_agregar_item_compra.dart';
@@ -3431,7 +3432,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
       cantidad: cantidad,
       unidad: 'UND',
       precioUnitario: precioUnitario,
-      subtotal: baseGravable,
+      // ⚠️ subtotal = cantidad × precioUnitario SIN descontar (bruto), NO
+      // baseGravable. El resumen (Subtotal / Dcto Producto / Impuesto / Total)
+      // ya resta el descuento por separado: si aquí se guarda ya neto, el
+      // descuento se resta dos veces y el Total sale más bajo de lo que
+      // debería (ver _buildResumenLateral/_buildResumen).
+      subtotal: subtotal,
       valorImpuesto: impuesto,
       valorDescuento: descuento,
       porcentajeImpuesto: porcentajeImpuesto,
@@ -3793,8 +3799,8 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
             : _descripcionController.text.isNotEmpty
             ? _descripcionController.text
             : null,
-        fechaCreacion: DateTime.now(),
-        fechaActualizacion: DateTime.now(),
+        fechaCreacion: DateTimeUtils.nowColombia(),
+        fechaActualizacion: DateTimeUtils.nowColombia(),
         // Campos DIAN
         subtotal: subtotalItems,
         totalDescuentos: totalDescuentosItems,
@@ -3960,7 +3966,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
               observaciones: 'Compra a ${factura.proveedorNombre} - Almacén: +${cantidadParaAlmacen.toStringAsFixed(0)}, Bodega: +${cantidadParaBodega.toStringAsFixed(0)}',
               costoUnitario: item.precioUnitario,
               precioTotal: item.subtotal,
-              fecha: DateTime.now(),
+              fecha: DateTimeUtils.nowColombia(),
               facturaNo: factura.numeroFactura,
               proveedor: factura.proveedorNombre,
             );
@@ -4022,7 +4028,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
             observaciones: 'Compra a ${factura.proveedorNombre} en ${destino}',
             costoUnitario: item.precioUnitario,
             precioTotal: item.subtotal,
-            fecha: DateTime.now(),
+            fecha: DateTimeUtils.nowColombia(),
             facturaNo: factura.numeroFactura,
             proveedor: factura.proveedorNombre,
           );

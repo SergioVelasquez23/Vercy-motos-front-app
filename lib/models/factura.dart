@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'pedido.dart';
 import 'item_pedido.dart';
 import 'user.dart';
+import '../utils/datetime_utils.dart';
 
 /// Modelo que representa una factura en el sistema
 class Factura {
@@ -358,7 +359,7 @@ class Factura {
         'tipo': pedido.tipo.toJson(),
         'formaPago': pedido.formaPago,
       },
-      fechaCreacion: DateTime.now(),
+      fechaCreacion: DateTimeUtils.nowColombia(),
     );
   }
 

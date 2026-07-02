@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/producto_cancelado.dart';
 import '../models/item_pedido.dart';
+import '../utils/datetime_utils.dart';
 import 'base_api_service.dart';
 
 class ProductoCanceladoService {
@@ -37,7 +38,7 @@ class ProductoCanceladoService {
         pedidoId: pedidoId,
         mesaNombre: mesaNombre,
         itemOriginal: itemOriginal,
-        fechaCancelacion: DateTime.now(),
+        fechaCancelacion: DateTimeUtils.nowColombia(),
         canceladoPor: canceladoPor,
         motivo: motivo,
         descripcionMotivo: descripcionMotivo,
@@ -45,7 +46,7 @@ class ProductoCanceladoService {
         montoReembolsado: montoReembolsado,
         metodoPago: metodoPago,
         autorizadoPor: autorizadoPor,
-        fechaReembolso: montoReembolsado != null ? DateTime.now() : null,
+        fechaReembolso: montoReembolsado != null ? DateTimeUtils.nowColombia() : null,
       );
 
       final response = await http.post(

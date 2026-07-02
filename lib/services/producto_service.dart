@@ -999,6 +999,13 @@ class ProductoService {
   Future<Map<String, dynamic>> cargaMasivaProductos(
     List<int> excelBytes, {
     required String tipo, // 'bodega' o 'almacen'
+    // 'actualizar': si el producto ya existe, reemplaza inventario/precio/costo
+    // con lo que traiga el Excel (comportamiento histórico).
+    // 'sumar': si el producto ya existe, SUMA la cantidad del Excel al
+    // inventario actual en vez de reemplazarlo (precio/costo sí se actualizan).
+    // 'solo_precio': solo actualiza precio/costo/impuesto; no toca inventario ni
+    // otros datos, y las filas de productos que no existan se ignoran (no crea).
+    String modo = 'actualizar',
   }) async {
     try {
       final headers = await _getHeaders();
@@ -1012,7 +1019,7 @@ class ProductoService {
 
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('$baseUrl/api/productos$endpoint'),
+        Uri.parse('$baseUrl/api/productos$endpoint?modo=$modo'),
       );
 
       // Agregar headers de autenticación
@@ -1027,8 +1034,12 @@ class ProductoService {
         ),
       );
 
+      // Modo de actualización como campo del form, además de query param,
+      // para que el backend lo pueda leer venga como venga.
+      request.fields['modo'] = modo;
+
       appLog(
-        '📤 Enviando archivo Excel al backend para carga masiva ($tipo)...',
+        '📤 Enviando archivo Excel al backend para carga masiva ($tipo, modo=$modo)...',
       );
 
       final streamedResponse = await request.send().timeout(
@@ -1044,10 +1055,20 @@ class ProductoService {
         // Extraer datos según la estructura del backend
         final data = responseData['data'] ?? responseData;
 
+        final erroresList = data['errores'] as List<dynamic>? ?? [];
         appLog('✅ Carga masiva ($tipo) completada');
         appLog('   Creados: ${data['productosCreados']}');
         appLog('   Actualizados: ${data['productosActualizados']}');
-        appLog('   Errores: ${data['errores']?.length ?? 0}');
+        appLog('   Errores: ${erroresList.length}');
+        if (erroresList.isNotEmpty) {
+          appLog('📋 Detalle de errores (primeros 30):');
+          for (int i = 0; i < erroresList.length && i < 30; i++) {
+            appLog('   [$i] ${erroresList[i]}');
+          }
+          if (erroresList.length > 30) {
+            appLog('   ... y ${erroresList.length - 30} más');
+          }
+        }
 
         return data;
       } else {

@@ -34,6 +34,7 @@ import '../screens/asesor_pedidos_screen.dart';
 import '../screens/admin_pedidos_asesor_screen.dart';
 import '../screens/proveedores_list_screen.dart';
 import '../screens/compras_list_screen.dart';
+import '../screens/importar_factura_compra_pdf_screen.dart';
 import '../screens/gastos_list_screen.dart';
 import '../screens/productos_list_screen.dart';
 import '../screens/productos_screen.dart';
@@ -57,6 +58,13 @@ GoRouter buildAppRouter(UserProvider userProvider) => GoRouter(
     final path = state.uri.path;
     final isPublic = path == '/login' || path == '/splash';
     if (!userProvider.isAuthenticated && !isPublic) return '/login';
+
+    // Los asesores no pueden acceder a facturación ni a la lista de admin
+    if (userProvider.isAuthenticated && userProvider.isAsesor) {
+      const rutasBloqueasAsesor = ['/facturar', '/admin-pedidos-asesor'];
+      if (rutasBloqueasAsesor.contains(path)) return '/asesor-pedidos';
+    }
+
     return null;
   },
   routes: [
@@ -108,6 +116,10 @@ GoRouter buildAppRouter(UserProvider userProvider) => GoRouter(
         GoRoute(
           path: '/facturas-compras',
           builder: (c, s) => CrearFacturaCompraScreen(facturaParaEditar: s.extra as FacturaCompra?),
+        ),
+        GoRoute(
+          path: '/facturas-compras/importar-pdf',
+          builder: (c, s) => const ImportarFacturaCompraPdfScreen(),
         ),
         GoRoute(
           path: '/facturas-compras/detalle',

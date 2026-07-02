@@ -96,38 +96,44 @@ class FacturaCompra {
     if (jsonTotal == 0 && calculatedTotal > 0) {
              }
 
+    // ⚠️ El modelo Compra del backend (Java) NO tiene campos 'fecha'/'fechaFactura'
+    // ni 'estado' (string): solo tiene 'fechaCreacion' y 'pagado' (bool). Si solo
+    // se busca 'fecha'/'fechaFactura'/'estado', al editar una compra guardada
+    // siempre se muestra la fecha de HOY y el estado por defecto, no lo real.
+    final fechaFacturaRaw =
+        json['fecha'] ?? json['fechaFactura'] ?? json['fechaCreacion'];
+    final estadoDerivado = json['pagado'] == true ? 'PAGADO' : 'PENDIENTE';
+
     return FacturaCompra(
       id: json['_id'] ?? '',
       numeroFactura:
           json['numero'] ?? json['numeroFactura'] ?? '',
       proveedorNit: json['proveedorNit'],
       proveedorNombre: json['proveedorNombre'],
-      fechaFactura: DateTime.parse(
-        json['fecha'] ??
-            json['fechaFactura'] ??
-            DateTime.now().toIso8601String(),
-      ),
+      fechaFactura: fechaFacturaRaw != null
+          ? DateTime.parse(fechaFacturaRaw)
+          : DateTime.now(),
       fechaVencimiento: json['fechaVencimiento'] != null
           ? DateTime.parse(json['fechaVencimiento'])
           : DateTime.now().add(Duration(days: 30)),
       total: finalTotal,
-      estado: json['estado'] ?? 'PENDIENTE',
+      estado: json['estado'] ?? estadoDerivado,
       pagadoDesdeCaja: json['pagadoDesdeCaja'] ?? false,
       items: items,
       descripcion: json['descripcion'],
       fechaCreacion: json['fechaCreacion'] != null
           ? DateTime.parse(json['fechaCreacion'])
-          : DateTime.parse(
-              json['fecha'] ?? json['fechaFactura'] ?? DateTime.now().toIso8601String(),
-            ),
+          : (fechaFacturaRaw != null
+              ? DateTime.parse(fechaFacturaRaw)
+              : DateTime.now()),
       fechaActualizacion: json['fechaActualizacion'] != null
           ? DateTime.parse(json['fechaActualizacion'])
           : DateTime.now(),
-      // Campos DIAN
+      // Campos DIAN. El backend guarda el IVA en el campo 'iva' (no 'totalImpuestos').
       subtotal: (json['subtotal'] ?? calculatedTotal).toDouble(),
       totalDescuentos: (json['totalDescuentos'] ?? 0).toDouble(),
       baseGravable: (json['baseGravable'] ?? calculatedTotal).toDouble(),
-      totalImpuestos: (json['totalImpuestos'] ?? 0).toDouble(),
+      totalImpuestos: (json['totalImpuestos'] ?? json['iva'] ?? 0).toDouble(),
       totalRetenciones: (json['totalRetenciones'] ?? 0).toDouble(),
       porcentajeRetencion: (json['porcentajeRetencion'] ?? 0).toDouble(),
       valorRetencion: (json['valorRetencion'] ?? 0).toDouble(),
@@ -265,12 +271,24 @@ class ItemFacturaCompra {
 
   factory ItemFacturaCompra.fromJson(Map<String, dynamic> json) {
     return ItemFacturaCompra(
-      ingredienteId: json['ingredienteId'] ?? '',
-      ingredienteNombre: json['ingredienteNombre'] ?? '',
+      // ⚠️ El backend usa dos formatos distintos según el endpoint:
+      // - Al CREAR (POST), el controller espera 'ingredienteId'/'ingredienteNombre'
+      //   (protocolo propio, ver CompraController.crearItemIngrediente).
+      // - Al LEER (GET), Jackson serializa el modelo real ItemFactura/LineaDetalle,
+      //   que usa 'productoId'/'productoNombre'/'subtotalItem'. Si solo se busca el
+      //   primer nombre, al editar una compra ya guardada el nombre queda vacío y
+      //   el subtotal en $0.
+      ingredienteId: (json['ingredienteId'] ?? json['productoId'] ?? '').toString(),
+      ingredienteNombre:
+          (json['ingredienteNombre'] ?? json['productoNombre'] ?? '').toString(),
       cantidad: (json['cantidad'] ?? 0).toDouble(),
-      unidad: json['unidad'] ?? '',
+      unidad: (json['unidad'] ?? '').toString(),
       precioUnitario: (json['precioUnitario'] ?? 0).toDouble(),
-      subtotal: (json['precioTotal'] ?? json['subtotal'] ?? 0).toDouble(),
+      subtotal: (json['precioTotal'] ??
+              json['subtotal'] ??
+              json['subtotalItem'] ??
+              0)
+          .toDouble(),
       porcentajeImpuesto: (json['porcentajeImpuesto'] ?? 0).toDouble(),
       valorImpuesto: (json['valorImpuesto'] ?? 0).toDouble(),
       porcentajeDescuento: (json['porcentajeDescuento'] ?? 0).toDouble(),

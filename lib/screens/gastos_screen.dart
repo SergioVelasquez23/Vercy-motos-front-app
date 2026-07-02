@@ -1458,6 +1458,66 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
         ),
         SizedBox(width: 20),
 
+        // Forma de Pago
+        Expanded(
+          flex: 1,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Forma de Pago:',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: 8),
+              Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
+                  ),
+                ),
+                child: DropdownButtonFormField<String>(
+                  value: _selectedFormaPago,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 15,
+                  ),
+                  decoration: InputDecoration(
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    border: InputBorder.none,
+                    hintText: 'Forma de Pago',
+                    hintStyle: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      fontSize: 15,
+                    ),
+                  ),
+                  dropdownColor: Theme.of(context).colorScheme.surface,
+                  isExpanded: true,
+                  items: _formasPago
+                      .map(
+                        (fp) => DropdownMenuItem<String>(
+                          value: fp,
+                          child: Text(fp),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) => setState(() => _selectedFormaPago = v),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(width: 20),
+
         // Documento Soporte con toggle
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1505,6 +1565,48 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
                   SizedBox(width: 4),
                   Text(
                     _documentoSoporte ? 'Sí' : 'No',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        SizedBox(width: 20),
+
+        // Pagado desde Caja con toggle
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Pagado desde Caja',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 8),
+            Container(
+              height: 48,
+              child: Row(
+                children: [
+                  Transform.scale(
+                    scale: 1.2,
+                    child: Switch(
+                      value: _pagadoDesdeCaja,
+                      onChanged: (v) => setState(() => _pagadoDesdeCaja = v),
+                      activeColor: AppTheme.primary,
+                      activeTrackColor: AppTheme.primary.withOpacity(0.3),
+                    ),
+                  ),
+                  SizedBox(width: 4),
+                  Text(
+                    _pagadoDesdeCaja ? 'Sí' : 'No',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 16,
@@ -2184,7 +2286,7 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
           formaPago: _selectedFormaPago ?? 'Efectivo',
           subtotal: _subtotalGasto,
           impuestos: _impuestosGasto,
-          pagadoDesdeCaja: true,
+          pagadoDesdeCaja: _pagadoDesdeCaja,
         );
         _showSuccess('Gasto creado exitosamente');
       }

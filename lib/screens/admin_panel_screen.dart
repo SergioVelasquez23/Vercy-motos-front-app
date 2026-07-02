@@ -6,6 +6,8 @@ import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../services/pedido_service.dart';
+import '../services/reportes_service.dart';
+import '../models/dashboard_data.dart';
 import 'exportar_mensual_screen.dart';
 
 class AdminPanelScreen extends StatefulWidget {
@@ -17,9 +19,12 @@ class AdminPanelScreen extends StatefulWidget {
 
 class _AdminPanelScreenState extends State<AdminPanelScreen> {
   final ApiConfig _apiConfig = ApiConfig.instance;
+  final ReportesService _reportesService = ReportesService();
   bool _isLoading = false;
   String? _lastResult;
   Map<String, dynamic>? _stats;
+  DashboardData? _dashboardTotal;
+  bool _isLoadingDashboard = false;
   DateTime? _fechaInicio;
   DateTime? _fechaFin;
   bool _incluirFacturas = false;
@@ -31,6 +36,21 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   void initState() {
     super.initState();
     _loadStats();
+    _loadDashboardTotal();
+  }
+
+  Future<void> _loadDashboardTotal() async {
+    setState(() => _isLoadingDashboard = true);
+    try {
+      final data = await _reportesService.getDashboard(
+        forceRefresh: true,
+        soloElectronicos: false,
+      );
+      if (mounted) setState(() => _dashboardTotal = data);
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _isLoadingDashboard = false);
+    }
   }
 
   Future<void> _loadStats() async {
@@ -414,6 +434,121 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         content: Text(message),
         backgroundColor: Colors.red,
         duration: Duration(seconds: 5),
+      ),
+    );
+  }
+
+  Widget _buildMetricasTotales() {
+    final d = _dashboardTotal;
+
+    Widget card(String titulo, Color color, double? valor) {
+      return Expanded(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+            border: Border.all(color: color.withValues(alpha: 0.35), width: 1.2),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                titulo,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _isLoadingDashboard
+                  ? SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: color),
+                    )
+                  : Text(
+                      valor != null ? '\$${formatNumberWithDots(valor)}' : '—',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        border: Border.all(color: AppTheme.secondary.withValues(alpha: 0.2)),
+        boxShadow: AppTheme.cardShadow,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.secondaryGradient,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.bar_chart, color: Colors.white, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Ventas Totales',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    Text(
+                      'LOCAL + POS + Factura Electrónica',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.refresh, size: 20),
+                  color: AppTheme.secondary,
+                  tooltip: 'Actualizar',
+                  onPressed: _isLoadingDashboard ? null : _loadDashboardTotal,
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(children: [
+              card('Hoy', AppTheme.primary, d?.ventasHoy.total),
+              const SizedBox(width: 10),
+              card('7 días', AppTheme.secondary, d?.ventas7Dias.total),
+            ]),
+            const SizedBox(height: 10),
+            Row(children: [
+              card('30 días', AppTheme.info, d?.ventas30Dias.total),
+              const SizedBox(width: 10),
+              card('Año actual', AppTheme.success, d?.ventasAnio.total),
+            ]),
+          ],
+        ),
       ),
     );
   }
@@ -1024,6 +1159,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               padding: EdgeInsets.all(16),
               child: Column(
                 children: [
+                  _buildMetricasTotales(),
+                  SizedBox(height: 16),
                   _buildStatsCard(),
                   SizedBox(height: 16),
                   _buildDateRangeSelector(),

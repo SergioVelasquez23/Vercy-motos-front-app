@@ -1,4 +1,5 @@
 import '../utils/logger.dart';
+import 'pago_parcial.dart';
 class ResumenCierreCompleto {
   final ResumenFinalCompleto resumenFinal;
   final MovimientosEfectivoCompleto movimientosEfectivo;
@@ -647,6 +648,7 @@ class DetallePedidoCompleto {
   final double descuento;
   final String? pagadoPor;
   final String? mesero;
+  final List<PagoParcial> pagosParciales;
 
   DetallePedidoCompleto({
     required this.id,
@@ -659,6 +661,7 @@ class DetallePedidoCompleto {
     this.descuento = 0.0,
     this.pagadoPor,
     this.mesero,
+    this.pagosParciales = const [],
   });
 
   factory DetallePedidoCompleto.fromJson(Map<String, dynamic> json) {
@@ -681,6 +684,11 @@ class DetallePedidoCompleto {
       descuento: safeToDouble(json['descuento']),
       pagadoPor: json['pagadoPor']?.toString(),
       mesero: json['mesero']?.toString(),
+      pagosParciales: json['pagosParciales'] != null
+          ? (json['pagosParciales'] as List<dynamic>)
+              .map((p) => PagoParcial.fromJson(p as Map<String, dynamic>))
+              .toList()
+          : const [],
     );
   }
 }

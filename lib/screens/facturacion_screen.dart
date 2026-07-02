@@ -28,6 +28,7 @@ import '../widgets/facturacion/totales_section.dart';
 import '../widgets/facturacion/botones_accion_facturacion.dart';
 
 import '../utils/busqueda_productos_utils.dart';
+import '../utils/datetime_utils.dart';
 import '../utils/logger.dart';
 import '../utils/snackbar_helper.dart';
 import '../utils/dialogs_helper.dart';
@@ -80,7 +81,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   );
   final TextEditingController _valorUnitController = TextEditingController();
   final TextEditingController _porcentajeImpuestoController =
-      TextEditingController(text: '0');
+      TextEditingController(text: '19');
   final TextEditingController _porcentajeDescuentoController =
       TextEditingController(text: '0');
 
@@ -123,7 +124,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     },
     {'value': 'tarjeta', 'label': 'Tarjeta débito', 'icon': Icons.credit_card},
     {'value': 'tarjeta_credito', 'label': 'Tarjeta crédito', 'icon': Icons.credit_score},
-    {'value': 'cheque', 'label': 'Cheque', 'icon': Icons.receipt_outlined},
+    {'value': 'addi', 'label': 'Addi', 'icon': Icons.shopping_bag_outlined},
     {'value': 'sistecredito', 'label': 'Sistecredito', 'icon': Icons.card_giftcard},
     {'value': 'credito', 'label': 'A Crédito', 'icon': Icons.account_balance_wallet},
     {'value': 'multiple', 'label': 'Múltiple', 'icon': Icons.payments},
@@ -135,7 +136,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     'transferencia': 'transferencia',
     'tarjeta': 'tarjeta debito',
     'tarjeta_credito': 'tarjeta credito',
-    'cheque': 'cheque',
+    // Addi (BNPL) no tiene código DIAN propio; se reporta como 'efectivo',
+    // mismo criterio ya usado para 'credito' en esta tabla.
+    'addi': 'efectivo',
     'sistecredito': 'sistecredito',
     'credito': 'efectivo',
     'multiple': 'efectivo',
@@ -186,6 +189,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   Producto? _productoSeleccionado;
   String _origenSeleccionado = 'ALMACÉN'; // 📦 BODEGA o ALMACÉN
   List<ItemPedido> _items = [];
+  // Mapea productoId (código) → id MongoDB real del producto, para notificar traslados tras la venta
+  final Map<String, String> _productoMongoIds = {};
   List<Producto> _productosDisponibles = [];
   List<Cliente> _clientesDisponibles = [];
 
@@ -257,7 +262,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   Future<void> _inicializarConPedidoAsesor() async {
     await _cargarClientes(); // Esperar a que se carguen los clientes
     if (mounted) {
-      _precargarDatosPedidoAsesor(); // Luego precargar datos del pedido
+      await _precargarDatosPedidoAsesor(); // Luego precargar datos del pedido
       // Asignar cliente por defecto si después de precargar no hay cliente válido
       Future.delayed(Duration(milliseconds: 100), () {
         _asignarClientePorDefecto();
@@ -265,60 +270,268 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     }
   }
 
-  void _precargarDatosPedidoAsesor() {
+  Future<void> _precargarDatosPedidoAsesor() async {
     final pedido = widget.pedidoAsesor!;
 
-    setState(() {
-      // Precargar nombre del cliente
-      _clienteController.text = pedido.clienteNombre;
+    // Precargar nombre del cliente
+    _clienteController.text = pedido.clienteNombre;
 
-      // 🔍 Buscar el cliente en la lista de clientes disponibles
-      if (pedido.clienteId != null && _clientesDisponibles.isNotEmpty) {
+    Cliente? clienteEncontrado;
+    if (pedido.clienteId != null) {
+      clienteEncontrado = _clientesDisponibles
+          .cast<Cliente?>()
+          .firstWhere((cliente) => cliente?.id == pedido.clienteId, orElse: () => null);
+
+      // Si el cliente no está en la lista precargada (ej. lista paginada/limitada),
+      // buscarlo directamente por ID en vez de usar un placeholder sin numeroIdentificacion,
+      // que dejaba la factura electrónica sin la cédula/NIT real del cliente.
+      if (clienteEncontrado == null) {
+        appLog('⚠️ Cliente ${pedido.clienteId} no está en la lista precargada, buscando por ID...');
         try {
-          _clienteSeleccionado = _clientesDisponibles.firstWhere(
-            (cliente) => cliente.id == pedido.clienteId,
-            orElse: () => Cliente(
-              id: '',
-              tipoPersona: 'Persona Natural',
-              tipoIdentificacion: 'CC',
-              numeroIdentificacion: '',
-              nombres: pedido.clienteNombre,
-            ),
-          );
-          appLog(
-            '✅ Cliente seleccionado: ${_clienteSeleccionado?.nombreCompleto}',
-          );
+          clienteEncontrado = await _clienteService.obtenerClientePorId(pedido.clienteId!);
         } catch (e) {
-          appLog('⚠️ Error buscando cliente: $e');
+          appLog('⚠️ Error obteniendo cliente por ID: $e');
         }
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      if (clienteEncontrado != null) {
+        _clienteSeleccionado = clienteEncontrado;
+        appLog('✅ Cliente seleccionado: ${_clienteSeleccionado?.nombreCompleto}');
       } else {
         appLog(
-          '⚠️ No se pudo buscar cliente - clienteId: ${pedido.clienteId}, clientes disponibles: ${_clientesDisponibles.length}',
+          '⚠️ No se pudo encontrar el cliente - clienteId: ${pedido.clienteId}',
         );
       }
-
-      // Precargar items
-      _items = List.from(pedido.items);
-
-      // 🔍 DEBUG: Verificar origen de cada item
-      for (var item in _items) {
-        appLog('📦 Item: ${item.productoNombre} - Origen: ${item.origen}');
-      }
-
-      // Recalcular totales
-      _calcularTotal();
     });
 
-    // Mostrar notificación
+    // Mostrar diálogo para que el cajero edite IVA y descuento antes de cargar los items
+    _mostrarDialogoEditarItemsPedidoAsesor(pedido);
+  }
+
+  Future<void> _mostrarDialogoEditarItemsPedidoAsesor(PedidoAsesor pedido) async {
+    if (!mounted) return;
+
+    final ivaCtrs = pedido.items
+        .map((i) => TextEditingController(text: i.porcentajeImpuesto.toStringAsFixed(0)))
+        .toList();
+    final dctoCtrs = pedido.items
+        .map((i) => TextEditingController(text: i.porcentajeDescuento.toStringAsFixed(0)))
+        .toList();
+
+    final confirmar = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        final theme = Theme.of(context);
+        final textStyle = TextStyle(fontSize: 12, color: theme.colorScheme.onSurface);
+        final headerStyle = TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface);
+        final inputDec = InputDecoration(
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          border: const OutlineInputBorder(),
+          suffixText: '%',
+          suffixStyle: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+        );
+
+        return AlertDialog(
+          backgroundColor: theme.colorScheme.surface,
+          title: Row(
+            children: [
+              Icon(Icons.receipt_long, color: AppTheme.primary, size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Pedido de ${pedido.asesorNombre}', style: TextStyle(fontSize: 16, color: theme.colorScheme.onSurface)),
+                    Text('Edita IVA y descuento antes de cargar', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 740,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Cabecera de columnas
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    children: [
+                      Expanded(flex: 4, child: Text('Producto', style: headerStyle)),
+                      SizedBox(width: 44, child: Text('Cant.', style: headerStyle, textAlign: TextAlign.center)),
+                      SizedBox(width: 78, child: Text('Precio c/IVA', style: headerStyle, textAlign: TextAlign.right)),
+                      const SizedBox(width: 8),
+                      SizedBox(width: 64, child: Text('IVA %', style: headerStyle, textAlign: TextAlign.center)),
+                      const SizedBox(width: 8),
+                      SizedBox(width: 64, child: Text('Dcto %', style: headerStyle, textAlign: TextAlign.center)),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                const SizedBox(height: 4),
+                // Lista de items con scroll
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 340),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: pedido.items.length,
+                    itemBuilder: (_, idx) {
+                      final item = pedido.items[idx];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 5),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 4,
+                              child: Text(
+                                item.productoNombre ?? '-',
+                                style: textStyle,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            SizedBox(
+                              width: 44,
+                              child: Text('${item.cantidad}', style: textStyle, textAlign: TextAlign.center),
+                            ),
+                            SizedBox(
+                              width: 78,
+                              child: Text(
+                                '\$${item.precioUnitario.toStringAsFixed(0)}',
+                                style: textStyle.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.55)),
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 64,
+                              child: TextField(
+                                controller: ivaCtrs[idx],
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface),
+                                decoration: inputDec,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 64,
+                              child: TextField(
+                                controller: dctoCtrs[idx],
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface),
+                                decoration: inputDec,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Sin cambios'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(ctx, true),
+              icon: const Icon(Icons.check, size: 16),
+              label: const Text('Aplicar y cargar'),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white),
+            ),
+          ],
+        );
+      },
+    );
+
+    // Leer valores antes de hacer dispose
+    final ivaValues = ivaCtrs.map((c) => double.tryParse(c.text) ?? 0.0).toList();
+    final dctoValues = dctoCtrs.map((c) => double.tryParse(c.text) ?? 0.0).toList();
+    for (final c in ivaCtrs) { c.dispose(); }
+    for (final c in dctoCtrs) { c.dispose(); }
+
+    if (!mounted) return;
+
+    final List<ItemPedido> itemsCargados;
+    if (confirmar == true) {
+      // Aplicar IVA y descuento editados.
+      // precioUnitario del asesor es siempre el precio FINAL con IVA incluido;
+      // se extrae la base neta dividiendo por (1 + iva/100).
+      itemsCargados = pedido.items.asMap().entries.map((entry) {
+        final idx = entry.key;
+        final item = entry.value;
+        final ivaPct = ivaValues[idx];
+        final dctoPct = dctoValues[idx];
+        final precioBase = ivaPct > 0 && ivaPct < 100
+            ? item.precioUnitario / (1 + ivaPct / 100)
+            : item.precioUnitario;
+        final subtotal = precioBase * item.cantidad;
+        final valorDescuento = subtotal * (dctoPct / 100);
+        final baseGravable = subtotal - valorDescuento;
+        // base ya es el precio neto (sin IVA), así que IVA = base × rate/100
+        final valorImpuesto = ivaPct > 0 && ivaPct < 100
+            ? baseGravable * (ivaPct / 100)
+            : 0.0;
+        return ItemPedido(
+          productoId: item.productoId,
+          productoNombre: item.productoNombre,
+          cantidad: item.cantidad,
+          precioUnitario: precioBase,
+          porcentajeImpuesto: ivaPct,
+          valorImpuesto: valorImpuesto,
+          porcentajeDescuento: dctoPct,
+          valorDescuento: valorDescuento,
+          origen: item.origen,
+          trasladoId: item.trasladoId,
+        );
+      }).toList();
+    } else {
+      // Sin cambios: extraer precio base neto del precio asesor (IVA incluido)
+      itemsCargados = pedido.items.map((item) {
+        final ivaPct = item.porcentajeImpuesto;
+        final precioBase = ivaPct > 0 && ivaPct < 100
+            ? item.precioUnitario / (1 + ivaPct / 100)
+            : item.precioUnitario;
+        final subtotal = precioBase * item.cantidad;
+        final valorDescuento = subtotal * (item.porcentajeDescuento / 100);
+        final baseGravable = subtotal - valorDescuento;
+        final valorImpuesto = ivaPct > 0 && ivaPct < 100
+            ? baseGravable * (ivaPct / 100)
+            : 0.0;
+        return ItemPedido(
+          productoId: item.productoId,
+          productoNombre: item.productoNombre,
+          cantidad: item.cantidad,
+          precioUnitario: precioBase,
+          porcentajeImpuesto: ivaPct,
+          valorImpuesto: valorImpuesto,
+          porcentajeDescuento: item.porcentajeDescuento,
+          valorDescuento: valorDescuento,
+          origen: item.origen,
+          trasladoId: item.trasladoId,
+        );
+      }).toList();
+    }
+
+    setState(() {
+      _items = itemsCargados;
+      for (final item in _items) {
+        appLog('📦 Item cargado: ${item.productoNombre} - IVA: ${item.porcentajeImpuesto}% - Dcto: ${item.porcentajeDescuento}%');
+      }
+    });
+
     showSuccessSnackBar(context, 'Pedido de ${pedido.asesorNombre} cargado correctamente');
   }
 
-  void _calcularTotal() {
-    // Este método se usa para recalcular totales cuando se cargan items
-    // En facturacion_screen, los cálculos de totales se hacen en _guardarFactura
-    // Este método está aquí para mantener compatibilidad
-    setState(() {});
-  }
 
   Future<void> _cargarProductos() async {
     appLog('🔄 _cargarProductos() iniciado');
@@ -434,6 +647,35 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     super.dispose();
   }
 
+  /// Normaliza ítems guardados con el formato antiguo (precioUnitario = precio
+  /// con IVA incluido) al nuevo formato (precioUnitario = base sin IVA).
+  /// Detecta el formato antiguo cuando valorImpuesto ≈ precioUnitario × rate/100.
+  List<ItemPedido> _normalizarItemsIVA(List<ItemPedido> items) {
+    return items.map((item) {
+      final r = item.porcentajeImpuesto;
+      if (r <= 0 || r >= 100) return item;
+      final ivaAntiguo = item.precioUnitario * r / 100;
+      final esFormatoAntiguo = (item.valorImpuesto - ivaAntiguo).abs() < 1.0;
+      if (!esFormatoAntiguo) return item;
+      final precioBase = item.precioUnitario / (1 + r / 100);
+      final subtotal = precioBase * item.cantidad;
+      final baseGravable = subtotal - item.valorDescuento;
+      final nuevoImpuesto = baseGravable * r / 100;
+      return ItemPedido(
+        productoId: item.productoId,
+        productoNombre: item.productoNombre,
+        cantidad: item.cantidad,
+        precioUnitario: precioBase,
+        porcentajeImpuesto: r,
+        valorImpuesto: nuevoImpuesto,
+        porcentajeDescuento: item.porcentajeDescuento,
+        valorDescuento: item.valorDescuento,
+        origen: item.origen,
+        trasladoId: item.trasladoId,
+      );
+    }).toList();
+  }
+
   /// 📝 Restaurar borrador existente del provider
   void _restaurarBorrador() {
     try {
@@ -451,7 +693,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       appLog('📝 Restaurando borrador - ${draftProvider.itemsCount} items');
 
       setState(() {
-        // Restaurar items
+        // Restaurar items tal cual: el draft es en memoria y siempre fue
+        // guardado por esta misma pantalla ya en formato nuevo (precioUnitario
+        // = base sin IVA), así que no debe volver a normalizarse/recalcularse.
         _items = List.from(draftProvider.items);
 
         // Restaurar cliente
@@ -1707,11 +1951,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                               _productoSeleccionado = producto;
                               _codigoController.text = producto.codigo ?? '';
                               _nombreProductoController.text = producto.nombre;
-                              _valorUnitController.text = producto.precio.toString();
-                              if (producto.impuestos > 0) {
-                                _porcentajeImpuestoController.text =
-                                    producto.impuestos.toStringAsFixed(0);
-                              }
+                              final ivaPct = producto.impuestos > 0 ? producto.impuestos : 19.0;
+                              final precioBase = producto.precio / (1 + ivaPct / 100);
+                              _valorUnitController.text = precioBase.toStringAsFixed(2);
+                              _porcentajeImpuestoController.text = ivaPct.toStringAsFixed(0);
                             });
                           },
                           fieldViewBuilder:
@@ -1826,11 +2069,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                               _productoSeleccionado = producto;
                               _codigoController.text = producto.codigo ?? '';
                               _nombreProductoController.text = producto.nombre;
-                              _valorUnitController.text = producto.precio.toString();
-                              if (producto.impuestos > 0) {
-                                _porcentajeImpuestoController.text =
-                                    producto.impuestos.toStringAsFixed(0);
-                              }
+                              final ivaPct = producto.impuestos > 0 ? producto.impuestos : 19.0;
+                              final precioBase = producto.precio / (1 + ivaPct / 100);
+                              _valorUnitController.text = precioBase.toStringAsFixed(2);
+                              _porcentajeImpuestoController.text = ivaPct.toStringAsFixed(0);
                             });
                           },
                           fieldViewBuilder:
@@ -2553,11 +2795,31 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     ),
                     Expanded(
                       flex: 1,
-                      child: Text(
-                        '\$${(item.subtotal + item.valorImpuesto - item.valorDescuento).toStringAsFixed(0)}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurface,
+                      child: InkWell(
+                        onTap: () => _editarTotalItem(index),
+                        borderRadius: BorderRadius.circular(4),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  '\$${(item.subtotal + item.valorImpuesto - item.valorDescuento).toStringAsFixed(0)}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 4),
+                              Icon(
+                                Icons.edit,
+                                size: 14,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -2928,7 +3190,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       porcentajeDescuento = subtotal > 0 ? (enteredDescuento / subtotal) * 100 : 0;
     }
 
-    // 2. IVA sobre el precio ya descontado
+    // 2. IVA calculado sobre la base neta (precioUnitario ya es el valor sin IVA)
     final baseGravable = subtotal - valorDescuento;
     final valorImpuesto = baseGravable * (porcentajeImpuesto / 100);
 
@@ -2946,11 +3208,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       origen: _origenSeleccionado,
     );
 
+    // Guardar el id MongoDB del producto para poder notificar traslados tras la venta
+    _productoMongoIds[item.productoId] = _productoSeleccionado!.id;
+
     setState(() {
       _items.add(item);
       _limpiarFormularioProducto();
     });
-    
+
     // 📋 Guardar estado completo en provider
     _guardarEstadoCompleto();
     
@@ -2962,8 +3227,93 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     setState(() {
       _items.removeAt(index);
     });
-    
+
     // � Guardar estado completo en provider
+    _guardarEstadoCompleto();
+  }
+
+  /// Reconstruye el ítem a partir de un nuevo valor TOTAL editado manualmente.
+  /// Mantiene fijos: cantidad, % impuesto y % descuento. A partir de esos y
+  /// del total ingresado, despeja el precio base y el valor del impuesto:
+  ///   total = subtotalBase × (1 - %dcto/100) × (1 + %iva/100)
+  ///   subtotalBase = total / [(1 - %dcto/100) × (1 + %iva/100)]
+  ItemPedido _recalcularItemDesdeTotal(ItemPedido item, double nuevoTotal) {
+    final r = item.porcentajeImpuesto;
+    final d = item.porcentajeDescuento;
+    final factorDescuento = 1 - (d / 100);
+    final factorImpuesto = 1 + (r / 100);
+    final denominador = factorDescuento * factorImpuesto;
+
+    final nuevoSubtotalBase = denominador > 0 ? nuevoTotal / denominador : nuevoTotal;
+    final nuevoPrecioUnitario =
+        item.cantidad > 0 ? nuevoSubtotalBase / item.cantidad : nuevoSubtotalBase;
+    final nuevoValorDescuento = nuevoSubtotalBase * (d / 100);
+    final baseGravable = nuevoSubtotalBase - nuevoValorDescuento;
+    final nuevoValorImpuesto = baseGravable * (r / 100);
+
+    return ItemPedido(
+      id: item.id,
+      productoId: item.productoId,
+      productoNombre: item.productoNombre,
+      cantidad: item.cantidad,
+      precioUnitario: nuevoPrecioUnitario,
+      notas: item.notas,
+      ingredientesSeleccionados: item.ingredientesSeleccionados,
+      ingredientesUsados: item.ingredientesUsados,
+      agregadoPor: item.agregadoPor,
+      fechaAgregado: item.fechaAgregado,
+      porcentajeImpuesto: r,
+      valorImpuesto: nuevoValorImpuesto,
+      porcentajeDescuento: d,
+      valorDescuento: nuevoValorDescuento,
+      origen: item.origen,
+      trasladoId: item.trasladoId,
+    );
+  }
+
+  /// Abre un diálogo para editar el valor TOTAL de un ítem ya agregado,
+  /// recalculando el precio base y el impuesto a partir de ese total.
+  Future<void> _editarTotalItem(int index) async {
+    final item = _items[index];
+    final totalActual = item.subtotal + item.valorImpuesto - item.valorDescuento;
+    final controller = TextEditingController(text: totalActual.toStringAsFixed(0));
+
+    final nuevoTotal = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Editar total'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: item.productoNombre ?? 'Producto',
+            prefixText: '\$ ',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final v = double.tryParse(controller.text.replaceAll(',', '.'));
+              Navigator.pop(ctx, v);
+            },
+            child: Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (nuevoTotal == null || nuevoTotal < 0) return;
+
+    setState(() {
+      _items[index] = _recalcularItemDesdeTotal(item, nuevoTotal);
+    });
+
     _guardarEstadoCompleto();
   }
 
@@ -2973,7 +3323,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     _nombreProductoController.clear();
     _cantidadController.text = '1';
     _valorUnitController.clear();
-    _porcentajeImpuestoController.text = '0';
+    _porcentajeImpuestoController.text = '19';
     _porcentajeDescuentoController.text = '0';
     _origenSeleccionado = 'ALMACÉN';
     _productoSeleccionado = null;
@@ -3022,7 +3372,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             ? producto.codigo!
             : 'SIN CÓDIGO';
         _nombreProductoController.text = producto.nombre;
-        _valorUnitController.text = producto.precio.toString();
+        final ivaPct = producto.impuestos > 0 ? producto.impuestos : 19.0;
+        final precioBase = producto.precio / (1 + ivaPct / 100);
+        _valorUnitController.text = precioBase.toStringAsFixed(2);
+        _porcentajeImpuestoController.text = ivaPct.toStringAsFixed(0);
       });
 
       // Mostrar feedback visual de éxito
@@ -3549,7 +3902,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   // Cargar un borrador en el formulario
   void _cargarBorrador(Pedido pedido) {
     setState(() {
-      _items = List.from(pedido.items);
       _clienteController.text = pedido.cliente ?? 'CONSUMIDOR FINAL';
       _fechaFactura = pedido.fecha;
       _fechaVencimiento =
@@ -3557,18 +3909,205 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       _tipoFactura = pedido.tipoFactura ?? 'POS';
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white),
-            SizedBox(width: 8),
-            Text('Borrador cargado'),
+    // Mostrar el mismo diálogo de edición de IVA/descuento que se usa
+    // al cargar un pedido de asesor, antes de volcar los items a la tabla.
+    _mostrarDialogoEditarItemsBorrador(pedido);
+  }
+
+  /// Diálogo (idéntico en estructura al de pedidos de asesor) para editar
+  /// el % de IVA y el % de descuento de cada ítem de un borrador antes de
+  /// cargarlo en la factura. El precio mostrado ya es la base neta (sin IVA)
+  /// tal como se guarda en los borradores propios de esta pantalla.
+  Future<void> _mostrarDialogoEditarItemsBorrador(Pedido pedido) async {
+    if (!mounted) return;
+
+    final items = _normalizarItemsIVA(List.from(pedido.items));
+
+    final ivaCtrs = items
+        .map((i) => TextEditingController(text: i.porcentajeImpuesto.toStringAsFixed(0)))
+        .toList();
+    final dctoCtrs = items
+        .map((i) => TextEditingController(text: i.porcentajeDescuento.toStringAsFixed(0)))
+        .toList();
+
+    final confirmar = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        final theme = Theme.of(context);
+        final textStyle = TextStyle(fontSize: 12, color: theme.colorScheme.onSurface);
+        final headerStyle = TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface);
+        final inputDec = InputDecoration(
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          border: const OutlineInputBorder(),
+          suffixText: '%',
+          suffixStyle: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+        );
+
+        return AlertDialog(
+          backgroundColor: theme.colorScheme.surface,
+          title: Row(
+            children: [
+              Icon(Icons.receipt_long, color: AppTheme.primary, size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Borrador de ${pedido.cliente ?? "cliente"}', style: TextStyle(fontSize: 16, color: theme.colorScheme.onSurface)),
+                    Text('Edita IVA y descuento antes de cargar', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 740,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Cabecera de columnas
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    children: [
+                      Expanded(flex: 4, child: Text('Producto', style: headerStyle)),
+                      SizedBox(width: 44, child: Text('Cant.', style: headerStyle, textAlign: TextAlign.center)),
+                      SizedBox(width: 78, child: Text('Precio base', style: headerStyle, textAlign: TextAlign.right)),
+                      const SizedBox(width: 8),
+                      SizedBox(width: 64, child: Text('IVA %', style: headerStyle, textAlign: TextAlign.center)),
+                      const SizedBox(width: 8),
+                      SizedBox(width: 64, child: Text('Dcto %', style: headerStyle, textAlign: TextAlign.center)),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                const SizedBox(height: 4),
+                // Lista de items con scroll
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 340),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: items.length,
+                    itemBuilder: (_, idx) {
+                      final item = items[idx];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 5),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 4,
+                              child: Text(
+                                item.productoNombre ?? '-',
+                                style: textStyle,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            SizedBox(
+                              width: 44,
+                              child: Text('${item.cantidad}', style: textStyle, textAlign: TextAlign.center),
+                            ),
+                            SizedBox(
+                              width: 78,
+                              child: Text(
+                                '\$${item.precioUnitario.toStringAsFixed(0)}',
+                                style: textStyle.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.55)),
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 64,
+                              child: TextField(
+                                controller: ivaCtrs[idx],
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface),
+                                decoration: inputDec,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 64,
+                              child: TextField(
+                                controller: dctoCtrs[idx],
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface),
+                                decoration: inputDec,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Sin cambios'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(ctx, true),
+              icon: const Icon(Icons.check, size: 16),
+              label: const Text('Aplicar y cargar'),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white),
+            ),
           ],
-        ),
-        backgroundColor: Colors.green,
-      ),
+        );
+      },
     );
+
+    // Leer valores antes de hacer dispose
+    final ivaValues = ivaCtrs.map((c) => double.tryParse(c.text) ?? 0.0).toList();
+    final dctoValues = dctoCtrs.map((c) => double.tryParse(c.text) ?? 0.0).toList();
+    for (final c in ivaCtrs) { c.dispose(); }
+    for (final c in dctoCtrs) { c.dispose(); }
+
+    if (!mounted) return;
+
+    final List<ItemPedido> itemsCargados;
+    if (confirmar == true) {
+      // El precio base de un borrador propio ya es neto (sin IVA), así que
+      // solo se recalculan descuento e impuesto con los % editados.
+      itemsCargados = items.asMap().entries.map((entry) {
+        final idx = entry.key;
+        final item = entry.value;
+        final ivaPct = ivaValues[idx];
+        final dctoPct = dctoValues[idx];
+        final subtotal = item.precioUnitario * item.cantidad;
+        final valorDescuento = subtotal * (dctoPct / 100);
+        final baseGravable = subtotal - valorDescuento;
+        final valorImpuesto = ivaPct > 0 && ivaPct < 100
+            ? baseGravable * (ivaPct / 100)
+            : 0.0;
+        return ItemPedido(
+          productoId: item.productoId,
+          productoNombre: item.productoNombre,
+          cantidad: item.cantidad,
+          precioUnitario: item.precioUnitario,
+          porcentajeImpuesto: ivaPct,
+          valorImpuesto: valorImpuesto,
+          porcentajeDescuento: dctoPct,
+          valorDescuento: valorDescuento,
+          origen: item.origen,
+          trasladoId: item.trasladoId,
+        );
+      }).toList();
+    } else {
+      // Sin cambios: usar los items ya normalizados tal cual estaban en el borrador
+      itemsCargados = items;
+    }
+
+    setState(() {
+      _items = itemsCargados;
+    });
+
+    showSuccessSnackBar(context, 'Borrador cargado correctamente');
   }
 
   // Guardar como borrador (pedido activo sin pagar)
@@ -4114,16 +4653,18 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             await _pedidoAsesorService.marcarComoFacturado(
               pedidoAsesorId,
               userName,
+              facturaId: pedidoPagado.id,
             );
           }
 
-          // Si viene de un traslado, eliminarlo ahora que los items fueron facturados
-          if (widget.trasladoId != null) {
-            try {
-              await _trasladoService.eliminarTraslado(widget.trasladoId!);
-            } catch (_) {
-              // No bloquear el flujo si falla la eliminación del traslado
-            }
+          // Notificar traslados automáticamente: elimina/actualiza los que contengan
+          // productos recién facturados (fire-and-forget, no bloquea el flujo)
+          {
+            final mongoIds = itemsOriginales
+                .map((i) => _productoMongoIds[i.productoId] ?? i.productoId)
+                .where((id) => id.isNotEmpty)
+                .toList();
+            _trasladoService.notificarProductosFacturados(mongoIds).catchError((_) {});
           }
 
           // Refrescar cache
@@ -4550,11 +5091,15 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
             // 📍 Determinar el origen de la venta (BODEGA o ALMACÉN)
             final origen = item.origen;
+            // Si el item tiene trasladoId, el traslado ya movió el stock BODEGA→ALMACÉN.
+            // En ese caso billing descuenta de ALMACÉN para no hacer doble descuento de BODEGA.
+            final hayTraslado = item.trasladoId != null && item.trasladoId!.isNotEmpty;
+            final origenEfectivo = hayTraslado ? 'ALMACÉN' : origen;
             appLog(
-              '🏬 Procesando ${item.productoNombre}: Origen = "$origen" (B:${productoCompleto.bodega}, A:${productoCompleto.almacen})',
+              '🏬 Procesando ${item.productoNombre}: origen="$origen" trasladoId=${item.trasladoId} → descuenta de "$origenEfectivo" (B:${productoCompleto.bodega}, A:${productoCompleto.almacen})',
             );
 
-            // 📊 Obtener stock anterior según el origen
+            // 📊 Obtener stock anterior según el origen efectivo
             double stockAnterior = 0;
             double nuevoStock = 0;
 
@@ -4562,7 +5107,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             double almacenActual = (productoCompleto.almacen ?? 0).toDouble();
             double bodegaActual = (productoCompleto.bodega ?? 0).toDouble();
 
-            if (origen.toUpperCase() == 'BODEGA') {
+            if (origenEfectivo.toUpperCase() == 'BODEGA') {
               stockAnterior = bodegaActual;
               nuevoStock = (stockAnterior - item.cantidad).clamp(
                 0,
@@ -4594,7 +5139,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                   'Venta a ${pedido.cliente ?? 'CONSUMIDOR FINAL'} desde ${origen}',
               costoUnitario: item.precioUnitario,
               precioTotal: item.subtotal,
-              fecha: DateTime.now(),
+              fecha: DateTimeUtils.nowColombia(),
               facturaNo: pedido.id,
               proveedor: null,
             );
@@ -4680,7 +5225,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                 observaciones: 'Venta a ${pedido.cliente ?? 'CONSUMIDOR FINAL'} desde ${origen}',
                 costoUnitario: item.precioUnitario,
                 precioTotal: item.subtotal,
-                fecha: DateTime.now(),
+                fecha: DateTimeUtils.nowColombia(),
                 facturaNo: pedido.id,
                 proveedor: null,
               );
@@ -5096,7 +5641,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   }) {
     // Usar clienteData pasado como parámetro, o _clienteSeleccionado como fallback
     final cliente = clienteData ?? _clienteSeleccionado;
-    final now = DateTime.now();
+    final now = DateTimeUtils.nowColombia();
     final fechaFormateada = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final horaFormateada = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
 
@@ -5107,7 +5652,20 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     final aiuPctFinal = aiuPct ?? 0;
     final dctoGeneralFinal = dctoGeneral ?? 0;
 
-    final subtotalBase = pedido.subtotal;
+    // ✅ Recalcular subtotal/IVA desde los items reales que se van a mostrar,
+    // en vez de confiar en pedido.subtotal/pedido.totalImpuestos (pueden quedar
+    // desactualizados respecto a los items si estos se editaron después).
+    final itemsParaResumen = itemsOverride ?? pedido.items;
+    final subtotalCalculado = itemsParaResumen.fold<double>(
+      0.0,
+      (sum, item) => sum + item.subtotal - item.valorDescuento,
+    );
+    final totalIvaCalculado = itemsParaResumen.fold<double>(
+      0.0,
+      (sum, item) => sum + item.valorImpuesto,
+    );
+
+    final subtotalBase = subtotalCalculado;
     final retencionValorFinal =
         retencionValor ?? (subtotalBase * (retencionPctFinal / 100));
     final reteIVAValorFinal =
@@ -5120,17 +5678,18 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       // Información del negocio
       'nombreRestaurante': negocioInfo?.nombre ?? 'VERCY MOTOS',
       'nombreNegocio': negocioInfo?.nombre ?? 'VERCY MOTOS',
-      'nit': negocioInfo?.nit ?? '',
+      'nit': negocioInfo?.nitDoc ?? negocioInfo?.nit ?? '',
       'direccionRestaurante': negocioInfo?.direccion ?? '',
-      'telefonoRestaurante': negocioInfo?.telefono ?? '',
+      'telefonoRestaurante': negocioInfo?.contacto ?? negocioInfo?.telefono ?? '',
       'email': negocioInfo?.email ?? '',
       'ciudad': negocioInfo?.ciudad ?? '',
       'departamento': negocioInfo?.departamento ?? '',
 
       // Información de la factura
       'pedidoId': pedido.id,
-      'numero': pedido.id,
-      'tipoDocumento': 'ORDEN DE COMPRA',
+      'numero': pedido.numeroFactura ?? pedido.id,
+      'numeroPedido': pedido.numeroFactura ?? pedido.id,
+      'tipoDocumento': 'ORDEN DE VENTA',
       'fecha': fechaFormateada,
       'hora': horaFormateada,
       'fechaVencimiento': pedido.fechaVencimiento != null
@@ -5156,7 +5715,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       'vendedor': pedido.mesero ?? 'Sistema',
 
       // Productos — usar itemsOverride si se provee (preserva precios editados en facturación)
-      'productos': (itemsOverride ?? pedido.items)
+      'productos': itemsParaResumen
           .map(
             (item) => {
         'codigo': item.productoId,
@@ -5173,10 +5732,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       }).toList(),
 
       // Totales
-      'subtotal': pedido.subtotal,
-      'totalSinIva': pedido.total,
-      'totalIva': pedido.totalImpuestos,
-      'impuestos': pedido.totalImpuestos,
+      'subtotal': subtotalCalculado,
+      'totalSinIva': subtotalCalculado,
+      'totalIva': totalIvaCalculado,
+      'impuestos': totalIvaCalculado,
       'descuento': descuento,
       'descuentoGeneral': dctoGeneralFinal,
       'propina': propina,
@@ -5225,6 +5784,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
   // Limpiar formulario después de guardar
   void _limpiarFormulario() {
+    _productoMongoIds.clear();
     setState(() {
       // Limpiar items y cliente
       _items.clear();
@@ -5280,7 +5840,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       
       _cantidadController.text = '1';
       _valorUnitController.clear();
-      _porcentajeImpuestoController.text = '0';
+      _porcentajeImpuestoController.text = '19';
       _porcentajeDescuentoController.text = '0';
       _origenSeleccionado = 'ALMACÉN'; // 📦 Resetear a ALMACÉN por defecto
       

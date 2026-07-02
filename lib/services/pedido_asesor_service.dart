@@ -247,14 +247,19 @@ class PedidoAsesorService {
   // Marcar como facturado
   Future<PedidoAsesor> marcarComoFacturado(
     String id,
-    String facturadoPor,
-  ) async {
+    String facturadoPor, {
+    String? facturaId,
+  }) async {
     try {
       final headers = await _getHeaders();
+      final body = <String, dynamic>{'facturadoPor': facturadoPor};
+      if (facturaId != null && facturaId.isNotEmpty) {
+        body['facturaId'] = facturaId;
+      }
       final response = await http.put(
         Uri.parse('$baseUrl/$id/facturar'),
         headers: headers,
-        body: json.encode({'facturadoPor': facturadoPor}),
+        body: json.encode(body),
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {

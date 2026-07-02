@@ -2,7 +2,7 @@
     "name": "Vercy Motos",
     "short_name": "Vercy Motos",
     "start_url": ".",
-    "display": "standalone",
+    "display": "browser",
     "background_color": "#FF6B00",
     "theme_color": "#FF6B00",
     "description": "Sistema de gestión para Vercy Motos",

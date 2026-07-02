@@ -540,8 +540,59 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
           tooltip: 'Ver detalles',
           splashRadius: 20,
         ),
+        IconButton(
+          icon: Icon(Icons.delete, size: 18),
+          color: AppTheme.error,
+          onPressed: () => _confirmarEliminarTraslado(traslado),
+          tooltip: 'Eliminar traslado',
+          splashRadius: 20,
+        ),
       ],
     );
+  }
+
+  void _confirmarEliminarTraslado(Traslado traslado) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Text(
+          '¿Eliminar Traslado?',
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+        ),
+        content: Text(
+          '¿Está seguro que desea eliminar el traslado ${traslado.numero ?? ''}?\n\n'
+          'Producto: ${traslado.productoNombre ?? '-'}\n'
+          'Cantidad: ${traslado.cantidad?.toStringAsFixed(0) ?? '-'}',
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _eliminarTraslado(traslado);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
+            child: Text('Eliminar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _eliminarTraslado(Traslado traslado) async {
+    if (traslado.id == null) return;
+    try {
+      await _trasladoService.eliminarTraslado(traslado.id!);
+      _mostrarExito('Traslado eliminado correctamente');
+      _cargarDatos();
+    } catch (e) {
+      _mostrarError('Error al eliminar traslado: $e');
+    }
   }
 
   DataColumn _buildColumn(String label) {
@@ -998,22 +1049,6 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
             ),
           ),
-          if (traslado.id != null)
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                context.push('/facturar', extra: {
-                  'pedidoAsesor': null,
-                  'trasladoId': traslado.id,
-                });
-              },
-              icon: const Icon(Icons.receipt_long, size: 18),
-              label: const Text('Facturar items'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.success,
-                foregroundColor: Colors.white,
-              ),
-            ),
         ],
       ),
     );

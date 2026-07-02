@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/api_config.dart';
 import '../utils/api_error.dart';
+import '../utils/logger.dart';
 import '../models/traslado.dart';
 
 class TrasladoService {
@@ -312,6 +313,57 @@ class TrasladoService {
       }
     } catch (e) {
       rethrow;
+    }
+  }
+
+  /// Después de una venta exitosa, elimina de los traslados activos los items
+  /// cuyos productos ya fueron facturados. Si todos los items de un traslado
+  /// fueron vendidos → elimina el traslado. Si quedan items → actualiza el traslado.
+  /// [mongoProductoIds] son los IDs reales de MongoDB de los productos vendidos.
+  Future<void> notificarProductosFacturados(List<String> mongoProductoIds) async {
+    if (mongoProductoIds.isEmpty) return;
+    try {
+      final traslados = await listarTraslados();
+      for (final traslado in traslados) {
+        if (traslado.id == null || traslado.items.isEmpty) continue;
+
+        final itemsRestantes = traslado.items
+            .where((item) => !mongoProductoIds.contains(item.productoId))
+            .toList();
+
+        if (itemsRestantes.length == traslado.items.length) continue; // nada facturado aquí
+
+        if (itemsRestantes.isEmpty) {
+          await eliminarTraslado(traslado.id!);
+        } else {
+          await _actualizarItemsTraslado(traslado.id!, traslado, itemsRestantes);
+        }
+      }
+    } catch (e) {
+      appLog('⚠️ [TrasladoService] Error al limpiar traslados post-facturación: $e');
+    }
+  }
+
+  Future<void> _actualizarItemsTraslado(
+    String id,
+    Traslado traslado,
+    List<ItemTraslado> itemsRestantes,
+  ) async {
+    try {
+      final headers = await _getHeaders();
+      final body = json.encode({
+        ...traslado.toJson(),
+        'items': itemsRestantes
+            .map((i) => {
+                  'productoId': i.productoId,
+                  'nombreProducto': i.nombreProducto,
+                  'cantidad': i.cantidad,
+                })
+            .toList(),
+      });
+      await http.put(Uri.parse('$baseUrl/$id'), headers: headers, body: body).timeout(_timeout);
+    } catch (e) {
+      appLog('⚠️ [TrasladoService] No se pudo actualizar items del traslado $id: $e');
     }
   }
 

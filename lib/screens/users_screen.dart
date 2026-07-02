@@ -586,7 +586,7 @@ class _UsersScreenState extends State<UsersScreen> {
                     borderSide: BorderSide(color: Color(0xFFFF6B00)),
                   ),
                 ),
-                items: _roles.map((role) {
+                items: _roles.where((role) => role.id != null).map((role) {
                   return DropdownMenuItem<String>(
                     value: role.id,
                     child: Row(
@@ -751,6 +751,8 @@ class _UsersScreenState extends State<UsersScreen> {
         },
       );
 
+      if (!mounted) return;
+
       setState(() {
         _userRolesMap[user.id!] = [nuevoRol];
         // Proteger al usuario de sobrescritura por 30 segundos
@@ -766,8 +768,7 @@ class _UsersScreenState extends State<UsersScreen> {
         }
       });
 
-         
-      Navigator.pop(context);
+      if (Navigator.canPop(context)) Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Rol cambiado correctamente'),
@@ -783,14 +784,18 @@ class _UsersScreenState extends State<UsersScreen> {
 
       // También hacer una verificación inmediata para debug
         
-    } catch (e) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al cambiar rol: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+    } catch (e, stackTrace) {
+      debugPrint('💥 [UsersScreen._cambiarRolUsuario] $e');
+      debugPrint(stackTrace.toString());
+      if (mounted && Navigator.canPop(context)) Navigator.pop(context);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cambiar rol: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

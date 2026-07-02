@@ -48,6 +48,8 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
   List<Categoria> _categorias = [];
   bool _isLoading = false;
 
+  DatosCacheProvider? _cacheProvider;
+
   @override
   void initState() {
     super.initState();
@@ -55,10 +57,33 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final newProvider = Provider.of<DatosCacheProvider>(context, listen: false);
+    if (_cacheProvider != newProvider) {
+      _cacheProvider?.removeListener(_onCacheActualizado);
+      _cacheProvider = newProvider;
+      _cacheProvider!.addListener(_onCacheActualizado);
+    }
+  }
+
+  @override
   void dispose() {
+    _cacheProvider?.removeListener(_onCacheActualizado);
     _filtroCodigoController.dispose();
     _filtroNombreController.dispose();
     super.dispose();
+  }
+
+  void _onCacheActualizado() {
+    if (!mounted) return;
+    final productosCache = _cacheProvider?.productos;
+    if (productosCache != null && productosCache.isNotEmpty) {
+      setState(() {
+        _productos = List.from(productosCache);
+        _aplicarFiltros();
+      });
+    }
   }
 
   Future<void> _cargarDatos() async {
@@ -665,85 +690,88 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
           // Acciones
           Expanded(
             flex: 2,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  margin: EdgeInsets.only(right: 4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.success,
-                    shape: BoxShape.circle,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    margin: const EdgeInsets.only(right: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.success,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.visibility, color: Colors.white, size: 16),
+                      onPressed: () => _mostrarDetalleProducto(producto),
+                      tooltip: 'Ver detalles',
+                    ),
                   ),
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    icon: Icon(Icons.visibility, color: Colors.white, size: 16),
-                    onPressed: () => _mostrarDetalleProducto(producto),
-                    tooltip: 'Ver detalles',
+                  Container(
+                    width: 32,
+                    height: 32,
+                    margin: const EdgeInsets.only(right: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.edit, color: Colors.white, size: 16),
+                      onPressed: () => _editarProducto(producto),
+                      tooltip: 'Editar producto',
+                    ),
                   ),
-                ),
-                Container(
-                  width: 32,
-                  height: 32,
-                  margin: EdgeInsets.only(right: 4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary,
-                    shape: BoxShape.circle,
+                  Container(
+                    width: 32,
+                    height: 32,
+                    margin: const EdgeInsets.only(right: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade600,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.qr_code, color: Colors.white, size: 16),
+                      onPressed: () =>
+                          _mostrarDialogoImprimirCodigoBarras(producto),
+                      tooltip: 'Imprimir código de barras',
+                    ),
                   ),
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    icon: Icon(Icons.edit, color: Colors.white, size: 16),
-                    onPressed: () => _editarProducto(producto),
-                    tooltip: 'Editar producto',
+                  Container(
+                    width: 32,
+                    height: 32,
+                    margin: const EdgeInsets.only(right: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade600,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.history, color: Colors.white, size: 16),
+                      onPressed: () => _mostrarMovimientosStock(producto),
+                      tooltip: 'Movimientos de stock',
+                    ),
                   ),
-                ),
-                Container(
-                  width: 32,
-                  height: 32,
-                  margin: EdgeInsets.only(right: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade600,
-                    shape: BoxShape.circle,
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade600,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.delete, color: Colors.white, size: 16),
+                      onPressed: () => _eliminarProducto(producto),
+                      tooltip: 'Eliminar producto',
+                    ),
                   ),
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    icon: Icon(Icons.qr_code, color: Colors.white, size: 16),
-                    onPressed: () =>
-                        _mostrarDialogoImprimirCodigoBarras(producto),
-                    tooltip: 'Imprimir código de barras',
-                  ),
-                ),
-                Container(
-                  width: 32,
-                  height: 32,
-                  margin: EdgeInsets.only(right: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade600,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    icon: Icon(Icons.history, color: Colors.white, size: 16),
-                    onPressed: () => _mostrarMovimientosStock(producto),
-                    tooltip: 'Movimientos de stock',
-                  ),
-                ),
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade600,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    icon: Icon(Icons.delete, color: Colors.white, size: 16),
-                    onPressed: () => _eliminarProducto(producto),
-                    tooltip: 'Eliminar producto',
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -1741,10 +1769,18 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
         ? 'BODEGA'
         : 'ALMACEN';
     
+    // 🔀 Modo de carga: 'actualizar' (sobrescribe precio/costo/inventario) o
+    // 'sumar' (mantiene precio/costo del Excel pero SUMA la cantidad al
+    // inventario actual en vez de reemplazarlo). Solo aplica a productos que
+    // ya existen; los nuevos siempre se crean con lo que traiga el Excel.
+    String modoCarga = 'actualizar';
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
           backgroundColor: Theme.of(context).colorScheme.surface,
           title: Row(
             children: [
@@ -1768,6 +1804,62 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                     style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   ),
                   SizedBox(height: 16),
+                  Text(
+                    'Si el producto ya existe:',
+                    style: TextStyle(
+                      color: AppTheme.success,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  RadioListTile<String>(
+                    value: 'actualizar',
+                    groupValue: modoCarga,
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    activeColor: AppTheme.primary,
+                    onChanged: (v) => setDialogState(() => modoCarga = v!),
+                    title: Text(
+                      'Actualizar inventario, precio y costo',
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+                    ),
+                    subtitle: Text(
+                      'Reemplaza el inventario, precio y costo por lo que traiga el Excel',
+                      style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
+                    ),
+                  ),
+                  RadioListTile<String>(
+                    value: 'sumar',
+                    groupValue: modoCarga,
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    activeColor: AppTheme.primary,
+                    onChanged: (v) => setDialogState(() => modoCarga = v!),
+                    title: Text(
+                      'Sumar al inventario actual',
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+                    ),
+                    subtitle: Text(
+                      'Suma la cantidad del Excel al inventario que ya hay (precio y costo se actualizan igual)',
+                      style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
+                    ),
+                  ),
+                  RadioListTile<String>(
+                    value: 'solo_precio',
+                    groupValue: modoCarga,
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    activeColor: AppTheme.primary,
+                    onChanged: (v) => setDialogState(() => modoCarga = v!),
+                    title: Text(
+                      'Solo actualizar precio',
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+                    ),
+                    subtitle: Text(
+                      'No toca el inventario ni otros datos. Ignora las filas de productos que no existan',
+                      style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
+                    ),
+                  ),
+                  SizedBox(height: 8),
                   Container(
                     padding: EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -1855,7 +1947,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
             ElevatedButton.icon(
               onPressed: () {
                 Navigator.pop(context);
-                _seleccionarArchivoCargaMasiva(tipo: tipo);
+                _seleccionarArchivoCargaMasiva(tipo: tipo, modo: modoCarga);
               },
               icon: Icon(Icons.file_upload, color: Colors.white),
               label: Text('Cargar Excel'),
@@ -1865,6 +1957,8 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
               ),
             ),
           ],
+            );
+          },
         );
       },
     );
@@ -1873,6 +1967,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
   Future<void> _seleccionarArchivoCargaMasiva({
     required String tipo,
     bool diagnosticar = false,
+    String modo = 'actualizar',
   }) async {
     try {
       // Seleccionar archivo Excel
@@ -1888,7 +1983,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
           if (diagnosticar) {
             await _diagnosticarExcel(bytes, tipo: tipo);
           } else {
-            await _procesarArchivoExcel(bytes, tipo: tipo);
+            await _procesarArchivoExcel(bytes, tipo: tipo, modo: modo);
           }
         }
       }
@@ -2138,35 +2233,47 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
   Future<void> _procesarArchivoExcel(
     Uint8List bytes, {
     required String tipo,
+    String modo = 'actualizar',
   }) async {
+    // Guardamos el contexto del diálogo de progreso para cerrarlo correctamente
+    // sin afectar al navegador principal (GoRouter)
+    BuildContext? dialogCtx;
+
     try {
       // Mostrar diálogo de progreso
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (c) => AlertDialog(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          content: Row(
-            children: [
-              CircularProgressIndicator(color: AppTheme.primary),
-              SizedBox(width: 16),
-              Text(
-                'Procesando archivo Excel...',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-              ),
-            ],
-          ),
-        ),
+        builder: (c) {
+          dialogCtx = c;
+          return AlertDialog(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            content: Row(
+              children: [
+                CircularProgressIndicator(color: AppTheme.primary),
+                SizedBox(width: 16),
+                Text(
+                  'Procesando archivo Excel...',
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                ),
+              ],
+            ),
+          );
+        },
       );
 
       // Enviar archivo al backend
       final resultado = await _productoService.cargaMasivaProductos(
         bytes.toList(),
         tipo: tipo,
+        modo: modo,
       );
 
-      // Cerrar diálogo de progreso
-      if (mounted) Navigator.pop(context);
+      // Cerrar diálogo de progreso usando el contexto del propio diálogo
+      if (dialogCtx != null && dialogCtx!.mounted) {
+        Navigator.of(dialogCtx!).pop();
+        dialogCtx = null;
+      }
 
       // Recargar lista
       await _cargarDatos();
@@ -2261,9 +2368,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
         );
       }
     } catch (e) {
-      // Cerrar diálogo de progreso si está abierto
-      if (mounted && Navigator.canPop(context)) {
-        Navigator.pop(context);
+      // Cerrar diálogo de progreso usando su propio contexto
+      if (dialogCtx != null && dialogCtx!.mounted) {
+        Navigator.of(dialogCtx!).pop();
+        dialogCtx = null;
       }
 
       appLog('Error al procesar archivo Excel: $e');
@@ -3384,21 +3492,23 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
 
   /// Descarga productos en formato Excel
   Future<void> _descargarProductosExcel({required String tipo}) async {
+    bool dialogoMostrado = false;
     try {
       // Mostrar diálogo de carga
       if (mounted) {
+        dialogoMostrado = true;
         showDialog(
           context: context,
           barrierDismissible: false,
           builder: (c) => AlertDialog(
-            backgroundColor: Theme.of(context).colorScheme.surface,
+            backgroundColor: Theme.of(c).colorScheme.surface,
             content: Row(
               children: [
                 CircularProgressIndicator(color: AppTheme.primary),
-                SizedBox(width: 16),
+                const SizedBox(width: 16),
                 Text(
                   'Descargando productos...',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                  style: TextStyle(color: Theme.of(c).colorScheme.onSurface),
                 ),
               ],
             ),
@@ -3409,8 +3519,14 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
       // Descargar archivo
       final bytes = await _productoService.descargarProductosExcel();
 
-      // Cerrar diálogo de carga
-      if (mounted) Navigator.pop(context);
+      // Cerrar diálogo antes de disparar la descarga para evitar conflicto de Navigator
+      if (mounted && dialogoMostrado) {
+        Navigator.of(context).pop();
+        dialogoMostrado = false;
+      }
+
+      // Esperar un frame para que el diálogo se cierre completamente
+      await Future.delayed(const Duration(milliseconds: 80));
 
       // Descargar el archivo
       final timestamp = DateTime.now();
@@ -3435,9 +3551,9 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
       }
     } catch (e) {
       // Cerrar diálogo si está abierto
-      if (mounted) {
+      if (mounted && dialogoMostrado) {
         try {
-          Navigator.pop(context);
+          Navigator.of(context).pop();
         } catch (_) {}
       }
 
