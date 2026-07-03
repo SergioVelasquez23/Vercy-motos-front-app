@@ -4,12 +4,26 @@ import 'package:http_parser/http_parser.dart';
 import '../models/cliente.dart';
 import '../config/endpoints_config.dart';
 import '../utils/api_error.dart';
+import 'base_api_service.dart';
 
 class ClienteService {
   final EndpointsConfig _config = EndpointsConfig();
+  final BaseApiService _api = BaseApiService();
 
   String get baseUrl => '${_config.currentBaseUrl}/api/clientes';
   static const _timeout = Duration(seconds: 30);
+
+  /// Headers con Authorization (Bearer) desde BaseApiService
+  Future<Map<String, String>> get _headers => _api.getHeaders();
+
+  /// Headers para multipart: con token pero sin Content-Type,
+  /// porque MultipartRequest define su propio boundary
+  Future<Map<String, String>> get _headersMultipart async {
+    final headers = await _api.getHeaders();
+    headers.remove('Content-Type');
+    headers['Accept'] = 'application/json';
+    return headers;
+  }
 
   // CRUD
 
@@ -19,10 +33,7 @@ class ClienteService {
         
       final response = await http.get(
         Uri.parse(baseUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: await _headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -55,7 +66,9 @@ class ClienteService {
   /// Obtener cliente por ID
   Future<Cliente?> obtenerClientePorId(String id) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/$id')).timeout(_timeout);
+      final response = await http
+          .get(Uri.parse('$baseUrl/$id'), headers: await _headers)
+          .timeout(_timeout);
 
       if (response.statusCode == 200) {
         return Cliente.fromJson(json.decode(response.body));
@@ -75,7 +88,9 @@ class ClienteService {
   /// Obtener cliente por documento
   Future<Cliente?> obtenerClientePorDocumento(String doc) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/documento/$doc')).timeout(_timeout);
+      final response = await http
+          .get(Uri.parse('$baseUrl/documento/$doc'), headers: await _headers)
+          .timeout(_timeout);
 
       if (response.statusCode == 200) {
         return Cliente.fromJson(json.decode(response.body));
@@ -99,7 +114,7 @@ class ClienteService {
     try {
       final response = await http.post(
         Uri.parse(baseUrl),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _headers,
         body: json.encode(cliente.toJson()),
       ).timeout(_timeout);
 
@@ -118,7 +133,7 @@ class ClienteService {
     try {
       final response = await http.put(
         Uri.parse('$baseUrl/$id'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _headers,
         body: json.encode(cliente.toJson()),
       ).timeout(_timeout);
 
@@ -138,10 +153,7 @@ class ClienteService {
     try {
       final response = await http.put(
         Uri.parse('$baseUrl/$id'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: await _headers,
         body: json.encode({'estado': 'inactivo'}),
       );
       return response.statusCode == 200;
@@ -158,6 +170,7 @@ class ClienteService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/buscar?q=${Uri.encodeComponent(q)}'),
+        headers: await _headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -175,7 +188,9 @@ class ClienteService {
   /// Obtener clientes activos
   Future<List<Cliente>> obtenerClientesActivos() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/estado/activos')).timeout(_timeout);
+      final response = await http
+          .get(Uri.parse('$baseUrl/estado/activos'), headers: await _headers)
+          .timeout(_timeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -192,7 +207,9 @@ class ClienteService {
   /// Obtener clientes con saldo pendiente
   Future<List<Cliente>> obtenerClientesConSaldo() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/con-saldo')).timeout(_timeout);
+      final response = await http
+          .get(Uri.parse('$baseUrl/con-saldo'), headers: await _headers)
+          .timeout(_timeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -213,7 +230,7 @@ class ClienteService {
     try {
       final response = await http.put(
         Uri.parse('$baseUrl/$id/bloquear'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _headers,
         body: json.encode({'motivo': motivo}),
       );
 
@@ -231,7 +248,10 @@ class ClienteService {
   /// Activar cliente
   Future<Cliente> activarCliente(String id) async {
     try {
-      final response = await http.put(Uri.parse('$baseUrl/$id/activar'));
+      final response = await http.put(
+        Uri.parse('$baseUrl/$id/activar'),
+        headers: await _headers,
+      );
 
       if (response.statusCode == 200) {
         return Cliente.fromJson(json.decode(response.body));
@@ -252,7 +272,7 @@ class ClienteService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/$id/verificar-cupo'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _headers,
         body: json.encode({'montoFactura': monto}),
       );
 
@@ -270,7 +290,9 @@ class ClienteService {
   /// Obtener estadísticas de clientes
   Future<Map<String, dynamic>> obtenerEstadisticas() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/estadisticas')).timeout(_timeout);
+      final response = await http
+          .get(Uri.parse('$baseUrl/estadisticas'), headers: await _headers)
+          .timeout(_timeout);
 
       if (response.statusCode == 200) {
         return json.decode(response.body);
@@ -302,8 +324,8 @@ class ClienteService {
         Uri.parse('$baseUrl/carga-masiva'),
       );
 
-      // Headers para CORS y content type
-      request.headers.addAll({'Accept': 'application/json'});
+      // Headers con token, sin Content-Type (multipart define su boundary)
+      request.headers.addAll(await _headersMultipart);
 
       // El backend espera el campo 'file' no 'archivo'
       request.files.add(
@@ -385,6 +407,9 @@ class ClienteService {
         'POST',
         Uri.parse('$baseUrl/carga-masiva'),
       );
+
+      // Headers con token, sin Content-Type (multipart define su boundary)
+      request.headers.addAll(await _headersMultipart);
 
       // El backend espera el campo 'file' no 'archivo'
       request.files.add(await http.MultipartFile.fromPath('file', filePath));
