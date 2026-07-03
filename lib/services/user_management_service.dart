@@ -3,16 +3,20 @@ import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../utils/api_error.dart';
 import '../models/user.dart';
+import 'base_api_service.dart';
 
 class UserManagementService {
   final String _baseUrl = ApiConfig.instance.baseUrl;
+
+  /// Headers con Authorization (Bearer) desde BaseApiService
+  Future<Map<String, String>> get _headers => BaseApiService().getHeaders();
 
   /// Obtiene la lista de todos los usuarios
   Future<List<Map<String, dynamic>>> getAllUsers() async {
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/users'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _headers,
       );
 
       if (response.statusCode == 200) {
@@ -36,7 +40,7 @@ class UserManagementService {
     try {
       final response = await http.put(
         Uri.parse('$_baseUrl/users/$userId/role'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _headers,
         body: jsonEncode({'rol': newRole}),
       );
 
@@ -60,7 +64,7 @@ class UserManagementService {
     try {
       final response = await http.delete(
         Uri.parse('$_baseUrl/users/$userId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _headers,
       );
 
       if (response.statusCode == 200) {
@@ -86,7 +90,7 @@ class UserManagementService {
     try {
       final response = await http.put(
         Uri.parse('$_baseUrl/users/$userId/status'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _headers,
         body: jsonEncode({'activo': isActive}),
       );
 
@@ -115,7 +119,7 @@ class UserManagementService {
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/api/users/pendientes-autorizacion'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _headers,
       );
 
       if (response.statusCode == 200) {
@@ -137,7 +141,7 @@ class UserManagementService {
     try {
       final response = await http.put(
         Uri.parse('$_baseUrl/api/users/$userId/autorizar'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _headers,
       );
 
       if (response.statusCode == 200) {
@@ -159,7 +163,7 @@ class UserManagementService {
     try {
       final response = await http.put(
         Uri.parse('$_baseUrl/api/users/$userId/denegar'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _headers,
       );
 
       if (response.statusCode == 200) {

@@ -4,21 +4,26 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import '../config/api_config.dart';
 import '../models/negocio_info.dart';
+import 'base_api_service.dart';
 import 'image_service.dart';
 
 class NegocioInfoService {
   final ApiConfig _apiConfig = ApiConfig();
   final ImageService _imageService = ImageService();
 
+  /// Headers con Authorization (Bearer) desde BaseApiService
+  Future<Map<String, String>> get _headers async {
+    final h = await BaseApiService().getHeaders();
+    h['Accept'] = 'application/json';
+    return h;
+  }
+
   /// Obtener información del negocio
   Future<NegocioInfo?> getNegocioInfo() async {
     try {
       final response = await http.get(
         Uri.parse('${_apiConfig.baseUrl}/api/negocio'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: await _headers,
       );
 
         
@@ -52,10 +57,7 @@ class NegocioInfoService {
       final method = negocioInfo.id != null ? 'PUT' : 'POST';
 
       final request = http.Request(method, uri);
-      request.headers.addAll({
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      });
+      request.headers.addAll(await _headers);
 
       // Actualizar fecha de actualización
       final negocioToSave = negocioInfo.copyWith(
@@ -112,10 +114,7 @@ class NegocioInfoService {
     try {
       final response = await http.delete(
         Uri.parse('${_apiConfig.baseUrl}/api/negocio/$id'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: await _headers,
       );
 
         
