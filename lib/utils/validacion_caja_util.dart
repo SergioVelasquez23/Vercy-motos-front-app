@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../config/api_config.dart';
 import '../dialogs/dialogo_confirmacion.dart';
+import '../services/base_api_service.dart';
 
 /// Utilidad para validar efectivo disponible en caja
 ///
@@ -38,7 +39,8 @@ class ValidacionCajaUtil {
 
   /// Obtiene los detalles de efectivo en caja
   static Future<DetallesEfectivo> obtenerDetallesEfectivo() async {
-    final headers = _apiConfig.getSecureHeaders();
+    // Headers con Authorization (Bearer) desde BaseApiService
+    final headers = await BaseApiService().getHeaders();
     final baseUrl = '${_apiConfig.baseUrl}/api/cuadres-caja';
 
     try {

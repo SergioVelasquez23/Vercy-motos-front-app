@@ -3,21 +3,25 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/resumen_cierre.dart';
+import 'base_api_service.dart';
 import 'cuadre_caja_service.dart';
 
 class ResumenCierreService {
   final ApiConfig _apiConfig = ApiConfig.instance;
+  final BaseApiService _api = BaseApiService();
 
   String get baseUrl => '${_apiConfig.baseUrl}/api/cuadres-caja';
 
-  Map<String, String> get headers => _apiConfig.getSecureHeaders();
+  /// Headers con Authorization (Bearer) desde BaseApiService
+  Future<Map<String, String>> get _headers => _api.getHeaders();
 
   Future<ResumenCierre> getResumenCierre(String cuadreId) async {
     try {
-        
+
 
       final response = await http
-          .get(Uri.parse('$baseUrl/$cuadreId/resumen-cierre'), headers: headers)
+          .get(Uri.parse('$baseUrl/$cuadreId/resumen-cierre'),
+              headers: await _headers)
           .timeout(Duration(seconds: 30));
 
         
@@ -111,7 +115,7 @@ class ResumenCierreService {
     try {
       final response = await http.get(
         Uri.parse('${_apiConfig.baseUrl}/api/cuadres-caja/$cuadreId'),
-        headers: headers,
+        headers: await _headers,
       );
       return response.statusCode == 200;
     } catch (e) {
@@ -125,7 +129,7 @@ class ResumenCierreService {
     try {
       final response = await http.get(
         Uri.parse('${_apiConfig.baseUrl}/api/cuadres-caja/$cuadreId'),
-        headers: headers,
+        headers: await _headers,
       );
 
       if (response.statusCode == 200) {
