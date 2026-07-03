@@ -3,12 +3,17 @@ import 'package:http/http.dart' as http;
 import '../models/cotizacion.dart';
 import '../config/endpoints_config.dart';
 import '../utils/api_error.dart';
+import 'base_api_service.dart';
 
 class CotizacionService {
   final EndpointsConfig _config = EndpointsConfig();
+  final BaseApiService _api = BaseApiService();
 
   String get baseUrl => '${_config.currentBaseUrl}/api/cotizaciones';
   static const _timeout = Duration(seconds: 30);
+
+  /// Headers con Authorization (Bearer) desde BaseApiService
+  Future<Map<String, String>> get _headers => _api.getHeaders();
 
   /// Obtener todas las cotizaciones
   Future<List<Cotizacion>> obtenerCotizaciones() async {
@@ -16,10 +21,7 @@ class CotizacionService {
         
       final response = await http.get(
         Uri.parse(baseUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: await _headers,
       ).timeout(_timeout);
             
       if (response.statusCode == 200) {
@@ -52,7 +54,9 @@ class CotizacionService {
   /// Obtener cotización por ID
   Future<Cotizacion?> obtenerCotizacionPorId(String id) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/$id')).timeout(_timeout);
+      final response = await http
+          .get(Uri.parse('$baseUrl/$id'), headers: await _headers)
+          .timeout(_timeout);
 
       if (response.statusCode == 200) {
         return Cotizacion.fromJson(json.decode(response.body));
@@ -77,7 +81,7 @@ class CotizacionService {
 
       final response = await http.post(
         Uri.parse(baseUrl),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _headers,
         body: json.encode(cotizacion.toJson()),
       ).timeout(_timeout);
 
@@ -103,7 +107,7 @@ class CotizacionService {
 
       final response = await http.put(
         Uri.parse('$baseUrl/$id'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _headers,
         body: json.encode(cotizacion.toJson()),
       ).timeout(_timeout);
 
@@ -121,7 +125,9 @@ class CotizacionService {
   /// Eliminar cotización
   Future<bool> eliminarCotizacion(String id) async {
     try {
-      final response = await http.delete(Uri.parse('$baseUrl/$id')).timeout(_timeout);
+      final response = await http
+          .delete(Uri.parse('$baseUrl/$id'), headers: await _headers)
+          .timeout(_timeout);
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
         
@@ -136,7 +142,7 @@ class CotizacionService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/calcular-totales'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _headers,
         body: json.encode(cotizacion.toJson()),
       ).timeout(_timeout);
 
@@ -164,7 +170,9 @@ class CotizacionService {
   /// Aceptar cotización
   Future<Cotizacion> aceptarCotizacion(String id) async {
     try {
-      final response = await http.put(Uri.parse('$baseUrl/$id/aceptar')).timeout(_timeout);
+      final response = await http
+          .put(Uri.parse('$baseUrl/$id/aceptar'), headers: await _headers)
+          .timeout(_timeout);
 
       if (response.statusCode == 200) {
         return Cotizacion.fromJson(json.decode(response.body));
@@ -180,7 +188,9 @@ class CotizacionService {
   /// Rechazar cotización
   Future<Cotizacion> rechazarCotizacion(String id) async {
     try {
-      final response = await http.put(Uri.parse('$baseUrl/$id/rechazar')).timeout(_timeout);
+      final response = await http
+          .put(Uri.parse('$baseUrl/$id/rechazar'), headers: await _headers)
+          .timeout(_timeout);
 
       if (response.statusCode == 200) {
         return Cotizacion.fromJson(json.decode(response.body));
@@ -198,7 +208,7 @@ class CotizacionService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/$id/convertir-factura'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _headers,
         body: json.encode({'facturaId': facturaId}),
       ).timeout(_timeout);
 
@@ -218,7 +228,9 @@ class CotizacionService {
   /// Obtener cotizaciones por cliente
   Future<List<Cotizacion>> obtenerPorCliente(String clienteId) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/cliente/$clienteId')).timeout(_timeout);
+      final response = await http
+          .get(Uri.parse('$baseUrl/cliente/$clienteId'), headers: await _headers)
+          .timeout(_timeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -235,7 +247,9 @@ class CotizacionService {
   /// Obtener cotizaciones por estado
   Future<List<Cotizacion>> obtenerPorEstado(String estado) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/estado/$estado')).timeout(_timeout);
+      final response = await http
+          .get(Uri.parse('$baseUrl/estado/$estado'), headers: await _headers)
+          .timeout(_timeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -277,7 +291,9 @@ class CotizacionService {
   /// Obtener estadísticas de cotizaciones
   Future<Map<String, dynamic>> obtenerEstadisticas() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/estadisticas')).timeout(_timeout);
+      final response = await http
+          .get(Uri.parse('$baseUrl/estadisticas'), headers: await _headers)
+          .timeout(_timeout);
 
       if (response.statusCode == 200) {
         return json.decode(response.body);
@@ -297,6 +313,7 @@ class CotizacionService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/buscar?q=${Uri.encodeComponent(q)}'),
+        headers: await _headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -322,6 +339,7 @@ class CotizacionService {
 
       final response = await http.get(
         Uri.parse('$baseUrl/rango-fechas?inicio=$inicioStr&fin=$finStr'),
+        headers: await _headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -339,12 +357,11 @@ class CotizacionService {
   /// Generar PDF de cotización
   Future<Map<String, dynamic>> generarPDF(String id) async {
     try {
+      final headers = await _headers;
+      headers['Accept'] = 'application/pdf';
       final response = await http.get(
         Uri.parse('$baseUrl/$id/pdf'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/pdf',
-        },
+        headers: headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {

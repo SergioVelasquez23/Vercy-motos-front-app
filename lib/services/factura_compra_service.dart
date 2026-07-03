@@ -10,6 +10,7 @@ import 'producto_service.dart';
 import 'inventario_service.dart';
 import '../utils/logger.dart';
 import '../utils/datetime_utils.dart';
+import 'base_api_service.dart';
 
 class FacturaCompraService {
   static const _timeout = Duration(seconds: 30);
@@ -18,11 +19,12 @@ class FacturaCompraService {
 
   String get baseUrl => '${_apiConfig.baseUrl}/api/facturas-compras';
 
-  Map<String, String> get headers => _apiConfig.getSecureHeaders();
+  /// Headers con Authorization (Bearer) desde BaseApiService
+  Future<Map<String, String>> get headers => BaseApiService().getHeaders();
 
   Future<List<FacturaCompra>> getFacturasCompras() async {
     try {
-      final response = await http.get(Uri.parse(baseUrl), headers: headers).timeout(_timeout);
+      final response = await http.get(Uri.parse(baseUrl), headers: await headers).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final responseBody = response.body;
@@ -99,7 +101,7 @@ class FacturaCompraService {
         
       final response = await http.get(
         Uri.parse('$baseUrl/$id'),
-        headers: headers,
+        headers: await headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -142,7 +144,7 @@ class FacturaCompraService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/proveedor/$proveedorNit'),
-        headers: headers,
+        headers: await headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -170,7 +172,7 @@ class FacturaCompraService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/numero-compra'),
-        headers: headers,
+        headers: await headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -248,7 +250,7 @@ class FacturaCompraService {
         
       final response = await http.get(
         Uri.parse('$baseUrl/ingredientes'),
-        headers: headers,
+        headers: await headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -332,7 +334,7 @@ class FacturaCompraService {
         Uri.parse('$baseUrl/importar-pdf/preview?plantilla=$plantilla'),
       );
 
-      final headersSinContentType = Map<String, String>.from(headers)
+      final headersSinContentType = Map<String, String>.from(await headers)
         ..remove('Content-Type');
       request.headers.addAll(headersSinContentType);
 
@@ -433,7 +435,7 @@ class FacturaCompraService {
 
       final response = await http.post(
         Uri.parse('$baseUrl/crear'),
-        headers: headers,
+        headers: await headers,
         body: json.encode(facturaJson),
       ).timeout(_timeout);
       
@@ -568,7 +570,7 @@ class FacturaCompraService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/pagadas-desde-caja'),
-        headers: headers,
+        headers: await headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -596,7 +598,7 @@ class FacturaCompraService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/no-pagadas-desde-caja'),
-        headers: headers,
+        headers: await headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -624,7 +626,7 @@ class FacturaCompraService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/resumen-pago-caja'),
-        headers: headers,
+        headers: await headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -644,7 +646,7 @@ class FacturaCompraService {
   Future<Map<String, dynamic>> debugBackendConnection() async {
     final result = <String, dynamic>{
       'baseUrl': baseUrl,
-      'headers': headers,
+      'headers': await headers,
       'tests': <String, dynamic>{},
     };
 
@@ -656,7 +658,7 @@ class FacturaCompraService {
         
       final numeroResponse = await http.get(
         Uri.parse('$baseUrl/numero-compra'),
-        headers: headers,
+        headers: await headers,
       ).timeout(_timeout);
 
       result['tests']['numero_factura'] = {
@@ -678,7 +680,7 @@ class FacturaCompraService {
     // Test 2: Probar endpoint de listado de facturas
     try {
         
-      final listResponse = await http.get(Uri.parse(baseUrl), headers: headers).timeout(_timeout);
+      final listResponse = await http.get(Uri.parse(baseUrl), headers: await headers).timeout(_timeout);
 
       result['tests']['list_facturas'] = {
         'status': listResponse.statusCode,
@@ -702,7 +704,7 @@ class FacturaCompraService {
       // Solo probamos la respuesta del endpoint sin datos válidos
       final createResponse = await http.post(
         Uri.parse('$baseUrl/crear'),
-        headers: headers,
+        headers: await headers,
         body: json.encode({}), // Datos vacíos para probar respuesta
       ).timeout(_timeout);
 
@@ -736,7 +738,7 @@ class FacturaCompraService {
 
       final response = await http.delete(
         Uri.parse('$baseUrl/$id'),
-        headers: headers,
+        headers: await headers,
         body: motivoEliminacion != null
             ? json.encode({'motivoEliminacion': motivoEliminacion})
             : null,
@@ -815,7 +817,7 @@ class FacturaCompraService {
 
       final response = await http.patch(
         Uri.parse('$baseUrl/$id/anular'),
-        headers: headers,
+        headers: await headers,
         body: json.encode({'motivoAnulacion': motivoAnulacion}),
       ).timeout(_timeout);
 
