@@ -1,31 +1,24 @@
 ﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/api_config.dart';
 import '../utils/api_error.dart';
 import '../utils/logger.dart';
 import '../models/traslado.dart';
+import 'base_api_service.dart';
 
 class TrasladoService {
   final ApiConfig _apiConfig = ApiConfig();
-  final storage = FlutterSecureStorage();
 
   static const _timeout = Duration(seconds: 30);
 
   String get baseUrl => '${_apiConfig.baseUrl}/api/traslados';
 
-  // Obtener headers con token
+  // Headers con autenticación. BaseApiService resuelve el token según la
+  // plataforma (localStorage en web, secure storage en móvil) — leer aquí
+  // FlutterSecureStorage directo dejaba el token en null en web.
   Future<Map<String, String>> _getHeaders() async {
-    final token = await storage.read(key: 'jwt_token');
-    final headers = <String, String>{
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    };
-
-    if (token != null) {
-      headers['Authorization'] = 'Bearer $token';
-    }
-
+    final headers = await BaseApiService().getHeaders();
+    headers['Accept'] = 'application/json';
     return headers;
   }
 
