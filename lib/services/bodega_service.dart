@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../utils/api_error.dart';
 import '../models/bodega.dart';
+import 'base_api_service.dart';
 
 /// Servicio para gestionar bodegas/almacenes/ubicaciones de inventario
 class BodegaService {
@@ -11,10 +12,12 @@ class BodegaService {
 
   String get baseUrl => '${_apiConfig.baseUrl}/api/bodegas';
 
-  Map<String, String> get headers => {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  };
+  /// Headers con Authorization (Bearer) desde BaseApiService
+  Future<Map<String, String>> get headers async {
+    final h = await BaseApiService().getHeaders();
+    h['Accept'] = 'application/json';
+    return h;
+  }
 
   static const _timeout = Duration(seconds: 30);
 
@@ -29,7 +32,7 @@ class BodegaService {
       }
 
         
-      final response = await http.get(Uri.parse(url), headers: headers).timeout(_timeout);
+      final response = await http.get(Uri.parse(url), headers: await headers).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final dynamic decoded = json.decode(response.body);
@@ -70,7 +73,7 @@ class BodegaService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/$id'),
-        headers: headers,
+        headers: await headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -123,7 +126,7 @@ class BodegaService {
 
       final response = await http.post(
         Uri.parse(baseUrl),
-        headers: headers,
+        headers: await headers,
         body: body,
       ).timeout(_timeout);
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -179,7 +182,7 @@ class BodegaService {
 
       final response = await http.put(
         Uri.parse('$baseUrl/$id'),
-        headers: headers,
+        headers: await headers,
         body: json.encode(bodyMap),
       ).timeout(_timeout);
 
@@ -215,7 +218,7 @@ class BodegaService {
 
       final response = await http.delete(
         Uri.parse('$baseUrl/$id'),
-        headers: headers,
+        headers: await headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200 || response.statusCode == 204) {
@@ -257,7 +260,7 @@ class BodegaService {
         Uri.parse(
           '${_apiConfig.baseUrl}/api/bodegas/stock/producto/$productoId',
         ),
-        headers: headers,
+        headers: await headers,
       ).timeout(_timeout);
 
 
@@ -313,7 +316,7 @@ class BodegaService {
         Uri.parse(
           '${_apiConfig.baseUrl}/api/bodegas/stock/producto/$productoId',
         ),
-        headers: headers,
+        headers: await headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -360,7 +363,7 @@ class BodegaService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/$bodegaId/stock'),
-        headers: headers,
+        headers: await headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {

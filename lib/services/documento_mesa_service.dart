@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/documento_mesa.dart';
 import '../config/endpoints_config.dart';
 import '../utils/api_error.dart';
+import 'base_api_service.dart';
 
 /// Servicio para gestionar documentos de mesa
 class DocumentoMesaService {
@@ -11,6 +12,13 @@ class DocumentoMesaService {
   final EndpointsConfig _config = EndpointsConfig();
 
   String get baseUrl => '${_config.currentBaseUrl}/api/documentos-mesa';
+
+  /// Headers con Authorization (Bearer) desde BaseApiService
+  Future<Map<String, String>> get _headers async {
+    final h = await BaseApiService().getHeaders();
+    h['Accept'] = 'application/json';
+    return h;
+  }
 
   /// Crear nuevo documento de mesa
   /// POST /api/documentos-mesa
@@ -30,10 +38,7 @@ class DocumentoMesaService {
 
       final response = await http.post(
         Uri.parse(baseUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: await _headers,
         body: json.encode(body),
       ).timeout(_timeout);
 
@@ -60,10 +65,7 @@ class DocumentoMesaService {
 
       final response = await http.get(
         Uri.parse('$baseUrl/mesa/$mesaNombre'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: await _headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -102,10 +104,7 @@ class DocumentoMesaService {
 
       final response = await http.get(
         Uri.parse('$baseUrl/$id'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: await _headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -138,10 +137,7 @@ class DocumentoMesaService {
 
       final response = await http.put(
         Uri.parse('$baseUrl/$documentoId/agregar-pedido'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: await _headers,
         body: json.encode(body),
       ).timeout(_timeout);
 
@@ -177,10 +173,7 @@ class DocumentoMesaService {
 
       final response = await http.put(
         Uri.parse('$baseUrl/$documentoId/pagar'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: await _headers,
         body: json.encode(body),
       ).timeout(_timeout);
 
@@ -205,10 +198,7 @@ class DocumentoMesaService {
 
       final response = await http.delete(
         Uri.parse('$baseUrl/$id'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: await _headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -237,10 +227,7 @@ class DocumentoMesaService {
 
       final response = await http.get(
         Uri.parse('$baseUrl/mesa/$mesaNombre/pendientes'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: await _headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -280,10 +267,7 @@ class DocumentoMesaService {
 
       final response = await http.get(
         Uri.parse('$baseUrl/mesa/$mesaNombre/pagados'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: await _headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -321,10 +305,7 @@ class DocumentoMesaService {
 
       final response = await http.get(
         Uri.parse('$baseUrl/mesa/$mesaNombre/resumen'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: await _headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -351,10 +332,7 @@ class DocumentoMesaService {
 
       final response = await http.get(
         Uri.parse('$baseUrl/verificar-mesa-especial/$mesaNombre'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: await _headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -379,10 +357,7 @@ class DocumentoMesaService {
 
       final response = await http.get(
         Uri.parse('$baseUrl/mesa/$mesaNombre/completos'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: await _headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -419,10 +394,7 @@ class DocumentoMesaService {
 
       final response = await http.get(
         Uri.parse('$baseUrl/mesas'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: await _headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
