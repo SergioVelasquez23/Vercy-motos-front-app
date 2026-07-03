@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/cuadre_caja.dart';
 import '../config/api_config.dart';
 import '../utils/api_error.dart';
 import '../utils/logger.dart';
+import 'base_api_service.dart';
 
 class CuadreCajaService {
   static final CuadreCajaService _instance = CuadreCajaService._internal();
@@ -12,16 +12,14 @@ class CuadreCajaService {
   CuadreCajaService._internal();
 
   String get baseUrl => ApiConfig.instance.baseUrl;
-  final storage = FlutterSecureStorage();
 
-  // Headers con autenticación
+  // Headers con autenticación. BaseApiService resuelve el token según la
+  // plataforma (localStorage en web, secure storage en móvil) — leer aquí
+  // FlutterSecureStorage directo dejaba el token en null en web.
   Future<Map<String, String>> _getHeaders() async {
-    final token = await storage.read(key: 'jwt_token');
-    return {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
+    final headers = await BaseApiService().getHeaders();
+    headers['Accept'] = 'application/json';
+    return headers;
   }
 
   // Obtener todos los cuadres de caja

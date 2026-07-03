@@ -4,17 +4,13 @@ import 'package:http/http.dart' as http;
 import '../models/resumen_cierre_completo.dart';
 import '../config/api_config.dart';
 import '../utils/api_error.dart';
+import 'base_api_service.dart';
 
 class ResumenCierreCompletoService {
   final String baseUrl = ApiConfig.instance.baseUrl;
 
-  Future<Map<String, String>> _getHeaders() async {
-    return {
-      'Content-Type': 'application/json',
-      // TODO: Add authentication token if needed
-      // 'Authorization': 'Bearer $token',
-    };
-  }
+  /// Headers con Authorization (Bearer) desde BaseApiService
+  Future<Map<String, String>> _getHeaders() => BaseApiService().getHeaders();
 
   /// Obtiene el resumen completo de cierre para un cuadre específico
   Future<ResumenCierreCompleto> getResumenCierre(String cuadreId) async {
