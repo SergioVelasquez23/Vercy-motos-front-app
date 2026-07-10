@@ -841,115 +841,13 @@ class PedidoService {
     return await PedidoService().actualizarEstadoPedido(pedidoId, nuevoEstado);
   }
 
-  // ✅ NUEVO: Devolver el stock de los productos de un pedido antes de eliminarlo
-  /// Este método obtiene el pedido, itera sobre sus items y devuelve
-  /// las cantidades al stock (almacen o bodega según el origen)
-  Future<void> _devolverStockProductos(String pedidoId) async {
-    try {
-      appLog('🔄 Iniciando devolución de stock para pedido $pedidoId');
-
-      // 1. Obtener el pedido completo
-      final pedido = await getPedidoById(pedidoId);
-      if (pedido == null) {
-        appLog('⚠️ No se encontró el pedido $pedidoId para devolver stock');
-        return;
-      }
-
-      appLog('📦 Pedido encontrado: ${pedido.items.length} items');
-
-      // 2. Para cada item del pedido, devolver el stock
-      for (var item in pedido.items) {
-        try {
-          appLog('');
-          appLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          appLog(
-            '   📦 DEVOLVIENDO STOCK - Item ${pedido.items.indexOf(item) + 1}/${pedido.items.length}',
-          );
-          appLog('   - Producto: ${item.productoNombre ?? item.productoId}');
-          appLog('   - Producto ID: ${item.productoId}');
-          appLog('   - Cantidad a devolver: ${item.cantidad} unidades');
-          appLog('   - Origen de venta: ${item.origen}');
-
-          // Obtener el producto del servicio
-          final producto = await _productoService.getProducto(item.productoId);
-
-          if (producto == null) {
-            appLog('   ❌ ERROR: No se encontró el producto ${item.productoId}');
-            appLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            continue;
-          }
-
-          appLog('');
-          appLog('   📊 INVENTARIO ACTUAL:');
-          appLog('      • Almacén: ${producto.almacen ?? 0} unidades');
-          appLog('      • Bodega: ${producto.bodega ?? 0} unidades');
-
-          // Calcular nuevas cantidades sumando lo que se vendió
-          int nuevoAlmacen = producto.almacen ?? 0;
-          int nuevoBodega = producto.bodega ?? 0;
-
-          // Devolver las cantidades según el origen
-          if (item.origen.toUpperCase() == 'BODEGA') {
-            nuevoBodega += item.cantidad;
-            appLog('');
-            appLog('   🔄 ACTUALIZANDO BODEGA:');
-            appLog('      • Antes: ${producto.bodega ?? 0}');
-            appLog('      • Cantidad a sumar: +${item.cantidad}');
-            appLog('      • Después: $nuevoBodega');
-          } else {
-            // Por defecto devolver a ALMACÉN
-            nuevoAlmacen += item.cantidad;
-            appLog('');
-            appLog('   🔄 ACTUALIZANDO ALMACÉN:');
-            appLog('      • Antes: ${producto.almacen ?? 0}');
-            appLog('      • Cantidad a sumar: +${item.cantidad}');
-            appLog('      • Después: $nuevoAlmacen');
-          }
-
-          // Actualizar el producto con las nuevas cantidades
-          final productoActualizado = producto.copyWith(
-            almacen: nuevoAlmacen,
-            bodega: nuevoBodega,
-          );
-
-          appLog('');
-          appLog('   🚀 Enviando actualización al backend...');
-          appLog('      - Endpoint: PUT /api/productos/${producto.id}');
-          appLog('      - cantidadAlmacen: $nuevoAlmacen');
-          appLog('      - cantidadBodega: $nuevoBodega');
-
-          await _productoService.updateProducto(productoActualizado);
-
-          appLog('   ✅ STOCK DEVUELTO EXITOSAMENTE');
-          appLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        } catch (e) {
-          appLog('   ❌ ERROR devolviendo stock para item ${item.productoId}:');
-          appLog('      $e');
-          appLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          // Continuar con el siguiente item aunque falle uno
-          continue;
-        }
-      }
-
-      appLog('');
-      appLog('🎉 ═══════════════════════════════════════════════════════');
-      appLog('   ✅ DEVOLUCIÓN DE STOCK COMPLETADA');
-      appLog('   Pedido: $pedidoId');
-      appLog('   Items procesados: ${pedido.items.length}');
-      appLog('═══════════════════════════════════════════════════════');
-      appLog('');
-    } catch (e) {
-      appLog('❌ Error general devolviendo stock: $e');
-      // No lanzar excepción para no bloquear la eliminación del pedido
-    }
-  }
-
   // Eliminar pedido (con reversión automática de dinero en caja)
   Future<void> eliminarPedido(String id, {String? motivoEliminacion}) async {
     try {
-      // ✅ NUEVO: Devolver stock ANTES de eliminar el pedido
-      await _devolverStockProductos(id);
-      
+      // El backend ya restaura el inventario al eliminar (PedidoService.
+      // restaurarInventarioPedido) — hacerlo también aquí duplicaba la
+      // escritura del stock (lectura-cálculo-escritura no atómica, competía
+      // con la del backend) y a veces terminaba sin sumar nada.
       final headers = await _getHeaders();
       final response = await http.delete(
         Uri.parse('$baseUrl/api/pedidos/$id'),
@@ -995,10 +893,9 @@ class PedidoService {
     String? motivoEliminacion,
   }) async {
     try {
-      // ✅ NUEVO: Devolver stock ANTES de eliminar el pedido
-      await _devolverStockProductos(id);
-        
-
+      // El backend ya restaura el inventario (mismo endpoint que eliminarPedido,
+      // los query params force/admin no cambian eso) — ver comentario en
+      // eliminarPedido().
       final headers = await _getHeaders();
 
       // Intentar eliminación forzada con parámetro admin
@@ -1061,10 +958,8 @@ class PedidoService {
     String? motivoEliminacion,
   }) async {
     try {
-      // ✅ NUEVO: Devolver stock ANTES de eliminar el pedido
-      await _devolverStockProductos(id);
-        
-
+      // El backend ya restaura el inventario (PedidoService.eliminarPedidoPagado
+      // -> restaurarInventarioPedido) — ver comentario en eliminarPedido().
       final headers = await _getHeaders();
       final response = await http.delete(
         Uri.parse('$baseUrl/api/pedidos/$id/pagado'),
@@ -2391,24 +2286,10 @@ class PedidoService {
   /// Devuelve un mapa con 'success' (bool) y 'message' (String) indicando el resultado.
   Future<Map<String, dynamic>> eliminarTodosPedidosActivos() async {
     try {
-        
-      // ✅ NUEVO: Devolver stock de TODOS los pedidos activos ANTES de eliminarlos
-      try {
-        final pedidosActivos = await getPedidosByEstado(EstadoPedido.activo);
-        appLog(
-          '🔄 Devolviendo stock de ${pedidosActivos.length} pedidos activos...',
-        );
-
-        for (var pedido in pedidosActivos) {
-          await _devolverStockProductos(pedido.id);
-        }
-
-        appLog('✅ Stock devuelto para todos los pedidos activos');
-      } catch (e) {
-        appLog('⚠️ Error devolviendo stock de pedidos activos: $e');
-        // Continuar con la eliminación aunque falle la devolución de stock
-      }
-
+      // El backend ya restaura el inventario de cada pedido activo/pendiente
+      // antes de borrarlo (AdminController.eliminarTodosPedidosActivos ->
+      // PedidoService.restaurarInventarioPedido) — ver comentario en
+      // eliminarPedido().
       final headers = await _getHeaders();
 
       final response = await http.delete(
