@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 
 import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
-import '../providers/notificaciones_provider.dart';
 import '../services/keep_alive_service.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -83,10 +82,9 @@ class _SplashScreenState extends State<SplashScreen>
       await cacheProvider.initialize();
       cacheProvider.warmupProductos();
 
-      final notifProvider =
-          Provider.of<NotificacionesProvider>(context, listen: false);
-      notifProvider.refresh();
-      notifProvider.startAutoRefresh();
+      // El refresh inicial y el auto-refresh de notificaciones se arrancan
+      // en AppShell.initState() (cubre también el caso de recargar el
+      // navegador ya logueado en una ruta protegida, que salta este splash).
 
       // Mantener el backend de Render despierto con pings cada 10 min
       KeepAliveService().startKeepAlive();

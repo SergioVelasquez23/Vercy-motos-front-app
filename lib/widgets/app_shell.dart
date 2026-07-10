@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../providers/user_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/notificaciones_provider.dart';
+import '../utils/notification_sound.dart';
 
 /// Shell persistente: sidebar a la izquierda + topbar minimal + área de contenido.
 /// Las rutas envueltas por ShellRoute se renderizan en [child] sin perder el sidebar.
@@ -21,8 +22,70 @@ class _AppShellState extends State<AppShell> {
   final Set<String> _expandedMenus = {};
   bool _isSidebarVisible = true;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  NotificacionesProvider? _notifProvider;
 
   String get _currentRoute => GoRouterState.of(context).matchedLocation;
+
+  @override
+  void initState() {
+    super.initState();
+    // listen: false porque solo se necesita la referencia para (des)registrar
+    // el listener manual de abajo — el rebuild normal de la campana ya lo
+    // maneja context.watch en _NotificacionesBell.
+    _notifProvider = Provider.of<NotificacionesProvider>(context, listen: false);
+    _notifProvider?.addListener(_onNotificacionesChanged);
+
+    // AppShell envuelve TODAS las rutas protegidas, así que arrancar el
+    // auto-refresh aquí (y no solo en SplashScreen) cubre también el caso de
+    // recargar el navegador estando ya en una ruta protegida: go_router
+    // restaura esa URL directo, sin pasar por SplashScreen, y entonces el
+    // refresh inicial y el timer nunca se disparaban (por eso las
+    // notificaciones de traslados se quedaban sin sonar ni auto-actualizar
+    // hasta darle "recargar" a mano). startAutoRefresh() ya cancela
+    // cualquier timer previo, así que llamarlo de nuevo aquí es seguro
+    // aunque también se llame desde SplashScreen en el flujo normal de login.
+    _notifProvider?.refresh();
+    _notifProvider?.startAutoRefresh();
+  }
+
+  @override
+  void dispose() {
+    _notifProvider?.removeListener(_onNotificacionesChanged);
+    super.dispose();
+  }
+
+  /// Muestra un SnackBar prominente (con acción "Ver") cuando llega un
+  /// traslado nuevo — más visible que solo el contador de la campana, que
+  /// requiere que alguien la abra para enterarse.
+  void _onNotificacionesChanged() {
+    final nuevo = _notifProvider?.nuevoTrasladoParaMostrar;
+    if (nuevo == null || !mounted) return;
+    _notifProvider!.limpiarNuevoTraslado();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.local_shipping, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                nuevo.descripcion,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppTheme.primary,
+        duration: const Duration(seconds: 6),
+        action: SnackBarAction(
+          label: 'VER',
+          textColor: Colors.white,
+          onPressed: () => context.go(nuevo.ruta),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,26 +93,35 @@ class _AppShellState extends State<AppShell> {
     final userName = userProvider.userName?.toUpperCase() ?? 'USUARIO';
     final isMobile = context.isMobile;
 
-    return Scaffold(
-      key: _scaffoldKey,
-      drawer: isMobile ? _buildMobileDrawer(context, userProvider, userName) : null,
-      body: Row(
-        children: [
-          if (!isMobile && _isSidebarVisible) _buildSidebar(context, userProvider, userName),
-          Expanded(
-            child: Column(
-              children: [
-                _buildTopBar(context, userName, isMobile),
-                Expanded(
-                  child: Container(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    child: widget.child,
+    return Listener(
+      // Los navegadores bloquean reproducir audio hasta que haya un gesto
+      // real del usuario en la página — este primer toque en cualquier parte
+      // de la app "desbloquea" el sonido de notificaciones para el resto de
+      // la sesión. Listener no intercepta el gesto (a diferencia de
+      // GestureDetector), así que no interfiere con ningún botón debajo.
+      onPointerDown: (_) => unlockNotificationAudioForWeb(),
+      behavior: HitTestBehavior.translucent,
+      child: Scaffold(
+        key: _scaffoldKey,
+        drawer: isMobile ? _buildMobileDrawer(context, userProvider, userName) : null,
+        body: Row(
+          children: [
+            if (!isMobile && _isSidebarVisible) _buildSidebar(context, userProvider, userName),
+            Expanded(
+              child: Column(
+                children: [
+                  _buildTopBar(context, userName, isMobile),
+                  Expanded(
+                    child: Container(
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      child: widget.child,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -271,6 +343,7 @@ class _AppShellState extends State<AppShell> {
             currentRoute: _currentRoute,
             subItems: const [
               _SubMenuItem(icon: Icons.analytics, label: 'Análisis Ventas', route: '/informes/productos'),
+              _SubMenuItem(icon: Icons.menu_book, label: 'Libro Contable', route: '/libro-contable'),
             ],
           ),
         ],
@@ -707,11 +780,95 @@ class _NotificacionesPanel extends StatelessWidget {
         item: items[i],
         onTap: () {
           onClose();
-          context.push(items[i].ruta);
+          if (items[i].tipo == TipoNotificacion.trasladoPendiente) {
+            _mostrarItemsTraslado(context, items[i]);
+          } else {
+            context.push(items[i].ruta);
+          }
         },
       ),
     );
   }
+}
+
+void _mostrarItemsTraslado(BuildContext context, NotificacionItem item) {
+  final notif = context.read<NotificacionesProvider>();
+  final trasladoId = item.id.replaceFirst('traslado-', '');
+  final itemsTraslado = item.itemsTraslado ?? const [];
+
+  showDialog<void>(
+    context: context,
+    builder: (dialogContext) {
+      final color = Theme.of(dialogContext).colorScheme;
+      return AlertDialog(
+        title: Text(item.titulo),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360, maxHeight: 420),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.descripcion,
+                  style: TextStyle(color: color.onSurface.withOpacity(0.7), fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+                if (itemsTraslado.isEmpty)
+                  const Text('Sin detalle de productos.')
+                else
+                  for (final producto in itemsTraslado)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  producto.nombreProducto ?? 'Producto sin nombre',
+                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                ),
+                                if ((producto.referencia ?? '').isNotEmpty)
+                                  Text(
+                                    'Ref: ${producto.referencia}',
+                                    style: TextStyle(color: color.onSurface.withOpacity(0.6), fontSize: 11),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            'x${producto.cantidad}',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                    ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              notif.descartarTraslado(trasladoId);
+              Navigator.of(dialogContext).pop();
+            },
+            child: const Text('Marcar como visto'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              context.push(item.ruta);
+            },
+            child: const Text('Ver traslados'),
+          ),
+        ],
+      );
+    },
+  );
 }
 
 class _NotificacionTile extends StatelessWidget {
@@ -781,6 +938,8 @@ class _NotificacionTile extends StatelessWidget {
         return (Icons.event_note, AppTheme.primary);
       case TipoNotificacion.descuentoEnRiesgo:
         return (Icons.local_offer_outlined, AppTheme.secondary);
+      case TipoNotificacion.trasladoPendiente:
+        return (Icons.local_shipping_outlined, AppTheme.primary);
     }
   }
 }
