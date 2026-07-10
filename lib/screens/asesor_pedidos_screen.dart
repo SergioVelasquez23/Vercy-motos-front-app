@@ -19,6 +19,7 @@ import '../theme/app_theme.dart';
 import '../utils/busqueda_productos_utils.dart';
 import '../utils/logger.dart';
 import '../utils/datetime_utils.dart';
+import '../utils/currency_utils.dart';
 
 class AsesorPedidosScreen extends StatefulWidget {
   const AsesorPedidosScreen({super.key});
@@ -232,7 +233,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '${producto.nombre} agregado (\$${precioIngresado.toStringAsFixed(0)})',
+            '${producto.nombre} agregado (${CurrencyUtils.format(precioIngresado)})',
           ),
           backgroundColor: AppTheme.success,
           duration: Duration(seconds: 1),
@@ -435,13 +436,14 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
     final key = '${item.productoId}_${item.origen}';
     return _precioCtrls.putIfAbsent(
       key,
-      () => TextEditingController(text: item.precioUnitario.toStringAsFixed(0)),
+      () => TextEditingController(text: CurrencyUtils.formatPlain(item.precioUnitario)),
     );
   }
 
   void _actualizarPrecioItem(int index, String texto) {
-    final nuevoPrecio = double.tryParse(texto.replaceAll(',', '.'));
-    if (nuevoPrecio == null || nuevoPrecio < 0) return;
+    if (texto.trim().isEmpty) return;
+    final nuevoPrecio = CurrencyUtils.parse(texto);
+    if (nuevoPrecio < 0) return;
     final item = _carrito[index];
     setState(() {
       _carrito[index] = ItemPedido(
@@ -692,7 +694,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                               onPressed: () => _mostrarCarritoModal(context),
                               icon: const Icon(Icons.shopping_cart, color: Colors.white),
                               label: Text(
-                                'Ver Pedido (${_carrito.length}) - \$${_total.toStringAsFixed(0)}',
+                                'Ver Pedido (${_carrito.length}) - ${CurrencyUtils.format(_total)}',
                                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                               ),
                               style: ElevatedButton.styleFrom(
@@ -807,7 +809,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '\$${pedido.total.toStringAsFixed(0)}',
+                  CurrencyUtils.format(pedido.total),
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primary),
                 ),
                 if (puedeAgregar)
@@ -977,7 +979,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                             children: [
                               Text('Agregar a pedido de ${pedido.clienteNombre}',
                                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Theme.of(context).colorScheme.onSurface)),
-                              Text('Pedido actual: ${pedido.items.length} producto(s) · \$${pedido.total.toStringAsFixed(0)}',
+                              Text('Pedido actual: ${pedido.items.length} producto(s) · ${CurrencyUtils.format(pedido.total)}',
                                   style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
                             ],
                           ),
@@ -1026,7 +1028,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                           ...nuevosItems.map((i) => Row(
                             children: [
                               Expanded(child: Text('${i.productoNombre} x${i.cantidad}', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface))),
-                              Text('\$${i.subtotal.toStringAsFixed(0)}', style: TextStyle(fontSize: 12, color: AppTheme.primary)),
+                              Text(CurrencyUtils.format(i.subtotal), style: TextStyle(fontSize: 12, color: AppTheme.primary)),
                               IconButton(
                                 icon: Icon(Icons.remove_circle_outline, size: 16, color: AppTheme.error),
                                 padding: EdgeInsets.zero,
@@ -1074,7 +1076,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                                         child: Text(p.nombre, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface), textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
                                       ),
                                       const SizedBox(height: 4),
-                                      Text('\$${p.precio.toStringAsFixed(0)}', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 13)),
+                                      Text(CurrencyUtils.format(p.precio), style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 13)),
                                       const SizedBox(height: 2),
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
@@ -1103,7 +1105,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                         if (nuevosItems.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(right: 12),
-                            child: Text('+\$${totalNuevos.toStringAsFixed(0)}',
+                            child: Text('+${CurrencyUtils.format(totalNuevos)}',
                                 style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary, fontSize: 16)),
                           ),
                         Expanded(
@@ -1397,7 +1399,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
             SizedBox(height: 4),
             // Precio
             Text(
-              '\$${producto.precio.toStringAsFixed(0)}',
+              CurrencyUtils.format(producto.precio),
               style: TextStyle(
                 color: AppTheme.primary,
                 fontWeight: FontWeight.bold,
@@ -1871,7 +1873,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                     style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   ),
                   Text(
-                    '\$${_subtotal.toStringAsFixed(0)}',
+                    CurrencyUtils.format(_subtotal),
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.w500,
@@ -1894,7 +1896,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                     ),
                   ),
                   Text(
-                    '\$${_total.toStringAsFixed(0)}',
+                    CurrencyUtils.format(_total),
                     style: TextStyle(
                       color: AppTheme.primary,
                       fontWeight: FontWeight.bold,
@@ -2021,7 +2023,8 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                         height: 32,
                         child: TextField(
                           controller: _ctrlPrecio(item),
-                          keyboardType: TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [MilesInputFormatter()],
                           style: TextStyle(color: AppTheme.primary, fontSize: 12, fontWeight: FontWeight.w600),
                           decoration: InputDecoration(
                             isDense: true,
@@ -2034,7 +2037,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                         ),
                       )
                     : Text(
-                        '\$${item.precioUnitario.toStringAsFixed(0)} c/u',
+                        '${CurrencyUtils.format(item.precioUnitario)} c/u',
                         style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
                       ),
               ],
@@ -2083,7 +2086,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '\$${item.subtotal.toStringAsFixed(0)}',
+                CurrencyUtils.format(item.subtotal),
                 style: TextStyle(
                   color: AppTheme.primary,
                   fontWeight: FontWeight.bold,
@@ -2159,7 +2162,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
   // (no maneja stock real, así que en vez de bodega/almacén se define el cobro)
   Future<double?> _mostrarDialogoPrecioManoDeObra(Producto producto) async {
     final precioCtrl = TextEditingController(
-      text: producto.precio > 0 ? producto.precio.toStringAsFixed(0) : '',
+      text: producto.precio > 0 ? CurrencyUtils.formatPlain(producto.precio) : '',
     );
 
     final precio = await showDialog<double>(
@@ -2169,7 +2172,8 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
         return StatefulBuilder(
           builder: (context, setDialogState) {
             void confirmar() {
-              final valor = double.tryParse(precioCtrl.text.replaceAll(',', '.'));
+              final texto = precioCtrl.text.trim();
+              final valor = texto.isEmpty ? null : CurrencyUtils.parse(texto);
               if (valor == null || valor < 0) {
                 setDialogState(() => error = 'Ingresa un precio válido');
                 return;
@@ -2206,7 +2210,8 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                   TextField(
                     controller: precioCtrl,
                     autofocus: true,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [MilesInputFormatter()],
                     style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     decoration: InputDecoration(
                       labelText: 'Precio a cobrar',
@@ -2969,7 +2974,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                     style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   ),
                   Text(
-                    '\$${_subtotal.toStringAsFixed(0)}',
+                    CurrencyUtils.format(_subtotal),
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
@@ -2990,7 +2995,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                     ),
                   ),
                   Text(
-                    '\$${_total.toStringAsFixed(0)}',
+                    CurrencyUtils.format(_total),
                     style: TextStyle(
                       color: AppTheme.primary,
                       fontWeight: FontWeight.bold,
@@ -3241,7 +3246,8 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                         height: 30,
                         child: TextField(
                           controller: _ctrlPrecio(item),
-                          keyboardType: TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [MilesInputFormatter()],
                           style: TextStyle(color: AppTheme.primary, fontSize: 11, fontWeight: FontWeight.w600),
                           decoration: InputDecoration(
                             isDense: true,
@@ -3256,7 +3262,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                         ),
                       )
                     : Text(
-                        '\$${item.precioUnitario.toStringAsFixed(0)} x ${item.cantidad}',
+                        '${CurrencyUtils.format(item.precioUnitario)} x ${item.cantidad}',
                         style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 11),
                       ),
               ],
@@ -3305,7 +3311,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
             ],
           ),
           Text(
-            '\$${item.subtotal.toStringAsFixed(0)}',
+            CurrencyUtils.format(item.subtotal),
             style: TextStyle(
               color: AppTheme.primary,
               fontWeight: FontWeight.bold,
