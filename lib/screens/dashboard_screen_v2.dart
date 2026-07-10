@@ -51,6 +51,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
   // Datos dinámicos para gráficos
   List<Map<String, dynamic>> _ventasPorDia = [];
+  List<Map<String, dynamic>> _ventasPorMes = [];
   List<Map<String, dynamic>> _ingresosVsEgresos = [];
   List<Map<String, dynamic>> _topProductos = [];
   List<Map<String, dynamic>> _topClientes = [];
@@ -254,6 +255,24 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             });
           });
 
+      final ventasPorMesFuture = _reportesService
+          .getVentasPorMes(6)
+          .then((data) {
+            setState(() {
+              _ventasPorMes = data.map((item) {
+                return {
+                  'mes': '${item['mes'] ?? ''} \'${item['año'].toString().substring(2)}',
+                  'ventas': (item['total'] as num?)?.toDouble() ?? 0.0,
+                };
+              }).toList();
+            });
+          })
+          .catchError((e) {
+            setState(() {
+              _ventasPorMes = [];
+            });
+          });
+
       // Cargar pedidos por hora
       final pedidosPorHoraFuture = _cargarPedidosPorHora().catchError((e) {
         return null;
@@ -275,6 +294,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         topProductosFuture,
         topClientesFuture,
         ventasPorDiaFuture,
+        ventasPorMesFuture,
         pedidosPorHoraFuture,
         vendedoresDelMesFuture,
         topBajoStockFuture,
@@ -851,6 +871,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
                                           // ── Ventas últimos 7 días (movido aquí abajo) ──
                                           _buildVentasPorDiaChart(context),
+                                          SizedBox(
+                                            height: AppTheme.spacingXLarge,
+                                          ),
+
+                                          // ── Facturado por mes (Facturación Electrónica + POS) ──
+                                          _buildVentasPorMesChart(context),
                                           SizedBox(
                                             height: AppTheme.spacingXLarge,
                                           ),
@@ -2014,6 +2040,183 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     );
   }
 
+  /// Facturado por mes (últimos meses), excluyendo ventas locales — solo
+  /// Facturación Electrónica + POS. Mismo patrón visual que
+  /// _buildVentasPorDiaChart.
+  Widget _buildVentasPorMesChart(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(
+        context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        border: Border.all(color: AppTheme.secondary.withOpacity(0.5), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.secondary.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppTheme.secondary.withOpacity(0.15),
+                width: 0.5,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.secondary,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.secondary.withOpacity(0.4),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.calendar_month, color: Colors.white, size: 16),
+                ),
+                SizedBox(width: 10),
+                Text(
+                  'FACTURADO ÚLTIMOS MESES',
+                  style: TextStyle(
+                    color: AppTheme.secondary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 24),
+          SizedBox(
+            height: 280,
+            child: _ventasPorMes.isEmpty
+                ? _buildEmptyChartState(
+                    'Sin facturación en los últimos meses',
+                    Icons.calendar_month,
+                  )
+                : BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceAround,
+                      maxY: _getMaxVentasMes(),
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        getDrawingHorizontalLine: (value) {
+                          return FlLine(
+                            color: Colors.grey.withOpacity(0.3),
+                            strokeWidth: 1,
+                          );
+                        },
+                      ),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 42,
+                            getTitlesWidget: (value, meta) {
+                              final index = value.toInt();
+                              if (index >= 0 && index < _ventasPorMes.length) {
+                                final mes = _ventasPorMes[index]['mes'] ?? '';
+                                final ventas =
+                                    ((_ventasPorMes[index]['ventas'] as num?)
+                                        ?.toDouble() ??
+                                    0.0);
+                                return Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(height: 4),
+                                    Text(
+                                      mes,
+                                      style: TextStyle(
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Text(
+                                      '\$${_formatCurrency(ventas)}',
+                                      style: TextStyle(
+                                        color: AppTheme.secondary,
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 60,
+                            getTitlesWidget: (value, meta) {
+                              return Text(
+                                '\$${_formatCurrency(value)}',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                  fontSize: 8,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        topTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        rightTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      barGroups: _ventasPorMes.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final data = entry.value;
+                        final ventas =
+                            (data['ventas'] as num?)?.toDouble() ?? 0.0;
+
+                        return BarChartGroupData(
+                          x: index,
+                          barRods: [
+                            BarChartRodData(
+                              toY: ventas,
+                              color: AppTheme.secondaryLight,
+                              width: 20,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Bloque superior del dashboard:
   ///   - Columna izquierda (vertical, larga): KPIs avanzados + lista bajo stock
   ///   - Columna derecha: cards 2×2 (Hoy/7d/30d/Año) sobre Ingresos vs Egresos
@@ -3058,6 +3261,21 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     if (_ventasPorDia.isEmpty) return 1000000;
     double max = 0;
     for (var venta in _ventasPorDia) {
+      final ventasRaw = venta['ventas'];
+      final ventas = (ventasRaw is num)
+          ? ventasRaw.toDouble()
+          : (ventasRaw == null
+                ? 0.0
+                : double.tryParse(ventasRaw.toString()) ?? 0.0);
+      if (ventas > max) max = ventas;
+    }
+    return max > 0 ? max : 1000000;
+  }
+
+  double _getMaxVentasMes() {
+    if (_ventasPorMes.isEmpty) return 1000000;
+    double max = 0;
+    for (var venta in _ventasPorMes) {
       final ventasRaw = venta['ventas'];
       final ventas = (ventasRaw is num)
           ? ventasRaw.toDouble()

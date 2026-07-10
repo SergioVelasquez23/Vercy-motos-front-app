@@ -108,6 +108,23 @@ class ReportesService {
     }
   }
 
+  // Obtener ventas (facturado) por mes — excluye pedidos locales, solo
+  // Facturación Electrónica + POS (mismo criterio que ventas por día)
+  Future<List<Map<String, dynamic>>> getVentasPorMes([
+    int ultimosMeses = 12,
+  ]) async {
+    final response = await _apiService.get<List<Map<String, dynamic>>>(
+      '/ventas-por-mes?ultimosMeses=$ultimosMeses',
+      (json) => List<Map<String, dynamic>>.from(json),
+    );
+
+    if (response.isSuccess) {
+      return response.data ?? [];
+    } else {
+      return [];
+    }
+  }
+
   // Obtener ingresos vs egresos
   Future<List<Map<String, dynamic>>> getIngresosVsEgresos([
     int ultimosMeses = 12,
