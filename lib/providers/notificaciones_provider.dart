@@ -176,7 +176,12 @@ class NotificacionesProvider extends ChangeNotifier {
       _trasladosRecientes = traslados.where((t) {
         final esDeBodega = t.tipo == null || t.tipo!.startsWith('BODEGA');
         final esReciente = t.fecha != null && t.fecha!.isAfter(limite);
-        return esDeBodega && esReciente;
+        // Sin esto, un traslado ya descartado con "Marcar como visto" volvía a
+        // entrar aquí en el siguiente refresh (el backend lo sigue devolviendo,
+        // "descartar" es solo local) y _detectarTrasladosNuevos() lo veía como
+        // pendiente otra vez, haciendo sonar la notificación de nuevo.
+        final noDescartado = t.id == null || !_trasladosDescartados.contains(t.id);
+        return esDeBodega && esReciente && noDescartado;
       }).toList();
 
       _detectarTrasladosNuevos();
