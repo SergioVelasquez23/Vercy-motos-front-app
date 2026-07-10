@@ -6,10 +6,12 @@ import '../models/pedido.dart';
 import '../models/item_pedido.dart';
 import '../models/producto.dart';
 import '../models/pedido_asesor.dart';
+import '../models/cotizacion.dart';
 import '../models/movimiento_inventario.dart';
 import '../services/pedido_service.dart';
 import '../services/producto_service.dart';
 import '../services/pedido_asesor_service.dart';
+import '../services/cotizacion_service.dart';
 import '../services/pdf_service.dart';
 import '../services/negocio_info_service.dart';
 import '../services/impresion_service.dart';
@@ -36,6 +38,7 @@ import '../utils/api_error.dart' show errorMessage;
 import '../widgets/facturizacion/confirmacion_dian_dialog.dart';
 import '../services/documento_service.dart';
 import '../utils/base64_file_launcher.dart';
+import '../utils/currency_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 // Cache de clientes compartido entre instancias de FacturacionScreen
@@ -47,9 +50,11 @@ class FacturacionScreen extends StatefulWidget {
   final PedidoAsesor? pedidoAsesor;
   // Si viene de un traslado, su ID para eliminarlo tras el pago
   final String? trasladoId;
+  // Si viene de convertir una cotización a factura
+  final Cotizacion? cotizacion;
 
-  const FacturacionScreen({super.key, this.pedidoAsesor, this.trasladoId});
-  
+  const FacturacionScreen({super.key, this.pedidoAsesor, this.trasladoId, this.cotizacion});
+
   @override
   _FacturacionScreenState createState() => _FacturacionScreenState();
 }
@@ -59,6 +64,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   final PedidoService _pedidoService = PedidoService();
   final ProductoService _productoService = ProductoService();
   final PedidoAsesorService _pedidoAsesorService = PedidoAsesorService();
+  final CotizacionService _cotizacionService = CotizacionService();
   final TrasladoService _trasladoService = TrasladoService();
   final PDFService _pdfService = PDFService();
   final NegocioInfoService _negocioInfoService = NegocioInfoService();
@@ -115,6 +121,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
   // Método de pago
   String _metodoPago = 'efectivo';
+  // Sub-categoría visual del medio de pago para el libro contable (nequi/daviplata/
+  // bancolombia/bold/credilondon/...). No cambia el formaPago contable enviado al
+  // backend, solo permite agrupar/filtrar ventas por plataforma específica.
+  String? _detallePago = 'efectivo';
   final List<Map<String, dynamic>> _metodosPago = [
     {'value': 'efectivo', 'label': 'Efectivo', 'icon': Icons.attach_money},
     {
@@ -122,31 +132,64 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       'label': 'Transferencia',
       'icon': Icons.account_balance,
     },
+    {'value': 'nequi', 'label': 'Nequi', 'icon': Icons.account_balance},
+    {'value': 'daviplata', 'label': 'DaviPlata', 'icon': Icons.account_balance},
+    {'value': 'bancolombia', 'label': 'Bancolombia', 'icon': Icons.account_balance},
     {'value': 'tarjeta', 'label': 'Tarjeta débito', 'icon': Icons.credit_card},
     {'value': 'tarjeta_credito', 'label': 'Tarjeta crédito', 'icon': Icons.credit_score},
+    {'value': 'bold', 'label': 'Bold', 'icon': Icons.point_of_sale},
     {'value': 'addi', 'label': 'Addi', 'icon': Icons.shopping_bag_outlined},
+    {'value': 'credilondon', 'label': 'Credilondon', 'icon': Icons.shopping_bag_outlined},
     {'value': 'sistecredito', 'label': 'Sistecredito', 'icon': Icons.card_giftcard},
     {'value': 'credito', 'label': 'A Crédito', 'icon': Icons.account_balance_wallet},
     {'value': 'multiple', 'label': 'Múltiple', 'icon': Icons.payments},
   ];
 
+  // Sub-categorías visuales reconocidas: se guardan en `detallePago` para el
+  // libro contable, pero siempre resuelven a un formaPago contable existente
+  // (ver _mapFormaPagoBackend/_medioPagoMap) — "contablemente no cambia nada".
+  static const Set<String> _detallesPagoConocidos = {
+    'efectivo', 'nequi', 'daviplata', 'bancolombia', 'bold', 'addi',
+    'credilondon', 'sistecredito',
+  };
+
+  String? _detalleParaMetodo(String metodo) {
+    return _detallesPagoConocidos.contains(metodo) ? metodo : null;
+  }
+
   // Mapeo de método de pago UI → medioPago DIAN
   static const Map<String, String> _medioPagoMap = {
     'efectivo': 'efectivo',
     'transferencia': 'transferencia',
+    'nequi': 'transferencia',
+    'daviplata': 'transferencia',
+    'bancolombia': 'transferencia',
     'tarjeta': 'tarjeta debito',
     'tarjeta_credito': 'tarjeta credito',
-    // Addi (BNPL) no tiene código DIAN propio; se reporta como 'efectivo',
-    // mismo criterio ya usado para 'credito' en esta tabla.
-    'addi': 'efectivo',
+    'bold': 'tarjeta credito',
+    // Addi y Credilondon son plataformas de crédito (BNPL): ante la DIAN se
+    // reportan como Crédito (no Contado/Efectivo) — el backend lo detecta por
+    // `detallePago` ('addi') en MatiasTransformer. Este mapa de 'medioPago' es
+    // solo informativo (el backend no lo consume actualmente).
+    'addi': 'credito',
+    'credilondon': 'credito',
     'sistecredito': 'sistecredito',
     'credito': 'efectivo',
     'multiple': 'efectivo',
   };
 
-  // Mapeo de método UI → formaPago backend
+  // Mapeo de método UI → formaPago backend (valor contable real, sin cambios)
   String _mapFormaPagoBackend(String metodo) {
     if (metodo == 'credito') return 'Crédito';
+    const aliasesTransferencia = {'nequi', 'daviplata', 'bancolombia'};
+    if (aliasesTransferencia.contains(metodo)) return 'transferencia';
+    if (metodo == 'bold') return 'datafono';
+    // Addi y Credilondon son plataformas de crédito (BNPL): NO deben contarse
+    // como Efectivo en el cuadre de caja (ese dinero nunca llega como efectivo
+    // físico). Se reportan como 'sistecredito' — el bucket de crédito más
+    // cercano que ya existe en el cuadre/DIAN — y quedan identificadas aparte
+    // por su propio `detallePago` ('addi'/'credilondon').
+    if (metodo == 'addi' || metodo == 'credilondon') return 'sistecredito';
     return metodo; // El backend acepta los valores directos para el resto
   }
 
@@ -162,6 +205,26 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   final TextEditingController _montoSistereditoController =
       TextEditingController(text: '0');
   final TextEditingController _montoDatafonoController = TextEditingController(
+    text: '0',
+  );
+  final TextEditingController _montoBoldController = TextEditingController(
+    text: '0',
+  );
+  final TextEditingController _montoAddiController = TextEditingController(
+    text: '0',
+  );
+  final TextEditingController _montoCredilondonController =
+      TextEditingController(text: '0');
+  // Sub-líneas de "Transferencia" en pago múltiple: cada plataforma tiene su
+  // propio monto para poder combinarlas entre sí (ej. parte por Nequi, parte
+  // por Bancolombia, en la misma venta). Todas resuelven a formaPago='transferencia'.
+  final TextEditingController _montoNequiController = TextEditingController(
+    text: '0',
+  );
+  final TextEditingController _montoDaviplataController = TextEditingController(
+    text: '0',
+  );
+  final TextEditingController _montoBancolombiaController = TextEditingController(
     text: '0',
   );
 
@@ -236,9 +299,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       _draftProvider!.startSync();
     });
     
-    // Si se pasó un pedido de asesor, cargar clientes primero
+    // Si se pasó un pedido de asesor o una cotización, cargar clientes primero
     if (widget.pedidoAsesor != null) {
       _inicializarConPedidoAsesor();
+    } else if (widget.cotizacion != null) {
+      _inicializarConCotizacion();
     } else {
       _cargarClientes().then((_) {
         // Asignar cliente por defecto si no hay ninguno seleccionado
@@ -309,6 +374,68 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
     // Mostrar diálogo para que el cajero edite IVA y descuento antes de cargar los items
     _mostrarDialogoEditarItemsPedidoAsesor(pedido);
+  }
+
+  // Inicializar con cotización - cargar clientes primero
+  Future<void> _inicializarConCotizacion() async {
+    await _cargarClientes(); // Esperar a que se carguen los clientes
+    if (mounted) {
+      await _precargarDatosCotizacion(); // Luego precargar datos de la cotización
+      // Asignar cliente por defecto si después de precargar no hay cliente válido
+      Future.delayed(Duration(milliseconds: 100), () {
+        _asignarClientePorDefecto();
+      });
+    }
+  }
+
+  Future<void> _precargarDatosCotizacion() async {
+    final cotizacion = widget.cotizacion!;
+
+    // Precargar nombre del cliente
+    _clienteController.text = cotizacion.clienteNombre ?? '';
+
+    Cliente? clienteEncontrado = _clientesDisponibles
+        .cast<Cliente?>()
+        .firstWhere((cliente) => cliente?.id == cotizacion.clienteId, orElse: () => null);
+
+    // Si el cliente no está en la lista precargada (ej. lista paginada/limitada),
+    // buscarlo directamente por ID para no perder la cédula/NIT real del cliente.
+    if (clienteEncontrado == null) {
+      appLog('⚠️ Cliente ${cotizacion.clienteId} no está en la lista precargada, buscando por ID...');
+      try {
+        clienteEncontrado = await _clienteService.obtenerClientePorId(cotizacion.clienteId);
+      } catch (e) {
+        appLog('⚠️ Error obteniendo cliente por ID: $e');
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      if (clienteEncontrado != null) {
+        _clienteSeleccionado = clienteEncontrado;
+        appLog('✅ Cliente seleccionado: ${_clienteSeleccionado?.nombreCompleto}');
+      } else {
+        appLog('⚠️ No se pudo encontrar el cliente - clienteId: ${cotizacion.clienteId}');
+      }
+
+      // Los items de la cotización ya guardan precio neto + IVA/descuento por
+      // separado (a diferencia del pedido de asesor, que guarda el precio con
+      // IVA incluido), así que se cargan directamente sin necesidad de recalcular.
+      _items = cotizacion.items.map((item) {
+        return ItemPedido(
+          productoId: item.productoId,
+          productoNombre: item.productoNombre,
+          cantidad: item.cantidad,
+          precioUnitario: item.precioUnitario,
+          porcentajeImpuesto: item.porcentajeImpuesto,
+          valorImpuesto: item.valorImpuesto,
+          porcentajeDescuento: item.porcentajeDescuento,
+          valorDescuento: item.valorDescuento,
+        );
+      }).toList();
+    });
+
+    showSuccessSnackBar(context, 'Cotización ${cotizacion.numeroCotizacion ?? ''} cargada correctamente');
   }
 
   Future<void> _mostrarDialogoEditarItemsPedidoAsesor(PedidoAsesor pedido) async {
@@ -403,7 +530,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             SizedBox(
                               width: 78,
                               child: Text(
-                                '\$${item.precioUnitario.toStringAsFixed(0)}',
+                                CurrencyUtils.format(item.precioUnitario),
                                 style: textStyle.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.55)),
                                 textAlign: TextAlign.right,
                               ),
@@ -627,6 +754,12 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     _montoTarjetaController.dispose();
     _montoSistereditoController.dispose();
     _montoDatafonoController.dispose();
+    _montoBoldController.dispose();
+    _montoAddiController.dispose();
+    _montoCredilondonController.dispose();
+    _montoNequiController.dispose();
+    _montoDaviplataController.dispose();
+    _montoBancolombiaController.dispose();
     _ordenCompraController.dispose();
     _ordenServicioController.dispose();
     _ordenPedidoController.dispose();
@@ -645,35 +778,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     _productosChannel?.close();
 
     super.dispose();
-  }
-
-  /// Normaliza ítems guardados con el formato antiguo (precioUnitario = precio
-  /// con IVA incluido) al nuevo formato (precioUnitario = base sin IVA).
-  /// Detecta el formato antiguo cuando valorImpuesto ≈ precioUnitario × rate/100.
-  List<ItemPedido> _normalizarItemsIVA(List<ItemPedido> items) {
-    return items.map((item) {
-      final r = item.porcentajeImpuesto;
-      if (r <= 0 || r >= 100) return item;
-      final ivaAntiguo = item.precioUnitario * r / 100;
-      final esFormatoAntiguo = (item.valorImpuesto - ivaAntiguo).abs() < 1.0;
-      if (!esFormatoAntiguo) return item;
-      final precioBase = item.precioUnitario / (1 + r / 100);
-      final subtotal = precioBase * item.cantidad;
-      final baseGravable = subtotal - item.valorDescuento;
-      final nuevoImpuesto = baseGravable * r / 100;
-      return ItemPedido(
-        productoId: item.productoId,
-        productoNombre: item.productoNombre,
-        cantidad: item.cantidad,
-        precioUnitario: precioBase,
-        porcentajeImpuesto: r,
-        valorImpuesto: nuevoImpuesto,
-        porcentajeDescuento: item.porcentajeDescuento,
-        valorDescuento: item.valorDescuento,
-        origen: item.origen,
-        trasladoId: item.trasladoId,
-      );
-    }).toList();
   }
 
   /// 📝 Restaurar borrador existente del provider
@@ -738,6 +842,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         _montoSistereditoController.text =
             montos['sistecredito']?.toString() ?? '0';
         _montoDatafonoController.text = montos['datafono']?.toString() ?? '0';
+        _montoBoldController.text = montos['bold']?.toString() ?? '0';
+        _montoAddiController.text = montos['addi']?.toString() ?? '0';
+        _montoCredilondonController.text =
+            montos['credilondon']?.toString() ?? '0';
+        _montoNequiController.text = montos['nequi']?.toString() ?? '0';
+        _montoDaviplataController.text = montos['daviplata']?.toString() ?? '0';
+        _montoBancolombiaController.text =
+            montos['bancolombia']?.toString() ?? '0';
 
         // Restaurar retenciones
         _retencionController.text = draftProvider.retencion.toString();
@@ -814,6 +926,12 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         'tarjeta': double.tryParse(_montoTarjetaController.text) ?? 0,
         'sistecredito': double.tryParse(_montoSistereditoController.text) ?? 0,
         'datafono': double.tryParse(_montoDatafonoController.text) ?? 0,
+        'bold': double.tryParse(_montoBoldController.text) ?? 0,
+        'addi': double.tryParse(_montoAddiController.text) ?? 0,
+        'credilondon': double.tryParse(_montoCredilondonController.text) ?? 0,
+        'nequi': double.tryParse(_montoNequiController.text) ?? 0,
+        'daviplata': double.tryParse(_montoDaviplataController.text) ?? 0,
+        'bancolombia': double.tryParse(_montoBancolombiaController.text) ?? 0,
       };
       draftProvider.setMontosPago(montos);
 
@@ -890,6 +1008,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                           onGuardarBorrador: _guardarComoBorrador,
                           onGuardarYPagar: _guardarYPagar,
                           onGuardarComoDeuda: _guardarComoDeuda,
+                          onVistaPrevia: _mostrarVistaPreviaFactura,
                           dctoGeneralController: _dctoGeneralController,
                         ),
                         SizedBox(height: 80),
@@ -1114,7 +1233,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           items: const [
             DropdownMenuItem(
               value: 'LOCAL',
-              child: Text(''),
+              child: Text('Factura Local'),
             ),
             DropdownMenuItem(
               value: 'POS',
@@ -1953,7 +2072,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                               _nombreProductoController.text = producto.nombre;
                               final ivaPct = producto.impuestos > 0 ? producto.impuestos : 19.0;
                               final precioBase = producto.precio / (1 + ivaPct / 100);
-                              _valorUnitController.text = precioBase.toStringAsFixed(2);
+                              _valorUnitController.text = CurrencyUtils.formatForMilesInput(precioBase);
                               _porcentajeImpuestoController.text = ivaPct.toStringAsFixed(0);
                             });
                           },
@@ -2071,7 +2190,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                               _nombreProductoController.text = producto.nombre;
                               final ivaPct = producto.impuestos > 0 ? producto.impuestos : 19.0;
                               final precioBase = producto.precio / (1 + ivaPct / 100);
-                              _valorUnitController.text = precioBase.toStringAsFixed(2);
+                              _valorUnitController.text = CurrencyUtils.formatForMilesInput(precioBase);
                               _porcentajeImpuestoController.text = ivaPct.toStringAsFixed(0);
                             });
                           },
@@ -2178,7 +2297,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                                   ),
                                                   SizedBox(height: 4),
                                                   Text(
-                                                    '\$${option.precio.toStringAsFixed(0)}',
+                                                    CurrencyUtils.format(option.precio),
                                                     style: TextStyle(
                                                       color: AppTheme.primary,
                                                       fontSize: 12,
@@ -2246,7 +2365,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             filled: true,
                             fillColor: Theme.of(context).colorScheme.surface,
                           ),
-                          keyboardType: TextInputType.number,
+                          keyboardType: TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [MilesInputFormatter(decimalDigits: 2)],
                         ),
                       ),
                       SizedBox(width: 12),
@@ -2768,7 +2888,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     Expanded(
                       flex: 1,
                       child: Text(
-                        '\$${item.precioUnitario.toStringAsFixed(0)}',
+                        CurrencyUtils.format(item.precioUnitario),
                         style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       ),
                     ),
@@ -2776,7 +2896,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                       flex: 1,
                       child: Text(
                         item.valorImpuesto > 0
-                            ? '\$${item.valorImpuesto.toStringAsFixed(0)}'
+                            ? CurrencyUtils.format(item.valorImpuesto)
                             : '-',
                         style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       ),
@@ -2785,7 +2905,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                       flex: 1,
                       child: Text(
                         item.valorDescuento > 0
-                            ? '\$${item.valorDescuento.toStringAsFixed(0)}'
+                            ? CurrencyUtils.format(item.valorDescuento)
                             : '-',
                         style: TextStyle(
                           color: item.valorDescuento > 0 ? Colors.green : Theme.of(context).colorScheme.onSurface,
@@ -2805,7 +2925,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             children: [
                               Flexible(
                                 child: Text(
-                                  '\$${(item.subtotal + item.valorImpuesto - item.valorDescuento).toStringAsFixed(0)}',
+                                  CurrencyUtils.format(item.subtotal + item.valorImpuesto - item.valorDescuento),
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: Theme.of(context).colorScheme.onSurface,
@@ -3087,7 +3207,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
   String _calcularValorTotal() {
     final cantidad = int.tryParse(_cantidadController.text) ?? 0;
-    final valorUnit = double.tryParse(_valorUnitController.text) ?? 0;
+    final valorUnit = CurrencyUtils.parseDecimal(_valorUnitController.text);
     final porcentajeImp =
         double.tryParse(_porcentajeImpuestoController.text) ?? 0;
     final enteredDesc =
@@ -3104,7 +3224,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     final impuesto = baseGravable * (porcentajeImp / 100);
     final total = baseGravable + impuesto;
 
-    return '\$${total.toStringAsFixed(0)}';
+    return CurrencyUtils.format(total);
   }
 
   void _agregarItem() {
@@ -3171,7 +3291,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       }
     }
 
-    final precioUnitario = double.tryParse(_valorUnitController.text) ?? 0;
+    final precioUnitario = CurrencyUtils.parseDecimal(_valorUnitController.text);
     final porcentajeImpuesto =
         double.tryParse(_porcentajeImpuestoController.text) ?? 0;
     final enteredDescuento =
@@ -3195,9 +3315,12 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     final valorImpuesto = baseGravable * (porcentajeImpuesto / 100);
 
     final item = ItemPedido(
-      productoId: (_productoSeleccionado!.codigo?.isNotEmpty ?? false)
-          ? _productoSeleccionado!.codigo!
-          : _productoSeleccionado!.id,
+      // productoId DEBE ser el _id real de Mongo: el backend descuenta
+      // inventario buscando el producto por ese id (ProductoRepository.findById).
+      // Antes se usaba el código/SKU cuando existía, lo que hacía que la
+      // búsqueda fallara en silencio y el stock nunca se descontara para
+      // cualquier producto con código (ej. todos los cargados por Excel).
+      productoId: _productoSeleccionado!.id,
       productoNombre: _productoSeleccionado!.nombre,
       cantidad: cantidad,
       precioUnitario: precioUnitario,
@@ -3276,7 +3399,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   Future<void> _editarTotalItem(int index) async {
     final item = _items[index];
     final totalActual = item.subtotal + item.valorImpuesto - item.valorDescuento;
-    final controller = TextEditingController(text: totalActual.toStringAsFixed(0));
+    final controller = TextEditingController(text: CurrencyUtils.formatPlain(totalActual));
 
     final nuevoTotal = await showDialog<double>(
       context: context,
@@ -3285,7 +3408,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         content: TextField(
           controller: controller,
           autofocus: true,
-          keyboardType: TextInputType.numberWithOptions(decimal: true),
+          keyboardType: TextInputType.number,
+          inputFormatters: [MilesInputFormatter()],
           decoration: InputDecoration(
             labelText: item.productoNombre ?? 'Producto',
             prefixText: '\$ ',
@@ -3298,7 +3422,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              final v = double.tryParse(controller.text.replaceAll(',', '.'));
+              final texto = controller.text.trim();
+              final v = texto.isEmpty ? null : CurrencyUtils.parse(texto);
               Navigator.pop(ctx, v);
             },
             child: Text('Guardar'),
@@ -3374,7 +3499,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         _nombreProductoController.text = producto.nombre;
         final ivaPct = producto.impuestos > 0 ? producto.impuestos : 19.0;
         final precioBase = producto.precio / (1 + ivaPct / 100);
-        _valorUnitController.text = precioBase.toStringAsFixed(2);
+        _valorUnitController.text = CurrencyUtils.formatForMilesInput(precioBase);
         _porcentajeImpuestoController.text = ivaPct.toStringAsFixed(0);
       });
 
@@ -3387,7 +3512,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '✓ ${producto!.nombre} - \$${producto.precio.toStringAsFixed(0)}',
+                  '✓ ${producto!.nombre} - ${CurrencyUtils.format(producto.precio)}',
                   style: TextStyle(fontWeight: FontWeight.w500),
                 ),
               ),
@@ -3488,7 +3613,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               final isSelected = _metodoPago == metodo['value'];
               return InkWell(
                 onTap: () {
-                  setState(() => _metodoPago = metodo['value']);
+                  setState(() {
+                    _metodoPago = metodo['value'];
+                    _detallePago = _detalleParaMetodo(metodo['value']);
+                  });
                   // 💾 Guardar estado completo al cambiar método de pago
                   _guardarEstadoCompleto();
                 },
@@ -3621,49 +3749,46 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                 ),
                 SizedBox(width: 16),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Transferencia',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      TextField(
-                        controller: _montoTransferenciaController,
-                        keyboardType: TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 16,
-                        ),
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 16,
-                          ),
-                          filled: true,
-                          fillColor: Theme.of(context).colorScheme.surface,
-                          prefixIcon: Icon(
-                            Icons.account_balance,
-                            color: AppTheme.primary,
-                          ),
-                          hintText: '0.00',
-                          hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-                        ),
-                        onChanged: (value) {
-                          setState(() {});
-                        },
-                      ),
-                    ],
+                  child: _buildCampoMontoMixto(
+                    'Transferencia (otro banco)',
+                    _montoTransferenciaController,
+                    Icons.account_balance,
                   ),
                 ),
+              ],
+            ),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCampoMontoMixto(
+                    'Nequi',
+                    _montoNequiController,
+                    Icons.account_balance,
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: _buildCampoMontoMixto(
+                    'DaviPlata',
+                    _montoDaviplataController,
+                    Icons.account_balance,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCampoMontoMixto(
+                    'Bancolombia',
+                    _montoBancolombiaController,
+                    Icons.account_balance,
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(child: SizedBox()),
               ],
             ),
             SizedBox(height: 16),
@@ -3760,9 +3885,87 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                 ),
               ],
             ),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCampoMontoMixto(
+                    'Bold',
+                    _montoBoldController,
+                    Icons.point_of_sale,
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: _buildCampoMontoMixto(
+                    'Addi',
+                    _montoAddiController,
+                    Icons.shopping_bag_outlined,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCampoMontoMixto(
+                    'Credilondon',
+                    _montoCredilondonController,
+                    Icons.shopping_bag_outlined,
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(child: SizedBox()),
+              ],
+            ),
           ],
         ],
       ),
+    );
+  }
+
+  /// Campo de monto para una línea de "Pago Múltiple" (Bold/Addi/Credilondon).
+  /// Sigue el mismo patrón visual que los campos Efectivo/Transferencia/Tarjeta/
+  /// Sistecredito de esta misma sección, extraído para no repetir el bloque.
+  Widget _buildCampoMontoMixto(
+    String label,
+    TextEditingController controller,
+    IconData icon,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+          ),
+        ),
+        SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          keyboardType: TextInputType.numberWithOptions(decimal: true),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
+            fontSize: 16,
+          ),
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            filled: true,
+            fillColor: Theme.of(context).colorScheme.surface,
+            prefixIcon: Icon(icon, color: AppTheme.primary),
+            hintText: '0.00',
+            hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+          ),
+          onChanged: (value) {
+            setState(() {});
+          },
+        ),
+      ],
     );
   }
 
@@ -3830,7 +4033,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${borrador.items.length} productos - \$${borrador.total.toStringAsFixed(0)}',
+                          '${borrador.items.length} productos - ${CurrencyUtils.format(borrador.total)}',
                           style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                         ),
                         Text(
@@ -3921,7 +4124,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   Future<void> _mostrarDialogoEditarItemsBorrador(Pedido pedido) async {
     if (!mounted) return;
 
-    final items = _normalizarItemsIVA(List.from(pedido.items));
+    final items = List<ItemPedido>.from(pedido.items);
 
     final ivaCtrs = items
         .map((i) => TextEditingController(text: i.porcentajeImpuesto.toStringAsFixed(0)))
@@ -4012,7 +4215,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             SizedBox(
                               width: 78,
                               child: Text(
-                                '\$${item.precioUnitario.toStringAsFixed(0)}',
+                                CurrencyUtils.format(item.precioUnitario),
                                 style: textStyle.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.55)),
                                 textAlign: TextAlign.right,
                               ),
@@ -4246,7 +4449,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                   SizedBox(height: 8),
                   _buildDeudaInfoRow(
                     'Total:',
-                    '\$${_items.fold(0.0, (sum, item) => sum + item.subtotal + item.valorImpuesto - item.valorDescuento).toStringAsFixed(0)}',
+                    CurrencyUtils.format(_items.fold(0.0, (sum, item) => sum + item.subtotal + item.valorImpuesto - item.valorDescuento)),
                   ),
                   SizedBox(height: 8),
                   _buildDeudaInfoRow(
@@ -4462,6 +4665,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       ); // ✅ Copia antes de limpiar
       final metodoPagoUsado = _mapFormaPagoBackend(_metodoPago);
       final medioPagoUsado = _medioPagoMap[_metodoPago] ?? 'efectivo';
+      final detallePagoUsado = _detallePago;
       final clienteTexto = _clienteController.text;
       final tipoFacturaCapturado = _tipoFactura;
       final fechaFacturaCapturada = _fechaFactura;
@@ -4487,8 +4691,39 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                 ? double.tryParse(_montoSistereditoController.text) ?? 0.0
                 : 0.0);
       final montoDatafono = _metodoPago == 'datafono' ? total : 0.0;
+      final montoBold = _metodoPago == 'bold'
+          ? total
+          : (_metodoPago == 'multiple'
+                ? double.tryParse(_montoBoldController.text) ?? 0.0
+                : 0.0);
+      final montoAddi = _metodoPago == 'addi'
+          ? total
+          : (_metodoPago == 'multiple'
+                ? double.tryParse(_montoAddiController.text) ?? 0.0
+                : 0.0);
+      final montoCredilondon = _metodoPago == 'credilondon'
+          ? total
+          : (_metodoPago == 'multiple'
+                ? double.tryParse(_montoCredilondonController.text) ?? 0.0
+                : 0.0);
+      final montoNequi = _metodoPago == 'nequi'
+          ? total
+          : (_metodoPago == 'multiple'
+                ? double.tryParse(_montoNequiController.text) ?? 0.0
+                : 0.0);
+      final montoDaviplata = _metodoPago == 'daviplata'
+          ? total
+          : (_metodoPago == 'multiple'
+                ? double.tryParse(_montoDaviplataController.text) ?? 0.0
+                : 0.0);
+      final montoBancolombia = _metodoPago == 'bancolombia'
+          ? total
+          : (_metodoPago == 'multiple'
+                ? double.tryParse(_montoBancolombiaController.text) ?? 0.0
+                : 0.0);
       final esPedidoAsesor = widget.pedidoAsesor != null;
       final pedidoAsesorId = widget.pedidoAsesor?.id;
+      final cotizacionId = widget.cotizacion?.id;
 
       // ✅ CAPTURAR OBSERVACIONES ANTES DE LIMPIAR (para el PDF)
       final observacionesCapturadas = _observacionesController.text.trim();
@@ -4616,11 +4851,18 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             descuento: totalDescuentos + totalRetenciones,
             pagoMultiple: metodoPagoUsado == 'multiple',
             medioPago: medioPagoUsado,
+            detallePago: detallePagoUsado,
             montoEfectivo: montoEfectivo,
             montoTarjeta: montoTarjeta,
             montoTransferencia: montoTransferencia,
             montoSistecredito: montoSistecredito,
             montoDatafono: montoDatafono,
+            montoBold: montoBold,
+            montoAddi: montoAddi,
+            montoCredilondon: montoCredilondon,
+            montoNequi: montoNequi,
+            montoDaviplata: montoDaviplata,
+            montoBancolombia: montoBancolombia,
           );
 
           // 🔧 CRÍTICO: Asegurar que los datos del cliente estén guardados
@@ -4655,6 +4897,15 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               userName,
               facturaId: pedidoPagado.id,
             );
+          }
+
+          // Si viene de una cotización, marcarla como convertida
+          if (cotizacionId != null) {
+            try {
+              await _cotizacionService.convertirAFactura(cotizacionId, pedidoPagado.id);
+            } catch (e) {
+              appLog('⚠️ Error al marcar cotización como convertida: $e');
+            }
           }
 
           // Notificar traslados automáticamente: elimina/actualiza los que contengan
@@ -4781,7 +5032,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             ),
                           ),
                           Text(
-                            'Total: \$${total.toStringAsFixed(0)}',
+                            'Total: ${CurrencyUtils.format(total)}',
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                               fontSize: 14,
@@ -5035,24 +5286,25 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       }
       final res = await MatiasService.descargarPDF(cufe, token: token);
       if (!mounted) return;
-      if (res == null) {
-        messenger.showSnackBar(const SnackBar(
-          content: Text('PDF no disponible. El documento debe estar ACEPTADO por la DIAN.'),
-          backgroundColor: Colors.orange,
-          duration: Duration(seconds: 5),
-        ));
+      if (res != null) {
+        final ok = await Base64FileLauncher.open(
+          base64: res['base64']!,
+          mimeType: res['mimeType']!,
+        );
+        if (!ok && mounted) {
+          messenger.showSnackBar(const SnackBar(
+            content: Text('No se pudo abrir el PDF.'),
+            backgroundColor: Colors.orange,
+          ));
+        }
         return;
       }
-      final ok = await Base64FileLauncher.open(
-        base64: res['base64']!,
-        mimeType: res['mimeType']!,
-      );
-      if (!ok && mounted) {
-        messenger.showSnackBar(const SnackBar(
-          content: Text('No se pudo abrir el PDF.'),
-          backgroundColor: Colors.orange,
-        ));
-      }
+
+      messenger.showSnackBar(const SnackBar(
+        content: Text('PDF no disponible. El documento debe estar ACEPTADO por la DIAN.'),
+        backgroundColor: Colors.orange,
+        duration: Duration(seconds: 5),
+      ));
     } catch (e) {
       if (mounted) {
         messenger.showSnackBar(SnackBar(
@@ -5336,8 +5588,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                 children: [
                   _buildResumenItem('Cliente', pedido.cliente ?? 'CONSUMIDOR FINAL'),
                   _buildResumenItem('Forma de pago', _formatearFormaPago(medioPago)),
-                  if (descuento > 0) _buildResumenItem('Descuento', '-\$${descuento.toStringAsFixed(0)}'),
-                  if (propina > 0) _buildResumenItem('Propina', '+\$${propina.toStringAsFixed(0)}'),
+                  if (descuento > 0) _buildResumenItem('Descuento', '-${CurrencyUtils.format(descuento)}'),
+                  if (propina > 0) _buildResumenItem('Propina', '+${CurrencyUtils.format(propina)}'),
                   Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3)),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -5351,7 +5603,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         ),
                       ),
                       Text(
-                        '\$${totalPagado.toStringAsFixed(0)}',
+                        CurrencyUtils.format(totalPagado),
                         style: TextStyle(
                           color: AppTheme.success,
                           fontWeight: FontWeight.bold,
@@ -5476,6 +5728,126 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     }
   }
 
+  /// Muestra una vista previa del PDF con los items/cliente/descuentos
+  /// actuales del formulario, SIN guardar ni pagar nada — no toca el
+  /// backend en absoluto. Útil para revisar cómo va a quedar la factura
+  /// antes de confirmar la venta. El documento se marca explícitamente
+  /// como "VISTA PREVIA" para que no se confunda con la factura real
+  /// (que solo obtiene su número definitivo al guardar).
+  Future<void> _mostrarVistaPreviaFactura() async {
+    if (_items.isEmpty) {
+      showWarningSnackBar(context, 'Agregue al menos un producto para ver la vista previa');
+      return;
+    }
+
+    bool dialogoCargaAbierto = false;
+    try {
+      dialogoCargaAbierto = true;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          content: Row(
+            children: [
+              CircularProgressIndicator(color: AppTheme.primary),
+              SizedBox(width: 16),
+              Text('Generando vista previa...', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+            ],
+          ),
+        ),
+      );
+
+      // Mismos cálculos que _guardarYPagar, pero sin persistir nada.
+      final subtotal = _items.fold(0.0, (sum, item) => sum + item.subtotal);
+      final retencionPct = double.tryParse(_retencionController.text) ?? 0;
+      final reteIVAPct = double.tryParse(_reteIVAController.text) ?? 0;
+      final reteICAPct = double.tryParse(_reteICAController.text) ?? 0;
+      final aiuPct = double.tryParse(_aiuController.text) ?? 0;
+      final dctoGeneral = double.tryParse(_dctoGeneralController.text) ?? 0;
+
+      final retencionValor = subtotal * (retencionPct / 100);
+      final reteIVAValor = subtotal * (reteIVAPct / 100);
+      final reteICAValor = subtotal * (reteICAPct / 100);
+      final aiuValor = subtotal * (aiuPct / 100);
+
+      final totalImpuestos = _items.fold(0.0, (sum, item) => sum + item.valorImpuesto);
+      final totalDctoProductos = _items.fold(0.0, (sum, item) => sum + item.valorDescuento);
+      final totalDescuentos = dctoGeneral + totalDctoProductos;
+      final totalRetenciones = retencionValor + reteIVAValor + reteICAValor;
+      final total = subtotal + totalImpuestos + aiuValor - totalDescuentos - totalRetenciones;
+
+      final userName = Provider.of<UserProvider>(context, listen: false).userName ?? 'Sistema';
+
+      // Pedido temporal solo en memoria — nunca se envía al backend.
+      final pedidoPreview = Pedido(
+        id: '',
+        fecha: _fechaFactura,
+        tipo: TipoPedido.normal,
+        mesa: 'FACTURACION',
+        mesero: userName,
+        items: _items,
+        total: total,
+        estado: EstadoPedido.activo,
+        cliente: _clienteController.text,
+        fechaVencimiento: _fechaVencimiento,
+        notas: _observacionesController.text.trim(),
+      );
+
+      NegocioInfo? negocioInfo;
+      try {
+        negocioInfo = await _negocioInfoService.getNegocioInfo();
+      } catch (e) {
+
+      }
+
+      final resumen = _prepararResumenFactura(
+        pedidoPreview,
+        _metodoPago,
+        total,
+        totalDescuentos,
+        0.0,
+        negocioInfo,
+        clienteData: _clienteSeleccionado,
+        retencionPct: retencionPct,
+        reteIVAPct: reteIVAPct,
+        reteICAPct: reteICAPct,
+        aiuPct: aiuPct,
+        dctoGeneral: dctoGeneral,
+        retencionValor: retencionValor,
+        reteIVAValor: reteIVAValor,
+        reteICAValor: reteICAValor,
+        aiuValor: aiuValor,
+        observaciones: _observacionesController.text.trim(),
+      );
+
+      // Marca clara de que esto NO es un documento numerado real todavía.
+      resumen['numero'] = 'VISTA PREVIA';
+      resumen['numeroPedido'] = 'VISTA PREVIA';
+      resumen['tipoDocumento'] = 'VISTA PREVIA - SIN GUARDAR';
+
+      // rootNavigator: true es imprescindible aquí: showDialog() por defecto
+      // empuja el diálogo al Navigator RAÍZ de la app, pero esta pantalla
+      // vive dentro del Navigator anidado de la ShellRoute (sidebar+topbar
+      // persistentes). Un Navigator.of(context).pop() sin esa bandera busca
+      // el Navigator anidado más cercano — que no tiene el diálogo de carga
+      // para cerrar — y en vez de eso hace pop() de la propia pantalla de
+      // Facturación (te saca al Dashboard) o revienta con "_debugLocked" si
+      // hay una transición de ruta en curso en ese momento.
+      Navigator.of(context, rootNavigator: true).pop(); // Cerrar indicador de carga
+      dialogoCargaAbierto = false;
+
+      await _pdfService.mostrarDialogoImpresion(resumen: resumen, esFactura: true);
+    } catch (e) {
+      if (dialogoCargaAbierto && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      if (mounted) {
+        showErrorSnackBar(context, 'Error generando vista previa: $e');
+      }
+    }
+  }
+
   // Generar y mostrar PDF de la factura
   Future<void> _generarYMostrarPDF(
     Pedido pedido,
@@ -5484,8 +5856,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     double descuento,
     double propina,
   ) async {
+    bool dialogoCargaAbierto = false;
     try {
       // Mostrar indicador de carga
+      dialogoCargaAbierto = true;
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -5506,7 +5880,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       try {
         negocioInfo = await _negocioInfoService.getNegocioInfo();
       } catch (e) {
-          
+
       }
 
       // Preparar el resumen para el PDF
@@ -5533,7 +5907,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         observaciones: pedido.notas,
       );
 
-      Navigator.of(context).pop(); // Cerrar indicador de carga
+      // rootNavigator: true — ver comentario en _mostrarVistaPreviaFactura:
+      // sin esto, el pop() puede cerrar la pantalla de Facturación en vez
+      // del diálogo de carga, porque showDialog() lo empuja al Navigator
+      // raíz mientras que esta pantalla vive en el Navigator anidado de la
+      // ShellRoute.
+      Navigator.of(context, rootNavigator: true).pop(); // Cerrar indicador de carga
+      dialogoCargaAbierto = false;
 
       // Mostrar el PDF con nombre personalizable
       await _mostrarPDFConNombrePersonalizado(
@@ -5541,10 +5921,16 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         esFactura: true,
       );
 
-      showSuccessSnackBar(context, 'PDF generado correctamente');
+      if (mounted) {
+        showSuccessSnackBar(context, 'PDF generado correctamente');
+      }
     } catch (e) {
-      Navigator.of(context).pop(); // Cerrar indicador si está abierto
-      showErrorSnackBar(context, 'Error generando PDF: $e');
+      if (dialogoCargaAbierto && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      if (mounted) {
+        showErrorSnackBar(context, 'Error generando PDF: $e');
+      }
     }
   }
 
@@ -5556,8 +5942,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     double descuento,
     double propina,
   ) async {
+    bool dialogoCargaAbierto = false;
     try {
       // Mostrar indicador de carga
+      dialogoCargaAbierto = true;
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -5578,7 +5966,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       try {
         negocioInfo = await _negocioInfoService.getNegocioInfo();
       } catch (e) {
-          
+
       }
 
       // Preparar el resumen para el PDF
@@ -5605,15 +5993,22 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         observaciones: pedido.notas,
       );
 
-      Navigator.of(context).pop(); // Cerrar indicador de carga
+      Navigator.of(context, rootNavigator: true).pop(); // Cerrar indicador de carga
+      dialogoCargaAbierto = false;
 
       // Mostrar diálogo de impresión
       await _pdfService.mostrarDialogoImpresion(resumen: resumen, esFactura: true);
 
-      showSuccessSnackBar(context, 'Factura enviada a impresión');
+      if (mounted) {
+        showSuccessSnackBar(context, 'Factura enviada a impresión');
+      }
     } catch (e) {
-      Navigator.of(context).pop(); // Cerrar indicador si está abierto
-      showErrorSnackBar(context, 'Error al imprimir: $e');
+      if (dialogoCargaAbierto && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      if (mounted) {
+        showErrorSnackBar(context, 'Error al imprimir: $e');
+      }
     }
   }
 
@@ -5686,9 +6081,12 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       'departamento': negocioInfo?.departamento ?? '',
 
       // Información de la factura
+      // No caer al pedido.id (ObjectId de Mongo) cuando no hay numeroFactura
+      // todavía: se veía como un "código" sin sentido debajo del encabezado
+      // del PDF. Mejor dejarlo vacío que mostrar un ID interno.
       'pedidoId': pedido.id,
-      'numero': pedido.numeroFactura ?? pedido.id,
-      'numeroPedido': pedido.numeroFactura ?? pedido.id,
+      'numero': pedido.numeroFactura ?? '',
+      'numeroPedido': pedido.numeroFactura ?? '',
       'tipoDocumento': 'ORDEN DE VENTA',
       'fecha': fechaFormateada,
       'hora': horaFormateada,
@@ -5801,7 +6199,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       _montoTarjetaController.text = '0';
       _montoSistereditoController.text = '0';
       _montoDatafonoController.text = '0';
-      
+      _montoBoldController.text = '0';
+      _montoAddiController.text = '0';
+      _montoCredilondonController.text = '0';
+      _montoNequiController.text = '0';
+      _montoDaviplataController.text = '0';
+      _montoBancolombiaController.text = '0';
+
       // Limpiar datos extras
       _ordenCompraController.clear();
       _ordenServicioController.clear();

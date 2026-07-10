@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/item_pedido.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/currency_utils.dart';
 
 class BotonesAccionFacturacion extends StatelessWidget {
   final List<ItemPedido> items;
@@ -8,6 +9,7 @@ class BotonesAccionFacturacion extends StatelessWidget {
   final VoidCallback onGuardarBorrador;
   final VoidCallback onGuardarYPagar;
   final VoidCallback onGuardarComoDeuda;
+  final VoidCallback? onVistaPrevia;
   final TextEditingController? dctoGeneralController;
 
   const BotonesAccionFacturacion({
@@ -17,6 +19,7 @@ class BotonesAccionFacturacion extends StatelessWidget {
     required this.onGuardarBorrador,
     required this.onGuardarYPagar,
     required this.onGuardarComoDeuda,
+    this.onVistaPrevia,
     this.dctoGeneralController,
   });
 
@@ -58,7 +61,7 @@ class BotonesAccionFacturacion extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '\$${subtotal.toStringAsFixed(0)}',
+                  CurrencyUtils.format(subtotal),
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -73,6 +76,21 @@ class BotonesAccionFacturacion extends StatelessWidget {
           // Botones de acción
           Column(
             children: [
+              if (onVistaPrevia != null) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton.icon(
+                    onPressed: (isLoading || items.isEmpty) ? null : onVistaPrevia,
+                    icon: Icon(Icons.picture_as_pdf_outlined, size: 18),
+                    label: Text('Vista previa del PDF (sin guardar)'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.75),
+                      padding: EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 8),
+              ],
               // Primera fila: Borrador y Pagar
               Row(
                 children: [
