@@ -10,6 +10,7 @@ import '../../widgets/facturizacion/confirmacion_dian_dialog.dart';
 import '../../widgets/facturizacion/nota_credito_debito_dialog.dart';
 import '../../utils/base64_file_launcher.dart';
 import '../../utils/logger.dart';
+import '../utils/currency_utils.dart';
 
 /// Pantalla "Bandeja de Documentos Electrónicos"
 ///
@@ -32,9 +33,12 @@ class _DocumentosPendientesScreenState
     extends State<DocumentosPendientesScreen> {
   final DocumentoService _documentoService = DocumentoService();
   final MatiasWebhookService _webhookService = MatiasWebhookService();
+  final ScrollController _scrollController = ScrollController();
   List<DocumentoFE> _documentos = [];
   bool _isLoading = false;
   String _filtroEstado = ''; // '' = todos
+  int _paginaActual = 0;
+  static const int _porPagina = 20;
 
   @override
   void initState() {
@@ -109,7 +113,7 @@ class _DocumentosPendientesScreenState
       case 'payment.approved':
         appLog('💰 Pago aprobado por \$${evento.data?.amount}');
         _mostrarExito(
-          '💰 Pago aprobado \$${evento.data?.amount?.toStringAsFixed(2)}',
+          '💰 Pago aprobado ${evento.data?.amount == null ? '' : CurrencyUtils.format(evento.data!.amount!)}',
         );
         break;
 
@@ -134,7 +138,12 @@ class _DocumentosPendientesScreenState
     setState(() => _isLoading = true);
     try {
       final docs = await _documentoService.getDocumentos();
-      if (mounted) setState(() => _documentos = docs);
+      if (mounted) {
+        setState(() {
+          _documentos = docs;
+          _paginaActual = 0;
+        });
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -154,9 +163,36 @@ class _DocumentosPendientesScreenState
     return _documentos.where((d) => d.estado == _filtroEstado).toList();
   }
 
+  int get _totalPaginas =>
+      (_documentosFiltrados.length / _porPagina).ceil().clamp(1, 999999);
+
+  List<DocumentoFE> get _documentosPaginados {
+    final inicio = _paginaActual * _porPagina;
+    if (inicio >= _documentosFiltrados.length) return const [];
+    final fin = (inicio + _porPagina).clamp(0, _documentosFiltrados.length);
+    return _documentosFiltrados.sublist(inicio, fin);
+  }
+
+  void _cambiarFiltro(String valor) {
+    setState(() {
+      _filtroEstado = valor;
+      _paginaActual = 0;
+    });
+  }
+
+  void _cambiarPagina(int delta) {
+    final nueva = _paginaActual + delta;
+    if (nueva < 0 || nueva >= _totalPaginas) return;
+    setState(() => _paginaActual = nueva);
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+  }
+
   @override
   void dispose() {
     _webhookService.disconnect();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -271,14 +307,12 @@ class _DocumentosPendientesScreenState
   Future<void> _descargarPDF(DocumentoFE doc) async {
     setState(() => _isLoading = true);
     try {
-      // Si no tenemos XmlDocumentKey en el listado, pedimos el doc completo al backend
-      String? xmlKey = doc.xmlDocumentKey;
-      if ((xmlKey == null || xmlKey.isEmpty) && doc.id.isNotEmpty) {
-        appLog('📥 xmlDocumentKey null — buscando doc completo por id: ${doc.id}');
-        final full = await DocumentoService().getDocumentoPorId(doc.id);
-        xmlKey = full?.xmlDocumentKey;
-      }
-      final trackId = xmlKey ?? doc.cufe;
+      // doc.id es el id numérico INTERNO de Matias (viene del listado
+      // GET /api/matias/documentos), no nuestro _id de Mongo — llamar a
+      // getDocumentoPorId(doc.id) siempre daba 404 contra /local/documentos/{id}.
+      // El listado ya trae el CUFE/XmlDocumentKey real en doc.cufe/doc.xmlDocumentKey,
+      // así que no hace falta esa consulta extra.
+      final trackId = doc.pdfTrackId;
       if (trackId == null || trackId.isEmpty) {
         if (mounted) _mostrarError('No se puede descargar: documento sin XmlDocumentKey ni CUFE');
         return;
@@ -303,7 +337,13 @@ class _DocumentosPendientesScreenState
           return;
         }
       }
-      if (mounted) _mostrarError('PDF no disponible para este documento.');
+
+      if (mounted) {
+        _mostrarError(
+          'PDF no disponible: Matias lo elimina por mantenimiento diario (4am) y '
+          'no se pudo regenerar. Intenta de nuevo en unos minutos.',
+        );
+      }
     } catch (e) {
       if (mounted) _mostrarError('Error al descargar PDF: $e');
     } finally {
@@ -606,9 +646,55 @@ class _DocumentosPendientesScreenState
                   ? _buildEmpty()
                   : _buildLista(),
             ),
+            if (!_isLoading && _documentosFiltrados.isNotEmpty)
+              _buildPaginacion(),
           ],
         ),
       );
+  }
+
+  Widget _buildPaginacion() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(top: BorderSide(color: Colors.grey.shade300)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            '${_documentosFiltrados.length} documento${_documentosFiltrados.length == 1 ? '' : 's'}',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              fontSize: 12,
+            ),
+          ),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left),
+                onPressed: _paginaActual > 0 ? () => _cambiarPagina(-1) : null,
+              ),
+              Text(
+                'Página ${_paginaActual + 1} de $_totalPaginas',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right),
+                onPressed: _paginaActual < _totalPaginas - 1
+                    ? () => _cambiarPagina(1)
+                    : null,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildHeader() {
@@ -798,7 +884,7 @@ class _DocumentosPendientesScreenState
                 fontSize: 13,
               ),
               side: BorderSide(color: activo ? color : Colors.grey.shade300),
-              onSelected: (_) => setState(() => _filtroEstado = valor),
+              onSelected: (_) => _cambiarFiltro(valor),
             ),
           );
         }).toList(),
@@ -837,23 +923,29 @@ class _DocumentosPendientesScreenState
   }
 
   Widget _buildLista() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(24),
-      itemCount: _documentosFiltrados.length,
-      itemBuilder: (context, index) {
-        return _DocumentoCard(
-          documento: _documentosFiltrados[index],
-          onFacturar: _facturarDocumento,
-          onReenviar: _reenviarDocumento,
-          onDescargarPDF: _descargarPDF,
-          onDescargarQR: _descargarQR,
-          onDescargarXML: _descargarXML,
-          onConsultarStatus: _consultarStatusDIAN,
-          onCrearNotaCredito: _crearNotaCredito,
-          onCrearNotaDebito: _crearNotaDebito,
-          onReenviarCorreo: _reenviarCorreo,
-        );
-      },
+    final documentosPagina = _documentosPaginados;
+    return Scrollbar(
+      controller: _scrollController,
+      thumbVisibility: true,
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.all(24),
+        itemCount: documentosPagina.length,
+        itemBuilder: (context, index) {
+          return _DocumentoCard(
+            documento: documentosPagina[index],
+            onFacturar: _facturarDocumento,
+            onReenviar: _reenviarDocumento,
+            onDescargarPDF: _descargarPDF,
+            onDescargarQR: _descargarQR,
+            onDescargarXML: _descargarXML,
+            onConsultarStatus: _consultarStatusDIAN,
+            onCrearNotaCredito: _crearNotaCredito,
+            onCrearNotaDebito: _crearNotaDebito,
+            onReenviarCorreo: _reenviarCorreo,
+          );
+        },
+      ),
     );
   }
 }
@@ -973,7 +1065,7 @@ class _DocumentoCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '\$ ${documento.total.toStringAsFixed(0)}',
+                      CurrencyUtils.format(documento.total),
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 15,
