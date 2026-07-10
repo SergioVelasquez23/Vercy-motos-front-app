@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/api_config.dart';
 import '../utils/logger.dart';
+import '../utils/token_storage.dart';
 
 /// Servicio para backups de inventario y conciliación al cerrar caja.
 class BackupInventarioService {
@@ -12,10 +12,9 @@ class BackupInventarioService {
   BackupInventarioService._internal();
 
   String get baseUrl => ApiConfig.instance.baseUrl;
-  final _storage = const FlutterSecureStorage();
 
   Future<Map<String, String>> _getHeaders() async {
-    final token = await _storage.read(key: 'jwt_token');
+    final token = await readJwtToken();
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -24,7 +23,7 @@ class BackupInventarioService {
   }
 
   Future<Map<String, String>> _getBinaryHeaders() async {
-    final token = await _storage.read(key: 'jwt_token');
+    final token = await readJwtToken();
     return {
       'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       if (token != null) 'Authorization': 'Bearer $token',

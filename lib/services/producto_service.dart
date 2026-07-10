@@ -2,7 +2,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/producto.dart';
 import '../models/categoria.dart';
@@ -14,6 +13,7 @@ import '../utils/retry_strategy.dart';
 import 'alertas_service.dart';
 import '../providers/datos_cache_provider.dart';
 import '../utils/logger.dart';
+import '../utils/token_storage.dart';
 
 /// Flag para habilitar/deshabilitar logs detallados de productos
 /// En producción web esto debe ser false para evitar spam en consola
@@ -60,7 +60,6 @@ class ProductoService {
   ProductoService._internal();
 
   String get baseUrl => ApiConfig.instance.baseUrl;
-  final storage = FlutterSecureStorage();
   final ImagePicker _picker = ImagePicker();
   
   // 🔄 Estrategia de reintentos inteligente
@@ -83,7 +82,7 @@ class ProductoService {
   final Map<String, Producto> _productosCache = {};
 
   Future<Map<String, String>> _getHeaders() async {
-    final token = await storage.read(key: 'jwt_token');
+    final token = await readJwtToken();
     // Headers simplificados para Flutter Web - evitar User-Agent unsafe headers
     final headers = <String, String>{
       'Content-Type': 'application/json',

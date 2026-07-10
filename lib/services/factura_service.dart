@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/factura.dart';
 import '../models/pedido.dart';
 import '../config/endpoints_config.dart';
+import '../utils/token_storage.dart';
 
 /// Servicio para gestionar las operaciones relacionadas con facturas
 class FacturaService {
@@ -14,11 +14,10 @@ class FacturaService {
   static const _timeout = Duration(seconds: 30);
 
   final EndpointsConfig _endpoints = EndpointsConfig();
-  final storage = FlutterSecureStorage();
 
   /// Obtiene los headers de autenticación para las solicitudes HTTP
   Future<Map<String, String>> _getHeaders() async {
-    final token = await storage.read(key: 'jwt_token');
+    final token = await readJwtToken();
     return {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',

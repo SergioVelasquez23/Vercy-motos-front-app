@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../config/api_config.dart';
+import '../../utils/token_storage.dart';
 import 'base_api_service.dart';
 
 /// Excepción personalizada para errores de API
@@ -29,7 +29,6 @@ class HttpApiService extends BaseApiService {
   factory HttpApiService() => _instance;
   HttpApiService._internal();
 
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
   static const int _timeoutSeconds = 15;
 
   @override
@@ -37,7 +36,7 @@ class HttpApiService extends BaseApiService {
 
   @override
   Future<Map<String, String>> getHeaders() async {
-    final token = await _storage.read(key: 'jwt_token');
+    final token = await readJwtToken();
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -64,7 +63,7 @@ class HttpApiService extends BaseApiService {
         return _parseSuccessResponse<T>(response.body, parser);
       case 401:
         // Token expirado o inválido
-        await _storage.delete(key: 'jwt_token');
+        await clearJwtToken();
         throw ApiException(
           'Sesión expirada. Por favor inicia sesión nuevamente.',
           statusCode: 401,
@@ -268,12 +267,12 @@ class HttpApiService extends BaseApiService {
 
   /// Limpia el token de autenticación (para logout)
   Future<void> clearAuthToken() async {
-    await _storage.delete(key: 'jwt_token');
+    await clearJwtToken();
   }
 
   /// Verifica si hay un token de autenticación almacenado
   Future<bool> hasAuthToken() async {
-    final token = await _storage.read(key: 'jwt_token');
+    final token = await readJwtToken();
     return token != null && token.isNotEmpty;
   }
 }

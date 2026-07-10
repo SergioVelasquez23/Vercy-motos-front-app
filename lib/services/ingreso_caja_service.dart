@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:collection/collection.dart';
 import '../models/ingreso_caja.dart';
 import '../config/api_config.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../utils/token_storage.dart';
 import 'cuadre_caja_service.dart';
 
 /// Servicio para gestionar ingresos adicionales de caja
@@ -15,11 +15,10 @@ class IngresoCajaService {
   factory IngresoCajaService() => _instance;
   IngresoCajaService._internal();
 
-  final FlutterSecureStorage _storage = FlutterSecureStorage();
   String get _baseUrl => ApiConfig.instance.baseUrl;
 
   Future<Map<String, String>> _getHeaders() async {
-    final token = await _storage.read(key: 'jwt_token');
+    final token = await readJwtToken();
     return {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',

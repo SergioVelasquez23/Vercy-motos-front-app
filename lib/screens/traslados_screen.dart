@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/traslado.dart';
 import '../models/producto.dart';
 import '../models/bodega.dart';
@@ -14,6 +13,7 @@ import '../services/bodega_service.dart';
 import '../providers/user_provider.dart';
 import '../theme/app_theme.dart';
 import '../config/api_config.dart';
+import '../utils/token_storage.dart';
 
 class TrasladosScreen extends StatefulWidget {
   const TrasladosScreen({super.key});
@@ -909,8 +909,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
       productoJson['cantidadBodega'] = nuevoBodega;
 
       // Hacer petición PUT con headers básicos
-      final storage = FlutterSecureStorage();
-      final token = await storage.read(key: 'jwt_token');
+      final token = await readJwtToken();
       final headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',

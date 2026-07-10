@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/endpoints_config.dart';
 import '../utils/logger.dart';
+import '../utils/token_storage.dart';
 
 String? _extractXmlKeyFromJsonData(dynamic jsonData) {
   if (jsonData == null) return null;
@@ -233,10 +233,9 @@ class DocumentoService {
   DocumentoService._internal();
 
   final EndpointsConfig _endpoints = EndpointsConfig();
-  final storage = FlutterSecureStorage();
 
   Future<Map<String, String>> _getHeaders() async {
-    final token = await storage.read(key: 'jwt_token');
+    final token = await readJwtToken();
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',

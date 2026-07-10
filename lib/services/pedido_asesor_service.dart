@@ -1,20 +1,19 @@
 ﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/api_config.dart';
 import '../utils/api_error.dart';
 import '../models/pedido_asesor.dart';
 import '../utils/logger.dart';
+import '../utils/token_storage.dart';
 
 class PedidoAsesorService {
   final ApiConfig _apiConfig = ApiConfig();
-  final storage = FlutterSecureStorage();
   static const _timeout = Duration(seconds: 30);
 
   String get baseUrl => '${_apiConfig.baseUrl}/api/pedidos-asesor';
 
   Future<Map<String, String>> _getHeaders() async {
-    final token = await storage.read(key: 'jwt_token');
+    final token = await readJwtToken();
     final headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',

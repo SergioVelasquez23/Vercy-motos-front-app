@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/historial_edicion.dart';
 import '../config/api_config.dart';
 import '../utils/api_error.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../utils/token_storage.dart';
 
 /// Servicio para gestionar el historial de ediciones de pedidos
 ///
@@ -15,12 +15,11 @@ class HistorialEdicionService {
   HistorialEdicionService._internal();
 
   final ApiConfig _apiConfig = ApiConfig();
-  final FlutterSecureStorage _storage = FlutterSecureStorage();
 
   String get baseUrl => _apiConfig.baseUrl;
 
   Future<Map<String, String>> _getHeaders() async {
-    final token = await _storage.read(key: 'jwt_token');
+    final token = await readJwtToken();
     return {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',

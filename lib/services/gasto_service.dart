@@ -1,6 +1,5 @@
 ﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/gasto.dart';
 import '../models/tipo_gasto.dart';
 import '../config/api_config.dart';
@@ -8,6 +7,7 @@ import '../utils/api_error.dart';
 import '../utils/caja_error_handler.dart';
 import 'alertas_service.dart';
 import '../utils/logger.dart';
+import '../utils/token_storage.dart';
 
 class GastoService {
   static final GastoService _instance = GastoService._internal();
@@ -15,12 +15,11 @@ class GastoService {
   GastoService._internal();
 
   String get baseUrl => ApiConfig.instance.baseUrl;
-  final storage = FlutterSecureStorage();
   final AlertasService _alertasService = AlertasService();
 
   // Headers con autenticación
   Future<Map<String, String>> _getHeaders() async {
-    final token = await storage.read(key: 'jwt_token');
+    final token = await readJwtToken();
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
