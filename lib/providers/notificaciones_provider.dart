@@ -83,6 +83,7 @@ class NotificacionesProvider extends ChangeNotifier {
   String? _error;
   DateTime? _lastRefresh;
   Timer? _autoRefreshTimer;
+  Timer? _beepRepeatTimer;
 
   // En el primer refresh de la sesión no se alerta de golpe por todo lo que
   // ya estaba pendiente de antes (sería ruido); a partir del segundo, si
@@ -247,6 +248,20 @@ class NotificacionesProvider extends ChangeNotifier {
     playNotificationSound();
   }
 
+  /// Repite el beep cada pocos segundos mientras quede un traslado pendiente,
+  /// sin pedir datos nuevos al backend (usa el estado ya cargado en memoria
+  /// por refresh()/el WebSocket) — así se puede sonar más seguido que el
+  /// auto-refresh de 60s sin sobrecargar el servidor con peticiones extra.
+  void _repetirSonidoSiPendiente() {
+    if (_primerRefresh) return;
+    if (!_puedeVerTraslados) return;
+
+    final hayPendientes = _trasladosRecientes.any((t) => t.id != null);
+    if (!hayPendientes) return;
+
+    playNotificationSound();
+  }
+
   NotificacionItem _construirItemTraslado(Traslado traslado) {
     final cantidadTotal = traslado.items.fold<int>(0, (sum, i) => sum + i.cantidad);
     return NotificacionItem(
@@ -293,6 +308,19 @@ class NotificacionesProvider extends ChangeNotifier {
     _autoRefreshTimer = null;
   }
 
+  /// Repetición del beep (no del refresh de datos) mientras haya un traslado
+  /// pendiente — por defecto cada 10s, más seguido que el auto-refresh de 60s,
+  /// para que no pase desapercibido apenas se crea.
+  void startBeepRepeat({Duration interval = const Duration(seconds: 10)}) {
+    stopBeepRepeat();
+    _beepRepeatTimer = Timer.periodic(interval, (_) => _repetirSonidoSiPendiente());
+  }
+
+  void stopBeepRepeat() {
+    _beepRepeatTimer?.cancel();
+    _beepRepeatTimer = null;
+  }
+
   /// Conecta al WebSocket de traslados para enterarse al instante cuando se
   /// crea uno nuevo, en vez de esperar hasta 60s al siguiente auto-refresh.
   /// El sondeo periódico sigue activo como respaldo (ver startAutoRefresh) —
@@ -311,6 +339,7 @@ class NotificacionesProvider extends ChangeNotifier {
   @override
   void dispose() {
     stopAutoRefresh();
+    stopBeepRepeat();
     _wsService.disconnect();
     super.dispose();
   }
