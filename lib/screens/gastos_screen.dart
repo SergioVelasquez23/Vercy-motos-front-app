@@ -11,6 +11,7 @@ import '../services/gasto_service.dart';
 import '../services/cuadre_caja_service.dart';
 import '../services/proveedor_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/currency_utils.dart';
 
 class GastosScreen extends StatefulWidget {
   final String? cuadreCajaId;
@@ -1718,15 +1719,15 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
             ),
           ),
           _buildTableCell(
-            '\$${(concepto['valor'] ?? 0).toStringAsFixed(0)}',
+            CurrencyUtils.format(((concepto['valor'] ?? 0) as num).toDouble()),
             width: 280,
           ),
           _buildTableCell(
-            '\$${(concepto['impuesto'] ?? 0).toStringAsFixed(0)}',
+            CurrencyUtils.format(((concepto['impuesto'] ?? 0) as num).toDouble()),
             width: 180,
           ),
           _buildTableCell(
-            '\$${(concepto['total'] ?? 0).toStringAsFixed(0)}',
+            CurrencyUtils.format(((concepto['total'] ?? 0) as num).toDouble()),
             width: 160,
           ),
           Container(
@@ -2103,7 +2104,7 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              '\$${valor.toStringAsFixed(0)}',
+              CurrencyUtils.format(valor),
               style: TextStyle(
                 color: isTotal ? AppTheme.primary : Theme.of(context).colorScheme.onSurface,
                 fontSize: isTotal ? 18 : 16,
@@ -2152,7 +2153,7 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
     } else if (_nuevoImpuestoTipo == 'IVA 5%') {
       impuesto = valor * 0.05;
     }
-    return '\$${(valor + impuesto).toStringAsFixed(0)}';
+    return CurrencyUtils.format(valor + impuesto);
   }
 
   void _agregarConcepto() {

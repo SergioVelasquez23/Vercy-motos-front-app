@@ -895,4 +895,382 @@ class ExcelExportService {
 
     return tieneVentas || tieneGastos;
   }
+
+  // ==================== LIBRO CONTABLE MENSUAL ====================
+
+  /// Exporta el libro contable mensual a un archivo Excel: ventas de
+  /// Facturación Electrónica + POS separadas de ventas Locales (desglosadas
+  /// por medio de pago detallado), más Compras y Gastos del mes.
+  static Future<String?> exportarLibroContable({
+    required Map<String, dynamic> datosLibroContable,
+    String? nombreUsuario,
+    String? observaciones,
+  }) async {
+    try {
+      var excel = Excel.createExcel();
+      excel.delete('Sheet1');
+
+      final periodoInfo =
+          datosLibroContable['periodoInfo'] as Map<String, dynamic>? ?? {};
+      final mes = periodoInfo['mes'] ?? DateTime.now().month;
+      final anio = periodoInfo['anio'] ?? DateTime.now().year;
+
+      excel.copy('Sheet1', 'Resumen');
+      excel.copy('Sheet1', 'Ventas FE y POS');
+      excel.copy('Sheet1', 'Ventas Locales');
+      excel.copy('Sheet1', 'Compras');
+      excel.copy('Sheet1', 'Gastos');
+
+      CellStyle headerStyle = CellStyle(
+        fontFamily: getFontFamily(FontFamily.Calibri),
+        fontSize: 12,
+        bold: true,
+        backgroundColorHex: ExcelColor.blue,
+        fontColorHex: ExcelColor.white,
+        horizontalAlign: HorizontalAlign.Center,
+      );
+
+      CellStyle titleStyle = CellStyle(
+        fontFamily: getFontFamily(FontFamily.Calibri),
+        fontSize: 16,
+        bold: true,
+        horizontalAlign: HorizontalAlign.Center,
+      );
+
+      _llenarHojaResumenLibroContable(
+        excel['Resumen'],
+        datosLibroContable,
+        titleStyle,
+        headerStyle,
+      );
+      _llenarHojaVentasPorMedioPago(
+        excel['Ventas FE y POS'],
+        datosLibroContable['ventasElectronicasFEyPOS'] as Map<String, dynamic>? ?? {},
+        'VENTAS - FACTURACIÓN ELECTRÓNICA Y POS',
+        titleStyle,
+        headerStyle,
+      );
+      _llenarHojaVentasPorMedioPago(
+        excel['Ventas Locales'],
+        datosLibroContable['ventasLocales'] as Map<String, dynamic>? ?? {},
+        'VENTAS - FACTURAS LOCALES',
+        titleStyle,
+        headerStyle,
+      );
+      _llenarHojaComprasLibroContable(
+        excel['Compras'],
+        datosLibroContable,
+        titleStyle,
+        headerStyle,
+      );
+      _llenarHojaGastosLibroContable(
+        excel['Gastos'],
+        datosLibroContable,
+        titleStyle,
+        headerStyle,
+      );
+
+      String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+      String fileName =
+          'libro_contable_${mes.toString().padLeft(2, '0')}_${anio}_$timestamp.xlsx';
+
+      final excelBytes = excel.encode();
+      if (excelBytes == null) {
+        throw Exception('Error al codificar el archivo Excel');
+      }
+
+      if (kIsWeb) {
+        final blob = html.Blob([excelBytes]);
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', fileName)
+          ..click();
+        html.Url.revokeObjectUrl(url);
+        return 'web_download:$fileName';
+      }
+
+      Directory? directory;
+      if (Platform.isAndroid) {
+        directory = Directory('/storage/emulated/0/Download');
+        if (!await directory.exists()) {
+          directory = await getExternalStorageDirectory();
+        }
+      } else if (Platform.isIOS) {
+        directory = await getApplicationDocumentsDirectory();
+      }
+
+      if (directory == null) {
+        throw Exception('Error al obtener el directorio de archivos');
+      }
+
+      File file = File('${directory.path}/$fileName');
+      await file.writeAsBytes(excelBytes);
+      return file.path;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static void _llenarHojaResumenLibroContable(
+    Sheet sheet,
+    Map<String, dynamic> datos,
+    CellStyle titleStyle,
+    CellStyle headerStyle,
+  ) {
+    final periodoInfo = datos['periodoInfo'] as Map<String, dynamic>? ?? {};
+    final ventasFEyPOS =
+        datos['ventasElectronicasFEyPOS'] as Map<String, dynamic>? ?? {};
+    final ventasLocales = datos['ventasLocales'] as Map<String, dynamic>? ?? {};
+    final compras = datos['compras'] as Map<String, dynamic>? ?? {};
+    final gastos = datos['gastos'] as Map<String, dynamic>? ?? {};
+
+    sheet.cell(CellIndex.indexByString('A1')).value = TextCellValue(
+      'LIBRO CONTABLE MENSUAL',
+    );
+    sheet.cell(CellIndex.indexByString('A1')).cellStyle = titleStyle;
+    sheet.merge(CellIndex.indexByString('A1'), CellIndex.indexByString('C1'));
+
+    int row = 3;
+    sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue('Período:');
+    sheet.cell(CellIndex.indexByString('B$row')).value = TextCellValue(
+      '${periodoInfo['mes']}/${periodoInfo['anio']}',
+    );
+
+    row += 2;
+    sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+      'RESUMEN',
+    );
+    sheet.cell(CellIndex.indexByString('A$row')).cellStyle = headerStyle;
+    sheet.merge(
+      CellIndex.indexByString('A$row'),
+      CellIndex.indexByString('B$row'),
+    );
+
+    row++;
+    sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+      'Ingresos Facturación Electrónica y POS:',
+    );
+    sheet.cell(CellIndex.indexByString('B$row')).value = DoubleCellValue(
+      double.tryParse(ventasFEyPOS['total']?.toString() ?? '0') ?? 0,
+    );
+
+    row++;
+    sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+      'Ventas Facturas Locales:',
+    );
+    sheet.cell(CellIndex.indexByString('B$row')).value = DoubleCellValue(
+      double.tryParse(ventasLocales['total']?.toString() ?? '0') ?? 0,
+    );
+
+    row++;
+    sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+      'Compras:',
+    );
+    sheet.cell(CellIndex.indexByString('B$row')).value = DoubleCellValue(
+      double.tryParse(compras['total']?.toString() ?? '0') ?? 0,
+    );
+
+    row++;
+    sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+      'Gastos:',
+    );
+    sheet.cell(CellIndex.indexByString('B$row')).value = DoubleCellValue(
+      double.tryParse(gastos['total']?.toString() ?? '0') ?? 0,
+    );
+  }
+
+  /// Hoja compartida por "Ventas FE y POS" y "Ventas Locales": desglosa el
+  /// total por medio de pago detallado (Nequi, DaviPlata, Bancolombia, Bold,
+  /// Sistecredito, Addi, Credilondon, Efectivo, etc.).
+  static void _llenarHojaVentasPorMedioPago(
+    Sheet sheet,
+    Map<String, dynamic> seccionVentas,
+    String titulo,
+    CellStyle titleStyle,
+    CellStyle headerStyle,
+  ) {
+    final porMedioPago =
+        seccionVentas['porMedioPago'] as Map<String, dynamic>? ?? {};
+
+    sheet.cell(CellIndex.indexByString('A1')).value = TextCellValue(titulo);
+    sheet.cell(CellIndex.indexByString('A1')).cellStyle = titleStyle;
+    sheet.merge(CellIndex.indexByString('A1'), CellIndex.indexByString('D1'));
+
+    int row = 3;
+    sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue('Total:');
+    sheet.cell(CellIndex.indexByString('B$row')).value = DoubleCellValue(
+      double.tryParse(seccionVentas['total']?.toString() ?? '0') ?? 0,
+    );
+    sheet.cell(CellIndex.indexByString('C$row')).value = TextCellValue(
+      'Cantidad:',
+    );
+    sheet.cell(CellIndex.indexByString('D$row')).value = IntCellValue(
+      int.tryParse(seccionVentas['cantidad']?.toString() ?? '0') ?? 0,
+    );
+
+    row += 2;
+    final headers = ['Medio de Pago', 'Monto', 'Cantidad', '% del Total'];
+    for (int i = 0; i < headers.length; i++) {
+      String cellAddress = String.fromCharCode(65 + i) + row.toString();
+      sheet.cell(CellIndex.indexByString(cellAddress)).value = TextCellValue(
+        headers[i],
+      );
+      sheet.cell(CellIndex.indexByString(cellAddress)).cellStyle = headerStyle;
+    }
+
+    row++;
+    for (var entry in porMedioPago.entries) {
+      final detalle = entry.value as Map<String, dynamic>? ?? {};
+      sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+        entry.key,
+      );
+      sheet.cell(CellIndex.indexByString('B$row')).value = DoubleCellValue(
+        double.tryParse(detalle['monto']?.toString() ?? '0') ?? 0,
+      );
+      sheet.cell(CellIndex.indexByString('C$row')).value = IntCellValue(
+        int.tryParse(detalle['cantidad']?.toString() ?? '0') ?? 0,
+      );
+      sheet.cell(CellIndex.indexByString('D$row')).value = DoubleCellValue(
+        double.tryParse(detalle['porcentaje']?.toString() ?? '0') ?? 0,
+      );
+      row++;
+    }
+  }
+
+  /// Escribe un bloque de desglose (clave → monto/cantidad) empezando en
+  /// [startRow] y devuelve la siguiente fila libre (con una línea en blanco
+  /// de separación). Usado para "por medio de pago" / "por proveedor" /
+  /// "por concepto" en las hojas de Compras y Gastos del libro contable.
+  static int _escribirDesglose(
+    Sheet sheet,
+    Map<String, dynamic> seccion,
+    String key,
+    String titulo,
+    int startRow,
+    CellStyle headerStyle,
+  ) {
+    final datos = seccion[key] as Map<String, dynamic>? ?? {};
+    int row = startRow;
+    sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(titulo);
+    sheet.cell(CellIndex.indexByString('A$row')).cellStyle = headerStyle;
+    sheet.merge(CellIndex.indexByString('A$row'), CellIndex.indexByString('C$row'));
+    row++;
+    for (var entry in datos.entries) {
+      final detalle = entry.value as Map<String, dynamic>? ?? {};
+      sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(entry.key);
+      sheet.cell(CellIndex.indexByString('B$row')).value = DoubleCellValue(
+        double.tryParse(detalle['monto']?.toString() ?? '0') ?? 0,
+      );
+      sheet.cell(CellIndex.indexByString('C$row')).value = IntCellValue(
+        int.tryParse(detalle['cantidad']?.toString() ?? '0') ?? 0,
+      );
+      row++;
+    }
+    return row + 1;
+  }
+
+  static void _llenarHojaComprasLibroContable(
+    Sheet sheet,
+    Map<String, dynamic> datos,
+    CellStyle titleStyle,
+    CellStyle headerStyle,
+  ) {
+    final compras = datos['compras'] as Map<String, dynamic>? ?? {};
+    final detalle = compras['detalle'] as List<dynamic>? ?? [];
+
+    sheet.cell(CellIndex.indexByString('A1')).value = TextCellValue('COMPRAS');
+    sheet.cell(CellIndex.indexByString('A1')).cellStyle = titleStyle;
+    sheet.merge(CellIndex.indexByString('A1'), CellIndex.indexByString('D1'));
+
+    int row = _escribirDesglose(sheet, compras, 'porMedioPago', 'Por medio de pago', 3, headerStyle);
+    row = _escribirDesglose(sheet, compras, 'porProveedor', 'Por proveedor', row, headerStyle);
+
+    final headers = ['Fecha', 'Proveedor', 'Total', 'Método de Pago'];
+    for (int i = 0; i < headers.length; i++) {
+      String cellAddress = String.fromCharCode(65 + i) + row.toString();
+      sheet.cell(CellIndex.indexByString(cellAddress)).value = TextCellValue(
+        headers[i],
+      );
+      sheet.cell(CellIndex.indexByString(cellAddress)).cellStyle = headerStyle;
+    }
+
+    row++;
+    for (var compra in detalle.take(200)) {
+      sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+        compra['fechaCreacion']?.toString() ?? '',
+      );
+      sheet.cell(CellIndex.indexByString('B$row')).value = TextCellValue(
+        compra['proveedorNombre']?.toString() ?? '',
+      );
+      sheet.cell(CellIndex.indexByString('C$row')).value = DoubleCellValue(
+        double.tryParse(compra['total']?.toString() ?? '0') ?? 0,
+      );
+      sheet.cell(CellIndex.indexByString('D$row')).value = TextCellValue(
+        compra['metodoPago']?.toString() ?? '',
+      );
+      row++;
+    }
+  }
+
+  static void _llenarHojaGastosLibroContable(
+    Sheet sheet,
+    Map<String, dynamic> datos,
+    CellStyle titleStyle,
+    CellStyle headerStyle,
+  ) {
+    final gastos = datos['gastos'] as Map<String, dynamic>? ?? {};
+    final detalle = gastos['detalle'] as List<dynamic>? ?? [];
+
+    sheet.cell(CellIndex.indexByString('A1')).value = TextCellValue('GASTOS');
+    sheet.cell(CellIndex.indexByString('A1')).cellStyle = titleStyle;
+    sheet.merge(CellIndex.indexByString('A1'), CellIndex.indexByString('D1'));
+
+    int row = _escribirDesglose(sheet, gastos, 'porMedioPago', 'Por medio de pago', 3, headerStyle);
+    row = _escribirDesglose(sheet, gastos, 'porConcepto', 'Por concepto', row, headerStyle);
+
+    final headers = ['Fecha', 'Concepto', 'Monto', 'Forma de Pago'];
+    for (int i = 0; i < headers.length; i++) {
+      String cellAddress = String.fromCharCode(65 + i) + row.toString();
+      sheet.cell(CellIndex.indexByString(cellAddress)).value = TextCellValue(
+        headers[i],
+      );
+      sheet.cell(CellIndex.indexByString(cellAddress)).cellStyle = headerStyle;
+    }
+
+    row++;
+    for (var gasto in detalle.take(200)) {
+      sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+        gasto['fechaGasto']?.toString() ?? '',
+      );
+      sheet.cell(CellIndex.indexByString('B$row')).value = TextCellValue(
+        gasto['concepto']?.toString() ?? '',
+      );
+      sheet.cell(CellIndex.indexByString('C$row')).value = DoubleCellValue(
+        double.tryParse(gasto['monto']?.toString() ?? '0') ?? 0,
+      );
+      sheet.cell(CellIndex.indexByString('D$row')).value = TextCellValue(
+        gasto['formaPago']?.toString() ?? '',
+      );
+      row++;
+    }
+  }
+
+  /// Verifica si hay datos del libro contable para exportar
+  static bool hayDatosLibroContableParaExportar(Map<String, dynamic>? datos) {
+    if (datos == null) return false;
+
+    final ventasFEyPOS =
+        datos['ventasElectronicasFEyPOS'] as Map<String, dynamic>?;
+    final ventasLocales = datos['ventasLocales'] as Map<String, dynamic>?;
+    final compras = datos['compras'] as Map<String, dynamic>?;
+    final gastos = datos['gastos'] as Map<String, dynamic>?;
+
+    double totalDe(Map<String, dynamic>? seccion) =>
+        double.tryParse(seccion?['total']?.toString() ?? '0') ?? 0;
+
+    return totalDe(ventasFEyPOS) > 0 ||
+        totalDe(ventasLocales) > 0 ||
+        totalDe(compras) > 0 ||
+        totalDe(gastos) > 0;
+  }
 }

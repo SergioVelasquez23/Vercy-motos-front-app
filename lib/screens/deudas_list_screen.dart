@@ -447,7 +447,7 @@ class _PagoDialogState extends State<_PagoDialog> {
                 validator: (v) {
                   final m = double.tryParse(v ?? '');
                   if (m == null || m <= 0) return 'Ingrese un monto válido';
-                  if (m > pendiente) return 'No puede superar \$${pendiente.toStringAsFixed(0)}';
+                  if (m > pendiente) return 'No puede superar ${CurrencyUtils.format(pendiente)}';
                   return null;
                 },
               ),

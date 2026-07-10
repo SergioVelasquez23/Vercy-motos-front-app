@@ -5,6 +5,7 @@ import '../../services/matias_service.dart';
 import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/factura.dart';
+import '../../utils/currency_utils.dart';
 
 enum TipoNota { credito, debito }
 
@@ -387,7 +388,7 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
                                     ),
                                   if (totalRef > 0)
                                     Text(
-                                      'Total original: \$${totalRef.toStringAsFixed(0)}',
+                                      'Total original: ${CurrencyUtils.format(totalRef)}',
                                       style: TextStyle(color: cs.onSurface.withValues(alpha: 0.7), fontSize: 12),
                                     ),
                                   if (!_tieneCufe) ...[
@@ -508,7 +509,7 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         decoration: _inputDeco(
                           totalRef > 0
-                              ? 'Vacío = total factura (\$${totalRef.toStringAsFixed(0)})'
+                              ? 'Vacío = total factura (${CurrencyUtils.format(totalRef)})'
                               : 'Ingresa el valor',
                         ),
                         style: TextStyle(color: cs.onSurface, fontSize: 14),

@@ -11,6 +11,7 @@ import '../services/producto_service.dart';
 import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/submit_guard.dart';
+import '../utils/currency_utils.dart';
 import '../utils/snackbar_helper.dart';
 import '../utils/datetime_utils.dart';
 
@@ -35,16 +36,23 @@ class _FilaImportPdf {
             original.cantidad == original.cantidad.roundToDouble() ? 0 : 2,
           ),
         ),
+        // costoUnitarioNeto ya viene con el descuento del proveedor aplicado
+        // (subtotal / cantidad); valorUnitario es el precio de lista bruto.
         costoCtrl = TextEditingController(
-          text: original.valorUnitario.toStringAsFixed(2),
+          text: original.costoUnitarioNeto.toStringAsFixed(2),
         ),
         porcentajeIvaCtrl = TextEditingController(
           text: original.porcentajeIva.toStringAsFixed(
             original.porcentajeIva == original.porcentajeIva.roundToDouble() ? 0 : 2,
           ),
         ),
+        // Para productos nuevos se sugiere un precio (editable). Para
+        // productos existentes queda vacío a propósito: si el usuario no lo
+        // llena, el precio de venta actual NO se toca.
         precioVentaCtrl = TextEditingController(
-          text: precioSugerido(original.valorUnitario).toStringAsFixed(0),
+          text: original.esNuevo
+              ? precioSugerido(original.costoUnitarioNeto).toStringAsFixed(0)
+              : '',
         );
 
   bool get esNuevo => original.esNuevo;
@@ -81,7 +89,15 @@ class _ImportarFacturaCompraPdfScreenState
   final FacturaCompraService _facturaCompraService = FacturaCompraService();
   final ProductoService _productoService = ProductoService();
 
-  static const String _plantilla = 'AKT';
+  String _plantilla = 'AKT';
+
+  static const Map<String, String> _plantillasDisponibles = {
+    'AKT': 'AKT Motos',
+    'CASSARELLA': 'Cassarella (Integrando S.A.S)',
+    'IDLASER': 'IDLASER (Ingeniería y Diseño Laser SAS)',
+    'INDUSTRIA_IP': 'Industria IP S.A.S',
+    'INVERSIONES_PG': 'Inversiones P&G SAS (Motos y Accesorios)',
+  };
 
   bool _cargandoPreview = false;
   bool _guardando = false;
@@ -168,7 +184,8 @@ class _ImportarFacturaCompraPdfScreenState
       _filas.clear();
       _filas.addAll(preview.items.map((i) => _FilaImportPdf(i)));
 
-      _proveedorNombreController.text = preview.proveedorNombre ?? 'AKT MOTOS';
+      _proveedorNombreController.text =
+          preview.proveedorNombre ?? _plantillasDisponibles[_plantilla] ?? '';
       _proveedorNitController.text = preview.proveedorNit ?? '';
       _fechaFactura = preview.fechaFactura ?? DateTime.now();
       _fechaVencimiento =
@@ -302,7 +319,7 @@ class _ImportarFacturaCompraPdfScreenState
                               dense: true,
                               title: Text(p.nombre, style: TextStyle(color: cs.onSurface, fontSize: 13)),
                               subtitle: Text(
-                                'Costo actual: \$${p.costo.toStringAsFixed(2)}',
+                                'Costo actual: ${CurrencyUtils.format(p.costo)}',
                                 style: TextStyle(color: cs.onSurface.withOpacity(0.6), fontSize: 11),
                               ),
                               onTap: () {
@@ -408,6 +425,7 @@ class _ImportarFacturaCompraPdfScreenState
                     descripcion: nombre,
                     cantidad: cantidad,
                     valorUnitario: costo,
+                    costoUnitarioNeto: costo,
                     porcentajeIva: iva,
                     valorIva: costo * cantidad * (iva / 100),
                     subtotal: costo * cantidad,
@@ -551,20 +569,20 @@ class _ImportarFacturaCompraPdfScreenState
                       value: _plantilla,
                       dropdownColor: Theme.of(context).colorScheme.surface,
                       style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'AKT',
-                          child: Text('AKT Motos'),
-                        ),
-                      ],
-                      onChanged: null, // única plantilla disponible por ahora
+                      items: _plantillasDisponibles.entries
+                          .map((e) => DropdownMenuItem(
+                                value: e.key,
+                                child: Text(e.value),
+                              ))
+                          .toList(),
+                      onChanged: (v) => setState(() => _plantilla = v ?? 'AKT'),
                     ),
                   ),
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Sube la factura de compra en PDF de AKT Motos. Vas a poder '
-                  'revisar y editar cada línea antes de crear la compra.',
+                  'Sube la factura de compra en PDF de ${_plantillasDisponibles[_plantilla]}. '
+                  'Vas a poder revisar y editar cada línea antes de crear la compra.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
@@ -642,12 +660,12 @@ class _ImportarFacturaCompraPdfScreenState
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Base gravable: \$${_totalSubtotal.toStringAsFixed(2)}   ·   '
-                      'IVA: \$${_totalIva.toStringAsFixed(2)}',
+                      'Base gravable: ${CurrencyUtils.format(_totalSubtotal)}   ·   '
+                      'IVA: ${CurrencyUtils.format(_totalIva)}',
                       style: TextStyle(color: cs.onSurface.withOpacity(0.7), fontSize: 12),
                     ),
                     Text(
-                      'Total: \$${_totalConIva.toStringAsFixed(2)}   ·   '
+                      'Total: ${CurrencyUtils.format(_totalConIva)}   ·   '
                       '$_countExistentes existentes  ·  $_countNuevos nuevos',
                       style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
                     ),
@@ -877,7 +895,14 @@ class _ImportarFacturaCompraPdfScreenState
                       enabled: fila.incluir,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       style: TextStyle(color: cs.onSurface),
-                      decoration: const InputDecoration(labelText: 'Costo unitario'),
+                      decoration: InputDecoration(
+                        labelText: 'Costo unitario',
+                        helperText: fila.original.porcentajeDescuento > 0
+                            ? 'Lista: ${CurrencyUtils.format(fila.original.valorUnitario)}'
+                                ' − ${fila.original.porcentajeDescuento.toStringAsFixed(0)}% desc. proveedor'
+                            : null,
+                        helperMaxLines: 2,
+                      ),
                       onChanged: (_) => setState(() {}),
                     ),
                   ),
@@ -885,7 +910,7 @@ class _ImportarFacturaCompraPdfScreenState
                   Expanded(
                     child: InputDecorator(
                       decoration: const InputDecoration(labelText: 'Subtotal'),
-                      child: Text('\$${subtotal.toStringAsFixed(2)}', style: TextStyle(color: cs.onSurface)),
+                      child: Text(CurrencyUtils.format(subtotal), style: TextStyle(color: cs.onSurface)),
                     ),
                   ),
                 ],
@@ -907,7 +932,7 @@ class _ImportarFacturaCompraPdfScreenState
                   Expanded(
                     child: InputDecorator(
                       decoration: const InputDecoration(labelText: 'Valor IVA'),
-                      child: Text('\$${valorIva.toStringAsFixed(2)}', style: TextStyle(color: cs.onSurface)),
+                      child: Text(CurrencyUtils.format(valorIva), style: TextStyle(color: cs.onSurface)),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -915,7 +940,7 @@ class _ImportarFacturaCompraPdfScreenState
                     child: InputDecorator(
                       decoration: const InputDecoration(labelText: 'Total con IVA'),
                       child: Text(
-                        '\$${totalConIva.toStringAsFixed(2)}',
+                        CurrencyUtils.format(totalConIva),
                         style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -934,12 +959,27 @@ class _ImportarFacturaCompraPdfScreenState
                     helperText: 'Sugerido, edítalo antes de confirmar',
                   ),
                 ),
-              ] else if (fila.original.costoActual != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'Costo actual: \$${fila.original.costoActual!.toStringAsFixed(2)} → nuevo: \$${costo.toStringAsFixed(2)}'
-                  '   |   Stock: ALM ${fila.original.cantidadAlmacen ?? 0} / BOD ${fila.original.cantidadBodega ?? 0}',
-                  style: TextStyle(color: cs.onSurface.withOpacity(0.6), fontSize: 12),
+              ] else ...[
+                if (fila.original.costoActual != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Costo actual: ${CurrencyUtils.format(fila.original.costoActual!)} → nuevo: ${CurrencyUtils.format(costo)}'
+                    '   |   Stock: ALM ${fila.original.cantidadAlmacen ?? 0} / BOD ${fila.original.cantidadBodega ?? 0}',
+                    style: TextStyle(color: cs.onSurface.withOpacity(0.6), fontSize: 12),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                TextField(
+                  controller: fila.precioVentaCtrl,
+                  enabled: fila.incluir,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  style: TextStyle(color: cs.onSurface),
+                  decoration: InputDecoration(
+                    labelText: 'Nuevo precio de venta (opcional)',
+                    helperText: fila.original.precioActual != null
+                        ? 'Vacío = no cambia (actual: ${CurrencyUtils.format(fila.original.precioActual!)})'
+                        : 'Vacío = no cambia el precio de venta',
+                  ),
                 ),
               ],
               const SizedBox(height: 8),
@@ -1032,6 +1072,19 @@ class _ImportarFacturaCompraPdfScreenState
       if (fila.esNuevo && (double.tryParse(fila.precioVentaCtrl.text) ?? 0) <= 0) {
         showErrorSnackBar(context, 'Precio de venta inválido en "${fila.descripcionCtrl.text}"');
         return;
+      }
+      // Para productos existentes el precio nuevo es opcional, pero si se
+      // escribió algo debe ser un número válido (para no ignorar un typo en
+      // silencio).
+      if (!fila.esNuevo && fila.precioVentaCtrl.text.trim().isNotEmpty) {
+        final nuevoPrecio = double.tryParse(fila.precioVentaCtrl.text.trim());
+        if (nuevoPrecio == null || nuevoPrecio <= 0) {
+          showErrorSnackBar(
+            context,
+            'El nuevo precio de venta en "${fila.descripcionCtrl.text}" no es un número válido',
+          );
+          return;
+        }
       }
       if (fila.destino == 'PARTE Y PARTE') {
         final ca = double.tryParse(fila.cantidadAlmacenCtrl.text) ?? 0;
@@ -1128,7 +1181,9 @@ class _ImportarFacturaCompraPdfScreenState
 
       final descripcionPartes = <String>[];
       if (_preview?.numeroFacturaProveedor != null) {
-        descripcionPartes.add('Factura proveedor AKT No. ${_preview!.numeroFacturaProveedor}');
+        descripcionPartes.add(
+          'Factura proveedor ${_plantillasDisponibles[_plantilla] ?? _plantilla} No. ${_preview!.numeroFacturaProveedor}',
+        );
       }
       if (!_pagadoDesdeCaja) {
         descripcionPartes.add(
@@ -1161,16 +1216,26 @@ class _ImportarFacturaCompraPdfScreenState
 
       await _facturaCompraService.crearFacturaCompra(factura);
 
-      // Actualizar el costo de los productos que ya existían (mismo patrón
-      // que CrearFacturaCompraScreen._actualizarCostoProductos).
+      // Actualizar el costo (y opcionalmente el precio de venta) de los
+      // productos que ya existían (mismo patrón que
+      // CrearFacturaCompraScreen._actualizarCostoProductos). Si el campo de
+      // "nuevo precio de venta" quedó vacío, se reenvía el precio actual sin
+      // cambios.
       for (final fila in filasParaActualizarCosto) {
         final costo = double.tryParse(fila.costoCtrl.text) ?? 0;
+        final nuevoPrecioTexto = fila.precioVentaCtrl.text.trim();
+        final nuevoPrecio =
+            nuevoPrecioTexto.isEmpty ? null : double.tryParse(nuevoPrecioTexto);
+        final precioAEnviar = (nuevoPrecio != null && nuevoPrecio > 0)
+            ? nuevoPrecio
+            : fila.original.precioActual;
+
         if (costo > 0 && fila.original.productoId != null) {
           try {
             await _productoService.actualizarCostoProducto(
               fila.original.productoId!,
               costo,
-              precioActual: fila.original.precioActual,
+              precioActual: precioAEnviar,
             );
           } catch (_) {
             // No crítico: la compra ya se creó, seguir con las demás.

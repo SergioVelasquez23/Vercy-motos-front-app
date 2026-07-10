@@ -19,6 +19,7 @@ class PdfExportService {
     final pdf = pw.Document();
     final dateFormat = DateFormat('dd/MM/yyyy HH:mm', 'es_ES');
     final currencyFormat = NumberFormat.currency(
+      locale: 'es_CO',
       symbol: '\$',
       decimalDigits: 0,
     );

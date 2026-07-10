@@ -50,6 +50,7 @@ import '../screens/fe_documentos_screen.dart';
 import '../screens/documentos_pendientes_screen.dart';
 import '../screens/matias_test_screen.dart';
 import '../screens/configuracion_screen.dart';
+import '../screens/libro_contable_screen.dart';
 
 GoRouter buildAppRouter(UserProvider userProvider) => GoRouter(
   initialLocation: '/splash',
@@ -88,7 +89,11 @@ GoRouter buildAppRouter(UserProvider userProvider) => GoRouter(
               return FacturacionScreen(
                 pedidoAsesor: extra['pedidoAsesor'] as PedidoAsesor?,
                 trasladoId: extra['trasladoId'] as String?,
+                cotizacion: extra['cotizacion'] as Cotizacion?,
               );
+            }
+            if (extra is Cotizacion) {
+              return FacturacionScreen(cotizacion: extra);
             }
             return FacturacionScreen(pedidoAsesor: extra as PedidoAsesor?);
           },
@@ -157,6 +162,7 @@ GoRouter buildAppRouter(UserProvider userProvider) => GoRouter(
         GoRoute(path: '/reportes/pedidos', builder: (c, s) => const ReportesScreen(initialReportIndex: 3)),
         GoRoute(path: '/reportes/clientes', builder: (c, s) => const ReportesScreen(initialReportIndex: 4)),
         GoRoute(path: '/informes/productos', builder: (c, s) => const InformesProductosScreen()),
+        GoRoute(path: '/libro-contable', builder: (c, s) => const LibroContableScreen()),
         GoRoute(path: '/facturacion-electronica', builder: (c, s) => const FEDocumentosScreen()),
         GoRoute(path: '/documentos-pendientes', builder: (c, s) => const DocumentosPendientesScreen()),
         GoRoute(path: '/matias-test', builder: (c, s) => const MatiasTestScreen()),

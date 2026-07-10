@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/item_pedido.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/currency_utils.dart';
 
 class TotalesSection extends StatelessWidget {
   final List<ItemPedido> items;
@@ -103,7 +104,7 @@ class TotalesSection extends StatelessWidget {
             ),
           ),
           Text(
-            '\$${valor.toStringAsFixed(0)}',
+            CurrencyUtils.format(valor),
             style: TextStyle(
               fontSize: isTotal ? 20 : 16,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,

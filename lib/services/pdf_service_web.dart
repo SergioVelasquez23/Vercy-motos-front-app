@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:html' as html;
 import 'package:flutter/foundation.dart';
 import 'pdf_service_factory.dart';
+import '../utils/currency_utils.dart';
 
 class PDFServiceWeb implements PDFServiceInterface {
   /// Generar contenido como HTML para impresión en web
@@ -38,8 +39,8 @@ class PDFServiceWeb implements PDFServiceInterface {
         <tr>
           <td>$nombre</td>
           <td style="text-align: center;">$cantidad</td>
-          <td style="text-align: right;">\$${precioUnitario.toStringAsFixed(0)}</td>
-          <td style="text-align: right;">\$${totalItem.toStringAsFixed(0)}</td>
+          <td style="text-align: right;">${CurrencyUtils.format(precioUnitario)}</td>
+          <td style="text-align: right;">${CurrencyUtils.format(totalItem)}</td>
         </tr>
       ''';
     }
@@ -307,23 +308,23 @@ PRODUCTOS:
       contenido +=
           '''
 $nombre
-  $cantidad x \$${precioUnitario.toStringAsFixed(0)} = \$${totalItem.toStringAsFixed(0)}
+  $cantidad x ${CurrencyUtils.format(precioUnitario)} = ${CurrencyUtils.format(totalItem)}
 ''';
     }
 
     contenido += '''
 ------------------------------------------
-Subtotal: \$${subtotal.toStringAsFixed(0)}''';
+Subtotal: ${CurrencyUtils.format(subtotal)}''';
 
     if (propina > 0) {
       contenido += '''
-Propina: \$${propina.toStringAsFixed(0)}''';
+Propina: ${CurrencyUtils.format(propina)}''';
     }
 
     contenido +=
         '''
 ==========================================
-TOTAL: \$${total.toStringAsFixed(0)}
+TOTAL: ${CurrencyUtils.format(total)}
 ==========================================
 
 ¡Gracias por su visita!

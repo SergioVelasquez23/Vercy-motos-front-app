@@ -2,6 +2,7 @@
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../utils/api_error.dart';
+import '../utils/currency_utils.dart';
 
 class ImpresionService {
   // Generar resumen de impresión para pedido
@@ -190,7 +191,7 @@ class ImpresionService {
 
         texto.writeln('${cantidad}x $nombre');
         texto.writeln(
-          '    @\$${precio.toStringAsFixed(0)} = \$${subtotal.toStringAsFixed(0)}',
+          '    @${CurrencyUtils.format(precio)} = ${CurrencyUtils.format(subtotal)}',
         );
 
         // Observaciones si existen
@@ -218,7 +219,7 @@ class ImpresionService {
 
       // Total
       texto.writeln('-------------------------------------');
-      texto.writeln('TOTAL: \$${totalGeneral.toStringAsFixed(0)}');
+      texto.writeln('TOTAL: ${CurrencyUtils.format(totalGeneral)}');
 
       if (esFactura) {
         texto.writeln('Forma de pago: ${resumen['medioPago'] ?? 'Efectivo'}');

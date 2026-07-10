@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -22,6 +23,7 @@ import '../theme/app_theme.dart';
 import '../utils/logger.dart';
 import '../utils/pagination_mixin.dart';
 import '../widgets/common/screen_header.dart';
+import '../utils/currency_utils.dart';
 
 class FacturasListScreen extends StatefulWidget {
   final String? filtroInicial;
@@ -46,6 +48,10 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
   List<Pedido> _pedidosPagados = [];
   List<dynamic> _documentosFiltrados = []; // Puede ser Factura o Pedido
   bool _isLoading = false;
+
+  // IDs de pedidos con una emisión de factura electrónica en curso: evita
+  // doble clic / doble envío a la DIAN mientras la petición está en vuelo.
+  final Set<String> _emitiendoFE = {};
 
   // Contador de documentos consumidos en Matias (-1 = no cargado / error)
   int _cantidadDocumentosMatias = -1;
@@ -821,7 +827,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
           Expanded(
             flex: 2,
             child: Text(
-              '\$ ${total.toStringAsFixed(0)}',
+              CurrencyUtils.format(total),
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               textAlign: TextAlign.right,
             ),
@@ -831,7 +837,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
           Expanded(
             flex: 2,
             child: Text(
-              '\$ ${abono.toStringAsFixed(0)}',
+              CurrencyUtils.format(abono),
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               textAlign: TextAlign.right,
             ),
@@ -841,7 +847,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
           Expanded(
             flex: 2,
             child: Text(
-              '\$ ${saldo.toStringAsFixed(0)}',
+              CurrencyUtils.format(saldo),
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
               textAlign: TextAlign.right,
             ),
@@ -901,7 +907,16 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   onPressed: () => _imprimirDocumento(documento),
                   tooltip: 'Imprimir',
                 ),
-                if (esPedido && !esFEDoc)
+                if (esPedido && !esFEDoc && _emitiendoFE.contains(documento.id))
+                  const Padding(
+                    padding: EdgeInsets.all(4),
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                else if (esPedido && !esFEDoc)
                   PopupMenuButton<String>(
                     onSelected: (value) {
                       if (value == 'emitir_fe') {
@@ -1319,12 +1334,17 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
   }
 
   void _emitirFacturaElectronica(Pedido pedido) {
+    // Ya hay una emisión en curso para este pedido: ignorar el clic para no
+    // disparar dos envíos a la DIAN en paralelo.
+    if (_emitiendoFE.contains(pedido.id)) return;
+
     final token = Provider.of<UserProvider>(context, listen: false).token;
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(const SnackBar(
       content: Text('Enviando a la DIAN...'),
       duration: Duration(seconds: 3),
     ));
+    setState(() => _emitiendoFE.add(pedido.id));
     Future.microtask(() async {
       try {
         final resultado = await MatiasService.emitirFacturaElectronica(
@@ -1344,6 +1364,12 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
             pdfUrl: resultado.pdfUrl?.isNotEmpty == true ? resultado.pdfUrl : null,
             raw: resultado.raw,
           );
+          // Actualización optimista inmediata + recarga desde el backend para
+          // garantizar que el badge/POS-FE refleje el estado real persistido
+          // (evita que quede mostrando POS si algo queda desincronizado).
+          pedido.tipoFactura = 'FACTURA';
+          _aplicarFiltros();
+          unawaited(_cargarDocumentos());
           showDialog(
             context: context,
             builder: (_) => ConfirmacionDianDialog(
@@ -1365,6 +1391,8 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
           backgroundColor: Colors.red.shade700,
           duration: const Duration(seconds: 8),
         ));
+      } finally {
+        if (mounted) setState(() => _emitiendoFE.remove(pedido.id));
       }
     });
   }

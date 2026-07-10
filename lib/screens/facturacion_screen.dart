@@ -1233,7 +1233,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           items: const [
             DropdownMenuItem(
               value: 'LOCAL',
-              child: Text('Factura Local'),
+              child: Text(''),
             ),
             DropdownMenuItem(
               value: 'POS',
@@ -1243,6 +1243,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               value: 'FACTURA',
               child: Text('Factura Electrónica'),
             ),
+          ],
+          selectedItemBuilder: (context) => const [
+            SizedBox.shrink(),
+            Text('Documento POS'),
+            Text('Factura Electrónica'),
           ],
           onChanged: (value) => setState(() => _tipoFactura = value!),
         ),

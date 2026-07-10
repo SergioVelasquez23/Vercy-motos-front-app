@@ -9,6 +9,7 @@ import '../services/pedido_service.dart';
 import '../services/reportes_service.dart';
 import '../models/dashboard_data.dart';
 import 'exportar_mensual_screen.dart';
+import 'libro_contable_screen.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({super.key});
@@ -869,6 +870,17 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
             SizedBox(height: 12),
 
+            // Botón de libro contable mensual
+            _buildActionButton(
+              icon: Icons.menu_book_outlined,
+              label: 'Libro Contable Mensual',
+              color: AppTheme.info,
+              onPressed: _isLoading ? null : _navegarALibroContable,
+              isFullWidth: true,
+            ),
+
+            SizedBox(height: 12),
+
             // Botones de eliminación por fechas
             Row(
               children: [
@@ -1178,6 +1190,12 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   void _navegarAEstadisticasMensuales() {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const ExportarMensualScreen()),
+    );
+  }
+
+  void _navegarALibroContable() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const LibroContableScreen()),
     );
   }
 }

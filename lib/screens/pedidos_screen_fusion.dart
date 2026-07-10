@@ -32,14 +32,14 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     return "Producto desconocido";
   }
 
-  /// Calcula el total correcto del pedido considerando descuentos aplicados
+  /// Total del pedido a mostrar.
+  ///
+  /// `pedido.total` ya viene NETO de descuento — se calcula así en
+  /// `facturacion_screen.dart` antes de crear el pedido, y `pedido.descuento`
+  /// es ese mismo valor, guardado aparte solo para referencia/recibo. Restarlo
+  /// de nuevo aquí duplicaba el descuento en la pantalla (mismo bug que se
+  /// corrigió en `PedidosPagoController` del backend para el efectivo esperado).
   double _getTotalCorrecto(Pedido pedido) {
-    // Si el pedido tiene descuento, usar cálculo correcto (sin importar el estado)
-    if (pedido.descuento > 0) {
-      // Calcular total con descuento: total original - descuento
-      return pedido.total - pedido.descuento;
-    }
-    // Para pedidos sin descuento, usar total original
     return pedido.total;
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/currency_utils.dart';
 
 /// Clase de utilidad para mostrar diálogos de confirmación
 ///
@@ -58,7 +59,7 @@ class DialogoConfirmacion {
     if (afectaCaja) {
       mensaje += '\n\n⚠️ IMPORTANTE: Esta acción revertirá ';
       if (montoReversion != null) {
-        mensaje += '\$${montoReversion.toStringAsFixed(2)} ';
+        mensaje += '${CurrencyUtils.format(montoReversion)} ';
       }
       mensaje += 'automáticamente a la caja.';
     }
@@ -89,9 +90,9 @@ class DialogoConfirmacion {
         : 'Confirmar $tipo';
     String mensaje =
         '$detalle\n\n' +
-        '💰 Efectivo actual: \$${efectivoDisponible.toStringAsFixed(2)}\n' +
-        '💰 Monto a utilizar: \$${monto.toStringAsFixed(2)}\n' +
-        '💰 Efectivo restante: \$${efectivoRestante.toStringAsFixed(2)}';
+        '💰 Efectivo actual: ${CurrencyUtils.format(efectivoDisponible)}\n' +
+        '💰 Monto a utilizar: ${CurrencyUtils.format(monto)}\n' +
+        '💰 Efectivo restante: ${CurrencyUtils.format(efectivoRestante)}';
 
     if (fondosInsuficientes) {
       mensaje =

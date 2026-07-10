@@ -7,6 +7,7 @@ import '../services/cliente_service.dart';
 import '../services/producto_service.dart';
 import '../models/cliente.dart';
 import '../models/producto.dart';
+import '../utils/currency_utils.dart';
 
 class ReportesScreen extends StatefulWidget {
   final int initialReportIndex;
@@ -262,12 +263,12 @@ class _ReportesScreenState extends State<ReportesScreen>
       try {
         valorInt = int.parse(valor.toString());
       } catch (e) {
-          
+
         return '\$0';
       }
     }
 
-    return '\$${valorInt.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}';
+    return CurrencyUtils.format(valorInt.toDouble());
   }
 
   // Formatear la fecha
@@ -2436,9 +2437,15 @@ class _ReportesScreenState extends State<ReportesScreen>
       return TableRow(
         children: [
           _buildTableCell(producto['nombre'].toString(), textDark),
-          _buildTableCell('\$${precio.toString()}', textLight),
-          _buildTableCell('\$${costo.toString()}', Colors.red.shade300),
-          _buildTableCell('\$${utilidad.toString()}', Colors.green.shade300),
+          _buildTableCell(CurrencyUtils.format(precio.toDouble()), textLight),
+          _buildTableCell(
+            CurrencyUtils.format(costo.toDouble()),
+            Colors.red.shade300,
+          ),
+          _buildTableCell(
+            CurrencyUtils.format(utilidad.toDouble()),
+            Colors.green.shade300,
+          ),
           _buildTableCell(
             '${margen.toStringAsFixed(1)}%',
             margen > 30

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../utils/currency_utils.dart';
 
 /// Widget base para mantener consistencia en las pantallas de pedidos
 abstract class BasePedidosScreen extends StatefulWidget {
@@ -56,7 +57,7 @@ abstract class BasePedidosScreenState<T extends BasePedidosScreen>
 
   /// Formatea números como moneda
   String formatearMoneda(double valor) {
-    return '\$${valor.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}';
+    return CurrencyUtils.format(valor);
   }
 
   /// Formatea fechas de manera consistente

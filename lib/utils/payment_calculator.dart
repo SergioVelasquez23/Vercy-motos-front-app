@@ -1,5 +1,6 @@
 import '../models/pedido.dart';
 import '../models/item_pedido.dart';
+import 'currency_utils.dart';
 
 /// Utilidad para calcular totales considerando descuentos y propinas
 /// aplicados correctamente cuando el backend no los procesa bien
@@ -93,7 +94,7 @@ class PaymentCalculator {
 
   /// Formatea un valor monetario para mostrar
   static String formatearMoneda(double valor) {
-    return '\$${valor.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}';
+    return CurrencyUtils.format(valor);
   }
 
   /// Calcula estadísticas de ventas considerando descuentos/propinas

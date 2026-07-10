@@ -286,8 +286,9 @@ class PDFService {
       'MANIZALES',
     );
     final numeroPedido = _toSafeString(
-      resumen['numeroPedido'] ?? resumen['numero'],
+      resumen['numeroCotizacion'] ?? resumen['numeroPedido'] ?? resumen['numero'],
     );
+    final tipoDocumento = _toSafeString(resumen['tipoDocumento'], 'ORDEN DE VENTA');
     final metodoPago = _toSafeString(
       resumen['metodoPago'] ?? resumen['formaPago'],
       'EFECTIVO',
@@ -445,9 +446,9 @@ class PDFService {
                             padding: const pw.EdgeInsets.all(4),
                             width: double.infinity,
                             child: pw.Text(
-                              'ORDEN DE VENTA',
+                              tipoDocumento,
                               style: pw.TextStyle(font: fontBold, fontSize: 10),
-                              textAlign: pw.TextAlign.center,
+                             textAlign: pw.TextAlign.center,
                             ),
                           ),
                           pw.Container(
@@ -557,6 +558,7 @@ class PDFService {
                 7: const pw.FlexColumnWidth(0.5), // IVA
                 8: const pw.FlexColumnWidth(1), // VALOR IVA
                 9: const pw.FlexColumnWidth(1), // TOTAL SIN IVA
+                10: const pw.FlexColumnWidth(1), // TOTAL CON IVA
               },
               children: [
                 // Encabezado
@@ -573,6 +575,7 @@ class PDFService {
                     _buildTableHeader('IVA', fontBold),
                     _buildTableHeader('VALOR IVA', fontBold),
                     _buildTableHeader('TOTAL\nSIN IVA', fontBold),
+                    _buildTableHeader('TOTAL\nCON IVA', fontBold),
                   ],
                 ),
                 // Productos - se agregan dinámicamente basado en la cantidad
@@ -697,6 +700,9 @@ class PDFService {
       final subtotal = (precioUnit * cantidad);
       // "TOTAL SIN IVA" = subtotal de la línea sin impuesto (no debe sumar valorImpuesto)
       final totalItem = subtotal - valorDescuento;
+      // "TOTAL CON IVA" = el total anterior más el impuesto de la línea
+      final totalItemConIva =
+          totalItem + (valorImpuesto is num ? valorImpuesto.toDouble() : 0.0);
 
       rows.add(
         pw.TableRow(
@@ -711,6 +717,7 @@ class PDFService {
             _buildTableCell('$porcentajeImpuesto%', font),
             _buildTableCell(_formatearNumero(valorImpuesto), font),
             _buildTableCell(_formatearNumero(totalItem), font),
+            _buildTableCell(_formatearNumero(totalItemConIva), font),
           ],
         ),
       );
@@ -1179,7 +1186,11 @@ class PDFService {
       return r.trim();
     }
 
-    int n = numero.toInt();
+    // Redondear igual que el total numérico (_formatearNumero usa
+    // toStringAsFixed(0), que redondea) — .toInt() truncaba en vez de
+    // redondear, así que en valores con decimales el total en letras podía
+    // no coincidir con la cifra mostrada.
+    int n = numero.round();
     if (n == 0) return 'CERO PESOS';
     if (n == 100) return 'CIEN PESOS';
 
@@ -1336,7 +1347,7 @@ class PDFService {
             pw.Expanded(
               flex: 1,
               child: pw.Text(
-                '\$${subtotal.toStringAsFixed(0)}',
+                _formatearMoneda(subtotal),
                 style: pw.TextStyle(font: font, fontSize: 10),
                 textAlign: pw.TextAlign.right,
               ),
@@ -1366,7 +1377,7 @@ class PDFService {
             children: [
               pw.Text('Base:', style: pw.TextStyle(font: font, fontSize: 10)),
               pw.Text(
-                '\$${base.toStringAsFixed(0)}',
+                _formatearMoneda(base),
                 style: pw.TextStyle(font: font, fontSize: 10),
               ),
             ],
@@ -1379,7 +1390,7 @@ class PDFService {
                 style: pw.TextStyle(font: font, fontSize: 10),
               ),
               pw.Text(
-                '\$${impuestos.toStringAsFixed(0)}',
+                _formatearMoneda(impuestos),
                 style: pw.TextStyle(font: font, fontSize: 10),
               ),
             ],
@@ -1394,7 +1405,7 @@ class PDFService {
                 style: pw.TextStyle(font: font, fontSize: 10),
               ),
               pw.Text(
-                '\$${propina.toStringAsFixed(0)}',
+                _formatearMoneda(propina),
                 style: pw.TextStyle(font: font, fontSize: 10),
               ),
             ],
@@ -1412,7 +1423,7 @@ class PDFService {
               ),
             ),
             pw.Text(
-              '\$${total.toStringAsFixed(0)}',
+              _formatearMoneda(total),
               style: pw.TextStyle(
                 font: fontBold,
                 fontSize: 14,

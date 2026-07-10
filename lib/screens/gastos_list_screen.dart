@@ -26,7 +26,6 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
 
   // Otros filtros
   bool _soloCuentasPorPagar = false;
-  bool _verPagosParciales = false;
   String _tipoGastoSeleccionado = 'TODOS';
 
   List<Gasto> _gastos = [];
@@ -327,35 +326,6 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
               ],
             ),
           ),
-          // Checkbox Ver pagos parciales
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade700),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Checkbox(
-                  value: _verPagosParciales,
-                  onChanged: (value) {
-                    setState(() => _verPagosParciales = value ?? false);
-                    _aplicarFiltros();
-                  },
-                  activeColor: AppTheme.primary,
-                  side: BorderSide(color: Colors.grey.shade500),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                ),
-                Text(
-                  'Ver pagos\nparciales',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
           // Dropdown Tipo de Gasto
           Container(
             padding: EdgeInsets.symmetric(horizontal: 12),
@@ -533,17 +503,24 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
                   )
                 : Column(
                     children: [
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: paginarLista(_gastosFiltrados).length,
-                    itemBuilder: (context, index) {
-                      final gasto = paginarLista(_gastosFiltrados)[index];
-                      return _buildFilaTabla(gasto, index);
-                    },
+                      Expanded(
+                        child: Scrollbar(
+                          thumbVisibility: true,
+                          child: ListView.builder(
+                            itemCount: paginarLista(_gastosFiltrados).length,
+                            itemBuilder: (context, index) {
+                              final gasto = paginarLista(_gastosFiltrados)[index];
+                              return _buildFilaTabla(gasto, index);
+                            },
+                          ),
+                        ),
+                      ),
+                      buildPaginacion(totalItems: _gastosFiltrados.length),
+                    ],
                   ),
-        ])),
-    ]),
+          ),
+        ],
+      ),
     );
   }
 

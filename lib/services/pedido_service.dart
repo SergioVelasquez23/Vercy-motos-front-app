@@ -1674,7 +1674,14 @@ class PedidoService {
     double montoTransferencia = 0.0,
     double montoSistecredito = 0.0, // ✅ AGREGADO: Soporte para Sistecredito
     double montoDatafono = 0.0, // ✅ AGREGADO: Soporte para Datafono
+    double montoBold = 0.0, // Sub-línea de pago múltiple: Bold (datafono/pasarela)
+    double montoAddi = 0.0, // Sub-línea de pago múltiple: Addi (BNPL)
+    double montoCredilondon = 0.0, // Sub-línea de pago múltiple: Credilondon (BNPL)
+    double montoNequi = 0.0, // Sub-línea de pago múltiple: Nequi (transferencia)
+    double montoDaviplata = 0.0, // Sub-línea de pago múltiple: DaviPlata (transferencia)
+    double montoBancolombia = 0.0, // Sub-línea de pago múltiple: Bancolombia (transferencia)
     String? medioPago, // Medio de pago para DIAN (efectivo, transferencia, etc.)
+    String? detallePago, // Sub-categoría visual (nequi/daviplata/bancolombia/bold/...) para el libro contable
   }) async {
     // Declarar tipoPago aquí para que sea accesible tanto en el try como en el catch
     String tipoPago = 'pagado';
@@ -1697,6 +1704,7 @@ class PedidoService {
         'notas': notas,
         'descuento': descuento,
         if (medioPago != null && medioPago.isNotEmpty) 'medioPago': medioPago,
+        if (detallePago != null && detallePago.isNotEmpty) 'detallePago': detallePago,
       };
 
       // Solo incluir campos específicos para pagos normales
@@ -1730,6 +1738,33 @@ class PedidoService {
               });
             }
 
+            // Nequi, DaviPlata y Bancolombia son sub-líneas independientes de
+            // "transferencia": pueden combinarse entre sí y con la línea genérica
+            // de arriba en la misma venta, cada una con su propio detallePago.
+            if (montoNequi > 0) {
+              pagosMixtos.add({
+                'formaPago': 'transferencia',
+                'monto': montoNequi,
+                'detallePago': 'nequi',
+              });
+            }
+
+            if (montoDaviplata > 0) {
+              pagosMixtos.add({
+                'formaPago': 'transferencia',
+                'monto': montoDaviplata,
+                'detallePago': 'daviplata',
+              });
+            }
+
+            if (montoBancolombia > 0) {
+              pagosMixtos.add({
+                'formaPago': 'transferencia',
+                'monto': montoBancolombia,
+                'detallePago': 'bancolombia',
+              });
+            }
+
             // ✅ AGREGADO: Soporte para Sistecredito
             if (montoSistecredito > 0) {
               pagosMixtos.add({
@@ -1743,6 +1778,35 @@ class PedidoService {
               pagosMixtos.add({
                 'formaPago': 'datafono',
                 'monto': montoDatafono,
+              });
+            }
+
+            // Bold es una sub-categoría visual de datafono. Addi y Credilondon son
+            // plataformas de crédito (BNPL): NO deben contarse como efectivo (ese
+            // dinero nunca llega como efectivo físico a la caja), se reportan como
+            // 'sistecredito' — el bucket de crédito más cercano ya existente — y
+            // quedan identificadas aparte por su propio detallePago.
+            if (montoBold > 0) {
+              pagosMixtos.add({
+                'formaPago': 'datafono',
+                'monto': montoBold,
+                'detallePago': 'bold',
+              });
+            }
+
+            if (montoAddi > 0) {
+              pagosMixtos.add({
+                'formaPago': 'sistecredito',
+                'monto': montoAddi,
+                'detallePago': 'addi',
+              });
+            }
+
+            if (montoCredilondon > 0) {
+              pagosMixtos.add({
+                'formaPago': 'sistecredito',
+                'monto': montoCredilondon,
+                'detallePago': 'credilondon',
               });
             }
 

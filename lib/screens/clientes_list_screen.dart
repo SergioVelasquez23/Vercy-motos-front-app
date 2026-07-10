@@ -8,6 +8,7 @@ import '../models/cliente.dart';
 import '../services/cliente_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/pagination_mixin.dart';
+import '../utils/currency_utils.dart';
 import '../widgets/common/screen_header.dart';
 
 class ClientesListScreen extends StatefulWidget {
@@ -401,7 +402,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
                     border: Border.all(color: saldoColor.withOpacity(0.4)),
                   ),
                   child: Text(
-                    'Saldo: \$${cliente.saldoActual.toStringAsFixed(0)}',
+                    'Saldo: ${CurrencyUtils.format(cliente.saldoActual)}',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -418,7 +419,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
                       border: Border.all(color: cupoColor.withOpacity(0.4)),
                     ),
                     child: Text(
-                      'Cupo: \$${cliente.cupoDisponible.toStringAsFixed(0)}',
+                      'Cupo: ${CurrencyUtils.format(cliente.cupoDisponible)}',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,

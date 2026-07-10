@@ -2307,16 +2307,27 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                       }
 
                       final data = snapshot.data!;
-                      // 📊 Leer datos del backend (viene en detalleVentas)
-                      final detalleVentas = data['detalleVentas'] ?? {};
-                      
-                      // 🔧 SIEMPRE mostrar TODOS los métodos, aunque el backend no los envíe
-                      final efectivo = (detalleVentas['Efectivo'] ?? detalleVentas['efectivo'] ?? 0.0).toDouble();
-                      final transferencia = (detalleVentas['Transferencia'] ?? detalleVentas['transferencia'] ?? 0.0).toDouble();
-                      final tarjeta = (detalleVentas['Tarjeta'] ?? detalleVentas['tarjeta'] ?? 0.0).toDouble();
-                      final sistecredito = (detalleVentas['Sistecredito'] ?? detalleVentas['sistecredito'] ?? 0.0).toDouble();
-                      final datafono = (detalleVentas['Datafono'] ?? detalleVentas['datafono'] ?? 0.0).toDouble();
-                      
+                      // 📊 Leer datos del backend: vienen en ventas.porMetodo (el
+                      // backend nunca envía una clave "detalleVentas" en la raíz).
+                      final ventasData = data['ventas'] as Map<String, dynamic>? ?? {};
+                      final porMetodo = ventasData['porMetodo'] as Map<String, dynamic>? ?? {};
+                      final detalleVentas = ventasData['ventasPorDetallePago'] as Map<String, dynamic>? ?? {};
+
+                      double montoDe(String clave) {
+                        final entry = porMetodo[clave] as Map<String, dynamic>?;
+                        return ((entry?['monto']) ?? 0.0).toDouble();
+                      }
+
+                      double montoDetalle(String clave) {
+                        return ((detalleVentas[clave]) ?? 0.0).toDouble();
+                      }
+
+                      final efectivo = montoDe('efectivo');
+                      final transferencia = montoDe('transferencias');
+                      final tarjeta = montoDe('tarjetas');
+                      final sistecredito = montoDe('sistecredito');
+                      final datafono = montoDe('datafono');
+
                       return Column(
                         children: [
                           _buildMetodoPagoRow("💵 Efectivo", efectivo, Colors.green),
@@ -2324,6 +2335,22 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                           _buildMetodoPagoRow("💳 Tarjeta", tarjeta, Colors.orange),
                           _buildMetodoPagoRow("🎁 Sistecredito", sistecredito, Colors.purple),
                           _buildMetodoPagoRow("📱 Datafono", datafono, Colors.teal),
+                          // Desglose visual adicional por plataforma específica: no
+                          // cambia los totales de arriba (son un subconjunto de
+                          // Transferencia/Datafono/Sistecredito), solo se muestran
+                          // las plataformas que tuvieron movimiento.
+                          if (montoDetalle('nequi') > 0)
+                            _buildMetodoPagoRow("   ↳ Nequi", montoDetalle('nequi'), Colors.blue),
+                          if (montoDetalle('daviplata') > 0)
+                            _buildMetodoPagoRow("   ↳ DaviPlata", montoDetalle('daviplata'), Colors.blue),
+                          if (montoDetalle('bancolombia') > 0)
+                            _buildMetodoPagoRow("   ↳ Bancolombia", montoDetalle('bancolombia'), Colors.blue),
+                          if (montoDetalle('bold') > 0)
+                            _buildMetodoPagoRow("   ↳ Bold", montoDetalle('bold'), Colors.teal),
+                          if (montoDetalle('addi') > 0)
+                            _buildMetodoPagoRow("   ↳ Addi", montoDetalle('addi'), Colors.purple),
+                          if (montoDetalle('credilondon') > 0)
+                            _buildMetodoPagoRow("   ↳ Credilondon", montoDetalle('credilondon'), Colors.purple),
                           Divider(color: Colors.grey.withOpacity(0.3)),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2361,7 +2388,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                 Padding(
                                   padding: EdgeInsets.all(8.0),
                                   child: Text(
-                                    "detalleVentas: $detalleVentas",
+                                    "porMetodo: $porMetodo\nventasPorDetallePago: $detalleVentas",
                                     style: TextStyle(
                                       fontSize: 10,
                                       color: Colors.grey[500],

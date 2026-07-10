@@ -33,7 +33,11 @@ class _AppShellState extends State<AppShell> {
     // el listener manual de abajo — el rebuild normal de la campana ya lo
     // maneja context.watch en _NotificacionesBell.
     _notifProvider = Provider.of<NotificacionesProvider>(context, listen: false);
-    _notifProvider?.addListener(_onNotificacionesChanged);
+    final userProviderRef = Provider.of<UserProvider>(context, listen: false);
+    _notifProvider?.configurarUsuario(
+      email: userProviderRef.userEmail,
+      nombre: userProviderRef.userName,
+    );
 
     // AppShell envuelve TODAS las rutas protegidas, así que arrancar el
     // auto-refresh aquí (y no solo en SplashScreen) cubre también el caso de
@@ -46,45 +50,6 @@ class _AppShellState extends State<AppShell> {
     // aunque también se llame desde SplashScreen en el flujo normal de login.
     _notifProvider?.refresh();
     _notifProvider?.startAutoRefresh();
-  }
-
-  @override
-  void dispose() {
-    _notifProvider?.removeListener(_onNotificacionesChanged);
-    super.dispose();
-  }
-
-  /// Muestra un SnackBar prominente (con acción "Ver") cuando llega un
-  /// traslado nuevo — más visible que solo el contador de la campana, que
-  /// requiere que alguien la abra para enterarse.
-  void _onNotificacionesChanged() {
-    final nuevo = _notifProvider?.nuevoTrasladoParaMostrar;
-    if (nuevo == null || !mounted) return;
-    _notifProvider!.limpiarNuevoTraslado();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.local_shipping, color: Colors.white),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                nuevo.descripcion,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: AppTheme.primary,
-        duration: const Duration(seconds: 6),
-        action: SnackBarAction(
-          label: 'VER',
-          textColor: Colors.white,
-          onPressed: () => context.go(nuevo.ruta),
-        ),
-      ),
-    );
   }
 
   @override

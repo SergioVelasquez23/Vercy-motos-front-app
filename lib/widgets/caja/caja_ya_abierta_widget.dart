@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/cuadre_caja.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/currency_utils.dart';
 import 'caja_ui_helpers.dart';
 
 class CajaYaAbiertaWidget extends StatelessWidget {
@@ -67,7 +68,7 @@ class CajaYaAbiertaWidget extends StatelessWidget {
                     context,
                     Icons.attach_money,
                     'Monto inicial',
-                    '\$${cajaActual!.fondoInicial.toStringAsFixed(0)}',
+                    CurrencyUtils.format(cajaActual!.fondoInicial),
                   ),
                 ],
                 SizedBox(height: 16),

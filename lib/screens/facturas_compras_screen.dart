@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../models/factura_compra.dart';
 import '../services/factura_compra_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/currency_utils.dart';
 import '../utils/snackbar_helper.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/facturizacion/documento_soporte_dialog.dart';
@@ -496,7 +497,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            '\$${factura.total.toStringAsFixed(0)}',
+                            CurrencyUtils.format(factura.total),
                             style: TextStyle(
                               color: AppTheme.primary,
                               fontWeight: FontWeight.bold,

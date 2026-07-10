@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/pedido.dart';
 import '../services/pedido_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/currency_utils.dart';
 
 class EliminarPedidosScreen extends StatefulWidget {
   const EliminarPedidosScreen({Key? key}) : super(key: key);
@@ -769,7 +770,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
               Expanded(
                 flex: 1,
                 child: Text(
-                  '\$${pedido.total.toStringAsFixed(0)}',
+                  CurrencyUtils.format(pedido.total),
                   style: TextStyle(
                     color: AppTheme.primary,
                     fontSize: 13,

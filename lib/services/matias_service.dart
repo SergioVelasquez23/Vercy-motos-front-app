@@ -4,6 +4,7 @@ import 'dart:convert';
 import '../config/endpoints_config.dart';
 import '../utils/logger.dart';
 import '../utils/datetime_utils.dart';
+import 'base_api_service.dart';
 
 /// Servicio para integración con API de Facturación Matias
 /// Cubre: Facturas, Nota Crédito, Nota Débito, Doc. Soporte,
@@ -22,7 +23,7 @@ class MatiasService {
       appLog('$TAG 🔐 Autenticando con Matias API...');
       final res = await http.post(
         Uri.parse('$_base/authenticate'),
-        headers: _headers(),
+        headers: await _headers(),
       ).timeout(_timeout, onTimeout: () {
         throw TimeoutException('Timeout en autenticación');
       });
@@ -45,7 +46,7 @@ class MatiasService {
       appLog('$TAG 🔍 Verificando status de autenticación...');
       final res = await http.get(
         Uri.parse('$_base/status'),
-        headers: _headers(),
+        headers: await _headers(),
       ).timeout(_timeout, onTimeout: () {
         throw TimeoutException('Timeout verificando status');
       });
@@ -125,7 +126,7 @@ class MatiasService {
       final url = '$_base/$endpoint';
       final res = await http.get(
         Uri.parse(url),
-        headers: _headers(),
+        headers: await _headers(),
       ).timeout(_timeout);
 
       appLog('$TAG 📊 $endpoint: StatusCode ${res.statusCode}');
@@ -479,7 +480,7 @@ class MatiasService {
 
     return {
       'resolution_number': resolutionNumber,
-      'prefix': negocioInfo.posPrefijo ?? 'POS',
+      'prefix': _valorOrDefault(negocioInfo.posPrefijo, 'POS'),
       // document_number omitido — POS usa consecutivo automático de Matias
       'date': date,
       'time': time,
@@ -492,19 +493,24 @@ class MatiasService {
       // 1 = ESTANDAR — único válido para POS según DIAN (DEAD02)
       'operation_type_id': 1,
       'currency_id': 272,
-      'cash_register_number': negocioInfo.posCashierName ?? 'CAJA-01',
-      'seller_name': negocioInfo.posCashierName ?? 'Vendedor',
+      'cash_register_number': _valorOrDefault(negocioInfo.posCashierName, 'CAJA-01'),
+      'seller_name': _valorOrDefault(negocioInfo.posCashierName, 'Vendedor'),
       'software_manufacturer': {
-        'owner_name': negocioInfo.softwareOwnerName ?? negocioInfo.nombre ?? 'Software Owner',
-        'company_name': negocioInfo.softwareCompanyName ?? negocioInfo.nombre ?? 'Software Company',
-        'software_name': negocioInfo.softwareName ?? 'Vercy POS',
+        'owner_name': _valorOrDefault(negocioInfo.softwareOwnerName, _valorOrDefault(negocioInfo.nombre, 'Software Owner')),
+        'company_name': _valorOrDefault(negocioInfo.softwareCompanyName, _valorOrDefault(negocioInfo.nombre, 'Software Company')),
+        'software_name': _valorOrDefault(negocioInfo.softwareName, 'Vercy POS'),
       },
       'point_of_sale': {
-        'cashier_name': negocioInfo.posCashierName ?? 'Vendedor',
-        'terminal_number': negocioInfo.posTerminalNumber ?? 'T001',
-        'cashier_type': negocioInfo.posCashierType ?? 'Dependiente',
-        'sales_code': negocioInfo.posSalesCode ?? 'V001',
-        'address': negocioInfo.direccion ?? 'Sin dirección',
+        // Matias exige point_of_sale.cashier_name cuando type_document_id es
+        // 20 (POS). Si el negocio guardó el nombre del cajero como "" (campo
+        // vacío en configuración) en vez de null, `?? 'Vendedor'` NO lo
+        // detecta porque "" no es null — Matias lo trata como ausente y
+        // rechaza el documento. _valorOrDefault sí trata "" como vacío.
+        'cashier_name': _valorOrDefault(negocioInfo.posCashierName, 'Vendedor'),
+        'terminal_number': _valorOrDefault(negocioInfo.posTerminalNumber, 'T001'),
+        'cashier_type': _valorOrDefault(negocioInfo.posCashierType, 'Dependiente'),
+        'sales_code': _valorOrDefault(negocioInfo.posSalesCode, 'V001'),
+        'address': _valorOrDefault(negocioInfo.direccion, 'Sin dirección'),
         'sub_total': lineExtensionTotal.toStringAsFixed(2),
         'total': totalFinalStr,
       },
@@ -522,6 +528,17 @@ class MatiasService {
     if (v is num) return v.toDouble();
     if (v is String) return double.tryParse(v) ?? 0.0;
     return 0.0;
+  }
+
+  /// Helper: devuelve [valor] si no es nulo ni vacío (tras trim); si no,
+  /// [fallback]. A diferencia de `valor ?? fallback`, esto SÍ detecta un
+  /// campo guardado como cadena vacía "" (no solo null) — necesario porque
+  /// varios campos de configuración del negocio se guardan como "" cuando el
+  /// usuario deja el campo en blanco, y Matias rechaza esos campos como si
+  /// no hubieran sido enviados.
+  static String _valorOrDefault(String? valor, String fallback) {
+    final v = valor?.trim();
+    return (v == null || v.isEmpty) ? fallback : v;
   }
 
   /// Construye el bloque `customer` del documento. Si el pedido tiene cliente
@@ -776,7 +793,7 @@ class MatiasService {
       appLog('$TAG 🔍 GET /status/documento/$trackId');
       final res = await http.get(
         Uri.parse('$_base/status/documento/$trackId'),
-        headers: _headers(token: token),
+        headers: await _headers(token: token),
       ).timeout(_timeout, onTimeout: () {
         throw TimeoutException('Timeout consultando status DIAN');
       });
@@ -890,7 +907,7 @@ class MatiasService {
       appLog('$TAG 📥 GET /invoices/$cufe/$tipo');
       final res = await http.get(
         Uri.parse('$_base/invoices/$cufe/$tipo'),
-        headers: _headers(token: token),
+        headers: await _headers(token: token),
       ).timeout(_timeout, onTimeout: () {
         throw TimeoutException('Timeout descargando $tipo');
       });
@@ -943,7 +960,7 @@ class MatiasService {
       appLog('$TAG 📥 GET /invoices/$trackId/pdf (len=${trackId.length})');
       final res = await http.get(
         Uri.parse('$_base/invoices/$trackId/pdf'),
-        headers: _headers(token: token),
+        headers: await _headers(token: token),
       ).timeout(_timeout, onTimeout: () {
         throw TimeoutException('Timeout consultando datos del documento');
       });
@@ -988,7 +1005,7 @@ class MatiasService {
       appLog('$TAG ✉️ POST /invoices/$cufe/resend-email → $email');
       final res = await http.post(
         Uri.parse('$_base/invoices/$cufe/resend-email'),
-        headers: _headers(token: token),
+        headers: await _headers(token: token),
         body: jsonEncode({'email': email}),
       ).timeout(_timeout, onTimeout: () {
         throw TimeoutException('Timeout reenviando correo');
@@ -1025,7 +1042,7 @@ class MatiasService {
       appLog('$TAG 📊 GET /documentos?limit=1 (cantidad)');
       final res = await http.get(
         Uri.parse('$_base/documentos?limit=1'),
-        headers: _headers(token: token),
+        headers: await _headers(token: token),
       ).timeout(_timeout, onTimeout: () {
         throw TimeoutException('Timeout obteniendo cantidad de documentos');
       });
@@ -1059,13 +1076,18 @@ class MatiasService {
     if (!ok) await authenticate();
   }
 
-  static Map<String, String> _headers({String? token}) {
-    final h = {
+  /// Headers con Authorization. Si no llega token explícito, lo resuelve
+  /// desde BaseApiService (localStorage en web, secure storage en móvil) —
+  /// antes las llamadas sin token explícito salían sin Authorization.
+  static Future<Map<String, String>> _headers({String? token}) async {
+    final t = (token != null && token.isNotEmpty)
+        ? token
+        : await BaseApiService().getToken();
+    return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      if (t != null && t.isNotEmpty) 'Authorization': 'Bearer $t',
     };
-    if (token != null && token.isNotEmpty) h['Authorization'] = 'Bearer $token';
-    return h;
   }
 
   /// POST que devuelve MatiasDocumentoResult CON TIMEOUT y mejor logging
@@ -1084,7 +1106,7 @@ class MatiasService {
       
       final res = await http.post(
         Uri.parse(url),
-        headers: _headers(token: token),
+        headers: await _headers(token: token),
         body: bodyJson,
       ).timeout(_timeout, onTimeout: () {
         throw TimeoutException('Timeout esperando respuesta de $url después de ${_timeout.inSeconds}s');
@@ -1171,7 +1193,7 @@ class MatiasService {
       
       final res = await http.post(
         Uri.parse(url),
-        headers: _headers(token: token),
+        headers: await _headers(token: token),
         body: body != null ? jsonEncode(body) : null,
       ).timeout(_timeout, onTimeout: () {
         throw TimeoutException('Timeout en POST $url');
@@ -1211,7 +1233,7 @@ class MatiasService {
       
       final res = await http.patch(
         Uri.parse(url),
-        headers: _headers(token: token),
+        headers: await _headers(token: token),
       ).timeout(_timeout, onTimeout: () {
         throw TimeoutException('Timeout en PATCH $url');
       });

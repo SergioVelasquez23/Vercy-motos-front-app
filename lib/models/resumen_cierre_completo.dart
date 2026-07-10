@@ -477,6 +477,11 @@ class ResumenVentasCompleto {
   final Map<String, double> ventasPorFormaPago;
   final double totalVentas;
   final Map<String, int> cantidadPorFormaPago;
+  // Desglose visual adicional por plataforma específica (nequi/daviplata/
+  // bancolombia/bold/addi/credilondon). Puramente informativo — no reemplaza
+  // ventasPorFormaPago, que sigue siendo la fuente del cuadre de caja real.
+  final Map<String, double> ventasPorDetallePago;
+  final Map<String, int> cantidadPorDetallePago;
 
   ResumenVentasCompleto({
     required this.totalPedidos,
@@ -484,6 +489,8 @@ class ResumenVentasCompleto {
     required this.ventasPorFormaPago,
     required this.totalVentas,
     required this.cantidadPorFormaPago,
+    this.ventasPorDetallePago = const {},
+    this.cantidadPorDetallePago = const {},
   });
 
   factory ResumenVentasCompleto.fromJson(Map<String, dynamic> json) {
@@ -540,6 +547,12 @@ class ResumenVentasCompleto {
       totalVentas: safeToDouble(json['totalVentas']),
       cantidadPorFormaPago: safeMapToInt(
         json['cantidadPorFormaPago']?.cast<String, dynamic>(),
+      ),
+      ventasPorDetallePago: safeMapToDouble(
+        json['ventasPorDetallePago']?.cast<String, dynamic>(),
+      ),
+      cantidadPorDetallePago: safeMapToInt(
+        json['cantidadPorDetallePago']?.cast<String, dynamic>(),
       ),
     );
   }

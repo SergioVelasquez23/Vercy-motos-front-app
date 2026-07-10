@@ -11,6 +11,7 @@ import '../services/producto_service.dart';
 import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/busqueda_productos_utils.dart';
+import '../utils/currency_utils.dart';
 
 class CotizacionFormScreen extends StatefulWidget {
   final Cotizacion? cotizacion;
@@ -539,7 +540,10 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
                   onSelected: (Producto producto) {
                     setState(() {
                       _nombreProductoController.text = producto.nombre;
-                      _codigoProductoController.text = producto.id;
+                      _codigoProductoController.text =
+                          producto.codigo?.isNotEmpty ?? false
+                              ? producto.codigo!
+                              : '';
                       _precioController.text = producto.precio.toString();
                     });
                   },
@@ -633,7 +637,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
                                               ),
                                               Spacer(),
                                               Text(
-                                                '\$${option.precio.toStringAsFixed(0)}',
+                                                CurrencyUtils.format(option.precio),
                                                 style: TextStyle(
                                                   color: AppTheme.primary,
                                                   fontSize: 12,
@@ -843,13 +847,13 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
                     Expanded(
                       flex: 1,
                       child: Text(
-                        '\$${item.precioUnitario.toStringAsFixed(0)}',
+                        CurrencyUtils.format(item.precioUnitario),
                       ),
                     ),
                     Expanded(
                       flex: 1,
                       child: Text(
-                        '\$${item.valorTotal.toStringAsFixed(0)}',
+                        CurrencyUtils.format(item.valorTotal),
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -989,7 +993,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
             ),
           ),
           Text(
-            '\$${valor.toStringAsFixed(0)}',
+            CurrencyUtils.format(valor),
             style: TextStyle(
               fontSize: isTotal ? 20 : 16,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,

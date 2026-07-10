@@ -13,6 +13,7 @@ import '../services/inventario_service.dart';
 import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/busqueda_productos_utils.dart';
+import '../utils/currency_utils.dart';
 import '../utils/logger.dart';
 import '../utils/datetime_utils.dart';
 import 'dart:convert';
@@ -1511,7 +1512,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                                                   ),
                                                   Spacer(),
                                                   Text(
-                                                    '\$${option.precio.toStringAsFixed(0)}',
+                                                    CurrencyUtils.format(option.precio),
                                                     style: TextStyle(
                                                       color: AppTheme.primary,
                                                       fontSize: 12,
@@ -1628,7 +1629,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
-                '\$${valorTotal.toStringAsFixed(0)}',
+                CurrencyUtils.format(valorTotal),
                 style: TextStyle(color: cs.onSurface, fontSize: 13),
               ),
             ),
@@ -2018,7 +2019,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                         ),
                         Expanded(
                           child: Text(
-                            '\$${item.precioUnitario.toStringAsFixed(0)}',
+                            CurrencyUtils.format(item.precioUnitario),
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.onSurface,
                               fontSize: 13,
@@ -2027,7 +2028,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                         ),
                         Expanded(
                           child: Text(
-                            '\$${item.subtotal.toStringAsFixed(0)}',
+                            CurrencyUtils.format(item.subtotal),
                             style: TextStyle(
                               color: AppTheme.primary,
                               fontSize: 13,
@@ -2386,7 +2387,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
-                '\$${totalFinal.toStringAsFixed(0)}',
+                CurrencyUtils.format(totalFinal),
                 style: TextStyle(
                   color: AppTheme.primary,
                   fontSize: 18,
@@ -2422,7 +2423,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
-              '${isNegative && valor > 0 ? "-" : ""}\$${valor.abs().toStringAsFixed(0)}',
+              '${isNegative && valor > 0 ? "-" : ""}${CurrencyUtils.format(valor.abs())}',
               style: TextStyle(
                 color: isNegative && valor > 0
                     ? Colors.red[300]
@@ -2870,14 +2871,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                       style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     ),
                     subtitle: Text(
-                      '${item.cantidad} ${item.unidad} x \$${item.precioUnitario.toStringAsFixed(0)}',
+                      '${item.cantidad} ${item.unidad} x ${CurrencyUtils.format(item.precioUnitario)}',
                       style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          '\$${item.subtotal.toStringAsFixed(0)}',
+                          CurrencyUtils.format(item.subtotal),
                           style: TextStyle(
                             color: AppTheme.primary,
                             fontWeight: FontWeight.bold,
@@ -3043,7 +3044,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                 ),
                 SizedBox(width: 8),
                 Text(
-                  '-\$${descuentoGeneralAplicado.toStringAsFixed(0)}',
+                  '-${CurrencyUtils.format(descuentoGeneralAplicado)}',
                   style: TextStyle(color: Colors.red[300], fontSize: 14),
                 ),
               ],
@@ -3079,7 +3080,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                   ),
                 ),
                 Text(
-                  '\$${totalFinal.toStringAsFixed(0)}',
+                  CurrencyUtils.format(totalFinal),
                   style: TextStyle(
                     color: AppTheme.primary,
                     fontSize: 22,
@@ -3109,7 +3110,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
             style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
           ),
           Text(
-            '${isNegative ? "-" : ""}\$${valor.abs().toStringAsFixed(0)}',
+            '${isNegative ? "-" : ""}${CurrencyUtils.format(valor.abs())}',
             style: TextStyle(
               color: isNegative ? Colors.red[300] : Theme.of(context).colorScheme.onSurface,
               fontSize: 14,

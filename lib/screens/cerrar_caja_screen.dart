@@ -1292,11 +1292,11 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           SizedBox(height: 16),
           _buildInfoRow(
             'Fondo Inicial:',
-            formatCurrency(movimientos.fondoInicial),
+            formatCurrencyRoundedTo1000(movimientos.fondoInicial),
           ),
           _buildInfoRow(
             'Ventas Efectivo:',
-            formatCurrency(
+            formatCurrencyRoundedTo1000(
               _ventasEfectivo > 0
                   ? _ventasEfectivo
                   : movimientos.ventasEfectivo,
@@ -1305,7 +1305,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           ),
           _buildInfoRow(
             'Ventas Transferencia:',
-            formatCurrency(
+            formatCurrencyRoundedTo1000(
               _transferenciasEsperadas > 0
                   ? _transferenciasEsperadas
                   : movimientos.ventasTransferencia,
@@ -1314,18 +1314,18 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           ),
           _buildInfoRow(
             'Gastos Efectivo:',
-            formatCurrency(movimientos.gastosEfectivo),
+            formatCurrencyRoundedTo1000(movimientos.gastosEfectivo),
             valueColor: AppTheme.error,
           ),
           _buildInfoRow(
             'Compras Efectivo:',
-            formatCurrency(movimientos.comprasEfectivo),
+            formatCurrencyRoundedTo1000(movimientos.comprasEfectivo),
             valueColor: AppTheme.warning,
           ),
           Divider(color: Colors.grey.withOpacity(0.3), height: 20),
           _buildInfoRow(
             'Efectivo Esperado:',
-            formatCurrency(
+            formatCurrencyRoundedTo1000(
               _efectivoEsperado > 0
                   ? _efectivoEsperado
                   : movimientos.efectivoEsperado,
@@ -1767,14 +1767,14 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           _buildInfoRow('Total Pedidos:', ventas.totalPedidos.toString()),
           _buildInfoRow(
             'Total Ventas:',
-            formatCurrency(ventas.totalVentas),
+            formatCurrencyRoundedTo1000(ventas.totalVentas),
             valueColor: AppTheme.success,
           ),
           _buildInfoRow(
             'Promedio por Pedido:',
             ventas.totalPedidos > 0
-                ? formatCurrency(ventas.totalVentas / ventas.totalPedidos)
-                : formatCurrency(0),
+                ? formatCurrencyRoundedTo1000(ventas.totalVentas / ventas.totalPedidos)
+                : formatCurrencyRoundedTo1000(0),
             valueColor: Colors.amber,
           ),
           Divider(color: Colors.grey.withOpacity(0.3), height: 24),
@@ -1790,29 +1790,68 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           // Mostrar TODOS los métodos de pago siempre (buscar en mayúscula y minúscula)
           _buildInfoRow(
             'Ventas Efectivo:',
-            formatCurrency((ventas.ventasPorFormaPago['Efectivo'] ?? ventas.ventasPorFormaPago['efectivo']) ?? 0),
+            formatCurrencyRoundedTo1000((ventas.ventasPorFormaPago['Efectivo'] ?? ventas.ventasPorFormaPago['efectivo']) ?? 0),
             valueColor: AppTheme.success,
           ),
           _buildInfoRow(
             'Ventas Transferencia:',
-            formatCurrency((ventas.ventasPorFormaPago['Transferencia'] ?? ventas.ventasPorFormaPago['transferencia']) ?? 0),
+            formatCurrencyRoundedTo1000((ventas.ventasPorFormaPago['Transferencia'] ?? ventas.ventasPorFormaPago['transferencia']) ?? 0),
             valueColor: AppTheme.primary,
           ),
           _buildInfoRow(
             'Ventas Tarjeta:',
-            formatCurrency((ventas.ventasPorFormaPago['Tarjeta'] ?? ventas.ventasPorFormaPago['tarjeta']) ?? 0),
+            formatCurrencyRoundedTo1000((ventas.ventasPorFormaPago['Tarjeta'] ?? ventas.ventasPorFormaPago['tarjeta']) ?? 0),
             valueColor: AppTheme.warning,
           ),
           _buildInfoRow(
             'Ventas Sistecredito:',
-            formatCurrency((ventas.ventasPorFormaPago['Sistecredito'] ?? ventas.ventasPorFormaPago['sistecredito']) ?? 0),
+            formatCurrencyRoundedTo1000((ventas.ventasPorFormaPago['Sistecredito'] ?? ventas.ventasPorFormaPago['sistecredito']) ?? 0),
             valueColor: Colors.purple,
           ),
           _buildInfoRow(
             'Ventas Datafono:',
-            formatCurrency((ventas.ventasPorFormaPago['Datafono'] ?? ventas.ventasPorFormaPago['datafono']) ?? 0),
+            formatCurrencyRoundedTo1000((ventas.ventasPorFormaPago['Datafono'] ?? ventas.ventasPorFormaPago['datafono']) ?? 0),
             valueColor: Colors.teal,
           ),
+          // Desglose visual adicional por plataforma específica (no cambia los
+          // totales de arriba, son un subconjunto de Transferencia/Datafono/Efectivo).
+          // Solo se muestran las plataformas que tuvieron movimiento este cuadre.
+          if ((ventas.ventasPorDetallePago['nequi'] ?? 0) > 0)
+            _buildInfoRow(
+              '   ↳ Nequi:',
+              formatCurrencyRoundedTo1000(ventas.ventasPorDetallePago['nequi'] ?? 0),
+              valueColor: AppTheme.primary,
+            ),
+          if ((ventas.ventasPorDetallePago['daviplata'] ?? 0) > 0)
+            _buildInfoRow(
+              '   ↳ DaviPlata:',
+              formatCurrencyRoundedTo1000(ventas.ventasPorDetallePago['daviplata'] ?? 0),
+              valueColor: AppTheme.primary,
+            ),
+          if ((ventas.ventasPorDetallePago['bancolombia'] ?? 0) > 0)
+            _buildInfoRow(
+              '   ↳ Bancolombia:',
+              formatCurrencyRoundedTo1000(ventas.ventasPorDetallePago['bancolombia'] ?? 0),
+              valueColor: AppTheme.primary,
+            ),
+          if ((ventas.ventasPorDetallePago['bold'] ?? 0) > 0)
+            _buildInfoRow(
+              '   ↳ Bold:',
+              formatCurrencyRoundedTo1000(ventas.ventasPorDetallePago['bold'] ?? 0),
+              valueColor: Colors.teal,
+            ),
+          if ((ventas.ventasPorDetallePago['addi'] ?? 0) > 0)
+            _buildInfoRow(
+              '   ↳ Addi:',
+              formatCurrencyRoundedTo1000(ventas.ventasPorDetallePago['addi'] ?? 0),
+              valueColor: AppTheme.success,
+            ),
+          if ((ventas.ventasPorDetallePago['credilondon'] ?? 0) > 0)
+            _buildInfoRow(
+              '   ↳ Credilondon:',
+              formatCurrencyRoundedTo1000(ventas.ventasPorDetallePago['credilondon'] ?? 0),
+              valueColor: AppTheme.success,
+            ),
 
           // Display Ingresos Caja
           Divider(color: Colors.grey.withOpacity(0.3), height: 24),
@@ -1827,14 +1866,14 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           SizedBox(height: 8),
           _buildInfoRow(
             'Ingresos Efectivo:',
-            formatCurrency(
+            formatCurrencyRoundedTo1000(
               _resumenCompletoData?.movimientosEfectivo.ingresosEfectivo ?? 0,
             ),
             valueColor: Colors.amber,
           ),
           _buildInfoRow(
             'Total Ingresos Caja:',
-            formatCurrency(
+            formatCurrencyRoundedTo1000(
               _resumenCompletoData?.movimientosEfectivo.totalIngresosCaja ??
                   0,
             ),

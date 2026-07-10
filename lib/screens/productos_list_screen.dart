@@ -24,6 +24,7 @@ import '../utils/pagination_mixin.dart';
 import '../utils/snackbar_helper.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/common/screen_header.dart';
+import '../widgets/horizontal_scroll_table.dart';
 
 class ProductosListScreen extends StatefulWidget {
   const ProductosListScreen({super.key});
@@ -431,6 +432,26 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
     );
   }
 
+  // Anchos fijos de columna (px): la tabla se vuelve horizontalmente
+  // desplazable en vez de comprimir el contenido en pantallas angostas.
+  static const double _colCodigo = 110;
+  static const double _colNombre = 220;
+  static const double _colValor = 100;
+  static const double _colInventario = 70;
+  static const double _colCosto = 100;
+  static const double _colUbicaciones = 70;
+  static const double _colEstado = 110;
+  static const double _colAcciones = 190;
+  static const double _anchoColumnas = _colCodigo +
+      _colNombre +
+      _colValor +
+      _colInventario +
+      _colCosto +
+      _colUbicaciones +
+      _colEstado +
+      _colAcciones;
+  static const double _anchoTabla = _anchoColumnas + 32; // + padding horizontal del Container
+
   Widget _buildTabla() {
     if (_isLoading) {
       return Center(child: CircularProgressIndicator(color: AppTheme.primary));
@@ -444,108 +465,72 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
       ),
       child: Column(
         children: [
-          // Encabezado de la tabla
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-            ),
-            child: Row(
-              children: [
-                _buildEncabezadoColumna('Código', flex: 2),
-                _buildEncabezadoColumna('Nombre', flex: 3),
-                _buildEncabezadoColumna(
-                  'Valor',
-                  flex: 2,
-                  align: TextAlign.right,
-                ),
-                _buildEncabezadoColumna(
-                  'Inventario',
-                  flex: 1,
-                  align: TextAlign.center,
-                ),
-                _buildEncabezadoColumna(
-                  'Costo',
-                  flex: 2,
-                  align: TextAlign.right,
-                ),
-                _buildEncabezadoColumna(
-                  'Ubicaciones',
-                  flex: 1,
-                  align: TextAlign.center,
-                ),
-                _buildEncabezadoColumna(
-                  'Estado\ninventario',
-                  flex: 2,
-                  align: TextAlign.center,
-                ),
-                _buildEncabezadoColumna('Acciones', flex: 2), // Acciones
-              ],
-            ),
-          ),
-
-          // Filas de la tabla
           Expanded(
-            child: _productosFiltrados.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+            child: HorizontalScrollTable(
+              contentWidth: _anchoTabla,
+              child: Column(
+                children: [
+                  // Encabezado de la tabla
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                    ),
+                    child: Row(
                       children: [
-                        Icon(
-                          Icons.inventory_2_outlined,
-                          size: 64,
-                          color: Colors.grey.shade600,
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'No hay productos registrados',
-                          style: TextStyle(
-                            color: Colors.grey.shade400,
-                            fontSize: 16,
-                          ),
-                        ),
+                        buildEncabezadoColumnaFija(context, 'Código', width: _colCodigo),
+                        buildEncabezadoColumnaFija(context, 'Nombre', width: _colNombre),
+                        buildEncabezadoColumnaFija(context, 'Valor', width: _colValor, align: TextAlign.right),
+                        buildEncabezadoColumnaFija(context, 'Inventario', width: _colInventario, align: TextAlign.center),
+                        buildEncabezadoColumnaFija(context, 'Costo', width: _colCosto, align: TextAlign.right),
+                        buildEncabezadoColumnaFija(context, 'Ubicaciones', width: _colUbicaciones, align: TextAlign.center),
+                        buildEncabezadoColumnaFija(context, 'Estado\ninventario', width: _colEstado, align: TextAlign.center),
+                        buildEncabezadoColumnaFija(context, 'Acciones', width: _colAcciones),
                       ],
                     ),
-                  )
-                : Column(
-                    children: [
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: paginarLista(_productosFiltrados).length,
-                          itemBuilder: (context, index) {
-                            final producto = paginarLista(_productosFiltrados)[index];
-                            return _buildFilaTabla(producto, index);
-                          },
-                        ),
-                      ),
-                      buildPaginacion(
-                        totalItems: _productosFiltrados.length,
-                        accentColor: AppTheme.primary,
-                      ),
-                    ],
                   ),
+
+                  // Filas de la tabla
+                  Expanded(
+                    child: _productosFiltrados.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.inventory_2_outlined,
+                                  size: 64,
+                                  color: Colors.grey.shade600,
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  'No hay productos registrados',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade400,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: paginarLista(_productosFiltrados).length,
+                            itemBuilder: (context, index) {
+                              final producto = paginarLista(_productosFiltrados)[index];
+                              return _buildFilaTabla(producto, index);
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          buildPaginacion(
+            totalItems: _productosFiltrados.length,
+            accentColor: AppTheme.primary,
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildEncabezadoColumna(
-    String texto, {
-    int flex = 1,
-    TextAlign align = TextAlign.left,
-  }) {
-    return Expanded(
-      flex: flex,
-      child: Text(
-        texto,
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurface,
-          fontWeight: FontWeight.bold,
-          fontSize: 13,
-        ),
-        textAlign: align,
       ),
     );
   }
@@ -576,8 +561,8 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
       child: Row(
         children: [
           // Código (clickeable, verde)
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: _colCodigo,
             child: InkWell(
               onTap: () => _mostrarDetalleProducto(producto),
               child: Text(
@@ -591,19 +576,25 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
             ),
           ),
 
-          // Nombre
-          Expanded(
-            flex: 3,
-            child: Text(
-              producto.nombre.toUpperCase(),
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
-              overflow: TextOverflow.ellipsis,
+          // Nombre (con scroll horizontal propio para ver el nombre completo)
+          SizedBox(
+            width: _colNombre,
+            child: Scrollbar(
+              thumbVisibility: false,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Text(
+                  producto.nombre.toUpperCase(),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+                  softWrap: false,
+                ),
+              ),
             ),
           ),
 
           // Valor (Precio)
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: _colValor,
             child: Text(
               '\$ ${formatNumberWithDots(producto.precio)}',
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
@@ -612,8 +603,8 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
           ),
 
           // Inventario (total: almacén + bodega)
-          Expanded(
-            flex: 1,
+          SizedBox(
+            width: _colInventario,
             child: Tooltip(
               message:
                   'Almacén: ${producto.almacen ?? 0}\nBodega: ${producto.bodega ?? 0}',
@@ -634,8 +625,8 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
           ),
 
           // Costo
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: _colCosto,
             child: Text(
               '\$ ${formatNumberWithDots(producto.costo)}',
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
@@ -644,8 +635,8 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
           ),
 
           // Ubicaciones
-          Expanded(
-            flex: 1,
+          SizedBox(
+            width: _colUbicaciones,
             child: Center(
               child: Container(
                 width: 36,
@@ -665,8 +656,8 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
           ),
 
           // Estado inventario
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: _colEstado,
             child: Center(
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -688,13 +679,11 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
           ),
 
           // Acciones
-          Expanded(
-            flex: 2,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
+          SizedBox(
+            width: _colAcciones,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
                   Container(
                     width: 32,
                     height: 32,
@@ -773,7 +762,6 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                 ],
               ),
             ),
-          ),
         ],
       ),
     );
@@ -3450,7 +3438,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
               children: [
                 if (incluirPrecio)
                   pw.Text(
-                    '\$${producto.precio.toStringAsFixed(0)}',
+                    formatCurrency(producto.precio),
                     style: pw.TextStyle(
                       fontSize: 5,
                       fontWeight: pw.FontWeight.bold,
@@ -3519,9 +3507,14 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
       // Descargar archivo
       final bytes = await _productoService.descargarProductosExcel();
 
-      // Cerrar diálogo antes de disparar la descarga para evitar conflicto de Navigator
+      // Cerrar diálogo antes de disparar la descarga para evitar conflicto de Navigator.
+      // showDialog() usa useRootNavigator:true por defecto, así que el diálogo vive en
+      // el Navigator raíz — no en el Navigator anidado del ShellRoute de esta pantalla.
+      // Navigator.of(context).pop() (sin rootNavigator:true) cerraba el Navigator
+      // anidado equivocado en vez del diálogo, causando el crash
+      // "!_debugLocked" al desmontarse de golpe parte del árbol de widgets.
       if (mounted && dialogoMostrado) {
-        Navigator.of(context).pop();
+        Navigator.of(context, rootNavigator: true).pop();
         dialogoMostrado = false;
       }
 
@@ -3550,10 +3543,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
         showSuccessSnackBar(context, 'Archivo descargado: $filename');
       }
     } catch (e) {
-      // Cerrar diálogo si está abierto
+      // Cerrar diálogo si está abierto (mismo rootNavigator:true que arriba)
       if (mounted && dialogoMostrado) {
         try {
-          Navigator.of(context).pop();
+          Navigator.of(context, rootNavigator: true).pop();
         } catch (_) {}
       }
 

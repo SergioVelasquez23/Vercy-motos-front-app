@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/factura_compra.dart';
 import '../theme/app_theme.dart';
+import '../utils/currency_utils.dart';
 
 class DetalleFacturaCompraScreen extends StatelessWidget {
   final FacturaCompra factura;
@@ -160,11 +161,11 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
                     style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   ),
                   subtitle: Text(
-                    '${item.cantidad} ${item.unidad} x \$${item.precioUnitario.toStringAsFixed(0)}',
+                    '${item.cantidad} ${item.unidad} x ${CurrencyUtils.format(item.precioUnitario)}',
                     style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   ),
                   trailing: Text(
-                    '\$${item.subtotal.toStringAsFixed(0)}',
+                    CurrencyUtils.format(item.subtotal),
                     style: TextStyle(
                       color: AppTheme.primary,
                       fontWeight: FontWeight.bold,
@@ -208,7 +209,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '\$${factura.total.toStringAsFixed(0)}',
+                  CurrencyUtils.format(factura.total),
                   style: TextStyle(
                     color: AppTheme.primary,
                     fontSize: 18,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/producto.dart';
 import '../models/factura_compra.dart';
 import '../theme/app_theme.dart';
+import '../utils/currency_utils.dart';
 
 // Widget de diálogo para agregar items desde productos
 class DialogoAgregarItemCompra extends StatefulWidget {
@@ -178,7 +179,7 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
                               style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                             ),
                             trailing: Text(
-                              '\$${producto.precio.toStringAsFixed(0)}',
+                              CurrencyUtils.format(producto.precio),
                               style: TextStyle(
                                 color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 fontWeight: FontWeight.w500,
@@ -489,7 +490,7 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
                                           ),
                                         ),
                                         Text(
-                                          '\$${_precioUnitarioCalculado.toStringAsFixed(2)}',
+                                          CurrencyUtils.format(_precioUnitarioCalculado),
                                           style: TextStyle(
                                             color: Theme.of(context).colorScheme.onSurface,
                                             fontSize: 14,
@@ -537,7 +538,7 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
                                         ),
                                       ),
                                       Text(
-                                        '\$${_totalItem.toStringAsFixed(0)}',
+                                        CurrencyUtils.format(_totalItem),
                                         style: TextStyle(
                                           color: AppTheme.primary,
                                           fontSize: 18,
@@ -619,7 +620,7 @@ class DialogoAgregarItemCompraState extends State<DialogoAgregarItemCompra> {
             style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
           ),
           Text(
-            '${isNegative ? "-" : ""}\$${valor.abs().toStringAsFixed(0)}',
+            '${isNegative ? "-" : ""}${CurrencyUtils.format(valor.abs())}',
             style: TextStyle(
               color: isNegative ? Colors.red[300] : Theme.of(context).colorScheme.onSurface,
               fontSize: 13,

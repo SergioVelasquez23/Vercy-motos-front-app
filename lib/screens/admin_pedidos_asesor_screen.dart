@@ -5,6 +5,7 @@ import '../models/pedido_asesor.dart';
 import '../services/pedido_asesor_service.dart';
 import '../theme/app_theme.dart';
 import '../providers/user_provider.dart';
+import '../utils/currency_utils.dart';
 import 'facturacion_screen.dart';
 
 class AdminPedidosAsesorScreen extends StatefulWidget {
@@ -402,7 +403,7 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
                     (item) => Padding(
                       padding: EdgeInsets.only(left: 8, top: 2),
                       child: Text(
-                        '• ${item.productoNombre} x${item.cantidad} - \$${item.subtotal.toStringAsFixed(0)}',
+                        '• ${item.productoNombre} x${item.cantidad} - ${CurrencyUtils.format(item.subtotal)}',
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 12,
@@ -451,7 +452,7 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Total: \$${pedido.total.toStringAsFixed(0)}',
+                        'Total: ${CurrencyUtils.format(pedido.total)}',
                         style: TextStyle(
                           color: AppTheme.primary,
                           fontSize: 20,

@@ -54,6 +54,22 @@ class NotificacionesProvider extends ChangeNotifier {
   // Traslados y dejan de aparecer aquí (evita acumular historial viejo).
   static const _ventanaTraslados = Duration(hours: 48);
 
+  // Solo el equipo de bodega necesita enterarse de los traslados pendientes
+  // (son quienes los preparan); al resto de usuarios (asesores, admin, etc.)
+  // no se les muestra ni suena esta notificación. Se compara contra email
+  // Y nombre de usuario (no todos los JWT traen el claim "email") para que
+  // baste con que uno de los dos matchee.
+  static const _emailsNotificadosTraslado = {
+    'bodegavercy@gmail.com',
+    'francia@gmail.com',
+    'diegoalek01@gmail.com',
+  };
+  static const _usuariosNotificadosTraslado = {
+    'bodega',
+    'francia',
+    'diego',
+  };
+
   final CarteraService _carteraService;
   final TrasladoService _trasladoService;
 
@@ -65,33 +81,42 @@ class NotificacionesProvider extends ChangeNotifier {
   DateTime? _lastRefresh;
   Timer? _autoRefreshTimer;
 
-  // IDs de traslado ya vistos en algún refresh anterior de esta sesión —
-  // para distinguir "traslado nuevo desde la última vez que se consultó"
-  // (dispara sonido + alerta) de "traslado que ya estaba ahí" (silencioso).
-  // No usa _trasladosDescartados porque ese set es sobre lo que el usuario
-  // ya marcó como visto explícitamente, algo distinto.
-  final Set<String> _idsTrasladosVistos = {};
+  // En el primer refresh de la sesión no se alerta de golpe por todo lo que
+  // ya estaba pendiente de antes (sería ruido); a partir del segundo, si
+  // sigue pendiente, se alerta y se repite en cada ciclo (ver
+  // _detectarTrasladosNuevos).
   bool _primerRefresh = true;
-  NotificacionItem? _nuevoTrasladoParaMostrar;
+
+  String? _emailUsuarioActual;
+  String? _nombreUsuarioActual;
+
+  /// Debe llamarse al iniciar sesión (ver AppShell) para que el proveedor
+  /// sepa si el usuario actual debe recibir sonido/alerta de traslados.
+  void configurarUsuario({String? email, String? nombre}) {
+    _emailUsuarioActual = email?.trim().toLowerCase();
+    _nombreUsuarioActual = nombre?.trim().toLowerCase();
+    debugPrint(
+      '🔔 [NotificacionesProvider] usuario configurado: '
+      'email=$_emailUsuarioActual nombre=$_nombreUsuarioActual '
+      'puedeVerTraslados=$_puedeVerTraslados',
+    );
+  }
+
+  bool get _puedeVerTraslados =>
+      (_emailUsuarioActual != null &&
+          _emailsNotificadosTraslado.contains(_emailUsuarioActual)) ||
+      (_nombreUsuarioActual != null &&
+          _usuariosNotificadosTraslado.contains(_nombreUsuarioActual));
 
   ResumenCartera? get resumen => _resumen;
   bool get isLoading => _isLoading;
   String? get error => _error;
   DateTime? get lastRefresh => _lastRefresh;
 
-  /// Traslado recién detectado en el último refresh (para que la UI muestre
-  /// una alerta más visible que el badge de la campana). La pantalla que lo
-  /// consuma debe llamar [limpiarNuevoTraslado] después de mostrarlo.
-  NotificacionItem? get nuevoTrasladoParaMostrar => _nuevoTrasladoParaMostrar;
-
-  void limpiarNuevoTraslado() {
-    _nuevoTrasladoParaMostrar = null;
-  }
-
   List<NotificacionItem> get items {
     final List<NotificacionItem> result = [];
 
-    for (final traslado in _trasladosRecientes) {
+    for (final traslado in _puedeVerTraslados ? _trasladosRecientes : const <Traslado>[]) {
       if (traslado.id == null || _trasladosDescartados.contains(traslado.id)) {
         continue;
       }
@@ -195,36 +220,28 @@ class NotificacionesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Compara los traslados de este refresh contra los ya vistos: si aparece
-  /// alguno realmente nuevo, suena un beep y se guarda para que la UI lo
-  /// muestre de forma más visible que solo el contador de la campana.
+  /// Solo alerta (sonido) a los usuarios de bodega
+  /// ([_emailsNotificadosTraslado]) y, mientras quede al menos un traslado
+  /// sin marcar como visto, repite la alerta en cada ciclo de auto-refresh
+  /// (no solo la primera vez que aparece) — así no se pasa desapercibida
+  /// aunque nadie haya estado mirando la pantalla. Se detiene en cuanto
+  /// alguien lo descarta con "Marcar como visto" ([descartarTraslado]).
   ///
   /// En el primer refresh de la sesión (recién abierta la app) NO se avisa
-  /// de nada — todo lo que ya estaba pendiente se ve como "nuevo" y sonaría/
-  /// alertaría de golpe por cada uno, que es ruido, no una notificación real.
+  /// de nada — todo lo que ya estaba pendiente sonaría de golpe, que es
+  /// ruido, no una notificación real. A partir del segundo refresh sí repite.
   void _detectarTrasladosNuevos() {
-    final idsActuales = _trasladosRecientes
-        .where((t) => t.id != null)
-        .map((t) => t.id!)
-        .toSet();
-
     if (_primerRefresh) {
-      _idsTrasladosVistos.addAll(idsActuales);
       _primerRefresh = false;
       return;
     }
 
-    final nuevosIds = idsActuales.difference(_idsTrasladosVistos);
-    _idsTrasladosVistos.addAll(idsActuales);
+    if (!_puedeVerTraslados) return;
 
-    if (nuevosIds.isEmpty) return;
+    final hayPendientes = _trasladosRecientes.any((t) => t.id != null);
+    if (!hayPendientes) return;
 
     playNotificationSound();
-
-    final trasladoNuevo = _trasladosRecientes.firstWhere(
-      (t) => nuevosIds.contains(t.id),
-    );
-    _nuevoTrasladoParaMostrar = _construirItemTraslado(trasladoNuevo);
   }
 
   NotificacionItem _construirItemTraslado(Traslado traslado) {

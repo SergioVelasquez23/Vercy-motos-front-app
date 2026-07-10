@@ -4646,7 +4646,7 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
           // Precio (solo si está seleccionado)
           if (mostrarPrecio)
             Text(
-              '\$${producto.precio.toStringAsFixed(0)}',
+              formatCurrency(producto.precio),
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 12,
@@ -4743,7 +4743,7 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                       // Precio
                       if (mostrarPrecio)
                         pw.Text(
-                          '\$${producto.precio.toStringAsFixed(0)}',
+                          formatCurrency(producto.precio),
                           style: pw.TextStyle(
                             fontSize: 12,
                             fontWeight: pw.FontWeight.bold,

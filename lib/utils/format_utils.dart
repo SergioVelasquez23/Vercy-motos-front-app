@@ -73,9 +73,12 @@ String _formatNumberManually(num value) {
       value = double.parse(value.toString());
     }
 
-    // Convertir a entero para formateo (truncar decimales)
+    // Convertir a entero para formateo (redondear, no truncar: así coincide
+    // con NumberFormat.currency(decimalDigits: 0) usado en pdf_export_service.dart
+    // y con toStringAsFixed(0)/round() usados en otros lados — antes truncaba
+    // y podía mostrar un peso menos que esas otras partes de la app).
     final bool isNegative = value < 0;
-    int intValue = value.truncate().abs();
+    int intValue = value.round().abs();
 
     // Validar que el resultado sea un número válido
     final numStr = intValue.toString();
@@ -109,7 +112,7 @@ String _formatNumberManually(num value) {
       
     // Fallback absoluto: asegurar que siempre devuelva algo válido
     try {
-      return value.truncate().abs().toString();
+      return value.round().abs().toString();
     } catch (e2) {
         
       return '0'; // Último recurso
@@ -153,12 +156,31 @@ String formatCurrency(dynamic value) {
       return '\$0';
     }
   } catch (e, stackTrace) {
-      
-      
-      
-      
+
+
+
+
     return '\$0'; // Fallback absoluto
   }
+}
+
+/// Formatea un valor como moneda redondeado HACIA ARRIBA al siguiente
+/// múltiplo de 1000 (ej. 2.023.991 -> $2.024.000). Pensado para resúmenes de
+/// cierre de caja, donde el efectivo se cuenta en billetes/monedas y no tiene
+/// sentido mostrar pesos sueltos.
+String formatCurrencyRoundedTo1000(dynamic value) {
+  num numValue;
+  if (value is String) {
+    numValue = num.tryParse(value.replaceAll(',', '.')) ?? 0;
+  } else if (value is num) {
+    numValue = value;
+  } else {
+    numValue = 0;
+  }
+  if (numValue.isNaN || numValue.isInfinite) numValue = 0;
+
+  final redondeado = (numValue / 1000).ceil() * 1000;
+  return formatCurrency(redondeado);
 }
 
 /// Limpiar cache de formateo (llamar después de operaciones que pueden corromper)

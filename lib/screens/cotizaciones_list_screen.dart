@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../models/cotizacion.dart';
 import '../models/cliente.dart';
+import '../models/negocio_info.dart';
+import '../providers/datos_cache_provider.dart';
 import '../services/cotizacion_service.dart';
 import '../services/cliente_service.dart';
+import '../services/negocio_info_service.dart';
 import '../services/pdf_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/currency_utils.dart';
 import '../utils/logger.dart';
 import '../utils/pagination_mixin.dart';
 import '../widgets/common/screen_header.dart';
@@ -19,6 +24,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
     with PaginacionMixin<CotizacionesListScreen> {
   final CotizacionService _cotizacionService = CotizacionService();
   final ClienteService _clienteService = ClienteService();
+  final NegocioInfoService _negocioInfoService = NegocioInfoService();
   final PDFService _pdfService = PDFService();
   final TextEditingController _searchController = TextEditingController();
 
@@ -83,6 +89,12 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
 
     resetPagina();
     setState(() => _cotizacionesFiltradas = filtradas);
+  }
+
+  Future<void> _facturarCotizacion(Cotizacion cotizacion) async {
+    await context.push('/facturar', extra: cotizacion);
+    // Recargar lista al regresar (la cotización puede haber quedado convertida)
+    _cargarCotizaciones();
   }
 
   @override
@@ -416,7 +428,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
-              'Total: \$${cotizacion.totalFinal.toStringAsFixed(0)}',
+              'Total: ${CurrencyUtils.format(cotizacion.totalFinal)}',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -434,6 +446,12 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (cotizacion.puedeConvertirseAFactura)
+          IconButton(
+            icon: Icon(Icons.point_of_sale, color: AppTheme.primary),
+            onPressed: () => _facturarCotizacion(cotizacion),
+            tooltip: 'Facturar',
+          ),
         IconButton(
           icon: Icon(Icons.picture_as_pdf, color: Colors.orange),
           onPressed: () => _verPDF(cotizacion),
@@ -575,14 +593,36 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
       
       appLog('📝 Nombre final para PDF: $nombreCliente');
 
+      // Info real del negocio (igual que en facturas_list_screen.dart)
+      NegocioInfo? negocioInfo;
+      try {
+        negocioInfo = await _negocioInfoService.getNegocioInfo();
+      } catch (e) {
+        appLog('⚠️ No se pudo obtener info del negocio: $e');
+      }
+
+      // Mapa productoId → código interno para mostrar en PDF
+      final codigoPorId = <String, String>{};
+      try {
+        final cache = Provider.of<DatosCacheProvider>(context, listen: false);
+        for (final p in cache.productos ?? []) {
+          if (p.codigo != null && p.codigo!.isNotEmpty) {
+            codigoPorId[p.id] = p.codigo!;
+          }
+        }
+      } catch (_) {}
+
       // Preparar datos del resumen para el PDF
       final resumen = {
-        // Información del negocio
-        'negocioNombre': 'VERCY MOTOS',
-        'negocioNit': '1002378776-7',
-        'negocioTelefono': '(6) 8839844',
-        'negocioDireccion': 'Carrera 19 Calle 23, Caldas - Manizales, Caldas',
-        'negocioCorreo': 'juandiegocaycedo1@gmail.com',
+        // Información del negocio - USAR NOMBRES DE CAMPOS QUE ESPERA PDF_SERVICE
+        'nombreNegocio': negocioInfo?.nombre ?? 'VERCY MOTOS',
+        'nombreRestaurante': negocioInfo?.nombre ?? 'VERCY MOTOS',
+        'nit': negocioInfo?.nit ?? '',
+        'email': negocioInfo?.email ?? '',
+        'telefonoRestaurante': negocioInfo?.telefono ?? '',
+        'direccionRestaurante': negocioInfo?.direccion ?? '',
+        'ciudad': negocioInfo?.ciudad ?? 'MANIZALES',
+        'departamento': negocioInfo?.departamento ?? 'CALDAS',
 
         // Información del cliente - USAR NOMBRES DE CAMPOS QUE ESPERA PDF_SERVICE
         'cliente': nombreCliente,  // ⚠️ PDF espera 'cliente', no 'clienteNombre'
@@ -612,14 +652,14 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
         'items': cotizacion.items
             .map(
               (item) => {
-                'codigo': item.codigoProducto ?? item.productoId,
-                'detalle': item.productoNombre ?? 'Producto sin nombre',
+                'codigo': codigoPorId[item.productoId] ?? item.codigoProducto ?? '',
+                'productoNombre': item.productoNombre ?? 'Producto sin nombre',
                 'cantidad': item.cantidad,
-                'valorUnit': item.precioUnitario,
-                'dcto': item.porcentajeDescuento,
-                'valorDcto': item.valorDescuento,
-                'iva': item.porcentajeImpuesto,
-                'valorIVA': item.valorImpuesto,
+                'precioUnitario': item.precioUnitario,
+                'porcentajeDescuento': item.porcentajeDescuento,
+                'valorDescuento': item.valorDescuento,
+                'porcentajeImpuesto': item.porcentajeImpuesto,
+                'valorImpuesto': item.valorImpuesto,
                 'subtotal': item.subtotal,
                 'total': item.valorTotal,
               },

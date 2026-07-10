@@ -6,6 +6,7 @@ import '../../models/item_pedido.dart';
 import '../../models/pago_parcial.dart';
 import '../../widgets/common/common_widgets.dart';
 import '../../utils/format_utils.dart';
+import '../../utils/detalle_pago_options.dart';
 
 class DialogoPago extends StatefulWidget {
   final Pedido pedido;
@@ -46,6 +47,9 @@ class _DialogoPagoState extends State<DialogoPago> {
 
   // Variables de estado
   String medioPago = 'efectivo';
+  // Sub-categoría visual del medio de pago (nequi/daviplata/bancolombia/bold/...).
+  // Puramente informativo para el libro contable: no reemplaza a `medioPago`.
+  String? detallePago = 'efectivo';
   bool incluyePropina = false;
   bool pagoMultiple = false;
   bool incluirDatosCliente = false;
@@ -1394,29 +1398,45 @@ class _DialogoPagoState extends State<DialogoPago> {
         SizedBox(height: 16),
         SeccionContainer(
           child: Column(
-            children: [
-              _buildMetodoPagoOption('efectivo', 'Efectivo', Icons.money),
-              _buildMetodoPagoOption(
-                'transferencia',
-                'Transferencia',
-                Icons.account_balance,
-              ),
-            ],
+            children: medioPagoDetalladoOptions
+                .map((opcion) => _buildMetodoPagoOption(opcion, _iconoParaDetallePago(opcion.value)))
+                .toList(),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildMetodoPagoOption(String value, String title, IconData icon) {
+  IconData _iconoParaDetallePago(String value) {
+    switch (value) {
+      case 'efectivo':
+        return Icons.money;
+      case 'nequi':
+      case 'daviplata':
+      case 'bancolombia':
+        return Icons.account_balance;
+      case 'bold':
+        return Icons.point_of_sale;
+      case 'sistecredito':
+        return Icons.account_balance_wallet;
+      case 'addi':
+      case 'credilondon':
+        return Icons.credit_score;
+      default:
+        return Icons.payment;
+    }
+  }
+
+  Widget _buildMetodoPagoOption(DetallePagoOption opcion, IconData icon) {
     return Container(
       margin: EdgeInsets.symmetric(vertical: 4),
       child: RadioListTile<String>(
-        value: value,
-        groupValue: medioPago,
+        value: opcion.value,
+        groupValue: detallePago,
         onChanged: (String? value) {
           setState(() {
-            medioPago = value!;
+            detallePago = value;
+            medioPago = opcion.formaPagoBase;
           });
         },
         title: Row(
@@ -1424,7 +1444,7 @@ class _DialogoPagoState extends State<DialogoPago> {
             Icon(icon, color: AppTheme.primary),
             SizedBox(width: 12),
             Text(
-              title,
+              opcion.label,
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w500,
@@ -1693,6 +1713,7 @@ class _DialogoPagoState extends State<DialogoPago> {
     // ✅ SINCRONIZADO: Usar itemsParaPagar del getter
     final resultado = {
       'medioPago': pagoMultiple ? 'mixto' : medioPago, // ✅ CORRECCIÓN: Usar 'mixto' para pagos múltiples
+      'detallePago': pagoMultiple ? null : detallePago, // Sub-categoría visual (nequi/daviplata/bancolombia/bold/...)
       'incluyePropina': incluyePropina,
       'descuentoPorcentaje': descuentoPorcentajeController.text,
       'descuentoValor': descuentoValorController.text,

@@ -67,6 +67,8 @@ class ItemFacturaPdfPreview {
   final String descripcion;
   final double cantidad;
   final double valorUnitario;
+  final double porcentajeDescuento;
+  final double costoUnitarioNeto;
   final double porcentajeIva;
   final double valorIva;
   final double subtotal;
@@ -88,6 +90,8 @@ class ItemFacturaPdfPreview {
     required this.descripcion,
     required this.cantidad,
     required this.valorUnitario,
+    this.porcentajeDescuento = 0,
+    required this.costoUnitarioNeto,
     required this.porcentajeIva,
     required this.valorIva,
     required this.subtotal,
@@ -110,6 +114,9 @@ class ItemFacturaPdfPreview {
       descripcion: json['descripcion']?.toString() ?? '',
       cantidad: (json['cantidad'] as num?)?.toDouble() ?? 0,
       valorUnitario: (json['valorUnitario'] as num?)?.toDouble() ?? 0,
+      porcentajeDescuento: (json['porcentajeDescuento'] as num?)?.toDouble() ?? 0,
+      costoUnitarioNeto: (json['costoUnitarioNeto'] as num?)?.toDouble()
+          ?? (json['valorUnitario'] as num?)?.toDouble() ?? 0,
       porcentajeIva: (json['porcentajeIva'] as num?)?.toDouble() ?? 0,
       valorIva: (json['valorIva'] as num?)?.toDouble() ?? 0,
       subtotal: (json['subtotal'] as num?)?.toDouble() ?? 0,

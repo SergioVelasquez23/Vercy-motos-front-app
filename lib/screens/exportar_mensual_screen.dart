@@ -794,7 +794,7 @@ class _ExportarMensualScreenState extends State<ExportarMensualScreen> {
     if (monto == null) return '0';
     try {
       final valor = double.parse(monto.toString());
-      return NumberFormat('#,##0').format(valor);
+      return NumberFormat('#,##0', 'es_CO').format(valor);
     } catch (e) {
       return monto.toString();
     }

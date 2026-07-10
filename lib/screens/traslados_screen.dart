@@ -11,6 +11,7 @@ import '../services/traslado_service.dart';
 import '../services/producto_service.dart';
 import '../services/bodega_service.dart';
 import '../providers/user_provider.dart';
+import '../providers/notificaciones_provider.dart';
 import '../theme/app_theme.dart';
 import '../config/api_config.dart';
 import '../utils/token_storage.dart';
@@ -36,18 +37,50 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
   bool _isLoading = false;
   String _filtroEstado = 'TODOS';
   bool _mostrarFormulario = false;
+  NotificacionesProvider? _notifProvider;
 
   @override
   void initState() {
     super.initState();
     _cargarDatos();
     _searchController.addListener(_filtrarTraslados);
+
+    // El centro de notificaciones ya consulta traslados nuevos cada 60s
+    // (ver NotificacionesProvider.startAutoRefresh, arrancado desde
+    // AppShell). Nos enganchamos a esos refrescos para que, si el usuario
+    // ya está parado en esta pantalla, la lista se actualice sola en vez de
+    // requerir el botón "Actualizar" manual.
+    _notifProvider = Provider.of<NotificacionesProvider>(context, listen: false);
+    _notifProvider?.addListener(_onNotificacionesChanged);
   }
 
   @override
   void dispose() {
+    _notifProvider?.removeListener(_onNotificacionesChanged);
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onNotificacionesChanged() {
+    if (!mounted) return;
+    _recargarTraslados();
+  }
+
+  /// Refresco silencioso (sin spinner de pantalla completa) que solo trae
+  /// la lista de traslados — evita repetir la carga de productos/bodegas
+  /// que hace [_cargarDatos] cada vez que llega un refresco periódico.
+  Future<void> _recargarTraslados() async {
+    try {
+      final traslados = await _trasladoService.listarTraslados(
+        estado: _filtroEstado != 'TODOS' ? _filtroEstado : null,
+      );
+      if (!mounted) return;
+      setState(() => _traslados = traslados);
+      _filtrarTraslados();
+    } catch (_) {
+      // Silencioso: si falla el refresco en segundo plano, el botón
+      // "Actualizar" sigue disponible para reintentar manualmente.
+    }
   }
 
   Future<void> _cargarDatos() async {

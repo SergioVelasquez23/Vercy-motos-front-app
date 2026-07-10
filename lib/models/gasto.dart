@@ -1,3 +1,5 @@
+import '../utils/currency_utils.dart';
+
 class Gasto {
   final String? id;
   final String cuadreCajaId;
@@ -35,7 +37,7 @@ class Gasto {
 
   factory Gasto.fromJson(Map<String, dynamic> json) {
     return Gasto(
-      id: json['_id'],
+      id: json['_id'] ?? json['id'],
       cuadreCajaId: json['cuadreCajaId'] ?? '',
       tipoGastoId: json['tipoGastoId'] ?? '',
       tipoGastoNombre: json['tipoGastoNombre'] ?? '',
@@ -112,7 +114,7 @@ class Gasto {
   }
 
   // Getters útiles
-  String get montoFormateado => '\$ ${monto.toStringAsFixed(0)}';
+  String get montoFormateado => CurrencyUtils.format(monto);
   String get fechaFormateada =>
       '${fechaGasto.day}/${fechaGasto.month}/${fechaGasto.year}';
   bool get tieneFactura => numeroFactura != null && numeroFactura!.isNotEmpty;

@@ -8,6 +8,7 @@ import '../../services/matias_service.dart';
 import '../../services/negocio_info_service.dart';
 import '../../services/proveedor_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/currency_utils.dart';
 
 class DocumentoSoporteDialog extends StatefulWidget {
   /// Cuando se pasa, el dialog pre-llena todo desde la compra y solo
@@ -987,7 +988,7 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Proveedor: ${ds.proveedor}', style: TextStyle(color: cs.onSurface, fontSize: 13)),
-                Text('Total: \$${ds.total.toStringAsFixed(0)}', style: TextStyle(color: cs.onSurface.withValues(alpha:0.6), fontSize: 13)),
+                Text('Total: ${CurrencyUtils.format(ds.total)}', style: TextStyle(color: cs.onSurface.withValues(alpha:0.6), fontSize: 13)),
               ],
             ),
           ),

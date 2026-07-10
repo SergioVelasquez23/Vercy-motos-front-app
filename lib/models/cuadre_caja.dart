@@ -1,3 +1,5 @@
+import '../utils/currency_utils.dart';
+
 class CuadreCaja {
   final String? id;
   final String nombre;
@@ -216,9 +218,9 @@ class CuadreCaja {
 
   String get diferenciaFormatted {
     if (diferencia >= 0) {
-      return '+${diferencia.toStringAsFixed(0)}';
+      return '+${CurrencyUtils.formatPlain(diferencia)}';
     } else {
-      return diferencia.toStringAsFixed(0);
+      return CurrencyUtils.formatPlain(diferencia);
     }
   }
 }
