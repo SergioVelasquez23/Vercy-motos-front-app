@@ -50,6 +50,7 @@ class _AppShellState extends State<AppShell> {
     // aunque también se llame desde SplashScreen en el flujo normal de login.
     _notifProvider?.refresh();
     _notifProvider?.startAutoRefresh();
+    _notifProvider?.iniciarEscuchaTiempoReal();
   }
 
   @override

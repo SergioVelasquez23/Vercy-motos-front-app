@@ -7,9 +7,11 @@ import '../models/cuenta_por_cobrar.dart';
 import '../models/cuenta_por_pagar.dart';
 import '../models/gasto_programado.dart';
 import '../models/resumen_cartera.dart';
+import '../config/constants.dart';
 import '../models/traslado.dart';
 import '../services/cartera_service.dart';
 import '../services/traslado_service.dart';
+import '../services/traslado_websocket_service.dart';
 import '../utils/currency_utils.dart';
 import '../utils/notification_sound.dart';
 
@@ -72,6 +74,7 @@ class NotificacionesProvider extends ChangeNotifier {
 
   final CarteraService _carteraService;
   final TrasladoService _trasladoService;
+  final TrasladoWebSocketService _wsService = TrasladoWebSocketService();
 
   ResumenCartera? _resumen;
   List<Traslado> _trasladosRecientes = [];
@@ -290,9 +293,25 @@ class NotificacionesProvider extends ChangeNotifier {
     _autoRefreshTimer = null;
   }
 
+  /// Conecta al WebSocket de traslados para enterarse al instante cuando se
+  /// crea uno nuevo, en vez de esperar hasta 60s al siguiente auto-refresh.
+  /// El sondeo periódico sigue activo como respaldo (ver startAutoRefresh) —
+  /// si el WebSocket se cae, la reconexión automática lo retoma solo.
+  void iniciarEscuchaTiempoReal() {
+    _wsService.connect(
+      baseUrl: kDynamicBackendUrl,
+      onEvent: (data) {
+        if (data['tipo'] == 'TRASLADO_CREADO') {
+          refresh();
+        }
+      },
+    );
+  }
+
   @override
   void dispose() {
     stopAutoRefresh();
+    _wsService.disconnect();
     super.dispose();
   }
 }
