@@ -11,11 +11,18 @@ typedef OnConnectionStatusChanged = void Function(bool isConnected);
 /// A diferencia de MatiasWebhookService (que intenta conectar directo a una
 /// ruta de tipo STOMP topic y por eso nunca llegó a funcionar — está
 /// deshabilitado con ENABLED=false), este se conecta a un endpoint WebSocket
-/// plano dedicado (`/ws/traslados`, ver TrasladoWebSocketHandler en el
+/// plano dedicado (`/rt/traslados`, ver TrasladoWebSocketHandler en el
 /// backend), sin protocolo STOMP de por medio.
 class TrasladoWebSocketService {
-  static const String _websocketPath = '/ws/traslados';
-  static const Duration _reconnectDelay = Duration(seconds: 5);
+  // No puede empezar con "/ws/" — el backend ya registra un endpoint
+  // STOMP/SockJS en "/ws" que reclama el patrón comodín "/ws/**" para sus
+  // propias sub-rutas, así que cualquier endpoint plano bajo "/ws/algo" queda
+  // atrapado por ese handler y nunca llega al de traslados (404 en el
+  // handshake, confirmado con curl). Por eso el backend expone este canal
+  // bajo "/rt" en su lugar.
+  static const String _websocketPath = '/rt/traslados';
+  static const Duration _reconnectDelayBase = Duration(seconds: 5);
+  static const Duration _reconnectDelayMax = Duration(minutes: 2);
 
   WebSocketChannel? _channel;
   OnTrasladoEvent? _onEvent;
@@ -23,6 +30,11 @@ class TrasladoWebSocketService {
   bool _isConnected = false;
   bool _isDisposing = false;
   String? _baseUrl;
+  // Backoff exponencial: si el endpoint no está disponible (backend caído,
+  // ruta no desplegada, etc.) evita machacar la consola y la red con un
+  // intento cada 5s indefinidamente — el intervalo se duplica en cada fallo
+  // hasta un tope, y se resetea apenas conecta bien una vez.
+  int _intentosFallidos = 0;
 
   bool get isConnected => _isConnected;
 
@@ -48,6 +60,7 @@ class TrasladoWebSocketService {
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
       await _channel!.ready;
       _isConnected = true;
+      _intentosFallidos = 0;
       _onConnectionStatusChanged?.call(true);
       appLog('✅ [TrasladoWS] Conectado');
 
@@ -84,7 +97,14 @@ class TrasladoWebSocketService {
   }
 
   Future<void> _scheduledReconnect() async {
-    await Future.delayed(_reconnectDelay);
+    _intentosFallidos++;
+    // Duplica el delay en cada fallo consecutivo (5s, 10s, 20s, 40s...) hasta
+    // el tope de 2 min, en vez de reintentar cada 5s para siempre cuando el
+    // endpoint simplemente no está disponible.
+    final backoff = _reconnectDelayBase * (1 << (_intentosFallidos - 1).clamp(0, 10));
+    final delay = backoff > _reconnectDelayMax ? _reconnectDelayMax : backoff;
+
+    await Future.delayed(delay);
     if (!_isDisposing && !_isConnected && _baseUrl != null && _onEvent != null) {
       await connect(
         baseUrl: _baseUrl!,
@@ -96,6 +116,7 @@ class TrasladoWebSocketService {
 
   Future<void> disconnect() async {
     _isDisposing = true;
+    _intentosFallidos = 0;
     if (_channel != null) {
       try {
         await _channel!.sink.close(status.goingAway);
