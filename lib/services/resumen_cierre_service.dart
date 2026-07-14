@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/resumen_cierre.dart';
+import '../utils/api_error.dart';
 import 'base_api_service.dart';
 import 'cuadre_caja_service.dart';
 
@@ -106,7 +107,7 @@ class ResumenCierreService {
       if (e is Exception) {
         rethrow;
       }
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener resumen de cierre');
     }
   }
 

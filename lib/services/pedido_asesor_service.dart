@@ -83,11 +83,10 @@ class PedidoAsesorService {
         
         return PedidoAsesor.fromJson(data);
       } else {
-        final error = json.decode(response.body);
-        throw Exception(error['message'] ?? 'Error al crear pedido');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al crear pedido');
       }
     } catch (e) {
-        
+
       rethrow;
     }
   }
@@ -234,8 +233,7 @@ class PedidoAsesorService {
             : decoded;
         return PedidoAsesor.fromJson(data);
       } else {
-        final error = json.decode(response.body);
-        throw Exception(error['message'] ?? 'Error al actualizar pedido');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar pedido');
       }
     } catch (e) {
         
@@ -268,8 +266,7 @@ class PedidoAsesorService {
             : decoded;
         return PedidoAsesor.fromJson(data);
       } else {
-        final error = json.decode(response.body);
-        throw Exception(error['message'] ?? 'Error al facturar pedido');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al facturar pedido');
       }
     } catch (e) {
         
@@ -293,8 +290,7 @@ class PedidoAsesorService {
             : decoded;
         return PedidoAsesor.fromJson(data);
       } else {
-        final error = json.decode(response.body);
-        throw Exception(error['message'] ?? 'Error al cancelar pedido');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al cancelar pedido');
       }
     } catch (e) {
         
@@ -312,8 +308,7 @@ class PedidoAsesorService {
       ).timeout(_timeout);
 
       if (response.statusCode != 200 && response.statusCode != 204) {
-        final error = json.decode(response.body);
-        throw Exception(error['message'] ?? 'Error al eliminar pedido');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al eliminar pedido');
       }
     } catch (e) {
         

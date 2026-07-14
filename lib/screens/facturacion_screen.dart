@@ -2477,14 +2477,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                       );
                                     }
                                   } catch (e) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Error al refrescar stock: $e',
-                                        ),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
+                                    showErrorDialog(context, 'Error al refrescar stock: ${errorMessage(e)}');
                                   } finally {
                                     setState(() => _isLoading = false);
                                   }
@@ -3269,28 +3262,15 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
       // Bloquear si no hay stock suficiente
       if (stockDisponible <= 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '❌ Sin stock en $_origenSeleccionado (disponible: 0)',
-            ),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        showErrorDialog(context, 'Sin stock en $_origenSeleccionado (disponible: 0)');
         return;
       }
 
       if (cantidad > stockDisponible) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '❌ Stock insuficiente en $_origenSeleccionado\n'
-              'Solicitado: $cantidad - Disponible: $stockDisponible',
-            ),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
+        showErrorDialog(
+          context,
+          'Stock insuficiente en $_origenSeleccionado\n'
+          'Solicitado: $cantidad - Disponible: $stockDisponible',
         );
         return;
       }
@@ -4080,7 +4060,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 Navigator.pop(context);
                                 _mostrarBorradores();
                               } catch (e) {
-                                showErrorSnackBar(context, 'Error al eliminar: $e');
+                                showErrorSnackBar(context, 'Error al eliminar: ${errorMessage(e)}');
                               }
                             }
                           },
@@ -4103,7 +4083,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       );
     } catch (e) {
       setState(() => _isLoading = false);
-      showErrorSnackBar(context, 'Error al cargar borradores: $e');
+      showErrorSnackBar(context, 'Error al cargar borradores: ${errorMessage(e)}');
     }
   }
 
@@ -4378,7 +4358,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       _limpiarFormulario();
     } catch (e) {
       setState(() => _isLoading = false);
-      showErrorSnackBar(context, 'Error al guardar: $e');
+      showErrorSnackBar(context, 'Error al guardar: ${errorMessage(e)}');
     }
   }
 
@@ -4587,16 +4567,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       } catch (e) {
         appLog('⚠️ Error al registrar deuda en background: $e');
         if (mounted) {
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '❌ Error al registrar deuda: Verifica tu conexión e intenta de nuevo',
-              ),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 6),
-            ),
-          );
+          showErrorDialog(context, 'Error al registrar deuda: verifica tu conexión e intenta de nuevo');
         }
       }
     });
@@ -5171,14 +5142,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         } catch (e) {
           appLog('⚠️ Error en procesamiento background: $e');
           if (mounted) {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('❌ ${errorMessage(e)}'),
-                backgroundColor: Colors.red,
-                duration: Duration(seconds: 8),
-              ),
-            );
+            showErrorDialog(context, errorMessage(e));
           }
         }
       });
@@ -5258,13 +5222,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       } catch (e) {
         appLog('❌ [DIAN] Error al emitir documento: $e');
         if (!mounted) return;
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('❌ Error al enviar a DIAN: $e'),
-            backgroundColor: Colors.red.shade700,
-            duration: const Duration(seconds: 8),
-          ),
-        );
+        showErrorDialog(context, 'Error al enviar a DIAN: ${errorMessage(e)}');
       }
     });
   }
@@ -5312,10 +5270,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       ));
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(SnackBar(
-          content: Text('Error al descargar PDF: $e'),
-          backgroundColor: Colors.red.shade700,
-        ));
+        showErrorDialog(context, 'Error al descargar PDF: ${errorMessage(e)}');
       }
     }
   }
@@ -5848,7 +5803,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         Navigator.of(context, rootNavigator: true).pop();
       }
       if (mounted) {
-        showErrorSnackBar(context, 'Error generando vista previa: $e');
+        showErrorSnackBar(context, 'Error generando vista previa: ${errorMessage(e)}');
       }
     }
   }
@@ -5934,7 +5889,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         Navigator.of(context, rootNavigator: true).pop();
       }
       if (mounted) {
-        showErrorSnackBar(context, 'Error generando PDF: $e');
+        showErrorSnackBar(context, 'Error generando PDF: ${errorMessage(e)}');
       }
     }
   }
@@ -6012,7 +5967,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         Navigator.of(context, rootNavigator: true).pop();
       }
       if (mounted) {
-        showErrorSnackBar(context, 'Error al imprimir: $e');
+        showErrorSnackBar(context, 'Error al imprimir: ${errorMessage(e)}');
       }
     }
   }

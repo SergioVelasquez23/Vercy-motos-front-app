@@ -2,13 +2,14 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../../theme/app_theme.dart';
-import '../../providers/user_provider.dart';
-import '../../services/matias_service.dart';
-import '../../services/factura_service.dart';
-import '../../models/factura.dart';
-import '../../widgets/facturizacion/documento_soporte_dialog.dart';
-import '../../widgets/facturizacion/nota_credito_debito_dialog.dart';
+import '../theme/app_theme.dart';
+import '../providers/user_provider.dart';
+import '../services/matias_service.dart';
+import '../services/factura_service.dart';
+import '../models/factura.dart';
+import '../widgets/facturizacion/documento_soporte_dialog.dart';
+import '../widgets/facturizacion/nota_credito_debito_dialog.dart';
+import '../utils/api_error.dart';
 
 /// Pantalla central para gestionar documentos electrónicos adicionales:
 ///   • Documento Soporte
@@ -751,7 +752,7 @@ class _NominaSimpleDialogState extends State<_NominaSimpleDialog> {
         setState(() => _error = res.message);
       }
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = errorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -971,7 +972,7 @@ class _BuscarFacturaParaNotaDialogState
         ),
       );
     } catch (e) {
-      setState(() => _error = 'Factura no encontrada o error: $e');
+      setState(() => _error = errorMessage(e));
     } finally {
       if (mounted) setState(() => _searching = false);
     }

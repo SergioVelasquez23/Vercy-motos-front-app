@@ -25,6 +25,7 @@ import '../utils/snackbar_helper.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/common/screen_header.dart';
 import '../widgets/horizontal_scroll_table.dart';
+import '../utils/api_error.dart';
 
 class ProductosListScreen extends StatefulWidget {
   const ProductosListScreen({super.key});
@@ -112,7 +113,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
         _aplicarFiltros();
       });
     } catch (e) {
-      showErrorSnackBar(context, 'Error al cargar datos: $e');
+      showErrorSnackBar(context, 'Error al cargar datos: ${errorMessage(e)}');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -1008,7 +1009,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
         })
         .catchError((e) {
           ScaffoldMessenger.of(context).clearSnackBars();
-          showErrorSnackBar(context, 'Error: $e');
+          showErrorSnackBar(context, 'Error: ${errorMessage(e)}');
         });
   }
 
@@ -1645,7 +1646,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
 
       _cargarDatos(); // Recargar la lista
     } catch (e) {
-      showErrorSnackBar(context, 'Error al guardar producto: $e');
+      showErrorSnackBar(context, 'Error al guardar producto: ${errorMessage(e)}');
     }
   }
 
@@ -1736,7 +1737,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
 
       _cargarDatos(); // Recargar la lista
     } catch (e) {
-      showErrorSnackBar(context, 'Error al eliminar producto: $e');
+      showErrorSnackBar(context, 'Error al eliminar producto: ${errorMessage(e)}');
     }
   }
 
@@ -1977,7 +1978,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
       }
     } catch (e) {
       if (mounted) {
-        showErrorSnackBar(context, 'Error al seleccionar archivo: $e');
+        showErrorSnackBar(context, 'Error al seleccionar archivo: ${errorMessage(e)}');
       }
     }
   }
@@ -2581,7 +2582,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
       return true; // ✅ Retornar éxito
     } catch (e) {
       appLog('❌ Error al guardar producto: $e');
-      showErrorSnackBar(context, 'Error al guardar producto: $e');
+      showErrorSnackBar(context, 'Error al guardar producto: ${errorMessage(e)}');
       return false; // ❌ Retornar error
     }
   }
@@ -3078,15 +3079,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
 
       if (codigoBarras == null || codigoBarras.isEmpty) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Error: El producto no tiene código de barras asignado',
-              ),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 3),
-            ),
-          );
+          showErrorDialog(context, 'El producto no tiene código de barras asignado');
         }
         return;
       }
@@ -3163,7 +3156,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
     } catch (e) {
       appLog('Error al generar PDF: $e');
       if (mounted) {
-        showErrorSnackBar(context, 'Error al generar PDF: $e');
+        showErrorSnackBar(context, 'Error al generar PDF: ${errorMessage(e)}');
       }
     }
   }
@@ -3244,7 +3237,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
       }
     } catch (e) {
       appLog('Error en impresión con diálogo del sistema: $e');
-      _mostrarMensajeError('Error al abrir diálogo del sistema: $e');
+      _mostrarMensajeError('Error al abrir diálogo del sistema: ${errorMessage(e)}');
     }
   }
 
@@ -3263,7 +3256,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
       }
     } catch (e) {
       appLog('Error en vista previa: $e');
-      _mostrarMensajeError('Error en vista previa: $e');
+      _mostrarMensajeError('Error en vista previa: ${errorMessage(e)}');
     }
   }
 
@@ -3291,7 +3284,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
     } catch (e) {
       appLog('Error en impresión directa: $e');
       _mostrarMensajeError(
-        'Error en impresión directa: $e\nIntenta con "Vista previa"',
+        'Error en impresión directa: ${errorMessage(e)}\nIntenta con "Vista previa"',
       );
     }
   }
@@ -3373,7 +3366,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
       }
     } catch (e) {
       appLog('Error imprimiendo en ${printer.name}: $e');
-      _mostrarMensajeError('Error imprimiendo en ${printer.name}: $e');
+      _mostrarMensajeError('Error imprimiendo en ${printer.name}: ${errorMessage(e)}');
     }
   }
 
@@ -3390,13 +3383,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
 
   void _mostrarMensajeError(String mensaje) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(mensaje),
-        backgroundColor: Colors.red,
-        duration: Duration(seconds: 4),
-      ),
-    );
+    showErrorDialog(context, mensaje);
   }
 
   pw.Widget _crearEtiquetaCodigoBarras({
@@ -3552,7 +3539,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
 
       // Mostrar error
       if (mounted) {
-        showErrorSnackBar(context, 'Error descargando productos: $e');
+        showErrorSnackBar(context, 'Error descargando productos: ${errorMessage(e)}');
       }
     }
   }

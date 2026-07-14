@@ -5,6 +5,8 @@ import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../utils/pagination_mixin.dart';
 import '../widgets/common/screen_header.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class GastosListScreen extends StatefulWidget {
   const GastosListScreen({super.key});
@@ -65,12 +67,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
         _aplicarFiltros();
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al cargar datos: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, 'Error al cargar datos: ${errorMessage(e)}');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -829,21 +826,11 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
           );
           _cargarDatos();
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(resultado['message'] ?? 'No se pudo eliminar el gasto'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          showErrorDialog(context, resultado['message'] ?? 'No se pudo eliminar el gasto');
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al eliminar: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, 'Error al eliminar: ${errorMessage(e)}');
     }
   }
 }

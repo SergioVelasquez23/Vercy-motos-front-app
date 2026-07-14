@@ -10,6 +10,8 @@ import '../theme/app_theme.dart';
 import '../utils/pagination_mixin.dart';
 import '../utils/currency_utils.dart';
 import '../widgets/common/screen_header.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class ClientesListScreen extends StatefulWidget {
   @override
@@ -51,12 +53,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al cargar clientes: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, 'Error al cargar clientes: ${errorMessage(e)}');
     }
   }
 
@@ -505,9 +502,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
 
       _cargarClientes();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
+      showErrorDialog(context, errorMessage(e));
     }
   }
 
@@ -573,12 +568,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
         );
         _cargarClientes();
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al deshabilitar: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, 'Error al deshabilitar: ${errorMessage(e)}');
       }
     }
   }
@@ -756,13 +746,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
         
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 5),
-          ),
-        );
+        showErrorDialog(context, errorMessage(e));
       }
     }
   }
@@ -917,13 +901,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
         // Cerrar el diálogo de carga en caso de error
         Navigator.of(context).pop();
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cargar clientes: $e'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 5),
-          ),
-        );
+        showErrorDialog(context, 'Error al cargar clientes: ${errorMessage(e)}');
       }
     }
   }
@@ -948,13 +926,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
         // Cerrar el diálogo de carga en caso de error
         Navigator.of(context).pop();
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cargar clientes: $e'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 5),
-          ),
-        );
+        showErrorDialog(context, 'Error al cargar clientes: ${errorMessage(e)}');
       }
     }
   }

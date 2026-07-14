@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:collection/collection.dart';
 import '../models/ingreso_caja.dart';
 import '../config/api_config.dart';
+import '../utils/api_error.dart';
 import '../utils/token_storage.dart';
 import 'cuadre_caja_service.dart';
 
@@ -52,10 +53,9 @@ class IngresoCajaService {
 
         return ingresosData.map((e) => IngresoCaja.fromJson(e)).toList();
       }
-      throw Exception('Error al obtener ingresos: ${resp.statusCode}');
+      throwBackendError(resp.body, resp.statusCode, prefix: 'Error al obtener ingresos');
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener ingresos');
     }
   }
 
@@ -110,10 +110,9 @@ class IngresoCajaService {
           
         return IngresoCaja.fromJson(ingresoData);
       }
-      throw Exception('Error al registrar ingreso: ${resp.statusCode}');
+      throwBackendError(resp.body, resp.statusCode, prefix: 'Error al registrar ingreso');
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al registrar ingreso');
     }
   }
 
@@ -128,13 +127,10 @@ class IngresoCajaService {
         
 
       if (resp.statusCode != 200 && resp.statusCode != 204) {
-        throw Exception('Error al eliminar ingreso: ${resp.statusCode}');
+        throwBackendError(resp.body, resp.statusCode, prefix: 'Error al eliminar ingreso');
       }
-
-        
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al eliminar ingreso');
     }
   }
 
@@ -158,14 +154,10 @@ class IngresoCajaService {
           
         return ingresos;
       } else {
-          
-        throw Exception(
-          'Error al obtener ingresos del cuadre: ${resp.statusCode}',
-        );
+        throwBackendError(resp.body, resp.statusCode, prefix: 'Error al obtener ingresos del cuadre');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener ingresos del cuadre');
     }
   }
 }

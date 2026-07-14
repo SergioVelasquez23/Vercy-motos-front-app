@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/deuda.dart';
 import '../models/pedido.dart';
+import '../utils/api_error.dart';
 import 'base_api_service.dart';
 
 class DeudaService {
@@ -123,13 +124,13 @@ class DeudaService {
           'message': data['message'] ?? 'Pago registrado exitosamente',
         };
       }
-      final err = jsonDecode(response.body);
+      final backendException = parseBackendException(response.body, response.statusCode, prefix: 'Error al registrar pago');
       return {
         'success': false,
-        'message': err['message'] ?? 'Error ${response.statusCode}',
+        'message': backendException.displayMessage,
       };
     } catch (e) {
-      return {'success': false, 'message': 'Error de conexión: $e'};
+      return {'success': false, 'message': errorMessage(e)};
     }
   }
 
@@ -216,9 +217,10 @@ class DeudaService {
         final data = jsonDecode(response.body);
         return {'success': true, 'data': data['data'] ?? data, 'message': 'Deuda creada'};
       }
-      return {'success': false, 'message': 'Error ${response.statusCode}'};
+      final backendException = parseBackendException(response.body, response.statusCode, prefix: 'Error al crear deuda');
+      return {'success': false, 'message': backendException.displayMessage};
     } catch (e) {
-      return {'success': false, 'message': 'Error: $e'};
+      return {'success': false, 'message': errorMessage(e)};
     }
   }
 

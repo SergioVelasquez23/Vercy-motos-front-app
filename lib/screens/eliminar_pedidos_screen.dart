@@ -3,6 +3,8 @@ import '../models/pedido.dart';
 import '../services/pedido_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class EliminarPedidosScreen extends StatefulWidget {
   const EliminarPedidosScreen({Key? key}) : super(key: key);
@@ -55,7 +57,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Error al cargar pedidos: $e';
+        _errorMessage = errorMessage(e);
       });
     }
   }
@@ -91,12 +93,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
       );
       _cargarPedidosHoy();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al eliminar: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, 'Error al eliminar: ${errorMessage(e)}');
     } finally {
       setState(() => _isDeleting = false);
     }
@@ -837,12 +834,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                               );
                               _cargarPedidosHoy();
                             } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Error: $e'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
+                              showErrorDialog(context, errorMessage(e));
                             } finally {
                               setState(() => _isDeleting = false);
                             }

@@ -4,6 +4,7 @@ import '../models/alerta_notificacion.dart';
 import '../models/api_response.dart';
 import 'base_api_service.dart';
 import '../utils/logger.dart';
+import '../utils/api_error.dart';
 
 /// Servicio para gestión de alertas y notificaciones
 class AlertasService {
@@ -107,14 +108,14 @@ class AlertasService {
       return ApiResponse<AlertaNotificacion>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<AlertaNotificacion>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -167,14 +168,14 @@ class AlertasService {
       return ApiResponse<AlertaNotificacion>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<AlertaNotificacion>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -222,14 +223,14 @@ class AlertasService {
       return ApiResponse<AlertaNotificacion>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<AlertaNotificacion>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -280,14 +281,14 @@ class AlertasService {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -321,14 +322,14 @@ class AlertasService {
       return ApiResponse<EstadoMicroservicio>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<EstadoMicroservicio>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -359,14 +360,14 @@ class AlertasService {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -397,14 +398,14 @@ class AlertasService {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -435,14 +436,14 @@ class AlertasService {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -471,14 +472,14 @@ class AlertasService {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -507,14 +508,14 @@ class AlertasService {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -561,14 +562,14 @@ class AlertasService {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -631,7 +632,7 @@ class AlertasService {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
@@ -639,7 +640,7 @@ class AlertasService {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -701,7 +702,7 @@ class AlertasService {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
@@ -709,7 +710,7 @@ class AlertasService {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -783,7 +784,7 @@ class AlertasService {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
@@ -791,7 +792,7 @@ class AlertasService {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -834,14 +835,14 @@ class AlertasService {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -884,14 +885,14 @@ class AlertasService {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -948,7 +949,7 @@ class AlertasService {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
@@ -956,7 +957,7 @@ class AlertasService {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -987,14 +988,14 @@ class AlertasService {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -1023,14 +1024,14 @@ class AlertasService {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }

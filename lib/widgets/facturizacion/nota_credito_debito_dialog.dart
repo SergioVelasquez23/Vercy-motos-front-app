@@ -6,6 +6,7 @@ import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/factura.dart';
 import '../../utils/currency_utils.dart';
+import '../../utils/api_error.dart';
 
 enum TipoNota { credito, debito }
 
@@ -175,7 +176,7 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
         setState(() => _errorMsg = resultado.message);
       }
     } catch (e) {
-      setState(() => _errorMsg = e.toString());
+      setState(() => _errorMsg = errorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

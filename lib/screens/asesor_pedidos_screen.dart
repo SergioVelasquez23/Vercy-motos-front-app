@@ -18,6 +18,8 @@ import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/busqueda_productos_utils.dart';
 import '../utils/logger.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 import '../utils/datetime_utils.dart';
 import '../utils/currency_utils.dart';
 
@@ -134,7 +136,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      _mostrarError('Error al cargar datos: $e');
+      _mostrarError('Error al cargar datos: ${errorMessage(e)}');
     }
   }
 
@@ -378,16 +380,11 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
 
       // ⚠️ VALIDACIÓN: No permitir superar el stock disponible
       if (nuevaCantidad > stockDisponible) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '❌ Stock insuficiente en $origen\n'
-              'Disponible: $stockDisponible\n'
-              'Solicitado: $nuevaCantidad',
-            ),
-            backgroundColor: Colors.red.shade700,
-            duration: Duration(seconds: 3),
-          ),
+        showErrorDialog(
+          context,
+          'Stock insuficiente en $origen\n'
+          'Disponible: $stockDisponible\n'
+          'Solicitado: $nuevaCantidad',
         );
         return; // No actualizar la cantidad
       }
@@ -534,7 +531,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
           }
         } catch (e) {
           appLog('❌ [Traslado] Error al crear traslado: $e');
-          _mostrarError('Error al registrar traslado de bodega: $e');
+          _mostrarError('Error al registrar traslado de bodega: ${errorMessage(e)}');
           setState(() => _isLoading = false);
           return;
         }
@@ -567,7 +564,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
       _mostrarExito('Pedido creado exitosamente');
       _limpiarFormulario();
     } catch (e) {
-      _mostrarError('Error al guardar pedido: $e');
+      _mostrarError('Error al guardar pedido: ${errorMessage(e)}');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -913,7 +910,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                 }
               } catch (e) {
                 setSheet(() => guardando = false);
-                _mostrarError('Error al registrar traslado: $e');
+                _mostrarError('Error al registrar traslado: ${errorMessage(e)}');
                 return;
               }
             }
@@ -940,7 +937,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
               _mostrarExito('Pedido actualizado con ${nuevosFinales.length} producto(s)');
             } catch (e) {
               setSheet(() => guardando = false);
-              _mostrarError('Error al actualizar pedido: $e');
+              _mostrarError('Error al actualizar pedido: ${errorMessage(e)}');
             }
           }
 
@@ -2147,9 +2144,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
   }
 
   void _mostrarError(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensaje), backgroundColor: AppTheme.error),
-    );
+    showErrorDialog(context, mensaje);
   }
 
   void _mostrarExito(String mensaje) {
@@ -2267,13 +2262,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
     if (!esServicio) {
       if (bodegaDisponible <= 0 && almacenDisponible <= 0) {
         appLog('   ❌ Sin stock en ninguna ubicación');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Sin stock disponible en bodega ni almacén'),
-            backgroundColor: Colors.red.shade700,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        showErrorDialog(context, 'Sin stock disponible en bodega ni almacén');
         return null;
       }
 
@@ -2281,16 +2270,11 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
       if (bodegaDisponible > 0 && almacenDisponible <= 0) {
         appLog('   ✅ Solo hay stock en BODEGA, seleccionando automáticamente');
         if (cantidad > bodegaDisponible) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '❌ Stock insuficiente en BODEGA\n'
-                'Disponible: $bodegaDisponible\n'
-                'Solicitado: $cantidad',
-              ),
-              backgroundColor: Colors.red.shade700,
-              duration: Duration(seconds: 4),
-            ),
+          showErrorDialog(
+            context,
+            'Stock insuficiente en BODEGA\n'
+            'Disponible: $bodegaDisponible\n'
+            'Solicitado: $cantidad',
           );
           return null;
         }
@@ -2300,16 +2284,11 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
       if (almacenDisponible > 0 && bodegaDisponible <= 0) {
         appLog('   ✅ Solo hay stock en ALMACÉN, seleccionando automáticamente');
         if (cantidad > almacenDisponible) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '❌ Stock insuficiente en ALMACÉN\n'
-                'Disponible: $almacenDisponible\n'
-                'Solicitado: $cantidad',
-              ),
-              backgroundColor: Colors.red.shade700,
-              duration: Duration(seconds: 4),
-            ),
+          showErrorDialog(
+            context,
+            'Stock insuficiente en ALMACÉN\n'
+            'Disponible: $almacenDisponible\n'
+            'Solicitado: $cantidad',
           );
           return null;
         }
@@ -2463,9 +2442,12 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
           ElevatedButton(
             onPressed: () async {
               await userProvider.logout();
-              Navigator.of(
-                context,
-              ).pushNamedAndRemoveUntil('/login', (route) => false);
+              // La app corre bajo go_router (MaterialApp.router, ver
+              // main.dart) sin rutas registradas por nombre, así que
+              // pushNamedAndRemoveUntil no navega de forma confiable aquí.
+              // context.go() es la API correcta para este router.
+              if (!context.mounted) return;
+              context.go('/login');
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
             child: Text('Cerrar Sesión', style: TextStyle(color: Colors.white)),
@@ -3134,7 +3116,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
           }
         } catch (e) {
           appLog('❌ [Traslado/Modal] Error: $e');
-          _mostrarError('Error al registrar traslado de bodega: $e');
+          _mostrarError('Error al registrar traslado de bodega: ${errorMessage(e)}');
           setState(() => _isLoading = false);
           setModalState(() {});
           return;
@@ -3174,7 +3156,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
       _mostrarExito('Pedido creado exitosamente');
 
     } catch (e) {
-      _mostrarError('Error al guardar pedido: $e');
+      _mostrarError('Error al guardar pedido: ${errorMessage(e)}');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -3576,7 +3558,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                   Navigator.pop(context);
                   _mostrarExito('Cliente creado exitosamente');
                 } catch (e) {
-                  _mostrarError('Error al crear cliente: $e');
+                  _mostrarError('Error al crear cliente: ${errorMessage(e)}');
                 }
               },
               style: ElevatedButton.styleFrom(

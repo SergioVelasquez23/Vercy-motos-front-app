@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import '../config/api_config.dart';
 import '../utils/logger.dart';
+import '../utils/api_error.dart';
 
 /// Clase base para todos los servicios de API
 /// Centraliza la lógica común de autenticación, headers y manejo de errores
@@ -115,7 +116,7 @@ class BaseApiService {
       appLog('Error en request', level: LogLevel.error, error: e);
       return ApiResponse<T>(
         success: false,
-        message: 'Error de conexión: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -149,7 +150,7 @@ class BaseApiService {
       appLog('Error en request', level: LogLevel.error, error: e);
       return ApiResponse<List<T>>(
         success: false,
-        message: 'Error de conexión: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -179,7 +180,7 @@ class BaseApiService {
       appLog('Error en request', level: LogLevel.error, error: e);
       return ApiResponse<T>(
         success: false,
-        message: 'Error de conexión: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -209,7 +210,7 @@ class BaseApiService {
       appLog('Error en request', level: LogLevel.error, error: e);
       return ApiResponse<T>(
         success: false,
-        message: 'Error de conexión: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -247,7 +248,7 @@ class BaseApiService {
       appLog('Error en request', level: LogLevel.error, error: e);
       return ApiResponse<void>(
         success: false,
-        message: 'Error de conexión: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }

@@ -7,6 +7,7 @@ import '../models/gasto_programado.dart';
 import '../services/cartera_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
+import '../utils/api_error.dart';
 
 class CarteraScreen extends StatefulWidget {
   const CarteraScreen({Key? key}) : super(key: key);
@@ -49,7 +50,7 @@ class _CarteraScreenState extends State<CarteraScreen> {
       }
     } catch (e) {
       setState(() {
-        error = 'Error de conexión: $e';
+        error = errorMessage(e);
         isLoading = false;
       });
     }

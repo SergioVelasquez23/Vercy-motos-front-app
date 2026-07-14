@@ -4,7 +4,6 @@ import '../models/gasto.dart';
 import '../models/tipo_gasto.dart';
 import '../config/api_config.dart';
 import '../utils/api_error.dart';
-import '../utils/caja_error_handler.dart';
 import 'alertas_service.dart';
 import '../utils/logger.dart';
 import '../utils/token_storage.dart';
@@ -52,8 +51,7 @@ class GastoService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener gastos');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener gastos');
     }
   }
 
@@ -100,13 +98,10 @@ class GastoService {
 
         return gastos;
       } else {
-        throw Exception(
-          'Error al obtener gastos del cuadre: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener gastos del cuadre');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener gastos del cuadre');
     }
   }
 
@@ -168,13 +163,10 @@ class GastoService {
 
         return gasto;
       } else {
-        final error = CajaErrorHandler.procesarRespuesta(response);
-        CajaErrorHandler.mostrarError(error);
-        throw Exception(error['message'] ?? 'Error al crear gasto');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al crear gasto');
       }
     } catch (e) {
-        
-      throw Exception('Error al crear gasto: ${e.toString()}');
+      wrapOrThrow(e, context: 'Error al crear gasto');
     }
   }
 
@@ -245,11 +237,10 @@ class GastoService {
         final responseData = json.decode(response.body);
         return Gasto.fromJson(responseData['data']);
       } else {
-        final errorData = json.decode(response.body);
-        throw Exception(errorData['message'] ?? 'Error al actualizar gasto');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar gasto');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al actualizar gasto');
     }
   }
 
@@ -322,20 +313,18 @@ class GastoService {
 
         return result;
       } else {
-        final error = CajaErrorHandler.procesarRespuesta(response);
-        CajaErrorHandler.mostrarError(error);
+        final backendException = parseBackendException(response.body, response.statusCode, prefix: 'Error al eliminar gasto');
         return {
           'success': false,
-          'message': error['message'] ?? 'Error al eliminar gasto',
-          'errorType': error['errorType'] ?? 'unknown',
+          'message': backendException.displayMessage,
+          'errorType': backendException.rawCode,
           'dineroRevertido': false,
         };
       }
     } catch (e) {
-        
       return {
         'success': false,
-        'message': 'Error de conexión: $e',
+        'message': errorMessage(e),
         'errorType': 'connection',
         'dineroRevertido': false,
       };
@@ -361,12 +350,10 @@ class GastoService {
         List<dynamic> jsonList = responseData['data'] ?? [];
         return jsonList.map((json) => Gasto.fromJson(json)).toList();
       } else {
-        throw Exception(
-          'Error al obtener gastos por fechas: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener gastos por fechas');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener gastos por fechas');
     }
   }
 
@@ -389,13 +376,10 @@ class GastoService {
         final tipos = jsonList.map((json) => TipoGasto.fromJson(json)).toList();
         return tipos;
       } else {
-        throw Exception(
-          'Error al obtener tipos de gasto: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener tipos de gasto');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener tipos de gasto');
     }
   }
 
@@ -425,12 +409,10 @@ class GastoService {
         final responseData = json.decode(response.body);
         return TipoGasto.fromJson(responseData['data']);
       } else {
-        final errorData = json.decode(response.body);
-        throw Exception(errorData['message'] ?? 'Error al crear tipo de gasto');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al crear tipo de gasto');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al crear tipo de gasto');
     }
   }
 
@@ -461,14 +443,10 @@ class GastoService {
         final responseData = json.decode(response.body);
         return TipoGasto.fromJson(responseData['data']);
       } else {
-        final errorData = json.decode(response.body);
-        throw Exception(
-          errorData['message'] ?? 'Error al actualizar tipo de gasto',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar tipo de gasto');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al actualizar tipo de gasto');
     }
   }
 
@@ -486,14 +464,10 @@ class GastoService {
       if (response.statusCode == 200 || response.statusCode == 204) {
         return true;
       } else {
-        final errorData = json.decode(response.body);
-        throw Exception(
-          errorData['message'] ?? 'Error al eliminar tipo de gasto',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al eliminar tipo de gasto');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al eliminar tipo de gasto');
     }
   }
 }

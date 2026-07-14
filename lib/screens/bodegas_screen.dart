@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/bodega.dart';
 import '../services/bodega_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 /// Pantalla para gestionar bodegas/almacenes/ubicaciones de inventario
 class BodegasScreen extends StatefulWidget {
@@ -41,7 +43,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
         _aplicarFiltros();
       });
     } catch (e) {
-      _mostrarError('Error al cargar ubicaciones: $e');
+      _mostrarError('Error al cargar ubicaciones: ${errorMessage(e)}');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -72,9 +74,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
   }
 
   void _mostrarError(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensaje), backgroundColor: Colors.red),
-    );
+    showErrorDialog(context, mensaje);
   }
 
   void _mostrarExito(String mensaje) {
@@ -354,7 +354,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
                         Navigator.pop(context);
                         await _cargarBodegas();
                       } catch (e) {
-                        _mostrarError('Error: $e');
+                        _mostrarError('Error: ${errorMessage(e)}');
                       } finally {
                         setDialogState(() => guardando = false);
                       }
@@ -524,7 +524,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
         _mostrarExito('Ubicación eliminada');
         await _cargarBodegas();
       } catch (e) {
-        _mostrarError('Error al eliminar: $e');
+        _mostrarError('Error al eliminar: ${errorMessage(e)}');
       }
     }
   }
@@ -916,7 +916,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
                       );
                       await _cargarBodegas();
                     } catch (e) {
-                      _mostrarError('Error: $e');
+                      _mostrarError('Error: ${errorMessage(e)}');
                     }
                   },
                   tooltip: bodega.activa ? 'Desactivar' : 'Activar',

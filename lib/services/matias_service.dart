@@ -671,7 +671,7 @@ class MatiasService {
 
     // Venta a crédito: marcar payment_method_id 2 y usar la fecha de
     // vencimiento real del pedido (no la fecha de la factura).
-    final esCredito = (pedido.formaPago as String?)?.toLowerCase().trim() == 'credito';
+    final esCredito = (pedido.formaPago as String?)?.toLowerCase().trim() == 'crédito';
     String fechaVencimientoStr = date;
     if (esCredito) {
       final fechaVencimiento = pedido.fechaVencimiento as DateTime?;
@@ -702,6 +702,7 @@ class MatiasService {
       case 'tarjeta':
       case 'tarjeta_credito':
       case 'credito':
+      case 'crédito': // _mapFormaPagoBackend('credito') en facturacion_screen.dart devuelve 'Crédito' con tilde
         return 41; // Tarjeta crédito
       case 'tarjeta_debito':
       case 'debito':
@@ -1024,10 +1025,11 @@ class MatiasService {
       final j = jsonDecode(res.body) as Map<String, dynamic>;
       return MatiasDocumentoResult.fromJson(j);
     } on TimeoutException catch (e) {
-      return MatiasDocumentoResult.error('Timeout: $e');
+      appLog('$TAG ❌ TIMEOUT reenviarCorreoFactura: $e');
+      return MatiasDocumentoResult.error('La solicitud tardó demasiado tiempo. Intenta nuevamente.');
     } catch (e) {
       appLog('$TAG ❌ reenviarCorreoFactura: $e');
-      return MatiasDocumentoResult.error(e.toString());
+      return MatiasDocumentoResult.error('Error de conexión con Matias.');
     }
   }
 
@@ -1175,10 +1177,10 @@ class MatiasService {
       return result;
     } on TimeoutException catch (e) {
       appLog('$TAG ❌ TIMEOUT: $e');
-      return MatiasDocumentoResult.error('Timeout: $e');
+      return MatiasDocumentoResult.error('La solicitud tardó demasiado tiempo. Intenta nuevamente.');
     } catch (e) {
       appLog('$TAG ❌ _postDocumento: $e');
-      return MatiasDocumentoResult.error(e.toString());
+      return MatiasDocumentoResult.error('Error de conexión con Matias.');
     }
   }
 
@@ -1256,10 +1258,10 @@ class MatiasService {
       return result;
     } on TimeoutException catch (e) {
       appLog('$TAG ❌ TIMEOUT: $e');
-      return MatiasDocumentoResult.error('Timeout: $e');
+      return MatiasDocumentoResult.error('La solicitud tardó demasiado tiempo. Intenta nuevamente.');
     } catch (e) {
       appLog('$TAG ❌ _patch: $e');
-      return MatiasDocumentoResult.error(e.toString());
+      return MatiasDocumentoResult.error('Error de conexión con Matias.');
     }
   }
 }

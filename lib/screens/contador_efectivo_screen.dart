@@ -6,6 +6,8 @@ import '../utils/format_utils.dart';
 import '../services/excel_export_service.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class ContadorEfectivoScreen extends StatefulWidget {
   final Function(double)?
@@ -182,23 +184,13 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
           resultado['compartir'] ?? false,
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al generar el archivo Excel'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, 'Error al generar el archivo Excel');
       }
     } catch (e) {
       // Cerrar diálogo de carga si hay error
       Navigator.of(context).pop();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, errorMessage(e));
     }
   }
 

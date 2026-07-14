@@ -8,6 +8,8 @@ import '../services/pedido_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
 import '../widgets/common/screen_header.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class CuentasPorCobrarScreen extends StatefulWidget {
   const CuentasPorCobrarScreen({Key? key}) : super(key: key);
@@ -74,7 +76,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
       }
     } catch (e) {
       setState(() {
-        error = 'Error de conexión: $e';
+        error = errorMessage(e);
         isLoading = false;
       });
     }
@@ -189,20 +191,10 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
         );
         await _cargarCuentas();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${response.message}'),
-            backgroundColor: AppTheme.error,
-          ),
-        );
+        showErrorDialog(context, response.message);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error de conexión: $e'),
-          backgroundColor: AppTheme.error,
-        ),
-      );
+      showErrorDialog(context, errorMessage(e));
     }
   }
 
@@ -1160,12 +1152,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
       await _cargarCuentas();
     } catch (e) {
       setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al procesar el pago: $e'),
-          backgroundColor: AppTheme.error,
-        ),
-      );
+      showErrorDialog(context, 'Error al procesar el pago: ${errorMessage(e)}');
     }
   }
 }

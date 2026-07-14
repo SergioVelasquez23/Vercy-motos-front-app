@@ -4,6 +4,7 @@ import '../../services/matias_service.dart';
 import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/pedido.dart';
+import '../../utils/api_error.dart';
 
 /// Widget botón para facturar un Pedido en Matias
 class FacturizarMatiasButton extends StatefulWidget {
@@ -58,8 +59,9 @@ class _FacturizarMatiasButtonState extends State<FacturizarMatiasButton> {
       }
     } catch (e) {
       if (!mounted) return;
-      _mostrarSnackbar('❌ Error: ${e.toString()}', Colors.red);
-      widget.onError?.call(e.toString());
+      final mensaje = errorMessage(e);
+      _mostrarSnackbar('❌ Error: $mensaje', Colors.red);
+      widget.onError?.call(mensaje);
     } finally {
       if (mounted) {
         setState(() => isLoading = false);

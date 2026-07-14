@@ -1,4 +1,5 @@
 import '../utils/submit_guard.dart';
+import '../utils/api_error.dart';
 import '../widgets/imagen_producto_widget.dart';
 import '../widgets/lazy_product_image_widget.dart';
 import '../widgets/optimized_loading_widget.dart';
@@ -139,7 +140,7 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
       });
     } catch (e) {
       setState(() {
-        _error = 'Error al cargar datos: $e';
+        _error = errorMessage(e);
         _isLoading = false;
       });
     }
@@ -749,7 +750,7 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                                 }
                               } catch (e) {
                                 Navigator.pop(context);
-                                showErrorSnackBar(context, 'Error al cargar producto: $e');
+                                showErrorSnackBar(context, 'Error al cargar producto: ${errorMessage(e)}');
                               }
                             },
                             onDelete: _showDeleteConfirmationDialog,
@@ -916,7 +917,7 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                   }
                 } catch (e) {
                   Navigator.pop(context); // Cerrar loading
-                  showErrorSnackBar(context, 'Error al cargar producto: $e');
+                  showErrorSnackBar(context, 'Error al cargar producto: ${errorMessage(e)}');
                 }
               },
             ),
@@ -1016,14 +1017,7 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                         }
 
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Error al eliminar producto: ${e.toString()}',
-                              ),
-                              backgroundColor: Colors.redAccent,
-                            ),
-                          );
+                          showErrorDialog(context, 'Error al eliminar producto: ${errorMessage(e)}');
                         }
                       }
                     },
@@ -1350,32 +1344,13 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                                 } catch (e) {
                                     
                                   if (mounted) {
-                                    ScaffoldMessenger.of(
-                                      context,
-                                    ).hideCurrentSnackBar();
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Error al subir imagen: ${e.toString().replaceAll('Exception: ', '')}',
-                                        ),
-                                        backgroundColor: Colors.red,
-                                        duration: Duration(seconds: 4),
-                                      ),
-                                    );
+                                    showErrorDialog(context, 'Error al subir imagen: ${errorMessage(e)}');
                                   }
                                 }
                               }
                             } catch (e) {
-                                
                               if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Error subiendo imagen: ${e.toString()}',
-                                    ),
-                                    backgroundColor: Colors.redAccent,
-                                  ),
-                                );
+                                showErrorDialog(context, 'Error subiendo imagen: ${errorMessage(e)}');
                               }
                             }
                           }
@@ -3228,7 +3203,7 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                             }
                           } catch (e) {
                             if (mounted) {
-                              showErrorSnackBar(context, 'Error: $e');
+                              showErrorSnackBar(context, 'Error: ${errorMessage(e)}');
                             }
                           } finally {
                             // 🚀 TIMEOUT: Resetear estado después de 2 segundos para evitar clics accidentales
@@ -4010,7 +3985,7 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
         
 
       if (mounted) {
-        showErrorSnackBar(context, 'Error: ${e.toString()}');
+        showErrorSnackBar(context, 'Error: ${errorMessage(e)}');
       }
     }
   }
@@ -4210,7 +4185,7 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
       }
     } catch (e) {
       if (mounted) {
-        showErrorSnackBar(context, 'Error al cargar productos: $e');
+        showErrorSnackBar(context, 'Error al cargar productos: ${errorMessage(e)}');
       }
     }
   }
@@ -4254,7 +4229,7 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
       }
     } catch (e) {
       if (mounted) {
-        showErrorSnackBar(context, 'Error al cargar productos: $e');
+        showErrorSnackBar(context, 'Error al cargar productos: ${errorMessage(e)}');
       }
     }
   }
@@ -4808,7 +4783,7 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
     } catch (e) {
         
       if (mounted) {
-        showErrorSnackBar(context, 'Error al generar código de barras: $e');
+        showErrorSnackBar(context, 'Error al generar código de barras: ${errorMessage(e)}');
       }
     }
   }

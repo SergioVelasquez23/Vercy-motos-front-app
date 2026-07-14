@@ -16,6 +16,7 @@ import '../utils/busqueda_productos_utils.dart';
 import '../utils/currency_utils.dart';
 import '../utils/logger.dart';
 import '../utils/datetime_utils.dart';
+import '../utils/api_error.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../dialogs/dialogo_agregar_item_compra.dart';
@@ -188,7 +189,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
       );
     } catch (e) {
         
-      showErrorSnackBar(context, 'Error en pruebas de debug: $e');
+      showErrorSnackBar(context, 'Error en pruebas de debug: ${errorMessage(e)}');
     }
   }
 
@@ -635,7 +636,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                         );
                       } catch (e) {
                         setDialogState(() => guardando = false);
-                        showErrorSnackBar(context, 'Error al crear producto: $e');
+                        showErrorSnackBar(context, 'Error al crear producto: ${errorMessage(e)}');
                       }
                     },
               style: ElevatedButton.styleFrom(
@@ -3512,7 +3513,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
     } catch (e) {
       appLog('Error guardando borrador: $e', level: LogLevel.error);
       if (mounted) {
-        showErrorSnackBar(context, 'Error al guardar borrador: $e');
+        showErrorSnackBar(context, 'Error al guardar borrador: ${errorMessage(e)}');
       }
     }
   }
@@ -3875,7 +3876,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
     } catch (e) {
         
       if (mounted) {
-        showErrorSnackBar(context, 'Error al crear factura: $e');
+        showErrorSnackBar(context, 'Error al crear factura: ${errorMessage(e)}');
       }
     } finally {
       if (mounted) {

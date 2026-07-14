@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/network_discovery_service.dart';
 import '../config/api_config.dart';
+import '../utils/api_error.dart';
 
 /// Widget que muestra el estado actual de la conexión de red
 /// y permite reconectar manualmente
@@ -80,7 +81,7 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
       }
     } catch (e) {
       _isConnected = false;
-      _statusMessage = 'Error de configuración: ${e.toString()}';
+      _statusMessage = 'Error de configuración: ${errorMessage(e)}';
     }
 
     setState(() {
@@ -125,8 +126,9 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
       }
     } catch (e) {
       _isConnected = false;
-      _statusMessage = 'Error en búsqueda: ${e.toString()}';
-      _showSnackBar('❌ Error: ${e.toString()}', Colors.red);
+      final mensaje = errorMessage(e);
+      _statusMessage = 'Error en búsqueda: $mensaje';
+      _showSnackBar('❌ Error: $mensaje', Colors.red);
     }
 
     _animationController.stop();

@@ -5,6 +5,7 @@ import '../models/cuenta_por_pagar.dart';
 import '../models/gasto_programado.dart';
 import '../models/resumen_cartera.dart';
 import '../models/api_response.dart';
+import '../utils/api_error.dart';
 import 'base_api_service.dart';
 import 'alertas_service.dart';
 import '../utils/logger.dart';
@@ -48,14 +49,14 @@ class CarteraService {
       return ApiResponse<List<CuentaPorCobrar>>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<List<CuentaPorCobrar>>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -92,14 +93,14 @@ class CarteraService {
       return ApiResponse<List<CuentaPorCobrar>>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<List<CuentaPorCobrar>>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -133,14 +134,14 @@ class CarteraService {
       return ApiResponse<List<CuentaPorCobrar>>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<List<CuentaPorCobrar>>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -180,14 +181,14 @@ class CarteraService {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -221,14 +222,14 @@ class CarteraService {
       return ApiResponse<List<CuentaPorPagar>>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<List<CuentaPorPagar>>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -266,14 +267,14 @@ class CarteraService {
       return ApiResponse<CuentaPorPagar>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<CuentaPorPagar>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -418,7 +419,7 @@ class CarteraService {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
@@ -426,7 +427,7 @@ class CarteraService {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -460,14 +461,14 @@ class CarteraService {
       return ApiResponse<List<GastoProgramado>>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<List<GastoProgramado>>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -505,14 +506,14 @@ class CarteraService {
       return ApiResponse<GastoProgramado>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<GastoProgramado>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -550,14 +551,14 @@ class CarteraService {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -587,14 +588,14 @@ class CarteraService {
       return ApiResponse<ResumenCartera>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<ResumenCartera>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -633,7 +634,7 @@ class CarteraService {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
@@ -641,7 +642,7 @@ class CarteraService {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -691,14 +692,14 @@ class CarteraService {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -737,14 +738,14 @@ class CarteraService {
       return ApiResponse<CuentaPorPagar>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<CuentaPorPagar>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }
@@ -774,14 +775,14 @@ class CarteraService {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}: ${response.body}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<String>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }

@@ -14,6 +14,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../theme/app_theme.dart';
 import '../utils/pagination_mixin.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class CuadreCajaScreen extends StatefulWidget {
   const CuadreCajaScreen({super.key});
@@ -133,7 +135,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Error al cargar cuadres: ${e.toString()}';
+        _errorMessage = 'Error al cargar cuadres: ${errorMessage(e)}';
         _isLoading = false;
       });
     }
@@ -352,7 +354,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error en búsqueda: ${e.toString()}';
+        _errorMessage = 'Error en búsqueda: ${errorMessage(e)}';
       });
     } finally {
       setState(() {
@@ -390,12 +392,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
         _loadCuadresCaja();
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al actualizar cuadre: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, 'Error al actualizar cuadre: ${errorMessage(e)}');
     }
   }
 
@@ -436,12 +433,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
   // Método para mostrar el resumen detallado del cuadre
   void _mostrarResumenDetallado(CuadreCaja cuadre) {
     if (cuadre.id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ID del cuadre no disponible'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, 'ID del cuadre no disponible');
       return;
     }
 
@@ -2174,7 +2166,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                   ),
                                   SizedBox(height: 8),
                                   Text(
-                                    'Error: ${snapshot.error.toString()}',
+                                    'Error: ${errorMessage(snapshot.error!)}',
                                     style: TextStyle(
                                       color: Colors.red,
                                       fontSize: 10,

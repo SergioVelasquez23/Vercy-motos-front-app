@@ -32,8 +32,7 @@ class ImpresionService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
-        
-      throw Exception('Error generando resumen: $e');
+      wrapOrThrow(e, context: 'Error generando resumen');
     }
   }
 
@@ -80,8 +79,7 @@ class ImpresionService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
-        
-      throw Exception('Error creando factura: $e');
+      wrapOrThrow(e, context: 'Error creando factura');
     }
   }
 
@@ -114,8 +112,7 @@ class ImpresionService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
-        
-      throw Exception('Error obteniendo factura: $e');
+      wrapOrThrow(e, context: 'Error obteniendo factura');
     }
   }
 

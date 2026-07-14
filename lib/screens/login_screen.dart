@@ -8,6 +8,7 @@ import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../services/keep_alive_service.dart';
+import '../utils/api_error.dart' as api_error;
 import 'package:universal_html/html.dart' as html;
 
 // Extension para validación de email
@@ -368,7 +369,7 @@ class _LoginScreenState extends State<LoginScreen>
       }
     } catch (e) {
       setState(() {
-        errorMessage = 'Error inesperado: $e';
+        errorMessage = api_error.errorMessage(e);
         _isLoading = false;
       });
     }
@@ -408,7 +409,7 @@ class _LoginScreenState extends State<LoginScreen>
       }
     } catch (e) {
       setState(() {
-        errorMessage = 'Error: $e';
+        errorMessage = api_error.errorMessage(e);
       });
     }
   }
@@ -583,7 +584,7 @@ class _LoginScreenState extends State<LoginScreen>
                                         }
                                       } catch (e) {
                                         setState(() {
-                                          registerError = 'Error: $e';
+                                          registerError = api_error.errorMessage(e);
                                         });
                                       } finally {
                                         setState(() {

@@ -91,8 +91,7 @@ class CotizacionService {
 
       throwBackendError(response.body, response.statusCode, prefix: 'Error al crear cotización');
     } catch (e) {
-        
-      throw Exception('Error al crear cotización: $e');
+      wrapOrThrow(e, context: 'Error al crear cotización');
     }
   }
 
@@ -117,8 +116,7 @@ class CotizacionService {
 
       throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar cotización');
     } catch (e) {
-        
-      throw Exception('Error al actualizar cotización: $e');
+      wrapOrThrow(e, context: 'Error al actualizar cotización');
     }
   }
 
@@ -180,8 +178,7 @@ class CotizacionService {
 
       throwBackendError(response.body, response.statusCode, prefix: 'Error al aceptar cotización');
     } catch (e) {
-        
-      throw Exception('Error al aceptar cotización: $e');
+      wrapOrThrow(e, context: 'Error al aceptar cotización');
     }
   }
 
@@ -198,8 +195,7 @@ class CotizacionService {
 
       throwBackendError(response.body, response.statusCode, prefix: 'Error al rechazar cotización');
     } catch (e) {
-        
-      throw Exception('Error al rechazar cotización: $e');
+      wrapOrThrow(e, context: 'Error al rechazar cotización');
     }
   }
 
@@ -218,8 +214,7 @@ class CotizacionService {
 
       throwBackendError(response.body, response.statusCode, prefix: 'Error al convertir cotización');
     } catch (e) {
-        
-      throw Exception('Error al convertir cotización: $e');
+      wrapOrThrow(e, context: 'Error al convertir cotización');
     }
   }
 
@@ -301,8 +296,7 @@ class CotizacionService {
 
       throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener estadísticas');
     } catch (e) {
-        
-      throw Exception('Error al obtener estadísticas: $e');
+      wrapOrThrow(e, context: 'Error al obtener estadísticas');
     }
   }
 
@@ -372,7 +366,7 @@ class CotizacionService {
 
       throwBackendError(response.body, response.statusCode, prefix: 'Error al generar PDF');
     } catch (e) {
-      throw Exception('Error al generar PDF: $e');
+      wrapOrThrow(e, context: 'Error al generar PDF');
     }
   }
 }

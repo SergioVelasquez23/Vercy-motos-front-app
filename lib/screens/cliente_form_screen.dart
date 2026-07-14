@@ -4,6 +4,8 @@ import '../services/cliente_service.dart';
 import '../utils/submit_guard.dart';
 import '../services/colombia_location_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class ClienteFormScreen extends StatefulWidget {
   final Cliente? cliente;
@@ -1038,12 +1040,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> with SubmitGuard 
       Navigator.pop(context, clienteGuardado);
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al guardar cliente: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, errorMessage(e), title: 'No se pudo guardar el cliente');
     }
   }
 }

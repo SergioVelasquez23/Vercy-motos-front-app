@@ -6,6 +6,8 @@ import '../../services/negocio_info_service.dart';
 import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/pedido.dart';
+import '../../utils/api_error.dart';
+import '../../utils/dialogs_helper.dart';
 
 import 'confirmacion_dian_dialog.dart';
 
@@ -92,21 +94,14 @@ class _PosRapidoButtonState extends State<PosRapidoButton> {
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ ${resultado.message}'),
-            backgroundColor: AppTheme.error,
-            duration: const Duration(seconds: 4),
-          ),
-        );
+        showErrorDialog(context, resultado.message);
         widget.onError?.call(resultado.message);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ $e'), backgroundColor: AppTheme.error),
-        );
-        widget.onError?.call(e.toString());
+        final mensaje = errorMessage(e);
+        showErrorDialog(context, mensaje);
+        widget.onError?.call(mensaje);
       }
     } finally {
       if (mounted) setState(() => _loading = false);

@@ -3,6 +3,8 @@ import '../models/alerta_notificacion.dart';
 import '../services/alertas_service.dart';
 import '../services/cartera_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class AlertasScreen extends StatefulWidget {
   const AlertasScreen({Key? key}) : super(key: key);
@@ -60,7 +62,7 @@ class _AlertasScreenState extends State<AlertasScreen>
       });
     } catch (e) {
       setState(() {
-        error = 'Error de conexión: $e';
+        error = errorMessage(e);
         isLoading = false;
       });
     }
@@ -77,20 +79,10 @@ class _AlertasScreenState extends State<AlertasScreen>
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${response.message}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, response.message);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error de conexión: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, errorMessage(e));
     }
   }
 
@@ -704,7 +696,7 @@ class _AlertasScreenState extends State<AlertasScreen>
         response.isSuccess ? 'Conectividad exitosa' : response.message,
       );
     } catch (e) {
-      _mostrarResultadoPrueba('Conectividad', false, 'Error: $e');
+      _mostrarResultadoPrueba('Conectividad', false, 'Error: ${errorMessage(e)}');
     }
   }
 
@@ -717,7 +709,7 @@ class _AlertasScreenState extends State<AlertasScreen>
         response.data ?? response.message ?? 'Prueba completada',
       );
     } catch (e) {
-      _mostrarResultadoPrueba('Stock', false, 'Error: $e');
+      _mostrarResultadoPrueba('Stock', false, 'Error: ${errorMessage(e)}');
     }
   }
 
@@ -730,7 +722,7 @@ class _AlertasScreenState extends State<AlertasScreen>
         response.data ?? response.message ?? 'Prueba completada',
       );
     } catch (e) {
-      _mostrarResultadoPrueba('Factura', false, 'Error: $e');
+      _mostrarResultadoPrueba('Factura', false, 'Error: ${errorMessage(e)}');
     }
   }
 
@@ -743,7 +735,7 @@ class _AlertasScreenState extends State<AlertasScreen>
         response.data ?? response.message ?? 'Prueba completada',
       );
     } catch (e) {
-      _mostrarResultadoPrueba('Deuda', false, 'Error: $e');
+      _mostrarResultadoPrueba('Deuda', false, 'Error: ${errorMessage(e)}');
     }
   }
 
@@ -756,7 +748,7 @@ class _AlertasScreenState extends State<AlertasScreen>
         response.data ?? response.message ?? 'Prueba completada',
       );
     } catch (e) {
-      _mostrarResultadoPrueba('Gastos', false, 'Error: $e');
+      _mostrarResultadoPrueba('Gastos', false, 'Error: ${errorMessage(e)}');
     }
   }
 
@@ -769,7 +761,7 @@ class _AlertasScreenState extends State<AlertasScreen>
         response.data ?? response.message ?? 'Prueba completada',
       );
     } catch (e) {
-      _mostrarResultadoPrueba('Cuentas por Pagar', false, 'Error: $e');
+      _mostrarResultadoPrueba('Cuentas por Pagar', false, 'Error: ${errorMessage(e)}');
     }
   }
 
@@ -799,7 +791,7 @@ class _AlertasScreenState extends State<AlertasScreen>
       }
     } catch (e) {
       Navigator.pop(context);
-      _mostrarResultadoPrueba('Todas las pruebas', false, 'Error: $e');
+      _mostrarResultadoPrueba('Todas las pruebas', false, 'Error: ${errorMessage(e)}');
     }
   }
 

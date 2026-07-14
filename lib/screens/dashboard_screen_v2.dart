@@ -13,6 +13,7 @@ import '../widgets/admin_key_detector.dart';
 import '../widgets/dashboard/stats_cards_section.dart';
 import '../widgets/dashboard/legend_item.dart';
 import '../utils/snackbar_helper.dart';
+import '../utils/api_error.dart';
 
 class InfoCardItem {
   final String label;
@@ -736,7 +737,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         _objetivosTemporales.remove(periodo);
       });
       if (mounted) {
-        showErrorSnackBar(context, 'Error al actualizar el objetivo: ${e.toString()}');
+        showErrorSnackBar(context, 'Error al actualizar el objetivo: ${errorMessage(e)}');
       }
     }
   }

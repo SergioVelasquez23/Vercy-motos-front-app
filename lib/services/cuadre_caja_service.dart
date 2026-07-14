@@ -54,7 +54,7 @@ class CuadreCajaService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener cuadres');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener cuadres');
     }
   }
 
@@ -76,7 +76,7 @@ class CuadreCajaService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener cuadre');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener cuadre');
     }
   }
 
@@ -101,12 +101,10 @@ class CuadreCajaService {
 
         return cuadres;
       } else {
-        throw Exception(
-          'Error al obtener cuadres por responsable: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener cuadres por responsable');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener cuadres por responsable');
     }
   }
 
@@ -131,12 +129,10 @@ class CuadreCajaService {
 
         return cuadres;
       } else {
-        throw Exception(
-          'Error al obtener cuadres por estado: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener cuadres por estado');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener cuadres por estado');
     }
   }
 
@@ -161,12 +157,10 @@ class CuadreCajaService {
 
         return cuadres;
       } else {
-        throw Exception(
-          'Error al obtener cuadres de hoy: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener cuadres de hoy');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener cuadres de hoy');
     }
   }
 
@@ -204,12 +198,10 @@ class CuadreCajaService {
 
         return cuadres;
       } else {
-        throw Exception(
-          'Error al obtener cajas abiertas: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener cajas abiertas');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener cajas abiertas');
     }
   }
 
@@ -422,7 +414,7 @@ class CuadreCajaService {
         'transferenciasEsperadas': 0.0,
         'transferenciaEsperada': 0.0,
         'totalVentas': 0.0,
-        'error': 'No se pudo calcular el efectivo esperado: $e',
+        'error': 'No se pudo calcular el efectivo esperado',
         'timestamp': DateTime.now().toIso8601String(),
       };
     }
@@ -479,13 +471,10 @@ class CuadreCajaService {
 
         return cuadreCreado;
       } else {
-        final errorData = json.decode(response.body);
-          
-        throw Exception(errorData['message'] ?? 'Error al crear cuadre');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al crear cuadre');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al crear cuadre');
     }
   }
 
@@ -556,12 +545,10 @@ class CuadreCajaService {
 
         return CuadreCaja.fromJson(responseData['data']);
       } else {
-        final errorData = json.decode(response.body);
-        throw Exception(errorData['message'] ?? 'Error al actualizar cuadre');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar cuadre');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al actualizar cuadre');
     }
   }
 
@@ -581,11 +568,10 @@ class CuadreCajaService {
         final responseData = json.decode(response.body);
         return CuadreCaja.fromJson(responseData['data']);
       } else {
-        final errorData = json.decode(response.body);
-        throw Exception(errorData['message'] ?? 'Error al aprobar cuadre');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al aprobar cuadre');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al aprobar cuadre');
     }
   }
 
@@ -612,11 +598,10 @@ class CuadreCajaService {
         final responseData = json.decode(response.body);
         return CuadreCaja.fromJson(responseData['data']);
       } else {
-        final errorData = json.decode(response.body);
-        throw Exception(errorData['message'] ?? 'Error al rechazar cuadre');
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al rechazar cuadre');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al rechazar cuadre');
     }
   }
 
@@ -631,7 +616,7 @@ class CuadreCajaService {
 
       return response.statusCode == 200;
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al eliminar cuadre');
     }
   }
 
@@ -648,12 +633,10 @@ class CuadreCajaService {
         final responseData = json.decode(response.body);
         return responseData['data'];
       } else {
-        throw Exception(
-          'Error al obtener debug de pedidos: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener debug de pedidos');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener debug de pedidos');
     }
   }
 
@@ -669,12 +652,10 @@ class CuadreCajaService {
         final responseData = json.decode(response.body);
         return responseData['data'];
       } else {
-        throw Exception(
-          'Error al obtener detalles de ventas: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener detalles de ventas');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener detalles de ventas');
     }
   }
 
@@ -690,12 +671,10 @@ class CuadreCajaService {
         final responseData = json.decode(response.body);
         return responseData['data'];
       } else {
-        throw Exception(
-          'Error al obtener todos los pedidos: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener todos los pedidos');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener todos los pedidos');
     }
   }
 
@@ -823,8 +802,7 @@ class CuadreCajaService {
         };
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener ventas por cuadre activo');
     }
   }
 
@@ -845,15 +823,10 @@ class CuadreCajaService {
           
         return responseData['data'];
       } else {
-          
-          
-        throw Exception(
-          'Error al obtener resumen de ventas: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener resumen de ventas');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener resumen de ventas');
     }
   }
 
@@ -879,15 +852,10 @@ class CuadreCajaService {
           
         return responseData['data'];
       } else {
-          
-          
-        throw Exception(
-          'Error al obtener cuadre completo: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener cuadre completo');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener cuadre completo');
     }
   }
 
@@ -904,12 +872,10 @@ class CuadreCajaService {
         final responseData = json.decode(response.body);
         return responseData['data'];
       } else {
-        throw Exception(
-          'Error al obtener resumen de cierre: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener resumen de cierre');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener resumen de cierre');
     }
   }
 
@@ -926,12 +892,10 @@ class CuadreCajaService {
         final responseData = json.decode(response.body);
         return responseData;
       } else {
-        throw Exception(
-          'Error al obtener informe de cuadre: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener informe de cuadre');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener informe de cuadre');
     }
   }
 }

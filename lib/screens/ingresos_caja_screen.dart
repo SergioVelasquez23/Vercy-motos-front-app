@@ -4,6 +4,8 @@ import '../theme/app_theme.dart';
 import '../models/ingreso_caja.dart';
 import '../services/ingreso_caja_service.dart';
 import '../utils/datetime_utils.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class IngresosCajaScreen extends StatefulWidget {
   const IngresosCajaScreen({super.key});
@@ -44,7 +46,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error al cargar ingresos: $e')));
+      ).showSnackBar(SnackBar(content: Text('Error al cargar ingresos: ${errorMessage(e)}')));
     }
     if (!mounted) return;
     setState(() => _loading = false);
@@ -154,12 +156,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
           ),
         );
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al registrar ingreso: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, 'Error al registrar ingreso: ${errorMessage(e)}');
       }
     }
   }

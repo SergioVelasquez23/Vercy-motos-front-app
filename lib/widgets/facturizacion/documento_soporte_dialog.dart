@@ -9,6 +9,7 @@ import '../../services/negocio_info_service.dart';
 import '../../services/proveedor_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/currency_utils.dart';
+import '../../utils/api_error.dart';
 
 class DocumentoSoporteDialog extends StatefulWidget {
   /// Cuando se pasa, el dialog pre-llena todo desde la compra y solo
@@ -285,7 +286,7 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
         setState(() => _errorMsg = resultado.message);
       }
     } catch (e) {
-      setState(() => _errorMsg = e.toString());
+      setState(() => _errorMsg = errorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

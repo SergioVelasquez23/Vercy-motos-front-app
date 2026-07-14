@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../config/api_config.dart';
+import '../../providers/user_provider.dart';
+import '../../utils/jwt_utils.dart';
 import '../../utils/token_storage.dart';
 import 'base_api_service.dart';
 
@@ -12,8 +14,10 @@ class ApiException implements Exception {
 
   ApiException(this.message, {this.statusCode, this.responseData});
 
+  /// Solo el mensaje legible — para que `Text(e.toString())` o `errorMessage(e)`
+  /// en la UI no muestren "ApiException: ... (Status: 500)" al usuario.
   @override
-  String toString() => 'ApiException: $message (Status: $statusCode)';
+  String toString() => message;
 }
 
 /// Implementación concreta del BaseApiService
@@ -62,13 +66,40 @@ class HttpApiService extends BaseApiService {
       case 201:
         return _parseSuccessResponse<T>(response.body, parser);
       case 401:
-        // Token expirado o inválido
-        await clearJwtToken();
+        // Token expirado o inválido: cerrar sesión de verdad (no solo
+        // borrar el storage) para que UserProvider.isAuthenticated pase a
+        // false y el router (que escucha a UserProvider) redirija a login
+        // solo. Antes esto dejaba el storage vacío pero el estado en
+        // memoria seguía "logueado", así que la app quedaba colgada en
+        // pantallas que fallan en silencio sin volver nunca al login.
+        await UserProvider().logout();
         throw ApiException(
           'Sesión expirada. Por favor inicia sesión nuevamente.',
           statusCode: 401,
         );
       case 403:
+        // El backend hoy no distingue "no tienes el rol" de "tu token ya
+        // no es válido" — ambos casos responden 403 (ver SecurityConfig,
+        // no hay AuthenticationEntryPoint que separe 401 de 403). Si el
+        // token que tenemos guardado ya venció, tratamos este 403 igual
+        // que un 401 y forzamos logout; si el token sigue vigente, es un
+        // 403 real de permisos y solo se informa, sin cerrar la sesión.
+        final tokenActual = await readJwtToken();
+        bool tokenVencido = false;
+        if (tokenActual != null) {
+          try {
+            tokenVencido = JwtUtils.isTokenExpired(tokenActual);
+          } catch (e) {
+            tokenVencido = true;
+          }
+        }
+        if (tokenVencido) {
+          await UserProvider().logout();
+          throw ApiException(
+            'Sesión expirada. Por favor inicia sesión nuevamente.',
+            statusCode: 401,
+          );
+        }
         throw ApiException(
           'No tienes permisos para realizar esta acción.',
           statusCode: 403,
@@ -155,7 +186,7 @@ class HttpApiService extends BaseApiService {
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw ApiException('Error de conexión: $e');
+      throw ApiException('Error de conexión. Verifica tu conectividad a internet.');
     }
   }
 
@@ -187,7 +218,7 @@ class HttpApiService extends BaseApiService {
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw ApiException('Error de conexión: $e');
+      throw ApiException('Error de conexión. Verifica tu conectividad a internet.');
     }
   }
 
@@ -219,7 +250,7 @@ class HttpApiService extends BaseApiService {
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw ApiException('Error de conexión: $e');
+      throw ApiException('Error de conexión. Verifica tu conectividad a internet.');
     }
   }
 
@@ -245,7 +276,7 @@ class HttpApiService extends BaseApiService {
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw ApiException('Error de conexión: $e');
+      throw ApiException('Error de conexión. Verifica tu conectividad a internet.');
     }
   }
 

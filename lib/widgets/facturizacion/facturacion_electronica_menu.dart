@@ -11,6 +11,7 @@ import '../../services/negocio_info_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/base64_file_launcher.dart';
 import '../../utils/logger.dart';
+import '../../utils/api_error.dart';
 import 'nota_credito_debito_dialog.dart';
 import 'documento_soporte_dialog.dart';
 import 'confirmacion_dian_dialog.dart';
@@ -131,7 +132,7 @@ class _FacturacionElectronicaMenuState
         _mostrarErrorDialog('Factura Electrónica', resultado.message);
       }
     } catch (e) {
-      _mostrarErrorDialog('Error', 'Error al emitir FE: $e');
+      _mostrarErrorDialog('Error', 'Error al emitir FE: ${errorMessage(e)}');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -190,7 +191,7 @@ class _FacturacionElectronicaMenuState
         _mostrarErrorDialog('POS Electrónico', resultado.message);
       }
     } catch (e) {
-      _mostrarErrorDialog('Error', 'Error al emitir POS: $e');
+      _mostrarErrorDialog('Error', 'Error al emitir POS: ${errorMessage(e)}');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -252,7 +253,7 @@ class _FacturacionElectronicaMenuState
         _mostrarErrorDialog('POS Rápido', resultado.message);
       }
     } catch (e) {
-      _mostrarErrorDialog('Error', e.toString());
+      _mostrarErrorDialog('Error', errorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -283,7 +284,7 @@ class _FacturacionElectronicaMenuState
         _mostrarErrorDialog('Reenviar Documento', resultado.message);
       }
     } catch (e) {
-      _mostrarErrorDialog('Error', e.toString());
+      _mostrarErrorDialog('Error', errorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -665,7 +666,7 @@ class _AccionesMatiasMenuState extends State<AccionesMatiasMenu> {
       );
       if (!ok) _mostrarErrorDialog('Descargar PDF', 'No se pudo abrir el PDF.');
     } catch (e) {
-      _mostrarErrorDialog('Descargar PDF', e.toString());
+      _mostrarErrorDialog('Descargar PDF', errorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -756,7 +757,7 @@ class _AccionesMatiasMenuState extends State<AccionesMatiasMenu> {
         _mostrarErrorDialog('Reenviar correo', res.message);
       }
     } catch (e) {
-      _mostrarErrorDialog('Reenviar correo', e.toString());
+      _mostrarErrorDialog('Reenviar correo', errorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -790,7 +791,7 @@ class _AccionesMatiasMenuState extends State<AccionesMatiasMenu> {
         _mostrarErrorDialog('Reenviar a DIAN', res.message);
       }
     } catch (e) {
-      _mostrarErrorDialog('Reenviar a DIAN', e.toString());
+      _mostrarErrorDialog('Reenviar a DIAN', errorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -842,7 +843,7 @@ class _AccionesMatiasMenuState extends State<AccionesMatiasMenu> {
         ),
       );
     } catch (e) {
-      _mostrarErrorDialog('Consultar estado', e.toString());
+      _mostrarErrorDialog('Consultar estado', errorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

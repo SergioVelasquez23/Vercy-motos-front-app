@@ -24,6 +24,8 @@ import '../utils/logger.dart';
 import '../utils/pagination_mixin.dart';
 import '../widgets/common/screen_header.dart';
 import '../utils/currency_utils.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class FacturasListScreen extends StatefulWidget {
   final String? filtroInicial;
@@ -154,7 +156,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
       appLog('❌ Error cargando documentos: $e');
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error al cargar documentos: $e')));
+      ).showSnackBar(SnackBar(content: Text('Error al cargar documentos: ${errorMessage(e)}')));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -1309,12 +1311,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al generar PDF: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, 'Error al generar PDF: ${errorMessage(e)}');
     }
   }
 
@@ -1324,12 +1321,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
       await _pdfService.imprimirFactura(resumen);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al imprimir: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, 'Error al imprimir: ${errorMessage(e)}');
     }
   }
 
@@ -1386,11 +1378,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
         }
       } catch (e) {
         if (!mounted) return;
-        messenger.showSnackBar(SnackBar(
-          content: Text('❌ Error al enviar a DIAN: $e'),
-          backgroundColor: Colors.red.shade700,
-          duration: const Duration(seconds: 8),
-        ));
+        showErrorDialog(context, 'Error al enviar a DIAN: ${errorMessage(e)}');
       } finally {
         if (mounted) setState(() => _emitiendoFE.remove(pedido.id));
       }
@@ -1521,13 +1509,11 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
         html.Url.revokeObjectUrl(url);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('CSV generado: \${_documentosFiltrados.length} registros')),
+          SnackBar(content: Text('CSV generado: ${_documentosFiltrados.length} registros')),
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al exportar: \$e'), backgroundColor: Colors.red),
-      );
+      showErrorDialog(context, 'Error al exportar: ${errorMessage(e)}');
     }
   }
 

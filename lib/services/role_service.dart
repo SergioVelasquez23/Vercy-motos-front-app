@@ -51,8 +51,7 @@ class RoleService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar roles');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error de conexión');
     }
   }
 
@@ -80,8 +79,7 @@ class RoleService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener rol');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error de conexión');
     }
   }
 
@@ -108,8 +106,7 @@ class RoleService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al crear rol');
       }
     } catch (e) {
-        
-      throw Exception('Error al crear rol: $e');
+      wrapOrThrow(e, context: 'Error al crear rol');
     }
   }
 
@@ -136,8 +133,7 @@ class RoleService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar rol');
       }
     } catch (e) {
-        
-      throw Exception('Error al actualizar rol: $e');
+      wrapOrThrow(e, context: 'Error al actualizar rol');
     }
   }
 
@@ -159,8 +155,7 @@ class RoleService {
 
       return response.statusCode == 204 || response.statusCode == 200;
     } catch (e) {
-        
-      throw Exception('Error al eliminar rol: $e');
+      wrapOrThrow(e, context: 'Error al eliminar rol');
     }
   }
 }

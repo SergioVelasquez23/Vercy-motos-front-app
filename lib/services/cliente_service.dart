@@ -143,8 +143,7 @@ class ClienteService {
 
       throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar cliente');
     } catch (e) {
-        
-      throw Exception('Error al actualizar cliente: $e');
+      wrapOrThrow(e, context: 'Error al actualizar cliente');
     }
   }
 
@@ -240,8 +239,7 @@ class ClienteService {
 
       throwBackendError(response.body, response.statusCode, prefix: 'Error al bloquear cliente');
     } catch (e) {
-        
-      throw Exception('Error al bloquear cliente: $e');
+      wrapOrThrow(e, context: 'Error al bloquear cliente');
     }
   }
 
@@ -259,8 +257,7 @@ class ClienteService {
 
       throwBackendError(response.body, response.statusCode, prefix: 'Error al activar cliente');
     } catch (e) {
-        
-      throw Exception('Error al activar cliente: $e');
+      wrapOrThrow(e, context: 'Error al activar cliente');
     }
   }
 
@@ -282,8 +279,7 @@ class ClienteService {
 
       throwBackendError(response.body, response.statusCode, prefix: 'Error al verificar cupo');
     } catch (e) {
-        
-      throw Exception('Error al verificar cupo: $e');
+      wrapOrThrow(e, context: 'Error al verificar cupo');
     }
   }
 
@@ -300,8 +296,7 @@ class ClienteService {
 
       throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener estadísticas');
     } catch (e) {
-        
-      throw Exception('Error al obtener estadísticas: $e');
+      wrapOrThrow(e, context: 'Error al obtener estadísticas');
     }
   }
 

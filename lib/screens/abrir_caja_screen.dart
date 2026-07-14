@@ -7,6 +7,8 @@ import '../services/cuadre_caja_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/caja/caja_ya_abierta_widget.dart';
 import '../widgets/caja/formulario_abrir_caja_widget.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class AbrirCajaScreen extends StatefulWidget {
   const AbrirCajaScreen({super.key});
@@ -104,16 +106,16 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
         throw Exception('Error al crear el cuadre');
       }
     } catch (e) {
-      String errorMessage = 'Error al abrir caja: $e';
+      String mensajeError = errorMessage(e);
 
       if (e.toString().contains('Ya existe una caja abierta')) {
-        errorMessage =
+        mensajeError =
             'Ya existe una caja abierta. Debe cerrar la caja actual antes de abrir una nueva.';
         await _verificarEstadoCaja();
       }
 
       if (!mounted) return;
-      _mostrarError(errorMessage);
+      _mostrarError(mensajeError);
     } finally {
       setState(() {
         _isLoading = false;
@@ -126,13 +128,7 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
   }
 
   void _mostrarError(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(mensaje),
-        backgroundColor: Colors.red,
-        duration: Duration(seconds: 4),
-      ),
-    );
+    showErrorDialog(context, mensaje);
   }
 
   void _mostrarExito(String mensaje) {

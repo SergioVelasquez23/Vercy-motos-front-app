@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/role.dart';
 import '../services/role_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class RolesScreen extends StatefulWidget {
   const RolesScreen({super.key});
@@ -41,12 +43,7 @@ class _RolesScreenState extends State<RolesScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cargar roles: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, 'Error al cargar roles: ${errorMessage(e)}');
       }
     }
   }
@@ -402,12 +399,7 @@ class _RolesScreenState extends State<RolesScreen> {
       Navigator.pop(context);
       _cargarRoles();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al guardar rol: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, 'Error al guardar rol: ${errorMessage(e)}');
     }
   }
 
@@ -455,12 +447,7 @@ class _RolesScreenState extends State<RolesScreen> {
       _cargarRoles();
     } catch (e) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al eliminar rol: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, 'Error al eliminar rol: ${errorMessage(e)}');
     }
   }
 }

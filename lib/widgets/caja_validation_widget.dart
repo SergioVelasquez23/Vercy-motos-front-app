@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../services/cuadre_caja_service.dart';
 import '../models/cuadre_caja.dart';
+import '../utils/api_error.dart';
 
 /// Widget helper para validar que hay una caja abierta antes de crear pedidos
 class CajaValidationWidget extends StatelessWidget {
@@ -94,7 +95,7 @@ class CajaValidationHelper {
       
       return true;
     } catch (e) {
-      _showErrorDialog(context, e.toString());
+      _showErrorDialog(context, errorMessage(e));
       return false;
     }
   }

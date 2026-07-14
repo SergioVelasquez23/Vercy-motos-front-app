@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../providers/theme_provider.dart';
 import '../models/negocio_info.dart';
 import '../services/negocio_info_service.dart';
+import '../utils/api_error.dart';
 
 class ConfiguracionScreen extends StatefulWidget {
   const ConfiguracionScreen({super.key});
@@ -349,7 +350,7 @@ class _NegocioTabState extends State<_NegocioTab> {
         _softwareNameCtrl.text = info.softwareName ?? 'Vercy POS';
       }
     } catch (e) {
-      _errorMsg = e.toString();
+      _errorMsg = errorMessage(e);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -409,7 +410,7 @@ class _NegocioTabState extends State<_NegocioTab> {
       _softwareNameCtrl.text = actualizado.softwareName ?? _softwareNameCtrl.text;
       setState(() => _successMsg = 'Configuración guardada correctamente');
     } catch (e) {
-      setState(() => _errorMsg = e.toString());
+      setState(() => _errorMsg = errorMessage(e));
     } finally {
       if (mounted) setState(() => _saving = false);
     }

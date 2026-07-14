@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/tipo_gasto.dart';
 import '../services/gasto_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class TiposGastoScreen extends StatefulWidget {
   const TiposGastoScreen({super.key});
@@ -54,9 +56,7 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
         await _crearTiposPredeterminados();
       }
     } catch (e) {
-      _showError(
-        'Error al cargar tipos de gasto: ${e.toString().split(':').first}',
-      );
+      _showError('Error al cargar tipos de gasto: ${errorMessage(e)}');
         
     } finally {
       setState(() => _isLoading = false);
@@ -155,7 +155,7 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
       setState(() => _showForm = false);
       await _loadTiposGasto();
     } catch (e) {
-      _showError('Error al guardar tipo de gasto: $e');
+      _showError('Error al guardar tipo de gasto: ${errorMessage(e)}');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -262,8 +262,7 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
                 'Considere desactivarlo en su lugar.',
           );
         } else {
-          _showError('Error al eliminar: ${e.toString().split(':').first}');
-            
+          _showError('Error al eliminar: ${errorMessage(e)}');
         }
       } finally {
         setState(() => _isLoading = false);
@@ -280,27 +279,14 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
       _showSuccess('Estado actualizado exitosamente');
       await _loadTiposGasto();
     } catch (e) {
-      _showError('Error al actualizar estado: $e');
+      _showError('Error al actualizar estado: ${errorMessage(e)}');
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.error_outline, color: Colors.white),
-            SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 4),
-      ),
-    );
+    showErrorDialog(context, message);
   }
 
   void _showSuccess(String message) {

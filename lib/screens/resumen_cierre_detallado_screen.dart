@@ -6,6 +6,8 @@ import '../utils/format_utils.dart';
 import '../utils/payment_calculator.dart';
 import '../theme/app_theme.dart';
 import '../utils/logger.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class ResumenCierreDetalladoScreen extends StatefulWidget {
   final String cuadreId;
@@ -250,7 +252,7 @@ class _ResumenCierreDetalladoScreenState
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error al cargar el resumen: $e';
+        _errorMessage = errorMessage(e);
         _isLoading = false;
       });
     }
@@ -332,13 +334,7 @@ class _ResumenCierreDetalladoScreenState
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al generar PDF: ${e.toString()}'),
-          backgroundColor: AppTheme.error,
-          duration: Duration(seconds: 3),
-        ),
-      );
+      showErrorDialog(context, 'Error al generar PDF: ${errorMessage(e)}');
     } finally {
       if (mounted) {
         setState(() {

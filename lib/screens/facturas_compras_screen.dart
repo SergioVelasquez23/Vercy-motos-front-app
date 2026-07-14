@@ -7,6 +7,7 @@ import '../utils/currency_utils.dart';
 import '../utils/snackbar_helper.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/facturizacion/documento_soporte_dialog.dart';
+import '../utils/api_error.dart';
 class FacturasComprasScreen extends StatefulWidget {
   const FacturasComprasScreen({super.key});
 
@@ -68,7 +69,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
         _aplicarFiltros();
       });
     } catch (e) {
-      showErrorSnackBar(context, 'Error al cargar facturas: $e');
+      showErrorSnackBar(context, 'Error al cargar facturas: ${errorMessage(e)}');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -737,17 +738,10 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
           );
           await _cargarFacturas();
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Error: ${resultado['message'] ?? "No se pudo eliminar la factura"}',
-              ),
-              backgroundColor: Colors.red,
-            ),
-          );
+          showErrorDialog(context, resultado['message'] ?? 'No se pudo eliminar la factura');
         }
       } catch (e) {
-        showErrorSnackBar(context, 'Error al eliminar factura: $e');
+        showErrorSnackBar(context, 'Error al eliminar factura: ${errorMessage(e)}');
       } finally {
         setState(() => _isLoading = false);
       }

@@ -13,6 +13,8 @@ import '../providers/user_provider.dart';
 import '../utils/format_utils.dart';
 import '../utils/datetime_utils.dart';
 import '../theme/app_theme.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class PedidosScreenFusion extends StatefulWidget {
   const PedidosScreenFusion({super.key});
@@ -233,7 +235,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Error al cargar pedidos: $e';
+        _error = errorMessage(e);
         _isLoading = false;
       });
     }
@@ -560,12 +562,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
           _isLoading = false;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cancelar pedido: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, 'Error al cancelar pedido: ${errorMessage(e)}');
       }
     }
   }
@@ -966,12 +963,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error eliminando pedidos: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, 'Error eliminando pedidos: ${errorMessage(e)}');
     }
   }
 
@@ -1047,12 +1039,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error eliminando pedidos pagados: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, 'Error eliminando pedidos pagados: ${errorMessage(e)}');
     }
   }
 

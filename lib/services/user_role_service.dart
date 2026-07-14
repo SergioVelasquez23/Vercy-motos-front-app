@@ -48,13 +48,10 @@ class UserRoleService {
         final List<dynamic> data = json.decode(response.body);
         return data.map((json) => UserRole.fromJson(json)).toList();
       } else {
-        throw Exception(
-          'Error al cargar relaciones usuario-rol: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar relaciones usuario-rol');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al cargar relaciones usuario-rol');
     }
   }
 
@@ -82,8 +79,7 @@ class UserRoleService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener relación');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener relación');
     }
   }
 
@@ -111,8 +107,7 @@ class UserRoleService {
       }
       return null;
     } catch (e) {
-        
-      throw Exception('Error al asignar rol: $e');
+      wrapOrThrow(e, context: 'Error al asignar rol');
     }
   }
 
@@ -139,8 +134,7 @@ class UserRoleService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar relación');
       }
     } catch (e) {
-        
-      throw Exception('Error al actualizar relación: $e');
+      wrapOrThrow(e, context: 'Error al actualizar relación');
     }
   }
 
@@ -162,8 +156,7 @@ class UserRoleService {
 
       return response.statusCode == 204 || response.statusCode == 200;
     } catch (e) {
-        
-      throw Exception('Error al eliminar relación: $e');
+      wrapOrThrow(e, context: 'Error al eliminar relación');
     }
   }
 
@@ -187,13 +180,10 @@ class UserRoleService {
         final List<dynamic> data = json.decode(response.body);
         return data.map((json) => UserRole.fromJson(json)).toList();
       } else {
-        throw Exception(
-          'Error al cargar roles del usuario: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar roles del usuario');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al cargar roles del usuario');
     }
   }
 }

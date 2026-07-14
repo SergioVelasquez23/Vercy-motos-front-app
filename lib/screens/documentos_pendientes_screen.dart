@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../theme/app_theme.dart';
-import '../../config/constants.dart';
-import '../../services/documento_service.dart';
-import '../../services/matias_service.dart';
-import '../../services/matias_webhook_service.dart';
-import '../../models/matias_webhook_event.dart';
-import '../../widgets/facturizacion/confirmacion_dian_dialog.dart';
-import '../../widgets/facturizacion/nota_credito_debito_dialog.dart';
-import '../../utils/base64_file_launcher.dart';
-import '../../utils/logger.dart';
+import '../theme/app_theme.dart';
+import '../config/constants.dart';
+import '../services/documento_service.dart';
+import '../services/matias_service.dart';
+import '../services/matias_webhook_service.dart';
+import '../models/matias_webhook_event.dart';
+import '../widgets/facturizacion/confirmacion_dian_dialog.dart';
+import '../widgets/facturizacion/nota_credito_debito_dialog.dart';
+import '../utils/base64_file_launcher.dart';
+import '../utils/logger.dart';
+import '../utils/api_error.dart';
 import '../utils/currency_utils.dart';
+import '../utils/dialogs_helper.dart';
 
 /// Pantalla "Bandeja de Documentos Electrónicos"
 ///
@@ -146,12 +148,7 @@ class _DocumentosPendientesScreenState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cargar: $e'),
-            backgroundColor: AppTheme.error,
-          ),
-        );
+        showErrorDialog(context, 'Error al cargar: ${errorMessage(e)}');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -214,19 +211,11 @@ class _DocumentosPendientesScreenState
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ ${resultado.message}'),
-            backgroundColor: AppTheme.error,
-            duration: const Duration(seconds: 4),
-          ),
-        );
+        showErrorDialog(context, resultado.message);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ $e'), backgroundColor: AppTheme.error),
-        );
+        showErrorDialog(context, errorMessage(e));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -283,19 +272,12 @@ class _DocumentosPendientesScreenState
           );
           _cargarDocumentos();
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('❌ ${resGen.message}'),
-              backgroundColor: AppTheme.error,
-            ),
-          );
+          showErrorDialog(context, resGen.message);
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ $e'), backgroundColor: AppTheme.error),
-        );
+        showErrorDialog(context, errorMessage(e));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -345,7 +327,7 @@ class _DocumentosPendientesScreenState
         );
       }
     } catch (e) {
-      if (mounted) _mostrarError('Error al descargar PDF: $e');
+      if (mounted) _mostrarError('Error al descargar PDF: ${errorMessage(e)}');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -428,7 +410,7 @@ class _DocumentosPendientesScreenState
         _mostrarError('Reenviar correo: ${res.message}');
       }
     } catch (e) {
-      if (mounted) _mostrarError('Error: $e');
+      if (mounted) _mostrarError('Error: ${errorMessage(e)}');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -454,7 +436,7 @@ class _DocumentosPendientesScreenState
       final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
       if (!ok && mounted) _mostrarError('No se pudo abrir el QR. URL: $url');
     } catch (e) {
-      if (mounted) _mostrarError('Error al obtener el QR: $e');
+      if (mounted) _mostrarError('Error al obtener el QR: ${errorMessage(e)}');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -483,7 +465,7 @@ class _DocumentosPendientesScreenState
       );
       if (!ok && mounted) _mostrarError('No se pudo abrir el XML.');
     } catch (e) {
-      if (mounted) _mostrarError('Error al obtener el XML: $e');
+      if (mounted) _mostrarError('Error al obtener el XML: ${errorMessage(e)}');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -549,7 +531,7 @@ class _DocumentosPendientesScreenState
         _mostrarError('No se pudo consultar el status');
       }
     } catch (e) {
-      if (mounted) _mostrarError('Error al consultar status: $e');
+      if (mounted) _mostrarError('Error al consultar status: ${errorMessage(e)}');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -617,9 +599,7 @@ class _DocumentosPendientesScreenState
 
   void _mostrarError(String mensaje) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensaje), backgroundColor: AppTheme.error),
-    );
+    showErrorDialog(context, mensaje);
   }
 
   void _mostrarExito(String mensaje) {
