@@ -74,8 +74,7 @@ class ProveedorService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar proveedores');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al cargar proveedores');
     }
   }
 
@@ -125,8 +124,7 @@ class ProveedorService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al buscar proveedores');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al buscar proveedores');
     }
   }
 
@@ -153,8 +151,7 @@ class ProveedorService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al crear proveedor');
       }
     } catch (e) {
-        
-      throw Exception('Error al crear proveedor: $e');
+      wrapOrThrow(e, context: 'Error al crear proveedor');
     }
   }
 
@@ -194,13 +191,10 @@ class ProveedorService {
       if (response.statusCode == 200) {
         return Proveedor.fromJson(json.decode(response.body));
       } else {
-        throw Exception(
-          'Error al actualizar proveedor: ${response.statusCode} - ${response.body}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar proveedor');
       }
     } catch (e) {
-        
-      throw Exception('Error al actualizar proveedor: $e');
+      wrapOrThrow(e, context: 'Error al actualizar proveedor');
     }
   }
 
@@ -237,8 +231,7 @@ class ProveedorService {
          
       return success;
     } catch (e) {
-        
-      throw Exception('Error al cambiar estado del proveedor: $e');
+      wrapOrThrow(e, context: 'Error al cambiar estado del proveedor');
     }
   }
 
@@ -268,13 +261,10 @@ class ProveedorService {
         final List<dynamic> data = json.decode(response.body);
         return data.map((json) => Proveedor.fromJson(json)).toList();
       } else {
-        throw Exception(
-          'Error al cargar proveedores para facturas: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar proveedores para facturas');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al cargar proveedores para facturas');
     }
   }
 
@@ -332,14 +322,11 @@ class ProveedorService {
         return data;
       } else {
         appLog('❌ Error del servidor: ${response.statusCode}');
-        appLog('   Respuesta: ${response.body}');
-        throw Exception(
-          'Error del servidor: ${response.statusCode} - ${response.body}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error en carga masiva de proveedores');
       }
     } catch (e) {
       appLog('❌ Error en carga masiva de proveedores: $e');
-      throw Exception('No se pudo procesar la carga masiva: $e');
+      wrapOrThrow(e, context: 'No se pudo procesar la carga masiva');
     }
   }
 }

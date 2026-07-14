@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../config/endpoints_config.dart';
 import '../utils/logger.dart';
 import '../utils/token_storage.dart';
+import '../utils/api_error.dart';
 
 String? _extractXmlKeyFromJsonData(dynamic jsonData) {
   if (jsonData == null) return null;
@@ -631,7 +632,7 @@ class DocumentoService {
       }
     } catch (e) {
       appLog('❌ Error facturarDocumento: $e');
-      return FacturacionResult.error(e.toString());
+      return FacturacionResult.error(errorMessage(e));
     }
   }
 
@@ -662,7 +663,7 @@ class DocumentoService {
       }
     } catch (e) {
       appLog('❌ Error reenviarDocumento: $e');
-      return FacturacionResult.error(e.toString());
+      return FacturacionResult.error(errorMessage(e));
     }
   }
 }

@@ -382,8 +382,7 @@ class PedidoService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener pedidos');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener pedidos');
     }
   }
 
@@ -402,12 +401,10 @@ class PedidoService {
         final responseData = json.decode(response.body);
         return _parseListResponse(responseData);
       } else {
-        throw Exception(
-          'Error al obtener pedidos históricos: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener pedidos históricos');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener pedidos históricos');
     }
   }
 
@@ -428,7 +425,7 @@ class PedidoService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener pedidos');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener pedidos');
     }
   }
 
@@ -517,12 +514,10 @@ class PedidoService {
         final responseData = json.decode(response.body);
         return _parseListResponse(responseData);
       } else {
-        throw Exception(
-          'Error al obtener pedidos por tipo: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener pedidos por tipo');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener pedidos por tipo');
     }
   }
 
@@ -541,12 +536,10 @@ class PedidoService {
         final responseData = json.decode(response.body);
         return _parseListResponse(responseData);
       } else {
-        throw Exception(
-          'Error al obtener pedidos por estado: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener pedidos por estado');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener pedidos por estado');
     }
   }
 
@@ -571,9 +564,7 @@ class PedidoService {
         // Fallback: usar método anterior si el endpoint no existe
         return await getPedidosByEstado(EstadoPedido.pagado);
       } else {
-        throw Exception(
-          'Error al obtener documentos pagados: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener documentos pagados');
       }
     } catch (e) {
       appLog('⚠️ Error en getTodosDocumentosPagados: $e');
@@ -581,7 +572,7 @@ class PedidoService {
       try {
         return await getPedidosByEstado(EstadoPedido.pagado);
       } catch (fallbackError) {
-        throw Exception('Error de conexión: $e');
+        wrapOrThrow(e, context: 'Error al obtener documentos pagados');
       }
     }
   }
@@ -608,9 +599,7 @@ class PedidoService {
         final pedidosActivos = await getPedidosByEstado(EstadoPedido.activo);
         return pedidosActivos.where((p) => p.mesa == mesa).toList();
       } else {
-        throw Exception(
-          'Error al obtener pedidos activos de mesa: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener pedidos activos de mesa');
       }
     } catch (e) {
       // Fallback: obtener pedidos activos y filtrar
@@ -618,7 +607,7 @@ class PedidoService {
         final pedidosActivos = await getPedidosByEstado(EstadoPedido.activo);
         return pedidosActivos.where((p) => p.mesa == mesa).toList();
       } catch (fallbackError) {
-        throw Exception('Error de conexión: $e');
+        wrapOrThrow(e, context: 'Error al obtener pedidos activos de mesa');
       }
     }
   }
@@ -638,7 +627,8 @@ class PedidoService {
       
       return deudas;
     } catch (e) {
-      throw Exception('Error al obtener deudas: $e');
+      if (e is BackendException) rethrow;
+      wrapOrThrow(e, context: 'Error al obtener deudas');
     }
   }
 
@@ -868,21 +858,10 @@ class PedidoService {
           
         return;
       } else {
-        // Intentar obtener mensaje de error del backend
-        String errorMsg = 'Error al eliminar pedido: ${response.statusCode}';
-        try {
-          final errorData = json.decode(response.body);
-          if (errorData['message'] != null) {
-            errorMsg = errorData['message'];
-          }
-        } catch (_) {
-          // Usar mensaje genérico si no se puede parsear
-        }
-        throw Exception(errorMsg);
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al eliminar pedido');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al eliminar pedido');
     }
   }
 
@@ -933,21 +912,10 @@ class PedidoService {
         }
 
         // Si ambos fallan, mostrar información detallada
-        String errorMsg = 'Error al eliminar pedido: ${response.statusCode}';
-        try {
-          final errorData = json.decode(response.body);
-          if (errorData['message'] != null) {
-            errorMsg = errorData['message'];
-          }
-        } catch (e) {
-          // Si no se puede parsear el JSON, usar mensaje por defecto
-        }
-
-        throw Exception(errorMsg);
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al eliminar pedido');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al eliminar pedido');
     }
   }
 
@@ -980,25 +948,9 @@ class PedidoService {
       }
 
       // Manejar errores específicos
-      String errorMsg =
-          'Error al eliminar pedido pagado: ${response.statusCode}';
-
-      if (response.body.isNotEmpty) {
-        try {
-          final errorData = json.decode(response.body);
-          if (errorData is Map<String, dynamic> &&
-              errorData.containsKey('message')) {
-            errorMsg = errorData['message'];
-          }
-        } catch (e) {
-          // Si no se puede parsear el JSON, usar mensaje por defecto
-        }
-      }
-
-      throw Exception(errorMsg);
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al eliminar pedido pagado');
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al eliminar pedido pagado');
     }
   }
 
@@ -1049,7 +1001,7 @@ class PedidoService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al filtrar pedidos');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al filtrar pedidos');
     }
   }
 
@@ -1066,12 +1018,10 @@ class PedidoService {
         final responseData = json.decode(response.body);
         return _parseListResponse(responseData);
       } else {
-        throw Exception(
-          'Error al obtener pedidos del mesero: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener pedidos del mesero');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener pedidos del mesero');
     }
   }
 
@@ -1097,12 +1047,10 @@ class PedidoService {
         }
         return {};
       } else {
-        throw Exception(
-          'Error al obtener estadísticas: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener estadísticas');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener estadísticas');
     }
   }
 
@@ -1166,9 +1114,6 @@ class PedidoService {
           return 0.0;
         }
       } else {
-        final errorData = json.decode(response.body);
-        final errorMessage = errorData['message'] ?? 'Error desconocido';
-          
         return 0.0;
       }
     } catch (e, stackTrace) {
@@ -1348,12 +1293,11 @@ class PedidoService {
 
         return pedidos;
       } else {
-        throw Exception(
-          'Error al obtener pedidos de mesa: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener pedidos de mesa');
       }
     } catch (e) {
-      // Error de conexión manejado silenciosamente
+      // Si ya es un error estructurado del backend, respetar su mensaje real
+      if (e is BackendException) rethrow;
       if (e.toString().contains('TimeoutException') ||
           e.toString().contains('SocketException') ||
           e.toString().contains('connection')) {
@@ -1532,7 +1476,7 @@ class PedidoService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Error al cancelar el pedido: ${response.body}');
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al cancelar pedido');
     }
 
     _pedidoCompletadoController.add(true);
@@ -1606,9 +1550,7 @@ class PedidoService {
       );
 
       if (getPedidoResponse.statusCode != 200) {
-        throw Exception(
-          'No se pudo obtener el pedido: ${getPedidoResponse.statusCode}',
-        );
+        throwBackendError(getPedidoResponse.body, getPedidoResponse.statusCode, prefix: 'No se pudo obtener el pedido');
       }
 
       final getPedidoData = json.decode(getPedidoResponse.body);
@@ -1641,13 +1583,10 @@ class PedidoService {
           throw Exception('Formato de respuesta inválido');
         }
       } else {
-        throw Exception(
-          'Error al actualizar tipo de pedido: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar tipo de pedido');
       }
     } catch (e) {
-        
-      throw Exception('No se pudo actualizar el tipo del pedido: $e');
+      wrapOrThrow(e, context: 'No se pudo actualizar el tipo del pedido');
     }
   }
 
@@ -1836,8 +1775,10 @@ class PedidoService {
         } else if (formaPago != 'efectivo' &&
             formaPago != 'transferencia' &&
             formaPago != 'tarjeta' &&
+            formaPago != 'tarjeta_credito' && // ✅ AGREGADO: Validar tarjeta crédito
             formaPago != 'sistecredito' && // ✅ AGREGADO: Validar sistecredito
             formaPago != 'datafono' && // ✅ AGREGADO: Validar datafono
+            formaPago != 'Crédito' && // ✅ AGREGADO: Validar venta a crédito
             formaPago != 'otro') {
                        formaPago = 'efectivo'; // Solo convierte a efectivo si no es ninguno de los válidos
           pagarData['formaPago'] = formaPago;
@@ -1986,37 +1927,16 @@ class PedidoService {
 
           return pedidoPagado;
         } else {
-                       throw Exception(
-            'Formato de respuesta inválido: ${responseData['message'] ?? 'Sin mensaje'}',
-          );
+          throwBackendError(response.body, response.statusCode, prefix: 'Error al pagar pedido');
         }
       } else {
-                   
-        // Decodificar respuesta de error
-        Map<String, dynamic> errorData;
-        try {
-          errorData = json.decode(response.body);
-        } catch (e) {
-          errorData = {'message': 'Error de servidor sin mensaje válido'};
+        // Caso especial: mensaje de configuración interna de Spring, no accionable por el usuario
+        if (response.body.contains('ListableBeanFactory must not be null')) {
+          throw Exception(
+            'Error interno del servidor (configuración Spring). Este es un problema del backend que debe ser corregido por el desarrollador del servidor.',
+          );
         }
-        
-        String errorMessage = errorData['message'] ?? 'Error desconocido';
-        
-        // 🔧 MEJORADO: Manejo específico de errores del backend
-        if (errorMessage.contains('ListableBeanFactory must not be null')) {
-          errorMessage =
-              'Error interno del servidor (configuración Spring). Este es un problema del backend que debe ser corregido por el desarrollador del servidor.';
-                     } else if (response.statusCode == 500) {
-          errorMessage = 'Error interno del servidor. $errorMessage';
-        } else if (response.statusCode == 400) {
-          errorMessage = 'Datos de pago inválidos. $errorMessage';
-        } else if (response.statusCode == 404) {
-          errorMessage = 'Pedido no encontrado. $errorMessage';
-        }
-        
-        throw Exception(
-          'Error al pagar pedido (${response.statusCode}): $errorMessage',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al pagar pedido');
       }
     } catch (e) {
         
@@ -2135,20 +2055,13 @@ class PedidoService {
             'cambio': responseData['data']['cambio'] ?? 0.0,
           };
         } else {
-          throw Exception(
-            'Formato de respuesta inválido: ${responseData['message'] ?? 'Sin mensaje'}',
-          );
+          throwBackendError(response.body, response.statusCode, prefix: 'Error al procesar pago parcial');
         }
       } else {
-        final errorData = json.decode(response.body);
-        String errorMessage = errorData['message'] ?? 'Error desconocido';
-        throw Exception(
-          'Error al procesar pago parcial (${response.statusCode}): $errorMessage',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al procesar pago parcial');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al procesar pago parcial');
     }
   }
 
@@ -2228,15 +2141,10 @@ class PedidoService {
           throw Exception('Formato de respuesta inválido');
         }
       } else {
-        final errorData = json.decode(response.body);
-        String errorMessage = errorData['message'] ?? 'Error desconocido';
-        throw Exception(
-          'Error al mover pedido (${response.statusCode}): $errorMessage',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al mover pedido');
       }
     } catch (e) {
-        
-      throw Exception('Error moviendo pedido: $e');
+      wrapOrThrow(e, context: 'Error moviendo pedido');
     }
   }
 
@@ -2332,15 +2240,11 @@ class PedidoService {
           );
         }
       } else {
-        final errorData = json.decode(response.body);
-        String errorMessage = errorData['message'] ?? 'Error desconocido';
-        throw Exception(
-          'Error al mover productos (${response.statusCode}): $errorMessage',
-        );
+        final backendException = parseBackendException(response.body, response.statusCode, prefix: 'Error al mover productos');
+        return {'success': false, 'message': backendException.displayMessage};
       }
     } catch (e) {
-        
-      return {'success': false, 'message': 'Error al mover productos: $e'};
+      return {'success': false, 'message': errorMessage(e)};
     }
   }
 
@@ -2378,29 +2282,20 @@ class PedidoService {
       }
 
       // Manejo de errores
-      String errorMessage = 'Error al eliminar pedidos activos';
-      try {
-        if (response.body.isNotEmpty) {
-          final errorData = json.decode(response.body);
-          if (errorData['message'] != null) {
-            errorMessage = errorData['message'];
-          }
-        }
-      } catch (_) {
-        // Si no se puede decodificar la respuesta, usar el mensaje por defecto
-      }
-
-        
+      final backendException = parseBackendException(
+        response.body,
+        response.statusCode,
+        prefix: 'Error al eliminar pedidos activos',
+      );
       return {
         'success': false,
-        'message': errorMessage,
+        'message': backendException.displayMessage,
         'statusCode': response.statusCode,
       };
     } catch (e) {
-        
       return {
         'success': false,
-        'message': 'Error al conectar con el servidor: $e',
+        'message': errorMessage(e),
       };
     }
   }

@@ -7,6 +7,8 @@ import '../services/estadisticas_mensuales_service.dart';
 import '../services/excel_export_service.dart';
 import '../providers/user_provider.dart';
 import '../models/pedido.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class ExportarMensualScreen extends StatefulWidget {
   const ExportarMensualScreen({super.key});
@@ -484,7 +486,7 @@ class _ExportarMensualScreenState extends State<ExportarMensualScreen> {
             e.toString().contains('SocketException')) {
           errorMsg = 'Sin conexión a internet. Verifica tu red.';
         } else {
-          errorMsg = 'Error: ${e.toString()}';
+          errorMsg = errorMessage(e);
         }
         
         ScaffoldMessenger.of(context).showSnackBar(
@@ -582,21 +584,14 @@ class _ExportarMensualScreenState extends State<ExportarMensualScreen> {
         );
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Error al generar el archivo Excel'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          showErrorDialog(context, 'Error al generar el archivo Excel');
         }
       }
     } catch (e) {
       // Cerrar diálogo de carga si está abierto
       if (mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
+        showErrorDialog(context, errorMessage(e));
       }
     } finally {
       setState(() {

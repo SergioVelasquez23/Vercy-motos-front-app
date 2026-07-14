@@ -13,6 +13,8 @@ import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
 import '../utils/logger.dart';
 import '../utils/pagination_mixin.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 import '../widgets/common/screen_header.dart';
 
 class CotizacionesListScreen extends StatefulWidget {
@@ -58,12 +60,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al cargar cotizaciones: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, 'Error al cargar cotizaciones: ${errorMessage(e)}');
     }
   }
 
@@ -713,12 +710,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
       );
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al generar PDF: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, 'Error al generar PDF: ${errorMessage(e)}');
     }
   }
 
@@ -753,12 +745,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
         );
         _cargarCotizaciones();
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al eliminar: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, 'Error al eliminar: ${errorMessage(e)}');
       }
     }
   }

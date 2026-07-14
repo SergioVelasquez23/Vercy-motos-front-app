@@ -10,6 +10,7 @@ import 'producto_service.dart';
 import 'inventario_service.dart';
 import '../utils/logger.dart';
 import '../utils/datetime_utils.dart';
+import '../utils/api_error.dart';
 import 'base_api_service.dart';
 
 class FacturaCompraService {
@@ -84,15 +85,10 @@ class FacturaCompraService {
 
         return facturas;
       } else {
-        final errorMessage =
-            'Error al cargar facturas de compras: ${response.statusCode}';
-          
-          
-        throw Exception(errorMessage);
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar facturas de compras');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al cargar facturas de compras');
     }
   }
 
@@ -128,13 +124,10 @@ class FacturaCompraService {
 
         return FacturaCompra.fromJson(facturaData);
       } else {
-        throw Exception(
-          'Error al cargar factura de compra: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar factura de compra');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al cargar factura de compra');
     }
   }
 
@@ -159,12 +152,10 @@ class FacturaCompraService {
 
         return facturas;
       } else {
-        throw Exception(
-          'Error al cargar facturas del proveedor: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar facturas del proveedor');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al cargar facturas del proveedor');
     }
   }
 
@@ -236,12 +227,10 @@ class FacturaCompraService {
 
         throw Exception('Formato de respuesta inesperado: $responseBody');
       } else {
-        throw Exception(
-          'Error al generar número de factura: ${response.statusCode} - ${response.body}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al generar número de factura');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al generar número de factura');
     }
   }
 
@@ -307,15 +296,10 @@ class FacturaCompraService {
           
         return ingredientes;
       } else {
-        final errorMessage =
-            'Error al cargar ingredientes: ${response.statusCode}';
-          
-          
-        throw Exception(errorMessage);
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar ingredientes');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al cargar ingredientes');
     }
   }
 
@@ -359,19 +343,9 @@ class FacturaCompraService {
         return FacturaCompraPdfPreview.fromJson(data as Map<String, dynamic>);
       }
 
-      String errorMessage = 'Error al interpretar el PDF: ${response.statusCode}';
-      try {
-        final errorBody = json.decode(response.body);
-        if (errorBody is Map<String, dynamic> && errorBody['message'] != null) {
-          errorMessage = errorBody['message'];
-        }
-      } catch (_) {
-        // Usar mensaje genérico si no se puede parsear
-      }
-      throw Exception(errorMessage);
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al interpretar el PDF');
     } catch (e) {
-      if (e is Exception) rethrow;
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al interpretar el PDF');
     }
   }
 
@@ -539,29 +513,10 @@ class FacturaCompraService {
           );
         }
       } else {
-        // Intentar parsear el mensaje de error
-        String errorMessage =
-            'Error al crear factura de compra: ${response.statusCode}';
-        try {
-          final errorBody = json.decode(response.body);
-          if (errorBody is Map<String, dynamic> &&
-              errorBody.containsKey('message')) {
-            errorMessage = errorBody['message'];
-          }
-        } catch (parseError) {
-            
-            
-        }
-
-          
-        throw Exception(errorMessage);
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al crear factura de compra');
       }
     } catch (e) {
-        
-      if (e is Exception) {
-        rethrow;
-      }
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al crear factura de compra');
     }
   }
 
@@ -585,12 +540,10 @@ class FacturaCompraService {
 
         return facturas;
       } else {
-        throw Exception(
-          'Error al cargar facturas pagadas desde caja: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar facturas pagadas desde caja');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al cargar facturas pagadas desde caja');
     }
   }
 
@@ -613,12 +566,10 @@ class FacturaCompraService {
 
         return facturas;
       } else {
-        throw Exception(
-          'Error al cargar facturas no pagadas desde caja: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar facturas no pagadas desde caja');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al cargar facturas no pagadas desde caja');
     }
   }
 
@@ -633,12 +584,10 @@ class FacturaCompraService {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
         return jsonResponse['data'] ?? {};
       } else {
-        throw Exception(
-          'Error al cargar resumen de pago caja: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar resumen de pago caja');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al cargar resumen de pago caja');
     }
   }
 
@@ -787,23 +736,10 @@ class FacturaCompraService {
 
         return result;
       } else {
-        // Intentar obtener mensaje de error del backend
-        String errorMsg = 'Error al eliminar factura: ${response.statusCode}';
-
-        try {
-          final errorData = json.decode(response.body);
-          if (errorData['message'] != null) {
-            errorMsg = errorData['message'];
-          }
-        } catch (_) {
-          // Usar mensaje genérico si no se puede parsear
-        }
-
-        throw Exception(errorMsg);
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al eliminar factura');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al eliminar factura');
     }
   }
 
@@ -868,23 +804,10 @@ class FacturaCompraService {
           
         return result;
       } else {
-        // Intentar obtener mensaje de error del backend
-        String errorMsg = 'Error al anular factura: ${response.statusCode}';
-
-        try {
-          final errorData = json.decode(response.body);
-          if (errorData['message'] != null) {
-            errorMsg = errorData['message'];
-          }
-        } catch (_) {
-          // Usar mensaje genérico si no se puede parsear
-        }
-
-        throw Exception(errorMsg);
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al anular factura');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al anular factura');
     }
   }
 

@@ -4,6 +4,8 @@ import '../models/gasto_programado.dart';
 import '../services/cartera_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class GastosProgramadosScreen extends StatefulWidget {
   const GastosProgramadosScreen({Key? key}) : super(key: key);
@@ -61,7 +63,7 @@ class _GastosProgramadosScreenState extends State<GastosProgramadosScreen> {
       }
     } catch (e) {
       setState(() {
-        error = 'Error de conexión: $e';
+        error = errorMessage(e);
         isLoading = false;
       });
     }
@@ -196,20 +198,10 @@ class _GastosProgramadosScreenState extends State<GastosProgramadosScreen> {
         );
         await _cargarGastos();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${response.message}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, response.message);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error de conexión: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, errorMessage(e));
     }
   }
 
@@ -813,17 +805,10 @@ class __FormularioGastoProgramadoState
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${response.message}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, response.message);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
+      showErrorDialog(context, errorMessage(e));
     } finally {
       setState(() {
         isSubmitting = false;

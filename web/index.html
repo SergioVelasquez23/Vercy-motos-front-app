@@ -50,6 +50,19 @@
       });
     }
 
+    // BFCache (Back-Forward Cache) de Safari/iOS: al navegar con
+    // atrás/adelante, Safari puede restaurar la página instantáneamente
+    // desde memoria SIN re-ejecutar este script ni el 'load' de abajo — el
+    // motor de Flutter queda "congelado" con el estado (y las conexiones
+    // HTTP en curso) de antes de salir de la pestaña. event.persisted=true
+    // en 'pageshow' indica justamente eso; forzamos una recarga real para
+    // que la app arranque limpia con datos y sesión frescos.
+    window.addEventListener('pageshow', function (event) {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    });
+
     window.addEventListener('load', function (ev) {
       // Sin service worker: siempre carga archivos frescos del servidor.
       _flutter.loader.loadEntrypoint({

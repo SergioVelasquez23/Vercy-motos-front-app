@@ -7,6 +7,8 @@ import '../theme/app_theme.dart';
 import '../providers/user_provider.dart';
 import '../utils/currency_utils.dart';
 import 'facturacion_screen.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class AdminPedidosAsesorScreen extends StatefulWidget {
   const AdminPedidosAsesorScreen({super.key});
@@ -46,7 +48,7 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
         _aplicarFiltros();
       });
     } catch (e) {
-      _mostrarError('Error al cargar pedidos: $e');
+      _mostrarError('Error al cargar pedidos: ${errorMessage(e)}');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -109,7 +111,7 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
         _mostrarExito('Pedido cancelado');
         _cargarPedidos();
       } catch (e) {
-        _mostrarError('Error al cancelar pedido: $e');
+        _mostrarError('Error al cancelar pedido: ${errorMessage(e)}');
       }
     }
   }
@@ -519,9 +521,7 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
   }
 
   void _mostrarError(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensaje), backgroundColor: Colors.red),
-    );
+    showErrorDialog(context, mensaje);
   }
 
   void _mostrarExito(String mensaje) {

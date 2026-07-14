@@ -8,6 +8,7 @@ import '../services/producto_service.dart';
 import '../models/cliente.dart';
 import '../models/producto.dart';
 import '../utils/currency_utils.dart';
+import '../utils/api_error.dart';
 
 class ReportesScreen extends StatefulWidget {
   final int initialReportIndex;
@@ -88,7 +89,7 @@ class _ReportesScreenState extends State<ReportesScreen>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Error al cargar clientes: ${e.toString()}';
+          _errorMessage = 'Error al cargar clientes: ${errorMessage(e)}';
         });
       }
     }
@@ -106,7 +107,7 @@ class _ReportesScreenState extends State<ReportesScreen>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Error al cargar productos: ${e.toString()}';
+          _errorMessage = 'Error al cargar productos: ${errorMessage(e)}';
         });
       }
     }
@@ -149,7 +150,7 @@ class _ReportesScreenState extends State<ReportesScreen>
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Error al cargar datos: ${e.toString()}';
+          _errorMessage = 'Error al cargar datos: ${errorMessage(e)}';
         });
       }
     }
@@ -2565,7 +2566,7 @@ class _ReportesScreenState extends State<ReportesScreen>
         setState(() {
           _isLoading = false;
           _errorMessage =
-              'Error al cargar el reporte de utilidad: ${e.toString()}';
+              'Error al cargar el reporte de utilidad: ${errorMessage(e)}';
         });
       }
     }

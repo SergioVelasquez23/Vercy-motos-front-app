@@ -55,8 +55,7 @@ class UserService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener roles V2');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error de conexión');
     }
   }
 
@@ -85,8 +84,7 @@ class UserService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener roles');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error de conexión');
     }
   }
 
@@ -125,8 +123,7 @@ class UserService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar usuarios');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error de conexión');
     }
   }
 
@@ -152,8 +149,7 @@ class UserService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener usuario');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error de conexión');
     }
   }
 
@@ -178,8 +174,7 @@ class UserService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al crear usuario');
       }
     } catch (e) {
-        
-      throw Exception('Error al crear usuario: $e');
+      wrapOrThrow(e, context: 'Error al crear usuario');
     }
   }
 
@@ -205,8 +200,7 @@ class UserService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar usuario');
       }
     } catch (e) {
-        
-      throw Exception('Error al actualizar usuario: $e');
+      wrapOrThrow(e, context: 'Error al actualizar usuario');
     }
   }
 
@@ -226,8 +220,7 @@ class UserService {
       ).timeout(_timeout);
       return response.statusCode == 204 || response.statusCode == 200;
     } catch (e) {
-        
-      throw Exception('Error al eliminar usuario: $e');
+      wrapOrThrow(e, context: 'Error al eliminar usuario');
     }
   }
 

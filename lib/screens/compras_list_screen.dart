@@ -8,6 +8,8 @@ import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../utils/pagination_mixin.dart';
 import '../widgets/common/screen_header.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 import '../widgets/facturizacion/documento_soporte_dialog.dart';
 import 'facturas_compras_screen.dart';
 
@@ -67,12 +69,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
       });
       _aplicarFiltros();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al cargar datos: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, 'Error al cargar datos: ${errorMessage(e)}');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -839,22 +836,10 @@ class _ComprasListScreenState extends State<ComprasListScreen>
           );
           await _cargarDatos();
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Error: ${resultado['message'] ?? "No se pudo eliminar la compra"}',
-              ),
-              backgroundColor: Colors.red,
-            ),
-          );
+          showErrorDialog(context, resultado['message'] ?? 'No se pudo eliminar la compra');
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al eliminar compra: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, 'Error al eliminar compra: ${errorMessage(e)}');
       } finally {
         setState(() => _isLoading = false);
       }

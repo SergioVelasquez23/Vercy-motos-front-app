@@ -66,8 +66,7 @@ class ImageService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
-        
-      throw Exception('No se pudieron listar las imágenes: $e');
+      wrapOrThrow(e, context: 'No se pudieron listar las imágenes');
     }
   }
 
@@ -116,8 +115,7 @@ class ImageService {
         return await _uploadImageMultipart(image);
       }
     } catch (e) {
-        
-      throw Exception('No se pudo subir la imagen: $e');
+      wrapOrThrow(e, context: 'No se pudo subir la imagen');
     }
   }
 
@@ -155,9 +153,7 @@ class ImageService {
         
       return filename;
     } else {
-      throw Exception(
-        'Error del servidor (web): ${response.statusCode} - ${response.body}',
-      );
+      throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
     }
   }
 
@@ -200,9 +196,7 @@ class ImageService {
         
       return filename;
     } else {
-      throw Exception(
-        'Error del servidor (multipart): ${response.statusCode} - ${response.body}',
-      );
+      throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
     }
   }
 
@@ -222,8 +216,7 @@ class ImageService {
 
       return image;
     } catch (e) {
-        
-      throw Exception('No se pudo seleccionar la imagen: $e');
+      wrapOrThrow(e, context: 'No se pudo seleccionar la imagen');
     }
   }
 
@@ -243,8 +236,7 @@ class ImageService {
 
       return image;
     } catch (e) {
-        
-      throw Exception('No se pudo capturar la imagen: $e');
+      wrapOrThrow(e, context: 'No se pudo capturar la imagen');
     }
   }
 
@@ -422,8 +414,7 @@ class ImageService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
-        
-      throw Exception('No se pudo obtener el estado de las imágenes: $e');
+      wrapOrThrow(e, context: 'No se pudo obtener el estado de las imágenes');
     }
   }
 
@@ -456,7 +447,7 @@ class ImageService {
         return await _uploadNegocioLogoMultipart(image);
       }
     } catch (e) {
-      throw Exception('No se pudo subir el logo del negocio: $e');
+      wrapOrThrow(e, context: 'No se pudo subir el logo del negocio');
     }
   }
 
@@ -490,9 +481,7 @@ class ImageService {
 
       return logoUrl;
     } else {
-      throw Exception(
-        'Error del servidor (web): ${response.statusCode} - ${response.body}',
-      );
+      throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
     }
   }
 
@@ -526,9 +515,7 @@ class ImageService {
 
       return logoUrl;
     } else {
-      throw Exception(
-        'Error del servidor (multipart): ${response.statusCode} - ${response.body}',
-      );
+      throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
     }
   }
 }

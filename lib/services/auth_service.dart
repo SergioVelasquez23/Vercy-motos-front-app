@@ -46,7 +46,7 @@ class AuthService {
         return {'success': false, 'message': 'Error: ${response.statusCode}'};
       }
     } catch (e) {
-      return {'success': false, 'message': 'Error: $e'};
+      return {'success': false, 'message': errorMessage(e)};
     }
   }
 
@@ -104,25 +104,17 @@ class AuthService {
         throw Exception('Error de inicio de sesión');
       }
     } catch (e) {
-        
-
-      String errorMessage = 'Error al iniciar sesión';
-
-      // Mensaje más específico según el tipo de error
+      String errorMsg;
       if (e.toString().contains('SocketException')) {
-        errorMessage +=
-            ': No se pudo conectar al servidor. Comprueba tu conexión a internet y que estás en la misma red que el servidor.';
-      } else if (e.toString().contains('HttpException')) {
-        errorMessage += ': Error en la solicitud HTTP.';
-      } else if (e.toString().contains('FormatException')) {
-        errorMessage += ': Error en el formato de respuesta.';
+        errorMsg =
+            'No se pudo conectar al servidor. Comprueba tu conexión a internet y que estás en la misma red que el servidor.';
       } else {
-        errorMessage += ': $e';
+        errorMsg = errorMessage(e);
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(errorMessage),
+          content: Text(errorMsg),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 5),
         ),
@@ -181,8 +173,7 @@ class AuthService {
         };
       }
     } catch (e) {
-        
-      return {'error': 'Error de conexión: $e', 'status': 0};
+      return {'error': errorMessage(e), 'status': 0};
     }
   }
 

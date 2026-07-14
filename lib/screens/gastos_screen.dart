@@ -12,6 +12,8 @@ import '../services/cuadre_caja_service.dart';
 import '../services/proveedor_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class GastosScreen extends StatefulWidget {
   final String? cuadreCajaId;
@@ -136,7 +138,7 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
         _loadGastos(),
       ]);
     } catch (e) {
-      _showError('Error al cargar datos: $e');
+      _showError('Error al cargar datos: ${errorMessage(e)}');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -193,7 +195,7 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
 
       setState(() => _gastos = gastos);
     } catch (e) {
-      _showError('Error al cargar gastos: $e');
+      _showError('Error al cargar gastos: ${errorMessage(e)}');
     }
   }
 
@@ -437,7 +439,7 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
       setState(() => _showForm = false);
       await _loadGastos();
     } catch (e) {
-      _showError('Error al guardar gasto: $e');
+      _showError('Error al guardar gasto: ${errorMessage(e)}');
     } finally {
       setState(() {
         _isLoading = false;
@@ -508,10 +510,10 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
           _showSuccess('Gasto eliminado exitosamente');
           await _loadGastos();
         } else {
-          _showError('Error al eliminar el gasto');
+          _showError(response['message'] as String? ?? 'Error al eliminar el gasto');
         }
       } catch (e) {
-        _showError('Error al eliminar gasto: $e');
+        _showError(errorMessage(e));
       } finally {
         setState(() => _isLoading = false);
       }
@@ -527,9 +529,7 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
 
   void _showError(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.red),
-      );
+      showErrorDialog(context, message);
     }
   }
 
@@ -693,12 +693,7 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
                           'Tipo de gasto "${nuevoTipo.nombre}" creado',
                         );
                       } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
+                        showErrorDialog(context, errorMessage(e));
                       } finally {
                         setDialogState(() => guardando = false);
                       }
@@ -878,12 +873,7 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
                         }
                       } catch (e) {
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Error al crear proveedor: $e'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
+                          showErrorDialog(context, 'Error al crear proveedor: ${errorMessage(e)}');
                         }
                       } finally {
                         if (mounted) {
@@ -2295,7 +2285,7 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
       setState(() => _showForm = false);
       await _loadGastos();
     } catch (e) {
-      _showError('Error al guardar gasto: $e');
+      _showError('Error al guardar gasto: ${errorMessage(e)}');
     } finally {
       setState(() {
         _isLoading = false;

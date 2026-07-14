@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/user_management_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -35,7 +37,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error al cargar usuarios: $e';
+        _errorMessage = 'Error al cargar usuarios: ${errorMessage(e)}';
         _isLoading = false;
       });
     }
@@ -158,22 +160,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         );
         await _loadUsers();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message']),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, result['message']);
       }
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al actualizar el rol: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, 'Error al actualizar el rol: ${errorMessage(e)}');
     }
   }
 
@@ -228,12 +220,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         );
         await _loadUsers();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message']),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, result['message']);
       }
     }
   }

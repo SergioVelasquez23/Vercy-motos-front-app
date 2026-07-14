@@ -27,8 +27,7 @@ class UserManagementService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener usuarios');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión al obtener usuarios');
+      wrapOrThrow(e, context: 'Error al obtener usuarios');
     }
   }
 
@@ -55,7 +54,7 @@ class UserManagementService {
       }
     } catch (e) {
         
-      return {'success': false, 'message': 'Error de conexión: $e'};
+      return {'success': false, 'message': errorMessage(e)};
     }
   }
 
@@ -78,7 +77,7 @@ class UserManagementService {
       }
     } catch (e) {
         
-      return {'success': false, 'message': 'Error de conexión: $e'};
+      return {'success': false, 'message': errorMessage(e)};
     }
   }
 
@@ -110,7 +109,7 @@ class UserManagementService {
       }
     } catch (e) {
         
-      return {'success': false, 'message': 'Error de conexión: $e'};
+      return {'success': false, 'message': errorMessage(e)};
     }
   }
 
@@ -127,12 +126,10 @@ class UserManagementService {
         final List<dynamic> usersJson = data['users'] ?? data;
         return usersJson.cast<Map<String, dynamic>>();
       } else {
-        throw Exception(
-          'Error al obtener usuarios pendientes: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener usuarios pendientes');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener usuarios pendientes');
     }
   }
 
@@ -154,7 +151,7 @@ class UserManagementService {
         };
       }
     } catch (e) {
-      return {'success': false, 'message': 'Error de conexión: $e'};
+      return {'success': false, 'message': errorMessage(e)};
     }
   }
 
@@ -179,7 +176,7 @@ class UserManagementService {
         };
       }
     } catch (e) {
-      return {'success': false, 'message': 'Error de conexión: $e'};
+      return {'success': false, 'message': errorMessage(e)};
     }
   }
 }

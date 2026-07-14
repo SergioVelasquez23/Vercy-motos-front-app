@@ -15,6 +15,8 @@ import '../providers/notificaciones_provider.dart';
 import '../theme/app_theme.dart';
 import '../config/api_config.dart';
 import '../utils/token_storage.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class TrasladosScreen extends StatefulWidget {
   const TrasladosScreen({super.key});
@@ -113,7 +115,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
         _stockPorBodega = {};
       });
     } catch (e) {
-      _mostrarError('Error al cargar datos: $e');
+      _mostrarError('Error al cargar datos: ${errorMessage(e)}');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -624,7 +626,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
       _mostrarExito('Traslado eliminado correctamente');
       _cargarDatos();
     } catch (e) {
-      _mostrarError('Error al eliminar traslado: $e');
+      _mostrarError('Error al eliminar traslado: ${errorMessage(e)}');
     }
   }
 
@@ -886,7 +888,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
       _mostrarExito('Traslado ${accion.toLowerCase()} correctamente');
       _cargarDatos();
     } catch (e) {
-      _mostrarError('Error al procesar traslado: $e');
+      _mostrarError('Error al procesar traslado: ${errorMessage(e)}');
     }
   }
 
@@ -970,7 +972,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
       _cargarDatos();
     } catch (e) {
         
-      _mostrarError('Error al aceptar traslado: $e');
+      _mostrarError('Error al aceptar traslado: ${errorMessage(e)}');
     }
   }
 
@@ -1124,20 +1126,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
   }
 
   void _mostrarError(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.error_outline, color: Colors.white),
-            SizedBox(width: 8),
-            Expanded(child: Text(mensaje)),
-          ],
-        ),
-        backgroundColor: AppTheme.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+    showErrorDialog(context, mensaje);
   }
 
   void _mostrarExito(String mensaje) {
@@ -1413,7 +1402,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
       _mostrarExito('Traslados creados exitosamente');
       widget.onTrasladoCreado();
     } catch (e) {
-      _mostrarError('Error al crear traslado: $e');
+      _mostrarError('Error al crear traslado: ${errorMessage(e)}');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -2505,20 +2494,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
   }
 
   void _mostrarError(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.error_outline, color: Colors.white),
-            SizedBox(width: 8),
-            Expanded(child: Text(mensaje)),
-          ],
-        ),
-        backgroundColor: AppTheme.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+    showErrorDialog(context, mensaje);
   }
 
   void _mostrarExito(String mensaje) {

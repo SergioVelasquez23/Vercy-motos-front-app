@@ -9,6 +9,8 @@ import '../services/producto_service.dart';
 import '../widgets/imagen_categoria_widget.dart';
 import '../utils/pagination_mixin.dart';
 import '../theme/app_theme.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class CategoriasScreen extends StatefulWidget {
   const CategoriasScreen({super.key});
@@ -54,12 +56,7 @@ class _CategoriasScreenState extends State<CategoriasScreen>
         _isLoading = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cargar datos: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        showErrorDialog(context, 'Error al cargar datos: ${errorMessage(e)}');
       }
     }
   }
@@ -226,12 +223,7 @@ class _CategoriasScreenState extends State<CategoriasScreen>
                 );
               } catch (e) {
                 Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error: $e'),
-                    backgroundColor: Colors.redAccent,
-                  ),
-                );
+                showErrorDialog(context, errorMessage(e));
               }
             },
           ),
@@ -460,12 +452,7 @@ class _CategoriasScreenState extends State<CategoriasScreen>
                               ),
                             );
                           } catch (e) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Error: $e'),
-                                backgroundColor: Colors.redAccent,
-                              ),
-                            );
+                            showErrorDialog(context, errorMessage(e));
                           } finally {
                             // 🚀 TIMEOUT: Resetear estado después de la operación
                             if (mounted) {

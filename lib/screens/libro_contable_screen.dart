@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../services/libro_contable_service.dart';
 import '../services/excel_export_service.dart';
 import '../providers/user_provider.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class LibroContableScreen extends StatefulWidget {
   const LibroContableScreen({super.key});
@@ -452,7 +454,7 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
         } else if (e.toString().contains('Sin conexión') || e.toString().contains('SocketException')) {
           errorMsg = 'Sin conexión a internet. Verifica tu red.';
         } else {
-          errorMsg = 'Error: ${e.toString()}';
+          errorMsg = errorMessage(e);
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -531,19 +533,12 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Error al generar el archivo Excel'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          showErrorDialog(context, 'Error al generar el archivo Excel');
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
+        showErrorDialog(context, errorMessage(e));
       }
     } finally {
       if (mounted) {

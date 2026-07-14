@@ -277,14 +277,10 @@ class ProductoService {
           
         return productos;
       } else {
-        throw Exception(
-          'Error en endpoint de respaldo: ${responseData['message']}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error en endpoint de respaldo');
       }
     } else {
-      throw Exception(
-        'Error HTTP en respaldo ${response.statusCode}: ${response.reasonPhrase}',
-      );
+      throwBackendError(response.body, response.statusCode, prefix: 'Error HTTP en respaldo');
     }
   }
 
@@ -405,15 +401,12 @@ class ProductoService {
             'isLoading': false,
           };
         } else {
-          throw Exception('Error del servidor: ${responseData['message']}');
+          throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar página de productos');
         }
       } else {
-        throw Exception(
-          'Error HTTP ${response.statusCode}: ${response.reasonPhrase}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar página de productos');
       }
     } catch (e) {
-        
       _paginationState.isLoading = false;
       rethrow;
     } finally {
@@ -604,13 +597,12 @@ class ProductoService {
             'hasMore': (data['page'] + 1) < data['totalPages'],
           };
         } else {
-          throw Exception('Error del servidor: ${responseData['message']}');
+          throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener productos');
         }
       } else {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener productos');
       }
     } catch (e) {
-        
       rethrow;
     }
   }
@@ -659,19 +651,12 @@ class ProductoService {
 
           return productos;
         } else {
-            
-          throw Exception(
-            'Error en respuesta del servidor: ${responseData['message']}',
-          );
+          throwBackendError(response.body, response.statusCode, prefix: 'Error en respuesta del servidor');
         }
       } else {
-          
-        throw Exception(
-          'Error HTTP ${response.statusCode}: ${response.reasonPhrase}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener productos paginados');
       }
     } catch (e) {
-        
       rethrow;
     }
   }
@@ -757,19 +742,7 @@ class ProductoService {
         
       return productos;
     } else {
-      // Intenta analizar el mensaje de error
-      String errorMessage = 'Error del servidor: ${response.statusCode}';
-      try {
-        final errorData = json.decode(response.body);
-        if (errorData['message'] != null) {
-          errorMessage = errorData['message'];
-        }
-          
-      } catch (e) {
-          
-      }
-
-      throw Exception(errorMessage);
+      throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
     }
   }
 
@@ -799,19 +772,7 @@ class ProductoService {
 
       return productos;
     } else {
-      // Intenta analizar el mensaje de error
-      String errorMessage = 'Error del servidor: ${response.statusCode}';
-      try {
-        final errorData = json.decode(response.body);
-        if (errorData['message'] != null) {
-          errorMessage = errorData['message'];
-        }
-          
-      } catch (e) {
-          
-      }
-
-      throw Exception(errorMessage);
+      throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
     }
   }
 
@@ -833,10 +794,7 @@ class ProductoService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
-        
-      throw Exception(
-        'No se pudieron cargar las categorías desde el servidor: $e',
-      );
+      wrapOrThrow(e, context: 'No se pudieron cargar las categorías');
     }
   }
 
@@ -913,7 +871,7 @@ class ProductoService {
       }
     } catch (e) {
         
-      throw Exception('No se pudo crear el producto: $e');
+      wrapOrThrow(e, context: 'No se pudo crear el producto');
     }
   }
 
@@ -990,7 +948,7 @@ class ProductoService {
       }
     } catch (e) {
         
-      throw Exception('No se pudo crear el producto: $e');
+      wrapOrThrow(e, context: 'No se pudo crear el producto');
     }
   }
 
@@ -1072,14 +1030,11 @@ class ProductoService {
         return data;
       } else {
         appLog('❌ Error del servidor: ${response.statusCode}');
-        appLog('   Respuesta: ${response.body}');
-        throw Exception(
-          'Error del servidor: ${response.statusCode} - ${response.body}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error en carga masiva');
       }
     } catch (e) {
       appLog('❌ Error en carga masiva: $e');
-      throw Exception('No se pudo procesar la carga masiva: $e');
+      wrapOrThrow(e, context: 'No se pudo procesar la carga masiva');
     }
   }
 
@@ -1122,13 +1077,11 @@ class ProductoService {
 
         return data;
       } else {
-        throw Exception(
-          'Error en diagnóstico: ${response.statusCode} - ${response.body}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error en diagnóstico');
       }
     } catch (e) {
       appLog('❌ Error en diagnóstico: $e');
-      throw Exception('No se pudo diagnosticar el archivo: $e');
+      wrapOrThrow(e, context: 'No se pudo diagnosticar el archivo');
     }
   }
 
@@ -1151,13 +1104,11 @@ class ProductoService {
         appLog('   Tamaño: ${response.bodyBytes.length} bytes');
         return response.bodyBytes;
       } else {
-        throw Exception(
-          'Error descargando Excel: ${response.statusCode} - ${response.body}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error descargando Excel');
       }
     } catch (e) {
       appLog('❌ Error descargando Excel: $e');
-      throw Exception('No se pudo descargar el archivo: $e');
+      wrapOrThrow(e, context: 'No se pudo descargar el archivo');
     }
   }
 
@@ -1195,13 +1146,11 @@ class ProductoService {
         appLog('   Tamaño: ${response.bodyBytes.length} bytes');
         return response.bodyBytes;
       } else {
-        throw Exception(
-          'Error descargando Excel: ${response.statusCode} - ${response.body}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error descargando Excel');
       }
     } catch (e) {
       appLog('❌ Error descargando Excel filtrado: $e');
-      throw Exception('No se pudo descargar el archivo: $e');
+      wrapOrThrow(e, context: 'No se pudo descargar el archivo');
     }
   }
 
@@ -1369,13 +1318,10 @@ class ProductoService {
 
         return productoActualizado;
       } else {
-        throw Exception(
-          'Error del servidor: ${response.statusCode} - ${response.body}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
-        
-      throw Exception('No se pudo actualizar el producto: $e');
+      wrapOrThrow(e, context: 'No se pudo actualizar el producto');
     }
   }
 
@@ -1494,8 +1440,7 @@ class ProductoService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
-        
-      throw Exception('No se pudo eliminar el producto: $e');
+      wrapOrThrow(e, context: 'No se pudo eliminar el producto');
     }
   }
 
@@ -1530,8 +1475,7 @@ class ProductoService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
-        
-      throw Exception('No se pudo crear la categoría: $e');
+      wrapOrThrow(e, context: 'No se pudo crear la categoría');
     }
   }
 
@@ -1569,8 +1513,7 @@ class ProductoService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
-        
-      throw Exception('No se pudo actualizar la categoría: $e');
+      wrapOrThrow(e, context: 'No se pudo actualizar la categoría');
     }
   }
 
@@ -1588,8 +1531,7 @@ class ProductoService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
-        
-      throw Exception('No se pudo eliminar la categoría: $e');
+      wrapOrThrow(e, context: 'No se pudo eliminar la categoría');
     }
   }
 
@@ -1616,21 +1558,16 @@ class ProductoService {
         // Extraer los datos del campo 'data' de la respuesta ApiResponse
         final jsonBody = json.decode(response.body);
         if (!jsonBody['success']) {
-          throw Exception(
-            jsonBody['message'] ?? 'Error en la respuesta del servidor',
-          );
+          throwBackendError(response.body, response.statusCode, prefix: 'Error al buscar productos');
         }
 
         final List<dynamic> jsonList = jsonBody['data'];
-        // ✅ COMENTADO: Log de productos encontrados removido
-        //   
         return jsonList.map((json) => Producto.fromJson(json)).toList();
       } else {
         throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
-        
-      throw Exception('No se pudieron buscar los productos: $e');
+      wrapOrThrow(e, context: 'No se pudieron buscar los productos');
     }
   }
 
@@ -1696,20 +1633,16 @@ class ProductoService {
         // Extraer los datos del campo 'data' de la respuesta ApiResponse
         final jsonBody = json.decode(response.body);
         if (!jsonBody['success']) {
-          throw Exception(
-            jsonBody['message'] ?? 'Error en la respuesta del servidor',
-          );
+          throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener productos por categoría');
         }
 
         final List<dynamic> jsonList = jsonBody['data'];
-          
         return jsonList.map((json) => Producto.fromJson(json)).toList();
       } else {
         throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
-        
-      throw Exception('No se pudieron obtener los productos por categoría: $e');
+      wrapOrThrow(e, context: 'No se pudieron obtener los productos por categoría');
     }
   }
 
@@ -1777,8 +1710,7 @@ class ProductoService {
           
         return dataUrl;
       } catch (fallbackError) {
-          
-        throw Exception('No se pudo procesar la imagen: $e');
+        wrapOrThrow(e, context: 'No se pudo procesar la imagen');
       }
     }
   }
@@ -2465,8 +2397,7 @@ class ProductoService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
-        
-      throw Exception('No se pudieron cargar los ingredientes requeridos: $e');
+      wrapOrThrow(e, context: 'No se pudieron cargar los ingredientes requeridos');
     }
   }
 
@@ -2598,8 +2529,7 @@ class ProductoService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
       }
     } catch (e) {
-        
-      throw Exception('No se pudieron cargar los ingredientes opcionales: $e');
+      wrapOrThrow(e, context: 'No se pudieron cargar los ingredientes opcionales');
     }
   }
 
@@ -2848,14 +2778,14 @@ class ProductoService {
       return ApiResponse<List<MovimientoStock>>(
         success: false,
         data: null,
-        message: 'Error ${response.statusCode}',
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
       return ApiResponse<List<MovimientoStock>>(
         success: false,
         data: null,
-        message: 'Error de conectividad: $e',
+        message: errorMessage(e),
         timestamp: DateTime.now().toIso8601String(),
       );
     }

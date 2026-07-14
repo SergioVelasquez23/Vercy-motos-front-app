@@ -9,6 +9,16 @@ import 'dart:html'
 import '../utils/jwt_utils.dart';
 
 class UserProvider extends ChangeNotifier {
+  // Singleton: HttpApiService necesita poder forzar un logout completo
+  // (estado en memoria + storage) cuando el backend responde 401/403, sin
+  // depender de un BuildContext. Antes de este cambio solo existía la
+  // instancia creada en main.dart y nada fuera del árbol de widgets podía
+  // llegar a ella, así que un token inválido se borraba del storage pero la
+  // UI seguía "viéndose logueada" indefinidamente.
+  static final UserProvider _instance = UserProvider._internal();
+  factory UserProvider() => _instance;
+  UserProvider._internal();
+
   String? _token;
   List<String> _roles = [];
   String? _userId;
@@ -74,11 +84,38 @@ class UserProvider extends ChangeNotifier {
     }
 
     if (storedToken != null) {
-      await setToken(storedToken, saveToStorage: false);
+      // No basta con que exista un token guardado: hay que confirmar que
+      // sigue vigente antes de dar la sesión por buena. Sin esto, un token
+      // vencido (o emitido antes de que el backend activara @PreAuthorize)
+      // hacía que la app saltara la pantalla de login e intentara cargar
+      // todo con un token que el backend ya rechaza con 401/403 en cada
+      // request, dejando pantallas vacías sin ninguna pista de por qué.
+      bool tokenValido;
+      try {
+        tokenValido = !JwtUtils.isTokenExpired(storedToken);
+      } catch (e) {
+        tokenValido = false;
+      }
+
+      if (tokenValido) {
+        await setToken(storedToken, saveToStorage: false);
+      } else {
+        debugPrint(
+            '🔑 [UserProvider] Token guardado vencido o inválido — se descarta, requiere login');
+        await _clearStoredToken();
+      }
     }
 
     _initialized = true;
     notifyListeners();
+  }
+
+  Future<void> _clearStoredToken() async {
+    if (kIsWeb) {
+      html.window.localStorage.remove('jwt_token');
+    } else {
+      await storage.delete(key: 'jwt_token');
+    }
   }
 
   Future<void> setToken(String token, {bool saveToStorage = true}) async {
@@ -138,14 +175,14 @@ class UserProvider extends ChangeNotifier {
     _userName = null;
     _userEmail = null;
 
-    // Solo se limpia el token de sesión. Las credenciales guardadas
-    // ("Recordar mis credenciales") se conservan a propósito para que el
-    // usuario no tenga que volver a escribirlas tras cerrar sesión.
-    if (kIsWeb) {
-      html.window.localStorage.remove('jwt_token');
-    } else {
-      await storage.delete(key: 'jwt_token');
-    }
+    // El email/password guardados se conservan a propósito para que el
+    // usuario no tenga que volver a escribirlos tras cerrar sesión — pero
+    // el flag de auto-login sí se apaga: si no, LoginScreen ve
+    // remember_credentials=true al montarse y vuelve a loguear solo con esas
+    // credenciales, dejando "cerrar sesión" sin efecto aparente.
+    await storage.delete(key: 'remember_credentials');
+
+    await _clearStoredToken();
 
     notifyListeners();
   }

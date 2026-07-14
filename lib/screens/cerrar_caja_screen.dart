@@ -11,6 +11,8 @@ import '../utils/format_utils.dart';
 import '../utils/file_download_helper.dart';
 import '../theme/app_theme.dart';
 import '../utils/logger.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class CerrarCajaScreen extends StatefulWidget {
   const CerrarCajaScreen({super.key});
@@ -93,15 +95,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         await _cargarEfectivoEsperado();
       }
     } catch (e) {
-      String mensajeAmigable = _obtenerMensajeAmigable(e.toString());
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(mensajeAmigable),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 4),
-        ),
-      );
-        
+      showErrorDialog(context, errorMessage(e));
     } finally {
       setState(() {
         _isLoading = false;
@@ -321,7 +315,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           
       }
     } catch (e) {
-      String mensajeAmigable = _obtenerMensajeAmigable(e.toString());
+      String mensajeAmigable = errorMessage(e);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -740,15 +734,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         await _verificarEstadoCaja();
       }
 
-      String mensajeAmigable = _obtenerMensajeAmigable(e.toString());
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(mensajeAmigable),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 4),
-        ),
-      );
-        
+      showErrorDialog(context, errorMessage(e));
     } finally {
       setState(() {
         _isLoading = false;
@@ -938,13 +924,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
   // ===== FIN BACKUP / CONCILIACIÓN =====
 
   void _mostrarError(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(mensaje),
-        backgroundColor: Colors.red,
-        duration: Duration(seconds: 4),
-      ),
-    );
+    showErrorDialog(context, mensaje);
   }
 
   void _mostrarExito(String mensaje) {
@@ -1813,6 +1793,11 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
             formatCurrencyRoundedTo1000((ventas.ventasPorFormaPago['Datafono'] ?? ventas.ventasPorFormaPago['datafono']) ?? 0),
             valueColor: Colors.teal,
           ),
+          _buildInfoRow(
+            'Ventas A Crédito:',
+            formatCurrencyRoundedTo1000((ventas.ventasPorFormaPago['Crédito'] ?? ventas.ventasPorFormaPago['crédito']) ?? 0),
+            valueColor: Colors.deepOrange,
+          ),
           // Desglose visual adicional por plataforma específica (no cambia los
           // totales de arriba, son un subconjunto de Transferencia/Datafono/Efectivo).
           // Solo se muestran las plataformas que tuvieron movimiento este cuadre.
@@ -1917,6 +1902,11 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
             ((ventas.cantidadPorFormaPago['Datafono'] ?? ventas.cantidadPorFormaPago['datafono']) ?? 0).toString(),
             valueColor: Colors.teal,
           ),
+          _buildInfoRow(
+            'Pedidos A Crédito:',
+            ((ventas.cantidadPorFormaPago['Crédito'] ?? ventas.cantidadPorFormaPago['crédito']) ?? 0).toString(),
+            valueColor: Colors.deepOrange,
+          ),
 
           // Add a summary of today's sales instead of individual orders
           SizedBox(height: 16),
@@ -1976,56 +1966,4 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
     }
   }
 
-  /// Convierte errores técnicos en mensajes amigables para el usuario
-  String _obtenerMensajeAmigable(String error) {
-    // Convertir a minúsculas para comparaciones más fáciles
-    final errorLower = error.toLowerCase();
-
-    // Errores de conexión
-    if (errorLower.contains('clientexception') ||
-        errorLower.contains('failed to fetch') ||
-        errorLower.contains('network error') ||
-        errorLower.contains('connection') ||
-        errorLower.contains('timeout') ||
-        errorLower.contains('socketexception') ||
-        errorLower.contains('no internet') ||
-        errorLower.contains('unable to reach') ||
-        errorLower.contains('host not found')) {
-      return 'Error de conexión a WiFi';
-    }
-
-    // Errores de servidor
-    if (errorLower.contains('500') ||
-        errorLower.contains('internal server error') ||
-        errorLower.contains('server error')) {
-      return 'Error del servidor. Intente más tarde';
-    }
-
-    // Errores de autenticación
-    if (errorLower.contains('401') ||
-        errorLower.contains('unauthorized') ||
-        errorLower.contains('authentication')) {
-      return 'Error de autenticación. Inicie sesión nuevamente';
-    }
-
-    // Errores de permisos
-    if (errorLower.contains('403') ||
-        errorLower.contains('forbidden') ||
-        errorLower.contains('access denied')) {
-      return 'Sin permisos para realizar esta acción';
-    }
-
-    // Errores de datos no encontrados
-    if (errorLower.contains('404') || errorLower.contains('not found')) {
-      return 'Información no encontrada';
-    }
-
-    // Errores específicos de caja
-    if (errorLower.contains('caja') && errorLower.contains('cerrada')) {
-      return 'La caja ya está cerrada';
-    }
-
-    // Para cualquier otro error, mostrar mensaje genérico
-    return 'Error del sistema. Intente nuevamente';
-  }
 }

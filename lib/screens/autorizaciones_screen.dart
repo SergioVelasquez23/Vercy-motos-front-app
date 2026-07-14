@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/user_management_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class AutorizacionesScreen extends StatefulWidget {
   const AutorizacionesScreen({super.key});
@@ -31,12 +33,7 @@ class _AutorizacionesScreenState extends State<AutorizacionesScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cargar usuarios: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, 'Error al cargar usuarios: ${errorMessage(e)}');
       }
     }
   }
@@ -56,12 +53,7 @@ class _AutorizacionesScreenState extends State<AutorizacionesScreen> {
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ ${resultado['message']}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, resultado['message']);
       }
     }
   }
@@ -81,12 +73,7 @@ class _AutorizacionesScreenState extends State<AutorizacionesScreen> {
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${resultado['message']}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, resultado['message']);
       }
     }
   }

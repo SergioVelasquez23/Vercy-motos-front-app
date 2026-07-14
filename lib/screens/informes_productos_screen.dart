@@ -10,6 +10,8 @@ import '../theme/app_theme.dart';
 import '../services/cuadre_caja_service.dart';
 import '../services/pdf_service.dart';
 import '../widgets/common/screen_header.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class InformesProductosScreen extends StatefulWidget {
   const InformesProductosScreen({super.key});
@@ -144,12 +146,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
 
       // Mostrar error
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al abrir PDF: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, 'Error al abrir PDF: ${errorMessage(e)}');
       }
     }
   }
@@ -350,7 +347,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error al generar informe: $e')));
+        ).showSnackBar(SnackBar(content: Text('Error al generar informe: ${errorMessage(e)}')));
       }
     }
   }
@@ -1404,12 +1401,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
       await _mostrarDialogoPDFConNombrePersonalizado(resumen, nombreArchivo);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al generar PDF: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, 'Error al generar PDF: ${errorMessage(e)}');
       }
     }
   }
@@ -1478,12 +1470,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                 }
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error descargando PDF: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
+                  showErrorDialog(context, 'Error descargando PDF: ${errorMessage(e)}');
                 }
               }
             },
@@ -1539,12 +1526,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
 
       // Mostrar error
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al mostrar vista previa: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, 'Error al mostrar vista previa: ${errorMessage(e)}');
       }
     }
   }

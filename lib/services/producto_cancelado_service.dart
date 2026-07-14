@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import '../models/producto_cancelado.dart';
 import '../models/item_pedido.dart';
 import '../utils/datetime_utils.dart';
+import '../utils/api_error.dart';
 import 'base_api_service.dart';
 
 class ProductoCanceladoService {
@@ -72,7 +73,7 @@ class ProductoCanceladoService {
         
       return {
         'success': false,
-        'message': 'Error de conexión: $e',
+        'message': errorMessage(e),
       };
     }
   }
@@ -137,7 +138,7 @@ class ProductoCanceladoService {
         
       return {
         'success': false,
-        'message': 'Error de conexión: $e',
+        'message': errorMessage(e),
         'productos': <ProductoCancelado>[],
       };
     }
@@ -194,7 +195,7 @@ class ProductoCanceladoService {
         
       return {
         'success': false,
-        'message': 'Error de conexión: $e',
+        'message': errorMessage(e),
       };
     }
   }
@@ -235,7 +236,7 @@ class ProductoCanceladoService {
         
       return {
         'success': false,
-        'message': 'Error de conexión: $e',
+        'message': errorMessage(e),
       };
     }
   }
@@ -282,7 +283,7 @@ class ProductoCanceladoService {
         
       return {
         'success': false,
-        'message': 'Error de conexión: $e',
+        'message': errorMessage(e),
       };
     }
   }

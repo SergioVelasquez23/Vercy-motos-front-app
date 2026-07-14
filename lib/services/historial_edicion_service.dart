@@ -62,8 +62,7 @@ class HistorialEdicionService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener historial');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener historial');
     }
   }
 
@@ -98,13 +97,10 @@ class HistorialEdicionService {
             )
             .toList();
       } else {
-        throw Exception(
-          'Error al obtener historial de mesa: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener historial de mesa');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener historial de mesa');
     }
   }
 
@@ -139,13 +135,10 @@ class HistorialEdicionService {
             )
             .toList();
       } else {
-        throw Exception(
-          'Error al obtener historial de usuario: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener historial de usuario');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener historial de usuario');
     }
   }
 
@@ -180,13 +173,10 @@ class HistorialEdicionService {
             )
             .toList();
       } else {
-        throw Exception(
-          'Error al obtener historial reciente: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener historial reciente');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener historial reciente');
     }
   }
 }

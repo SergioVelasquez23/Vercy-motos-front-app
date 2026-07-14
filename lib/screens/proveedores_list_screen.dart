@@ -7,6 +7,8 @@ import '../services/proveedor_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/pagination_mixin.dart';
 import '../widgets/common/screen_header.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class ProveedoresListScreen extends StatefulWidget {
   const ProveedoresListScreen({super.key});
@@ -52,12 +54,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
         _aplicarFiltros();
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al cargar proveedores: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, 'Error al cargar proveedores: ${errorMessage(e)}');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -927,12 +924,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
                         );
                         await _cargarProveedores();
                       } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
+                        showErrorDialog(context, errorMessage(e));
                       } finally {
                         setDialogState(() => _guardandoProveedor = false);
                       }
@@ -1067,12 +1059,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
         );
         await _cargarProveedores();
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al eliminar: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, 'Error al eliminar: ${errorMessage(e)}');
       }
     }
   }
@@ -1175,13 +1162,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
         await _procesarArchivoExcel(bytes);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al seleccionar archivo: $e'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 5),
-        ),
-      );
+      showErrorDialog(context, 'Error al seleccionar archivo: ${errorMessage(e)}');
     }
   }
 
@@ -1224,13 +1205,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
     } catch (e) {
       if (mounted) Navigator.pop(context);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al procesar archivo: $e'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 5),
-        ),
-      );
+      showErrorDialog(context, 'Error al procesar archivo: ${errorMessage(e)}');
     }
   }
 

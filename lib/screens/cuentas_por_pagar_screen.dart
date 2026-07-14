@@ -8,6 +8,8 @@ import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
 import '../utils/logger.dart';
 import '../widgets/common/screen_header.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class CuentasPorPagarScreen extends StatefulWidget {
   const CuentasPorPagarScreen({Key? key}) : super(key: key);
@@ -66,7 +68,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
       }
     } catch (e) {
       setState(() {
-        error = 'Error de conexión: $e';
+        error = errorMessage(e);
         isLoading = false;
       });
     }
@@ -212,21 +214,11 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
         await _cargarCuentas();
       } else {
         appLog('❌ [PAGO CxP] Error al registrar pago: ${response.message}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${response.message}'),
-            backgroundColor: AppTheme.error,
-          ),
-        );
+        showErrorDialog(context, response.message);
       }
     } catch (e) {
       appLog('💥 [PAGO CxP] Excepción al registrar pago: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error de conexión: $e'),
-          backgroundColor: AppTheme.error,
-        ),
-      );
+      showErrorDialog(context, errorMessage(e));
     }
   }
 
@@ -1119,20 +1111,10 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
         _enviarAlertaNuevaCxPTelegram(cuenta);
         await _cargarCuentas();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${response.message}'),
-            backgroundColor: AppTheme.error,
-          ),
-        );
+        showErrorDialog(context, response.message);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error de conexión: $e'),
-          backgroundColor: AppTheme.error,
-        ),
-      );
+      showErrorDialog(context, errorMessage(e));
     }
   }
 
@@ -1226,12 +1208,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
       appLog('❌ [ALERTA MANUAL CxP] Error al enviar alerta: $e');
       appLog('💥 Stack trace: ${StackTrace.current}');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al enviar alerta: $e'),
-            backgroundColor: AppTheme.error,
-          ),
-        );
+        showErrorDialog(context, 'Error al enviar alerta: ${errorMessage(e)}');
       }
     }
   }

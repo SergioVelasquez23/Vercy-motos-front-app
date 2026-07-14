@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/image_service.dart';
 import '../services/producto_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 /// Widget para gestión rápida de imágenes de productos
 class ImageUploadHelper extends StatefulWidget {
@@ -49,7 +51,7 @@ class _ImageUploadHelperState extends State<ImageUploadHelper> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      _mostrarError('Error cargando imágenes: $e');
+      _mostrarError('Error cargando imágenes: ${errorMessage(e)}');
     }
   }
 
@@ -73,14 +75,12 @@ class _ImageUploadHelperState extends State<ImageUploadHelper> {
       _mostrarExito('Imagen subida: $filename');
     } catch (e) {
       setState(() => _isLoading = false);
-      _mostrarError('Error subiendo imagen: $e');
+      _mostrarError('Error subiendo imagen: ${errorMessage(e)}');
     }
   }
 
   void _mostrarError(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensaje), backgroundColor: Colors.red),
-    );
+    showErrorDialog(context, mensaje);
   }
 
   void _mostrarExito(String mensaje) {

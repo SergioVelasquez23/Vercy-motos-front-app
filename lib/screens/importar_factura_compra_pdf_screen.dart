@@ -13,6 +13,7 @@ import '../theme/app_theme.dart';
 import '../utils/submit_guard.dart';
 import '../utils/currency_utils.dart';
 import '../utils/snackbar_helper.dart';
+import '../utils/api_error.dart';
 import '../utils/datetime_utils.dart';
 
 /// Fila editable de la vista previa: envuelve el ítem parseado del PDF con
@@ -164,7 +165,7 @@ class _ImportarFacturaCompraPdfScreenState
       await _subirYPrevisualizar(bytes, archivo.name);
     } catch (e) {
       if (mounted) {
-        showErrorSnackBar(context, 'Error al seleccionar el PDF: $e');
+        showErrorSnackBar(context, 'Error al seleccionar el PDF: ${errorMessage(e)}');
       }
     }
   }
@@ -201,7 +202,7 @@ class _ImportarFacturaCompraPdfScreenState
       }
     } catch (e) {
       if (mounted) {
-        showErrorSnackBar(context, 'Error al interpretar el PDF: $e');
+        showErrorSnackBar(context, 'Error al interpretar el PDF: ${errorMessage(e)}');
       }
     } finally {
       if (mounted) setState(() => _cargandoPreview = false);
@@ -1259,7 +1260,7 @@ class _ImportarFacturaCompraPdfScreenState
       }
     } catch (e) {
       if (mounted) {
-        showErrorSnackBar(context, 'Error al crear la compra: $e');
+        showErrorSnackBar(context, 'Error al crear la compra: ${errorMessage(e)}');
       }
     } finally {
       if (mounted) setState(() => _guardando = false);

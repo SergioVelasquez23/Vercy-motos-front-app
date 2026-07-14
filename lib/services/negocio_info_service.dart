@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import '../config/api_config.dart';
 import '../models/negocio_info.dart';
+import '../utils/api_error.dart';
 import 'base_api_service.dart';
 import 'image_service.dart';
 
@@ -37,13 +38,10 @@ class NegocioInfoService {
           
         return null;
       } else {
-                   throw Exception(
-          'Error al obtener información del negocio: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener información del negocio');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al obtener información del negocio');
     }
   }
 
@@ -82,14 +80,10 @@ class NegocioInfoService {
         final data = body is Map && body.containsKey('data') ? body['data'] : body;
         return NegocioInfo.fromJson(data as Map<String, dynamic>);
       } else {
-                     
-        throw Exception(
-          'Error al guardar información del negocio: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al guardar información del negocio');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al guardar información del negocio');
     }
   }
 
@@ -104,8 +98,7 @@ class NegocioInfoService {
         
       return logoUrl;
     } catch (e) {
-        
-      throw Exception('Error al subir el logo: $e');
+      wrapOrThrow(e, context: 'Error al subir el logo');
     }
   }
 
@@ -122,13 +115,10 @@ class NegocioInfoService {
       if (response.statusCode == 200 || response.statusCode == 204) {
           
       } else {
-                   throw Exception(
-          'Error al eliminar información del negocio: ${response.statusCode}',
-        );
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al eliminar información del negocio');
       }
     } catch (e) {
-        
-      throw Exception('Error de conexión: $e');
+      wrapOrThrow(e, context: 'Error al eliminar información del negocio');
     }
   }
 

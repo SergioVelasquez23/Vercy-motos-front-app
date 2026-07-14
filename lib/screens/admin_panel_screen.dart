@@ -8,6 +8,8 @@ import '../utils/format_utils.dart';
 import '../services/pedido_service.dart';
 import '../services/reportes_service.dart';
 import '../models/dashboard_data.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 import 'exportar_mensual_screen.dart';
 import 'libro_contable_screen.dart';
 
@@ -67,7 +69,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         setState(() => _stats = data);
       }
     } catch (e) {
-      _showError('Error cargando estadísticas: $e');
+      _showError('Error cargando estadísticas: ${errorMessage(e)}');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -99,7 +101,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         _showError('Error: ${data['message']}');
       }
     } catch (e) {
-      _showError('Error eliminando datos: $e');
+      _showError('Error eliminando datos: ${errorMessage(e)}');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -128,7 +130,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         _showError('Error: ${data['message']}');
       }
     } catch (e) {
-      _showError('Error reseteando mesas: $e');
+      _showError('Error reseteando mesas: ${errorMessage(e)}');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -159,7 +161,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         _showError('Error: ${data['message']}');
       }
     } catch (e) {
-      _showError('Error contando registros: $e');
+      _showError('Error contando registros: ${errorMessage(e)}');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -204,7 +206,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         _showError('Error: ${data['message']}');
       }
     } catch (e) {
-      _showError('Error eliminando registros: $e');
+      _showError('Error eliminando registros: ${errorMessage(e)}');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -297,7 +299,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       setState(() => _lastResult = 'Pedido eliminado: $pedidoId');
       await _loadStats();
     } catch (e) {
-      _showError('Error eliminando pedido: $e');
+      _showError('Error eliminando pedido: ${errorMessage(e)}');
         
     } finally {
       setState(() => _isLoading = false);
@@ -345,7 +347,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         _showError('Error: ${result['message'] ?? 'Operación fallida'}');
       }
     } catch (e) {
-      _showError('Error eliminando pedidos activos: $e');
+      _showError('Error eliminando pedidos activos: ${errorMessage(e)}');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -430,13 +432,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        duration: Duration(seconds: 5),
-      ),
-    );
+    showErrorDialog(context, message);
   }
 
   Widget _buildMetricasTotales() {

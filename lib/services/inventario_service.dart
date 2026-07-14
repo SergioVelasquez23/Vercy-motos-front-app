@@ -6,6 +6,7 @@ import '../models/inventario.dart';
 import '../models/movimiento_inventario.dart';
 import '../models/api_response.dart';
 import '../config/api_config.dart';
+import '../utils/api_error.dart';
 import 'base_api_service.dart';
 
 class InventarioService {
@@ -25,19 +26,6 @@ class InventarioService {
       url += '/$path';
     }
     return url;
-  }
-
-  // Maneja errores de respuesta HTTP
-  Exception _handleErrorResponse(http.Response response) {
-    try {
-      final Map<String, dynamic> data = json.decode(response.body);
-      if (data['error'] != null) {
-        return Exception(data['error']);
-      }
-    } catch (e) {
-      // Si no podemos parsear el JSON, ignoramos
-    }
-    return Exception('Error en la solicitud: ${response.statusCode}');
   }
 
   // Obtener todos los movimientos de inventario
@@ -84,9 +72,9 @@ class InventarioService {
         return movimiento;
       }
 
-      throw _handleErrorResponse(response);
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al registrar movimiento');
     } catch (e) {
-      throw Exception('Error al registrar movimiento: $e');
+      wrapOrThrow(e, context: 'Error al registrar movimiento');
     }
   }
 
@@ -124,10 +112,9 @@ class InventarioService {
         throw Exception('Formato de respuesta inválido');
       }
 
-      throw _handleErrorResponse(response);
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar movimiento');
     } catch (e) {
-      if (kDebugMode) {}
-      throw Exception('Error al actualizar movimiento: $e');
+      wrapOrThrow(e, context: 'Error al actualizar movimiento');
     }
   }
 
@@ -150,10 +137,9 @@ class InventarioService {
         return true;
       }
 
-      throw _handleErrorResponse(response);
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al eliminar movimiento');
     } catch (e) {
-      if (kDebugMode) {}
-      throw Exception('Error al eliminar movimiento: $e');
+      wrapOrThrow(e, context: 'Error al eliminar movimiento');
     }
   }
 
@@ -190,8 +176,7 @@ class InventarioService {
       // Si hay un error, intentar obtener ingredientes
       return await _getIngredientesComoInventario();
     } catch (e) {
-      if (kDebugMode) {}
-      throw Exception('Error al obtener inventario: $e');
+      wrapOrThrow(e, context: 'Error al obtener inventario');
     }
   }
 
@@ -264,10 +249,9 @@ class InventarioService {
         throw Exception('Formato de respuesta inválido');
       }
 
-      throw _handleErrorResponse(response);
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al crear ingrediente');
     } catch (e) {
-      if (kDebugMode) {}
-      throw Exception('Error al crear ingrediente: $e');
+      wrapOrThrow(e, context: 'Error al crear ingrediente');
     }
   }
 
@@ -296,10 +280,9 @@ class InventarioService {
         throw Exception('Formato de respuesta inválido');
       }
 
-      throw _handleErrorResponse(response);
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar ingrediente');
     } catch (e) {
-      if (kDebugMode) {}
-      throw Exception('Error al actualizar ingrediente: $e');
+      wrapOrThrow(e, context: 'Error al actualizar ingrediente');
     }
   }
 
@@ -320,10 +303,9 @@ class InventarioService {
         return true;
       }
 
-      throw _handleErrorResponse(response);
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al eliminar ingrediente');
     } catch (e) {
-      if (kDebugMode) {}
-      throw Exception('Error al eliminar ingrediente: $e');
+      wrapOrThrow(e, context: 'Error al eliminar ingrediente');
     }
   }
 

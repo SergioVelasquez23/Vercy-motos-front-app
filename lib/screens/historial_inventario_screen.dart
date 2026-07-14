@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../models/movimiento_inventario.dart';
 import '../services/inventario_service.dart';
 import '../widgets/loading_indicator.dart';
+import '../utils/api_error.dart';
 
 class HistorialInventarioScreen extends StatefulWidget {
   const HistorialInventarioScreen({super.key});
@@ -68,7 +69,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
     } catch (e) {
         
       setState(() {
-        _error = 'Error al cargar movimientos: $e';
+        _error = errorMessage(e);
         _isLoading = false;
       });
     }

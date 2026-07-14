@@ -3,6 +3,8 @@ import '../models/proveedor.dart';
 import '../services/proveedor_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/submit_guard.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class ProveedoresScreen extends StatefulWidget {
   const ProveedoresScreen({super.key});
@@ -42,9 +44,7 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> with SubmitGuard 
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cargar proveedores: $e'), backgroundColor: Colors.red),
-        );
+        showErrorDialog(context, 'Error al cargar proveedores: ${errorMessage(e)}');
       }
     } finally {
       setState(() => _isLoading = false);
@@ -256,13 +256,7 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> with SubmitGuard 
                         } catch (e) {
                           if (mounted) {
                             nav.pop();
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text('Error: $e'),
-                                backgroundColor: Colors.red,
-                                duration: Duration(seconds: 5),
-                              ),
-                            );
+                            showErrorDialog(this.context, errorMessage(e));
                           }
                         } finally {
                           if (mounted) setState(() => _guardandoProveedor = false);
@@ -365,13 +359,7 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> with SubmitGuard 
       } catch (e) {
         if (mounted) {
           Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error al eliminar proveedor: $e'),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 5),
-            ),
-          );
+          showErrorDialog(context, 'Error al eliminar proveedor: ${errorMessage(e)}');
         }
       }
     }

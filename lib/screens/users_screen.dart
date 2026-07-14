@@ -7,6 +7,8 @@ import '../services/user_service.dart';
 import '../services/role_service.dart';
 import '../services/user_role_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 class UsersScreen extends StatefulWidget {
   const UsersScreen({super.key});
@@ -76,13 +78,7 @@ class _UsersScreenState extends State<UsersScreen> {
 
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cargar datos: $e'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 5),
-          ),
-        );
+        showErrorDialog(context, 'Error al cargar datos: ${errorMessage(e)}');
       }
     }
   }
@@ -789,12 +785,7 @@ class _UsersScreenState extends State<UsersScreen> {
       debugPrint(stackTrace.toString());
       if (mounted && Navigator.canPop(context)) Navigator.pop(context);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cambiar rol: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorDialog(context, 'Error al cambiar rol: ${errorMessage(e)}');
       }
     }
   }
@@ -868,12 +859,7 @@ class _UsersScreenState extends State<UsersScreen> {
       Navigator.pop(context);
       _cargarDatos();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al guardar usuario: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, 'Error al guardar usuario: ${errorMessage(e)}');
     }
   }
 
@@ -921,12 +907,7 @@ class _UsersScreenState extends State<UsersScreen> {
       _cargarDatos();
     } catch (e) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al eliminar usuario: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorDialog(context, 'Error al eliminar usuario: ${errorMessage(e)}');
     }
   }
 }
