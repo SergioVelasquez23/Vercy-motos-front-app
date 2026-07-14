@@ -160,7 +160,11 @@ class UserRoleService {
     }
   }
 
-  // Obtener roles de un usuario
+  // Obtener las relaciones User<->Role de un usuario (con el _id real de la
+  // relación, no el del Role) — necesario para poder borrarlas antes de
+  // asignar un rol nuevo. NO usar /api/usersroles/user/$userId: ese endpoint
+  // devuelve los Role directamente (sin el _id de la relación) por
+  // compatibilidad con otras pantallas que sí solo necesitan mostrar el rol.
   Future<List<UserRole>> getRolesByUser(String userId) async {
     try {
       final token = await _getToken();
@@ -169,7 +173,7 @@ class UserRoleService {
       }
 
       final response = await http.get(
-        Uri.parse('$baseUrl/api/usersroles/user/$userId'),
+        Uri.parse('$baseUrl/api/usersroles/user/$userId/relaciones'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

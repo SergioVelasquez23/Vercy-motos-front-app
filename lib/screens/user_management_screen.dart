@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/user_management_service.dart';
+import '../services/role_service.dart';
+import '../services/user_role_service.dart';
+import '../models/role.dart';
 import '../theme/app_theme.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
@@ -13,7 +16,10 @@ class UserManagementScreen extends StatefulWidget {
 
 class _UserManagementScreenState extends State<UserManagementScreen> {
   final UserManagementService _userService = UserManagementService();
+  final RoleService _roleService = RoleService();
+  final UserRoleService _userRoleService = UserRoleService();
   List<Map<String, dynamic>> _users = [];
+  List<Role> _roles = [];
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -21,6 +27,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   void initState() {
     super.initState();
     _loadUsers();
+    _loadRoles();
   }
 
   Future<void> _loadUsers() async {
@@ -40,6 +47,15 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         _errorMessage = 'Error al cargar usuarios: ${errorMessage(e)}';
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadRoles() async {
+    try {
+      final roles = await _roleService.getRoles();
+      if (mounted) setState(() => _roles = roles);
+    } catch (e) {
+      // El diálogo de cambio de rol valida _roles.isEmpty antes de guardar.
     }
   }
 
@@ -134,7 +150,29 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     }
   }
 
-  Future<void> _updateUserRole(String userId, String newRole) async {
+  // Antes esto llamaba a UserManagementService.updateUserRole(), que le pega
+  // a PUT /users/{id}/role — un endpoint que no existe en el backend
+  // (UsersControllers solo tiene PUT /api/users/{id} para datos básicos, y ni
+  // siquiera con el prefijo /api correcto). El cambio de rol nunca se
+  // guardaba: el usuario se quedaba con el rol que ya tenía (normalmente
+  // "asesor", el que se asigna por defecto al crear la cuenta). Ahora usa el
+  // mismo mecanismo real que ya funciona en UsersScreen: los roles viven en
+  // una colección UserRole aparte (User <-> Role), así que hay que borrar la
+  // relación vieja y crear la nueva por roleId, no mandar el nombre del rol
+  // como si fuera un campo del usuario.
+  Future<void> _updateUserRole(String userId, String newRoleName) async {
+    final nuevoRol = _roles.firstWhere(
+      (r) => r.nombre.toLowerCase() == newRoleName.toLowerCase(),
+      orElse: () => Role(nombre: ''),
+    );
+    if (nuevoRol.id == null) {
+      showErrorDialog(
+        context,
+        'No se encontró el rol "$newRoleName" en el servidor. Refresca la pantalla e intenta de nuevo.',
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -146,22 +184,25 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
 
     try {
-      final result = await _userService.updateUserRole(userId, newRole);
+      final relacionesActuales = await _userRoleService.getRolesByUser(userId);
+      for (final relacion in relacionesActuales) {
+        if (relacion.id != null) {
+          await _userRoleService.deleteUserRole(relacion.id!);
+        }
+      }
+
+      await _userRoleService.assignRoleToUser(userId, nuevoRol.id!);
 
       if (!mounted) return;
       Navigator.pop(context);
 
-      if (result['success']) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message']),
-            backgroundColor: Colors.green,
-          ),
-        );
-        await _loadUsers();
-      } else {
-        showErrorDialog(context, result['message']);
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Rol actualizado a "${_formatRoleName(newRoleName)}" correctamente'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      await _loadUsers();
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context);

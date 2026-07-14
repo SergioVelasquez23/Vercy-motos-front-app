@@ -675,76 +675,33 @@ class _UsersScreenState extends State<UsersScreen> {
     }
   }
 
+  // Antes esto tenía sleeps y bucles de reintento/verificación (hasta 3
+  // intentos con pausas de 1-1.5s, más una verificación final a los 5s)
+  // porque getRolesByUser() nunca lograba encontrar la relación a borrar:
+  // pegaba a /api/usersroles/user/{id}, que devuelve el Role (no el
+  // UserRole), y el _id igual venía como "_id" mientras el modelo Dart leía
+  // "id" — el borrado nunca se ejecutaba (ver getRolesByUser en
+  // UserRoleService) y los reintentos solo esperaban algo que no iba a
+  // pasar. Ahora que getRolesByUser apunta al endpoint correcto
+  // (/relaciones, con el _id real de cada relación), borrar y asignar
+  // funciona a la primera — sin necesidad de sleeps ni reintentos.
   Future<void> _cambiarRolUsuario(User user, String roleId) async {
     try {
-        
-
-      // Eliminar todos los roles previos antes de asignar el nuevo
-      final relacionesActuales = await _userRoleService.getRolesByUser(
-        user.id!,
-      );
-        
-
-      // ✅ NUEVA LÓGICA: Eliminar roles uno por uno y verificar cada eliminación
+      final relacionesActuales = await _userRoleService.getRolesByUser(user.id!);
       for (final relacion in relacionesActuales) {
         if (relacion.id != null) {
-            
           final eliminado = await _userRoleService.deleteUserRole(relacion.id!);
-             
           if (!eliminado) {
-            throw Exception('No se pudo eliminar el rol ${relacion.id}');
+            throw Exception('No se pudo eliminar el rol anterior (${relacion.id})');
           }
         }
       }
 
-      // Esperar más tiempo para asegurar la sincronización con la base de datos
-        
-      await Future.delayed(Duration(milliseconds: 1500));
+      await _userRoleService.assignRoleToUser(user.id!, roleId);
 
-      // Verificar que los roles fueron eliminados - intentar hasta 3 veces
-      int intentos = 0;
-      List<UserRole> verificacion;
-
-      do {
-        intentos++;
-        verificacion = await _userRoleService.getRolesByUser(user.id!);
-           
-        if (verificacion.isNotEmpty && intentos < 3) {
-            
-          await Future.delayed(Duration(milliseconds: 1000));
-        }
-      } while (verificacion.isNotEmpty && intentos < 3);
-
-      if (verificacion.isNotEmpty) {
-        // Continuar de todas maneras para asignar el nuevo rol
-      }
-
-        
-      final resultado = await _userRoleService.assignRoleToUser(
-        user.id!,
-        roleId,
-      );
-        
-
-      // Esperar para que se procese la asignación
-      await Future.delayed(Duration(milliseconds: 500));
-
-      // Verificar que el nuevo rol se asignó correctamente
-      final rolesFinales = await _userRoleService.getRolesByUser(user.id!);
-         
-      if (rolesFinales.length != 1) {
-        for (var r in rolesFinales) {
-            
-        }
-      }
-
-      // Actualizar inmediatamente el mapa de roles en memoria
       final nuevoRol = _roles.firstWhere(
         (role) => role.id == roleId,
-        orElse: () {
-            
-          throw Exception('Rol no encontrado en la lista local');
-        },
+        orElse: () => throw Exception('Rol no encontrado en la lista local'),
       );
 
       if (!mounted) return;
@@ -755,7 +712,6 @@ class _UsersScreenState extends State<UsersScreen> {
         _usuariosConRolRecienCambiado.add(user.id!);
       });
 
-      // Remover protección después de 30 segundos
       Timer(Duration(seconds: 30), () {
         if (mounted) {
           setState(() {
@@ -772,14 +728,8 @@ class _UsersScreenState extends State<UsersScreen> {
         ),
       );
 
-      // Esperar más tiempo antes de verificar desde el servidor para mejor sincronización
-      Future.delayed(Duration(milliseconds: 5000), () {
-        // Actualizar roles específico del usuario desde el servidor para confirmar
-        _actualizarRolesUsuarioEspecifico(user.id!);
-      });
-
-      // También hacer una verificación inmediata para debug
-        
+      // Confirmar contra el servidor en segundo plano (no bloquea la UI).
+      _actualizarRolesUsuarioEspecifico(user.id!);
     } catch (e, stackTrace) {
       debugPrint('💥 [UsersScreen._cambiarRolUsuario] $e');
       debugPrint(stackTrace.toString());

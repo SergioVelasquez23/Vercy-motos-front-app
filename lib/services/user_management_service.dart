@@ -15,7 +15,7 @@ class UserManagementService {
   Future<List<Map<String, dynamic>>> getAllUsers() async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/users'),
+        Uri.parse('$_baseUrl/api/users'),
         headers: await _headers,
       );
 
@@ -31,38 +31,11 @@ class UserManagementService {
     }
   }
 
-  /// Actualiza el rol de un usuario
-  Future<Map<String, dynamic>> updateUserRole(
-    String userId,
-    String newRole,
-  ) async {
-    try {
-      final response = await http.put(
-        Uri.parse('$_baseUrl/users/$userId/role'),
-        headers: await _headers,
-        body: jsonEncode({'rol': newRole}),
-      );
-
-      if (response.statusCode == 200) {
-        return {'success': true, 'message': 'Rol actualizado correctamente'};
-      } else {
-        final data = jsonDecode(response.body);
-        return {
-          'success': false,
-          'message': data['message'] ?? 'Error al actualizar el rol',
-        };
-      }
-    } catch (e) {
-        
-      return {'success': false, 'message': errorMessage(e)};
-    }
-  }
-
   /// Elimina un usuario (opcional)
   Future<Map<String, dynamic>> deleteUser(String userId) async {
     try {
       final response = await http.delete(
-        Uri.parse('$_baseUrl/users/$userId'),
+        Uri.parse('$_baseUrl/api/users/$userId'),
         headers: await _headers,
       );
 
