@@ -1,7 +1,7 @@
 // Constantes generales para la aplicación
 // Configuración de API
 const String kBackendUrl =
-    'https://vercy-motos-app-048m.onrender.com'; // URL del backend en producción (Render)
+    'https://204-168-190-85.nip.io'; // URL del backend en producción (Hetzner)
 
 // URL de desarrollo local
 const String kLocalBackendUrl = 'http://localhost:8081';

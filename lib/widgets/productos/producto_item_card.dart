@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../config/constants.dart';
 import '../../models/producto.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/format_utils.dart';
 import '../lazy_product_image_widget.dart';
 
 class ProductoItemCard extends StatelessWidget {
-  static const String _backendBaseUrl =
-      "https://vercy-motos-app-048m.onrender.com";
+  static const String _backendBaseUrl = kBackendUrl;
 
   final Producto producto;
   final Future<void> Function(Producto) onEdit;
