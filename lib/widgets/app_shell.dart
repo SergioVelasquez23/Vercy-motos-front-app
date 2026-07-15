@@ -240,6 +240,9 @@ class _AppShellState extends State<AppShell> {
           _MenuItem(icon: Icons.request_quote, label: 'Cotización', route: '/cotizaciones', currentRoute: _currentRoute),
           _MenuItem(icon: Icons.people, label: 'Clientes', route: '/clientes', currentRoute: _currentRoute),
           _MenuItem(icon: Icons.description, label: 'Documentos', route: '/facturas-lista', currentRoute: _currentRoute),
+          _MenuItem(icon: Icons.swap_horiz, label: 'Traslados', route: '/traslados', currentRoute: _currentRoute),
+          _MenuItem(icon: Icons.add_shopping_cart, label: 'Crear Compra', route: '/facturas-compras', currentRoute: _currentRoute),
+          _MenuItem(icon: Icons.people_outline, label: 'Proveedores', route: '/proveedores', currentRoute: _currentRoute),
         ],
         if (!userProvider.isAsesor) ...[
           _MenuItem(icon: Icons.receipt, label: 'Facturar', route: '/facturar', currentRoute: _currentRoute),

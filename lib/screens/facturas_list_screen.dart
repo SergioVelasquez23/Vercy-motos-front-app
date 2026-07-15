@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
-import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
+import '../data/facturas_reconstruidas_manual.dart';
 import '../models/cliente.dart';
 import '../models/factura.dart';
 import '../models/pedido.dart';
@@ -11,6 +9,7 @@ import '../models/item_pedido.dart';
 import '../models/negocio_info.dart';
 import '../providers/datos_cache_provider.dart';
 import '../services/cliente_service.dart';
+import '../services/excel_export_service.dart';
 import '../services/factura_service.dart';
 import '../services/pedido_service.dart';
 import '../services/pdf_service.dart';
@@ -64,6 +63,12 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
   String _filtroNumero = '';
   String _filtroCliente = '';
   String _filtroOrden = '';
+
+  // Los Pedidos con tipoFactura == 'LOCAL' son ventas de mostrador que nunca
+  // se reportan a la DIAN (ni como FE ni como Documento POS real). Se
+  // ocultan por defecto y solo se muestran si el usuario los pide
+  // explícitamente con el botón "Mostrar locales".
+  bool _mostrarLocales = false;
 
   @override
   void initState() {
@@ -162,6 +167,32 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
     }
   }
 
+  /// El backend solo empezó a integrar realmente con la DIAN a partir de
+  /// esta fecha. Cualquier Pedido anterior, aunque haya quedado marcado como
+  /// `tipoFactura == 'FACTURA'`/`'POS'`, nunca llegó de verdad a la DIAN —
+  /// se trata como venta local sin importar la etiqueta que tenga.
+  static final DateTime _fechaCorteDian = DateTime(2026, 7, 3);
+
+  /// Clasifica un Pedido según `tipoFactura`: 'FACTURA' -> Factura
+  /// Electrónica emitida ante la DIAN ('FE'), 'POS' -> Documento POS real
+  /// (también ante la DIAN, vía terminal/datafono Matías), cualquier otro
+  /// valor (por defecto 'LOCAL') -> venta de mostrador puramente interna,
+  /// nunca reportada a la DIAN.
+  String _categoriaPedido(Pedido pedido) {
+    final fecha = pedido.fechaPago ?? pedido.fecha;
+    if (fecha.isBefore(_fechaCorteDian)) {
+      return 'LOCAL';
+    }
+    switch (pedido.tipoFactura) {
+      case 'FACTURA':
+        return 'FE';
+      case 'POS':
+        return 'POS';
+      default:
+        return 'LOCAL';
+    }
+  }
+
   void _aplicarFiltros() {
     List<dynamic> documentos = [];
 
@@ -193,12 +224,13 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
       '🔍 Filtros actuales - Tipo: "$_filtroTipo", Número: "$_filtroNumero", Cliente: "$_filtroCliente"',
     );
     
-    // Agregar pedidos pagados filtrados (POS, FE, o todos)
+    // Agregar pedidos pagados filtrados (POS, FE, LOCAL o todos)
     if (_filtroTipo.isEmpty || _filtroTipo == 'POS' || _filtroTipo == 'FE') {
       for (var pedido in _pedidosPagados) {
-        final esFEPedido = pedido.tipoFactura == 'FACTURA';
-        if (_filtroTipo == 'POS' && esFEPedido) continue;
-        if (_filtroTipo == 'FE' && !esFEPedido) continue;
+        final categoria = _categoriaPedido(pedido);
+        if (!_mostrarLocales && categoria == 'LOCAL') continue;
+        if (_filtroTipo == 'POS' && categoria != 'POS') continue;
+        if (_filtroTipo == 'FE' && categoria != 'FE') continue;
         if (_filtroNumero.isNotEmpty) {
           if (!pedido.id.toLowerCase().contains(_filtroNumero.toLowerCase())) {
             continue;
@@ -290,6 +322,17 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
             );
           },
         ),
+        ScreenHeaderAction.secondary(
+          icon: _mostrarLocales ? Icons.visibility_off : Icons.visibility,
+          label: _mostrarLocales ? 'Ocultar locales' : 'Mostrar locales',
+          mobileLabel: _mostrarLocales ? 'Ocultar loc.' : 'Mostrar loc.',
+          onPressed: () {
+            setState(() {
+              _mostrarLocales = !_mostrarLocales;
+              _aplicarFiltros();
+            });
+          },
+        ),
         ScreenHeaderAction.warning(
           icon: Icons.clear,
           label: 'Limpiar filtros',
@@ -299,6 +342,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
               _filtroTipo = '';
               _filtroNumero = '';
               _filtroCliente = '';
+              _mostrarLocales = false;
               _aplicarFiltros();
             });
             ScaffoldMessenger.of(context).showSnackBar(
@@ -485,24 +529,25 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
           // Botón otros
           PopupMenuButton<String>(
             onSelected: (value) async {
-              if (value == 'exportar_csv') {
-                _exportarCSV();
+              if (value == 'exportar_excel') {
+                _exportarExcel();
               } else if (value == 'limpiar_filtros') {
                 setState(() {
                   _filtroNumeroController.clear();
                   _filtroClienteController.clear();
                   _filtroOrdenController.clear();
-                  
+
                   _filtroNumero = '';
                   _filtroCliente = '';
                   _filtroOrden = '';
                   _filtroTipo = '';
+                  _mostrarLocales = false;
                 });
                 _cargarDocumentos(); // Recargar si es necesario o _aplicarFiltros()
               }
             },
             itemBuilder: (_) => [
-              PopupMenuItem(value: 'exportar_csv', child: Row(children: [Icon(Icons.download, size: 18, color: Theme.of(context).colorScheme.onSurface), SizedBox(width: 8), Text('Exportar CSV', style: TextStyle(color: Theme.of(context).colorScheme.onSurface))])),
+              PopupMenuItem(value: 'exportar_excel', child: Row(children: [Icon(Icons.grid_on, size: 18, color: AppTheme.success), SizedBox(width: 8), Text('Exportar Excel', style: TextStyle(color: Theme.of(context).colorScheme.onSurface))])),
               PopupMenuItem(value: 'limpiar_filtros', child: Row(children: [Icon(Icons.clear_all, size: 18, color: Theme.of(context).colorScheme.onSurface), SizedBox(width: 8), Text('Limpiar filtros', style: TextStyle(color: Theme.of(context).colorScheme.onSurface))])),
             ],
             color: Theme.of(context).colorScheme.surface,
@@ -735,6 +780,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
     bool isPagado;
     bool esPedido = documento is Pedido;
     bool esFEDoc = false;
+    String categoria = 'LOCAL';
 
     if (documento is Factura) {
       numero = documento.numero ?? 'N/A';
@@ -748,8 +794,13 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
       final safeId = documento.id.length >= 8
           ? documento.id.substring(0, 8).toUpperCase()
           : documento.id.toUpperCase();
-      esFEDoc = documento.tipoFactura == 'FACTURA';
-      numero = esFEDoc ? 'FE-$safeId' : 'POS-$safeId';
+      categoria = _categoriaPedido(documento);
+      esFEDoc = categoria == 'FE';
+      numero = switch (categoria) {
+        'FE' => 'FE-$safeId',
+        'POS' => 'POS-$safeId',
+        _ => 'LC-$safeId',
+      };
       clienteNombre = documento.cliente ?? 'CONSUMIDOR FINAL';
       fecha = documento.fechaPago ?? documento.fecha;
       total = documento.total;
@@ -759,6 +810,12 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
     } else {
       return SizedBox.shrink();
     }
+
+    final Color badgeColor = switch (categoria) {
+      'FE' => AppTheme.success,
+      'POS' => AppTheme.primary,
+      _ => AppTheme.secondary,
+    };
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
@@ -780,13 +837,13 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                     padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                     margin: EdgeInsets.only(right: 4),
                     decoration: BoxDecoration(
-                      color: (esFEDoc ? AppTheme.success : AppTheme.primary).withValues(alpha: 0.2),
+                      color: badgeColor.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      esFEDoc ? 'FE' : 'POS',
+                      categoria == 'LOCAL' ? 'LC' : categoria,
                       style: TextStyle(
-                        color: esFEDoc ? AppTheme.success : AppTheme.primary,
+                        color: badgeColor,
                         fontSize: 9,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1485,35 +1542,295 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
       );
     }
   }
-  void _exportarCSV() {
-    try {
-      final buffer = StringBuffer();
-      buffer.writeln('Número,Cliente,Fecha,Total,Estado,Medio de Pago');
-      for (final doc in _documentosFiltrados) {
-        if (doc is Factura) {
-          buffer.writeln(
-            '\${doc.numero ?? ""},"\${doc.clienteNombre}",\${doc.fechaCreacion?.toIso8601String() ?? ""},\${doc.total},\${doc.estadoPago ?? ""},\${doc.medioPago ?? ""}',
-          );
-        }
+  String _formatearFechaCorta(DateTime fecha) {
+    return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
+  }
+
+  /// Muestra un diálogo para elegir el rango "Desde"/"Hasta" del reporte a
+  /// exportar. Devuelve null si el usuario cancela.
+  Future<DateTimeRange?> _seleccionarRangoFechasExport() async {
+    DateTime desde = DateTime.now().subtract(const Duration(days: 30));
+    DateTime hasta = DateTime.now();
+
+    return showDialog<DateTimeRange>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            Future<void> seleccionar(bool esDesde) async {
+              final fecha = await showDatePicker(
+                context: dialogContext,
+                initialDate: esDesde ? desde : hasta,
+                firstDate: DateTime(2020),
+                lastDate: DateTime.now(),
+              );
+              if (fecha != null) {
+                setDialogState(() {
+                  if (esDesde) {
+                    desde = fecha;
+                  } else {
+                    hasta = fecha;
+                  }
+                });
+              }
+            }
+
+            return AlertDialog(
+              backgroundColor: Theme.of(dialogContext).colorScheme.surface,
+              title: Text(
+                'Exportar a Excel',
+                style: TextStyle(color: Theme.of(dialogContext).colorScheme.onSurface),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Selecciona el rango de fechas a exportar (Facturas Electrónicas y POS):',
+                    style: TextStyle(
+                      color: Theme.of(dialogContext).colorScheme.onSurface.withValues(alpha: 0.7),
+                      fontSize: 13,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('Desde', style: TextStyle(color: Theme.of(dialogContext).colorScheme.onSurface)),
+                    subtitle: Text(
+                      _formatearFechaCorta(desde),
+                      style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
+                    ),
+                    trailing: Icon(Icons.calendar_today, color: AppTheme.primary),
+                    onTap: () => seleccionar(true),
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('Hasta', style: TextStyle(color: Theme.of(dialogContext).colorScheme.onSurface)),
+                    subtitle: Text(
+                      _formatearFechaCorta(hasta),
+                      style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
+                    ),
+                    trailing: Icon(Icons.calendar_today, color: AppTheme.primary),
+                    onTap: () => seleccionar(false),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(
+                    'Cancelar',
+                    style: TextStyle(color: Theme.of(dialogContext).colorScheme.onSurface.withValues(alpha: 0.7)),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    if (hasta.isBefore(desde)) {
+                      ScaffoldMessenger.of(dialogContext).showSnackBar(
+                        SnackBar(content: Text('La fecha "Hasta" no puede ser anterior a "Desde"')),
+                      );
+                      return;
+                    }
+                    Navigator.of(dialogContext).pop(DateTimeRange(start: desde, end: hasta));
+                  },
+                  icon: Icon(Icons.download, color: Colors.white),
+                  label: Text('Exportar', style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Extrae el número real asignado por la DIAN (ej. "FAEL 587") desde el
+  /// texto de respuesta que guarda el backend.
+  ///
+  /// El backend NO persiste hoy un campo `numero`/`numeroDocumentoElectronico`
+  /// confiable en `Factura` para las facturas emitidas vía el flujo
+  /// auto-increment (quedan vacíos). El único lugar donde el número real
+  /// queda guardado es dentro del texto libre `respuestaDIAN`, con el
+  /// formato "La Factura electrónica FAEL587, ha sido autorizada." — de ahí
+  /// se extrae el prefijo+consecutivo con una expresión regular.
+  static final RegExp _regexNumeroDian = RegExp(r'([A-Za-z]{2,})(\d+)');
+
+  String? _extraerNumeroDian(Factura factura) {
+    final respuesta = factura.respuestaDIAN;
+    if (respuesta != null && respuesta.isNotEmpty) {
+      final match = _regexNumeroDian.firstMatch(respuesta);
+      if (match != null) {
+        return '${match.group(1)} ${match.group(2)}';
       }
-      final csv = buffer.toString();
-      // En web: descargar como blob
-      if (kIsWeb) {
-        final bytes = utf8.encode(csv);
-        final blob = html.Blob([bytes], 'text/csv');
-        final url = html.Url.createObjectUrlFromBlob(blob);
-        (html.document.createElement('a') as html.AnchorElement)
-          ..href = url
-          ..download = 'facturas_\${DateTime.now().millisecondsSinceEpoch}.csv'
-          ..click();
-        html.Url.revokeObjectUrl(url);
+    }
+    final consecutivo = factura.numeroDocumentoElectronico;
+    if (consecutivo != null && consecutivo.isNotEmpty) {
+      return 'FAEL $consecutivo';
+    }
+    if (factura.numero != null && factura.numero!.isNotEmpty) {
+      return factura.numero;
+    }
+    return null;
+  }
+
+  /// Resuelve el número real de factura de un documento POS/FE.
+  ///
+  /// Para facturas electrónicas, el número que reconoce la DIAN (ej.
+  /// "FAEL 587") vive en el registro `Factura` asociado al pedido
+  /// (`Factura.pedidoId`), no en el propio `Pedido`. Si aún no existe ese
+  /// registro (por ejemplo la FE se emitió pero la sincronización todavía
+  /// no llega), se usa un identificador temporal derivado del ID del
+  /// pedido.
+  ///
+  /// Para documentos POS no hay, hoy, un consecutivo real persistido en el
+  /// sistema (nunca pasan por el flujo de facturación electrónica), así que
+  /// se mantiene el identificador derivado del ID del pedido.
+  String _numeroRealDocumento(
+    Pedido documento,
+    Map<String, Factura> facturasPorPedido,
+  ) {
+    final safeId = documento.id.length >= 8
+        ? documento.id.substring(0, 8).toUpperCase()
+        : documento.id.toUpperCase();
+    final categoria = _categoriaPedido(documento);
+
+    if (categoria != 'FE') {
+      return categoria == 'POS' ? 'POS-$safeId' : 'LC-$safeId';
+    }
+
+    final factura = facturasPorPedido[documento.id];
+    if (factura != null) {
+      final numeroReal = _extraerNumeroDian(factura);
+      if (numeroReal != null) return numeroReal;
+    }
+    return 'FE-$safeId';
+  }
+
+  /// Construye una fila (Map) por documento POS/FE dentro del rango de
+  /// fechas elegido, con su IVA y número real de factura, para exportarlas
+  /// a Excel. Las facturas locales (no ligadas a un pedido POS/FE) se
+  /// excluyen a propósito.
+  List<Map<String, dynamic>> _construirFilasParaExcel(
+    List<Pedido> pedidos,
+    Map<String, Factura> facturasPorPedido,
+  ) {
+    final filas = <Map<String, dynamic>>[];
+
+    for (final documento in pedidos) {
+      final tipo = _categoriaPedido(documento);
+      final numero = _numeroRealDocumento(documento, facturasPorPedido);
+      final cliente = documento.cliente ?? 'CONSUMIDOR FINAL';
+      final fecha = documento.fechaPago ?? documento.fecha;
+      final total = documento.total;
+      final iva = documento.totalImpuestos;
+      final isPagado = documento.estado == EstadoPedido.pagado;
+
+      filas.add({
+        'tipo': tipo,
+        'numero': numero,
+        'cliente': cliente,
+        'fecha': '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}',
+        'total': total,
+        'iva': iva,
+        'estado': isPagado ? 'PAGADO' : 'PENDIENTE',
+      });
+    }
+
+    return filas;
+  }
+
+  Future<void> _exportarExcel() async {
+    final rango = await _seleccionarRangoFechasExport();
+    if (rango == null) return; // Cancelado
+    if (!mounted) return;
+
+    final desde = DateTime(rango.start.year, rango.start.month, rango.start.day);
+    final hasta = DateTime(rango.end.year, rango.end.month, rango.end.day, 23, 59, 59);
+
+    final facturasPorPedido = <String, Factura>{
+      for (final factura in _facturas)
+        if (factura.pedidoId != null) factura.pedidoId!: factura,
+    };
+
+    // Solo documentos POS/FE (excluye locales, sin importar el toggle
+    // "Mostrar locales" en pantalla) dentro del rango. `_categoriaPedido` ya
+    // descarta como LOCAL todo lo anterior al 3 de julio de 2026 (nunca
+    // llegó de verdad a la DIAN), así que cualquier pedido que siga
+    // categorizando como FE/POS aquí sí debe entrar al Excel — no hace
+    // falta (ni conviene) exigir además que tengamos el número FAEL "bonito"
+    // resuelto: si no hay registro `Factura`, se exporta con el
+    // identificador de respaldo (ver `_numeroRealDocumento`).
+    final pedidosEnRango = _documentosFiltrados.whereType<Pedido>().where((p) {
+      if (_categoriaPedido(p) == 'LOCAL') return false;
+      final fecha = p.fechaPago ?? p.fecha;
+      return !fecha.isBefore(desde) && !fecha.isAfter(hasta);
+    }).toList();
+
+    // FE reales cuyo Pedido de origen se eliminó por error del cajero (ver
+    // lib/data/facturas_reconstruidas_manual.dart): solo entran al Excel si
+    // su fecha cae en el rango elegido, igual que cualquier otro documento.
+    final reconstruidasEnRango = facturasReconstruidasManual.where((f) {
+      return !f.fecha.isBefore(desde) && !f.fecha.isAfter(hasta);
+    }).toList();
+
+    if (pedidosEnRango.isEmpty && reconstruidasEnRango.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No hay facturas electrónicas ni documentos POS en ese rango de fechas')),
+      );
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('Generando Excel...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    try {
+      final filas = _construirFilasParaExcel(pedidosEnRango, facturasPorPedido);
+      for (final f in reconstruidasEnRango) {
+        filas.add({
+          'tipo': 'FE',
+          'numero': f.numero,
+          'cliente': f.cliente,
+          'fecha': '${f.fecha.year}-${f.fecha.month.toString().padLeft(2, '0')}-${f.fecha.day.toString().padLeft(2, '0')}',
+          'total': f.total,
+          'iva': f.iva,
+          'estado': 'PAGADO',
+        });
+      }
+      final rangoLabel = '${_formatearFechaCorta(desde)} - ${_formatearFechaCorta(rango.end)}';
+      final resultado = await ExcelExportService.exportarDocumentos(
+        filas,
+        rangoFechas: rangoLabel,
+      );
+      if (!mounted) return;
+
+      if (resultado == null) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Exportación cancelada')),
+        );
+      } else if (resultado.startsWith('web_download:')) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: const Text('Excel descargado'),
+            backgroundColor: AppTheme.success,
+          ),
+        );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('CSV generado: ${_documentosFiltrados.length} registros')),
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Excel guardado en: $resultado'),
+            backgroundColor: AppTheme.success,
+          ),
         );
       }
     } catch (e) {
-      showErrorDialog(context, 'Error al exportar: ${errorMessage(e)}');
+      if (!mounted) return;
+      showErrorDialog(context, 'Error al exportar Excel: ${errorMessage(e)}');
     }
   }
 

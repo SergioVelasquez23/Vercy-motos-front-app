@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:excel/excel.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -1272,5 +1274,281 @@ class ExcelExportService {
         totalDe(ventasLocales) > 0 ||
         totalDe(compras) > 0 ||
         totalDe(gastos) > 0;
+  }
+
+  /// Exporta la lista de documentos (facturas electrónicas, POS y facturas
+  /// locales) de la pantalla "Documentos" a un Excel detallado: una fila por
+  /// documento con su IVA, y al final un subtotal por tipo de documento más
+  /// el total acumulado general.
+  ///
+  /// Cada elemento de [documentos] debe traer: tipo, numero, cliente, fecha,
+  /// total, iva, abono, saldo, estado.
+  static Future<String?> exportarDocumentos(
+    List<Map<String, dynamic>> documentos, {
+    String? rangoFechas,
+  }) async {
+    try {
+      var excel = Excel.createExcel();
+      Sheet sheet = excel['Documentos'];
+      excel.delete('Sheet1');
+
+      CellStyle titleStyle = CellStyle(
+        fontFamily: getFontFamily(FontFamily.Calibri),
+        fontSize: 16,
+        bold: true,
+        horizontalAlign: HorizontalAlign.Center,
+      );
+
+      CellStyle headerStyle = CellStyle(
+        fontFamily: getFontFamily(FontFamily.Calibri),
+        fontSize: 12,
+        bold: true,
+        backgroundColorHex: ExcelColor.blue,
+        fontColorHex: ExcelColor.white,
+        horizontalAlign: HorizontalAlign.Center,
+      );
+
+      CellStyle dataStyle = CellStyle(
+        fontFamily: getFontFamily(FontFamily.Calibri),
+        fontSize: 11,
+      );
+
+      CellStyle dataMoneyStyle = CellStyle(
+        fontFamily: getFontFamily(FontFamily.Calibri),
+        fontSize: 11,
+        horizontalAlign: HorizontalAlign.Right,
+      );
+
+      CellStyle subtotalStyle = CellStyle(
+        fontFamily: getFontFamily(FontFamily.Calibri),
+        fontSize: 11,
+        bold: true,
+        horizontalAlign: HorizontalAlign.Right,
+      );
+
+      CellStyle subtotalLabelStyle = CellStyle(
+        fontFamily: getFontFamily(FontFamily.Calibri),
+        fontSize: 11,
+        bold: true,
+      );
+
+      CellStyle totalStyle = CellStyle(
+        fontFamily: getFontFamily(FontFamily.Calibri),
+        fontSize: 12,
+        bold: true,
+        backgroundColorHex: ExcelColor.green,
+        fontColorHex: ExcelColor.white,
+        horizontalAlign: HorizontalAlign.Right,
+      );
+
+      CellStyle totalLabelStyle = CellStyle(
+        fontFamily: getFontFamily(FontFamily.Calibri),
+        fontSize: 12,
+        bold: true,
+        backgroundColorHex: ExcelColor.green,
+        fontColorHex: ExcelColor.white,
+      );
+
+      const columnas = [
+        'Tipo',
+        'N. Documento',
+        'Cliente',
+        'Expedición',
+        'Total',
+        'IVA',
+        'Estado',
+      ];
+      final anchos = [10.0, 18.0, 30.0, 14.0, 15.0, 15.0, 14.0];
+      for (var i = 0; i < anchos.length; i++) {
+        sheet.setColumnWidth(i, anchos[i]);
+      }
+
+      int row = 0;
+
+      // Título
+      sheet.merge(
+        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row),
+        CellIndex.indexByColumnRow(columnIndex: columnas.length - 1, rowIndex: row),
+      );
+      var titleCell = sheet.cell(
+        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row),
+      );
+      titleCell.value = TextCellValue(
+        rangoFechas != null && rangoFechas.isNotEmpty
+            ? 'LISTA DE DOCUMENTOS ($rangoFechas)'
+            : 'LISTA DE DOCUMENTOS',
+      );
+      titleCell.cellStyle = titleStyle;
+      row++;
+
+      var fechaGeneracionCell = sheet.cell(
+        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row),
+      );
+      fechaGeneracionCell.value = TextCellValue(
+        'Generado: ${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+      );
+      fechaGeneracionCell.cellStyle = dataStyle;
+      row += 2;
+
+      // Encabezados
+      for (var i = 0; i < columnas.length; i++) {
+        var headerCell = sheet.cell(
+          CellIndex.indexByColumnRow(columnIndex: i, rowIndex: row),
+        );
+        headerCell.value = TextCellValue(columnas[i]);
+        headerCell.cellStyle = headerStyle;
+      }
+      row++;
+
+      // Filas de documentos + acumulación de totales por tipo
+      final totalesPorTipo = <String, Map<String, double>>{};
+      double granTotal = 0, granIva = 0;
+
+      for (final doc in documentos) {
+        final tipo = (doc['tipo'] ?? '').toString();
+        final total = (doc['total'] as num?)?.toDouble() ?? 0.0;
+        final iva = (doc['iva'] as num?)?.toDouble() ?? 0.0;
+
+        final valores = <dynamic>[
+          tipo,
+          (doc['numero'] ?? '').toString(),
+          (doc['cliente'] ?? '').toString(),
+          (doc['fecha'] ?? '').toString(),
+          total,
+          iva,
+          (doc['estado'] ?? '').toString(),
+        ];
+
+        for (var i = 0; i < valores.length; i++) {
+          final cell = sheet.cell(
+            CellIndex.indexByColumnRow(columnIndex: i, rowIndex: row),
+          );
+          final valor = valores[i];
+          if (valor is double) {
+            cell.value = DoubleCellValue(valor);
+            cell.cellStyle = dataMoneyStyle;
+          } else {
+            cell.value = TextCellValue(valor as String);
+            cell.cellStyle = dataStyle;
+          }
+        }
+        row++;
+
+        final acumulado = totalesPorTipo.putIfAbsent(
+          tipo.isEmpty ? 'OTROS' : tipo,
+          () => {'total': 0, 'iva': 0},
+        );
+        acumulado['total'] = acumulado['total']! + total;
+        acumulado['iva'] = acumulado['iva']! + iva;
+
+        granTotal += total;
+        granIva += iva;
+      }
+
+      row++; // Fila en blanco antes de los totales
+
+      // Subtotal por tipo de documento (POS, FE, FACTURA, ...)
+      final tiposOrdenados = totalesPorTipo.keys.toList()..sort();
+      for (final tipo in tiposOrdenados) {
+        final acumulado = totalesPorTipo[tipo]!;
+
+        var labelCell = sheet.cell(
+          CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row),
+        );
+        labelCell.value = TextCellValue('Total $tipo');
+        labelCell.cellStyle = subtotalLabelStyle;
+        sheet.merge(
+          CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row),
+          CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: row),
+        );
+
+        final subtotalValores = [
+          acumulado['total']!,
+          acumulado['iva']!,
+        ];
+        for (var i = 0; i < subtotalValores.length; i++) {
+          final cell = sheet.cell(
+            CellIndex.indexByColumnRow(columnIndex: 4 + i, rowIndex: row),
+          );
+          cell.value = DoubleCellValue(subtotalValores[i]);
+          cell.cellStyle = subtotalStyle;
+        }
+        row++;
+      }
+
+      row++; // Fila en blanco antes del total general
+
+      // Total general acumulado
+      var totalGeneralLabel = sheet.cell(
+        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row),
+      );
+      totalGeneralLabel.value = TextCellValue('TOTAL GENERAL');
+      totalGeneralLabel.cellStyle = totalLabelStyle;
+      sheet.merge(
+        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row),
+        CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: row),
+      );
+
+      final totalGeneralValores = [granTotal, granIva];
+      for (var i = 0; i < totalGeneralValores.length; i++) {
+        final cell = sheet.cell(
+          CellIndex.indexByColumnRow(columnIndex: 4 + i, rowIndex: row),
+        );
+        cell.value = DoubleCellValue(totalGeneralValores[i]);
+        cell.cellStyle = totalStyle;
+      }
+
+      final fileBytes = excel.save();
+      if (fileBytes == null) {
+        throw Exception('Error al generar el archivo Excel');
+      }
+
+      final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+      final sufijoRango = rangoFechas != null && rangoFechas.isNotEmpty
+          ? '_${rangoFechas.replaceAll('/', '-').replaceAll(' ', '')}'
+          : '';
+      final fileName = 'documentos${sufijoRango}_$timestamp.xlsx';
+      return await _saveExcelFileConDialogo(fileBytes, fileName);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Guarda un archivo Excel ya generado. En web descarga el blob, en
+  /// Android/iOS usa el almacenamiento del dispositivo (igual que
+  /// [_saveExcelFile]) y en desktop (Windows/macOS/Linux) abre el diálogo
+  /// nativo "Guardar como" con [FilePicker], ya que allí no existe una
+  /// carpeta de Descargas accesible por defecto vía path_provider.
+  static Future<String?> _saveExcelFileConDialogo(
+    List<int> fileBytes,
+    String fileName,
+  ) async {
+    if (kIsWeb) {
+      final blob = html.Blob([fileBytes]);
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', fileName)
+        ..click();
+      html.Url.revokeObjectUrl(url);
+      return 'web_download:$fileName';
+    }
+
+    if (Platform.isAndroid || Platform.isIOS) {
+      return _saveExcelFile(fileBytes, fileName);
+    }
+
+    // Desktop: dejar que el usuario elija dónde guardar el archivo.
+    final String? path = await FilePicker.platform.saveFile(
+      dialogTitle: 'Guardar Excel',
+      fileName: fileName,
+      type: FileType.custom,
+      allowedExtensions: ['xlsx'],
+      bytes: Uint8List.fromList(fileBytes),
+    );
+    if (path == null) return null; // El usuario canceló el diálogo
+
+    final file = File(path);
+    await file.writeAsBytes(fileBytes, flush: true);
+    return file.path;
   }
 }

@@ -31,7 +31,12 @@ class Factura {
   final List<ItemPedido>? items;
   final User? usuario;
   final Map<String, dynamic>? datosAdicionales;
-  
+
+  /// Referencia inversa al Pedido origen (flujo de facturación electrónica
+  /// auto-increment). Permite ubicar el número real de factura (ej.
+  /// "FAEL444") a partir de un Pedido/documento POS-FE.
+  final String? pedidoId;
+
   // ===== CAMPOS PARA FACTURACIÓN ELECTRÓNICA DIAN =====
   final String? cufe; // Código Único de Factura Electrónica (SHA-384)
   final String? uuid; // Identificador único universal
@@ -79,6 +84,7 @@ class Factura {
     this.items,
     this.usuario,
     this.datosAdicionales,
+    this.pedidoId,
     // DIAN
     this.cufe,
     this.uuid,
@@ -125,6 +131,7 @@ class Factura {
     List<ItemPedido>? items,
     User? usuario,
     Map<String, dynamic>? datosAdicionales,
+    String? pedidoId,
     // DIAN
     String? cufe,
     String? uuid,
@@ -168,6 +175,7 @@ class Factura {
       items: items ?? this.items,
       usuario: usuario ?? this.usuario,
       datosAdicionales: datosAdicionales ?? this.datosAdicionales,
+      pedidoId: pedidoId ?? this.pedidoId,
       // DIAN
       cufe: cufe ?? this.cufe,
       uuid: uuid ?? this.uuid,
@@ -218,6 +226,7 @@ class Factura {
       if (items != null) 'items': items?.map((item) => item.toJson()).toList(),
       if (usuario != null) 'usuario': usuario?.toJson(),
       if (datosAdicionales != null) 'datosAdicionales': datosAdicionales,
+      if (pedidoId != null) 'pedidoId': pedidoId,
       // DIAN
       if (cufe != null) 'cufe': cufe,
       if (uuid != null) 'uuid': uuid,
@@ -299,6 +308,7 @@ class Factura {
       items: parseItems(json['items']),
       usuario: json['usuario'] != null ? User.fromJson(json['usuario']) : null,
       datosAdicionales: json['datosAdicionales'],
+      pedidoId: json['pedidoId'],
       // DIAN
       cufe: json['cufe'],
       uuid: json['uuid'],
