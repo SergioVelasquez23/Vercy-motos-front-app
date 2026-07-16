@@ -42,8 +42,15 @@ class FacturaService {
   List<Factura> _processFacturasResponse(http.Response response) {
     if (response.statusCode == 200) {
       final responseData = json.decode(response.body);
-      // Manejar respuestas con estructura ApiResponse o directas
-      final List<dynamic> jsonList = responseData['data'] ?? responseData;
+      // Manejar respuestas con estructura ApiResponse ({data: [...]}) o un
+      // array JSON directo (como devuelve GET /api/facturas). OJO: indexar
+      // una List con ['data'] lanza una excepción en vez de null (a
+      // diferencia de un Map), así que hay que chequear el tipo primero —
+      // si no, esto quedaba en el catch de getFacturas() devolviendo
+      // silenciosamente una lista vacía, sin ningún error visible.
+      final List<dynamic> jsonList = responseData is List
+          ? responseData
+          : (responseData['data'] ?? []);
       final facturas = jsonList.map((json) => Factura.fromJson(json)).toList();
 
       // Ordenar facturas por fecha de creación descendente (más recientes primero)
@@ -64,8 +71,11 @@ class FacturaService {
   List<Pedido> _processPedidosResponse(http.Response response) {
     if (response.statusCode == 200) {
       final responseData = json.decode(response.body);
-      // Manejar respuestas con estructura ApiResponse o directas
-      final List<dynamic> jsonList = responseData['data'] ?? responseData;
+      // Ver el comentario de _processFacturasResponse: indexar una List con
+      // ['data'] lanza, no devuelve null, así que hay que chequear el tipo.
+      final List<dynamic> jsonList = responseData is List
+          ? responseData
+          : (responseData['data'] ?? []);
       final pedidos = jsonList.map((json) => Pedido.fromJson(json)).toList();
 
       // Ordenar pedidos por fecha descendente (más recientes primero)
