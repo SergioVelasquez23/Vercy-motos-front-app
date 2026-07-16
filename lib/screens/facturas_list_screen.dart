@@ -1802,6 +1802,24 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
           'estado': 'PAGADO',
         });
       }
+      // Ordenar por número de documento ascendente (444, 445, 446...). Los
+      // números reales resueltos tienen formato "PREFIJO 123" (con espacio);
+      // los que se quedaron con el identificador de respaldo "PREFIJO-HEXID"
+      // no tienen un número real que ordenar, así que van al final.
+      int? extraerNumeroOrden(String numero) {
+        final match = RegExp(r'^[A-Za-z]+\s+(\d+)$').firstMatch(numero);
+        return match != null ? int.tryParse(match.group(1)!) : null;
+      }
+
+      filas.sort((a, b) {
+        final numA = extraerNumeroOrden(a['numero'] as String);
+        final numB = extraerNumeroOrden(b['numero'] as String);
+        if (numA != null && numB != null) return numA.compareTo(numB);
+        if (numA != null) return -1;
+        if (numB != null) return 1;
+        return 0;
+      });
+
       final rangoLabel = '${_formatearFechaCorta(desde)} - ${_formatearFechaCorta(rango.end)}';
       final resultado = await ExcelExportService.exportarDocumentos(
         filas,
