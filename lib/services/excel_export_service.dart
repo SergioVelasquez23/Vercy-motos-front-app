@@ -1355,10 +1355,11 @@ class ExcelExportService {
         'Cliente',
         'Expedición',
         'Total',
+        'Total sin IVA',
         'IVA',
         'Estado',
       ];
-      final anchos = [10.0, 18.0, 30.0, 14.0, 15.0, 15.0, 14.0];
+      final anchos = [10.0, 18.0, 30.0, 14.0, 15.0, 15.0, 15.0, 14.0];
       for (var i = 0; i < anchos.length; i++) {
         sheet.setColumnWidth(i, anchos[i]);
       }
@@ -1402,12 +1403,17 @@ class ExcelExportService {
 
       // Filas de documentos + acumulación de totales por tipo
       final totalesPorTipo = <String, Map<String, double>>{};
-      double granTotal = 0, granIva = 0;
+      double granTotal = 0, granTotalSinIva = 0, granIva = 0;
 
       for (final doc in documentos) {
         final tipo = (doc['tipo'] ?? '').toString();
         final total = (doc['total'] as num?)?.toDouble() ?? 0.0;
         final iva = (doc['iva'] as num?)?.toDouble() ?? 0.0;
+        // El total sin IVA se deriva de total - iva en vez de pedir un valor
+        // aparte: como iva ya viene de la misma fuente que reporta Matías
+        // (totalImpuestos del pedido, o el desglose real de la factura DIAN),
+        // esta resta coincide con el "tax_exclusive_amount" que Matías calcula.
+        final totalSinIva = total - iva;
 
         final valores = <dynamic>[
           tipo,
@@ -1415,6 +1421,7 @@ class ExcelExportService {
           (doc['cliente'] ?? '').toString(),
           (doc['fecha'] ?? '').toString(),
           total,
+          totalSinIva,
           iva,
           (doc['estado'] ?? '').toString(),
         ];
@@ -1436,12 +1443,14 @@ class ExcelExportService {
 
         final acumulado = totalesPorTipo.putIfAbsent(
           tipo.isEmpty ? 'OTROS' : tipo,
-          () => {'total': 0, 'iva': 0},
+          () => {'total': 0, 'totalSinIva': 0, 'iva': 0},
         );
         acumulado['total'] = acumulado['total']! + total;
+        acumulado['totalSinIva'] = acumulado['totalSinIva']! + totalSinIva;
         acumulado['iva'] = acumulado['iva']! + iva;
 
         granTotal += total;
+        granTotalSinIva += totalSinIva;
         granIva += iva;
       }
 
@@ -1464,6 +1473,7 @@ class ExcelExportService {
 
         final subtotalValores = [
           acumulado['total']!,
+          acumulado['totalSinIva']!,
           acumulado['iva']!,
         ];
         for (var i = 0; i < subtotalValores.length; i++) {
@@ -1489,7 +1499,7 @@ class ExcelExportService {
         CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: row),
       );
 
-      final totalGeneralValores = [granTotal, granIva];
+      final totalGeneralValores = [granTotal, granTotalSinIva, granIva];
       for (var i = 0; i < totalGeneralValores.length; i++) {
         final cell = sheet.cell(
           CellIndex.indexByColumnRow(columnIndex: 4 + i, rowIndex: row),

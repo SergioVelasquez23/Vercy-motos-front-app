@@ -1208,7 +1208,7 @@ class _ResumenCierreDetalladoScreenState
                           // Usar el mismo cálculo que los totales de arriba para consistencia
                           ...[
                             'Efectivo',
-                            'Transferencia', 
+                            'Transferencia',
                             'Tarjeta',
                             'Sistecredito',
                             'Datafono'
@@ -1222,6 +1222,24 @@ class _ResumenCierreDetalladoScreenState
                               ),
                             );
                           }),
+                          // Addi/Credilondon quedan con formaPago="otro" en el
+                          // backend (no encajan en las 5 categorías de arriba),
+                          // así que se leen del desglose fino por plataforma
+                          // (ventasPorDetallePago) en vez de _recalcularTotalesPorMetodoPago.
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 10),
+                            child: _buildInfoRow(
+                              'Addi',
+                              formatCurrency(ventas.ventasPorDetallePago['addi'] ?? 0.0),
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 10),
+                            child: _buildInfoRow(
+                              'Credilondon',
+                              formatCurrency(ventas.ventasPorDetallePago['credilondon'] ?? 0.0),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -1273,6 +1291,20 @@ class _ResumenCierreDetalladoScreenState
                             child: _buildInfoRow(
                               'Datafono',
                               (ventas.cantidadPorFormaPago['Datafono'] ?? 0).toString(),
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 10),
+                            child: _buildInfoRow(
+                              'Addi',
+                              (ventas.cantidadPorDetallePago['addi'] ?? 0).toString(),
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 10),
+                            child: _buildInfoRow(
+                              'Credilondon',
+                              (ventas.cantidadPorDetallePago['credilondon'] ?? 0).toString(),
                             ),
                           ),
                         ],
@@ -1738,14 +1770,28 @@ class _ResumenCierreDetalladoScreenState
     final ventas = _resumen!.resumenVentas;
     if (ventas.detallesPedidos.isEmpty) return Container();
 
-    // Agrupar pedidos por usuario/mesero
-    Map<String, List<dynamic>> pedidosPorUsuario = {};
+    // Agrupar pedidos por forma de pago (no por mesero): primero todos los
+    // de efectivo, luego todos los de transferencia, y el resto de métodos
+    // (tarjeta, mixto, etc.) después, en el orden en que van apareciendo.
+    Map<String, List<dynamic>> pedidosPorFormaPago = {};
     for (var pedido in ventas.detallesPedidos) {
-      String mesero = pedido.pagadoPor ?? pedido.mesero ?? 'Sin usuario';
-      if (!pedidosPorUsuario.containsKey(mesero)) {
-        pedidosPorUsuario[mesero] = [];
-      }
-      pedidosPorUsuario[mesero]!.add(pedido);
+      final formaPagoNormalizada = _normalizarMetodoPago(_getFormaPago(pedido));
+      final grupo = formaPagoNormalizada.isEmpty ? 'Efectivo' : formaPagoNormalizada;
+      pedidosPorFormaPago.putIfAbsent(grupo, () => []).add(pedido);
+    }
+
+    const ordenPrioridad = ['Efectivo', 'Transferencia'];
+    final gruposOrdenados = [
+      for (final clave in ordenPrioridad)
+        if (pedidosPorFormaPago.containsKey(clave)) clave,
+      ...pedidosPorFormaPago.keys.where((k) => !ordenPrioridad.contains(k)),
+    ];
+
+    IconData iconoParaFormaPago(String formaPago) {
+      final f = formaPago.toLowerCase();
+      if (f == 'efectivo') return Icons.money;
+      if (f.contains('transfer')) return Icons.account_balance;
+      return Icons.credit_card;
     }
 
     return Column(
@@ -1761,11 +1807,10 @@ class _ResumenCierreDetalladoScreenState
           ),
         ),
         SizedBox(height: 8),
-        
-        // Mostrar pedidos agrupados por usuario
-        ...pedidosPorUsuario.entries.map((entry) {
-          final mesero = entry.key;
-          final pedidos = entry.value;
+
+        // Mostrar pedidos agrupados por forma de pago
+        ...gruposOrdenados.map((formaPago) {
+          final pedidos = pedidosPorFormaPago[formaPago]!;
           final totalUsuario = pedidos.fold<double>(
             0.0,
             (sum, pedido) =>
@@ -1780,7 +1825,7 @@ class _ResumenCierreDetalladoScreenState
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header del usuario
+              // Header de la forma de pago
               Container(
                 margin: EdgeInsets.only(top: 16, bottom: 8),
                 padding: EdgeInsets.all(12),
@@ -1794,10 +1839,10 @@ class _ResumenCierreDetalladoScreenState
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.person, color: primary, size: 20),
+                        Icon(iconoParaFormaPago(formaPago), color: primary, size: 20),
                         SizedBox(width: 8),
                         Text(
-                          mesero,
+                          formaPago,
                           style: TextStyle(
                             color: primary,
                             fontSize: 16,
@@ -1918,6 +1963,10 @@ class _ResumenCierreDetalladoScreenState
                           ),
                           Text(
                             'Forma de Pago: ${pedido.formaPago}',
+                            style: TextStyle(color: textLight, fontSize: 12),
+                          ),
+                          Text(
+                            'Mesero: ${pedido.pagadoPor ?? pedido.mesero ?? 'Sin usuario'}',
                             style: TextStyle(color: textLight, fontSize: 12),
                           ),
                         ],

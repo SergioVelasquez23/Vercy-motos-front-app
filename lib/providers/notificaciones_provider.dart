@@ -62,12 +62,10 @@ class NotificacionesProvider extends ChangeNotifier {
   // Y nombre de usuario (no todos los JWT traen el claim "email") para que
   // baste con que uno de los dos matchee.
   static const _emailsNotificadosTraslado = {
-    'bodegavercy@gmail.com',
     'francia@gmail.com',
     'diegoalek01@gmail.com',
   };
   static const _usuariosNotificadosTraslado = {
-    'bodega',
     'francia',
     'diego',
   };
