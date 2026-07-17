@@ -39,6 +39,8 @@ import '../widgets/facturizacion/confirmacion_dian_dialog.dart';
 import '../services/documento_service.dart';
 import '../utils/base64_file_launcher.dart';
 import '../utils/currency_utils.dart';
+import '../utils/payment_mapping.dart' as payment_mapping;
+import '../utils/facturacion_calculos.dart' as calculos;
 import 'package:url_launcher/url_launcher.dart';
 
 // Cache de clientes compartido entre instancias de FacturacionScreen
@@ -145,53 +147,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     {'value': 'multiple', 'label': 'Múltiple', 'icon': Icons.payments},
   ];
 
-  // Sub-categorías visuales reconocidas: se guardan en `detallePago` para el
-  // libro contable, pero siempre resuelven a un formaPago contable existente
-  // (ver _mapFormaPagoBackend/_medioPagoMap) — "contablemente no cambia nada".
-  static const Set<String> _detallesPagoConocidos = {
-    'efectivo', 'nequi', 'daviplata', 'bancolombia', 'bold', 'addi',
-    'credilondon', 'sistecredito',
-  };
+  // Mapeos de forma/medio de pago: ver lib/utils/payment_mapping.dart
+  // (compartido con matias_service.dart para que ambos caminos hacia Matías
+  // — Factura vía backend y Documento POS vía frontend — coincidan).
+  String? _detalleParaMetodo(String metodo) =>
+      payment_mapping.detalleParaMetodo(metodo);
 
-  String? _detalleParaMetodo(String metodo) {
-    return _detallesPagoConocidos.contains(metodo) ? metodo : null;
-  }
-
-  // Mapeo de método de pago UI → medioPago DIAN
-  static const Map<String, String> _medioPagoMap = {
-    'efectivo': 'efectivo',
-    'transferencia': 'transferencia',
-    'nequi': 'transferencia',
-    'daviplata': 'transferencia',
-    'bancolombia': 'transferencia',
-    'tarjeta': 'tarjeta debito',
-    'tarjeta_credito': 'tarjeta credito',
-    'bold': 'tarjeta credito',
-    // Addi y Credilondon son plataformas de crédito (BNPL): ante la DIAN se
-    // reportan como Crédito (no Contado/Efectivo) — el backend lo detecta por
-    // `detallePago` ('addi') en MatiasTransformer. Este mapa de 'medioPago' es
-    // solo informativo (el backend no lo consume actualmente).
-    'addi': 'credito',
-    'credilondon': 'credito',
-    'sistecredito': 'sistecredito',
-    'credito': 'efectivo',
-    'multiple': 'efectivo',
-  };
-
-  // Mapeo de método UI → formaPago backend (valor contable real, sin cambios)
-  String _mapFormaPagoBackend(String metodo) {
-    if (metodo == 'credito') return 'Crédito';
-    const aliasesTransferencia = {'nequi', 'daviplata', 'bancolombia'};
-    if (aliasesTransferencia.contains(metodo)) return 'transferencia';
-    if (metodo == 'bold') return 'datafono';
-    // Addi y Credilondon son plataformas de crédito (BNPL): NO deben contarse
-    // como Efectivo en el cuadre de caja (ese dinero nunca llega como efectivo
-    // físico). Se reportan como 'sistecredito' — el bucket de crédito más
-    // cercano que ya existe en el cuadre/DIAN — y quedan identificadas aparte
-    // por su propio `detallePago` ('addi'/'credilondon').
-    if (metodo == 'addi' || metodo == 'credilondon') return 'sistecredito';
-    return metodo; // El backend acepta los valores directos para el resto
-  }
+  String _mapFormaPagoBackend(String metodo) =>
+      payment_mapping.mapFormaPagoBackend(metodo);
 
   // Controladores para pago múltiple
   final TextEditingController _montoEfectivoController = TextEditingController(
@@ -598,25 +561,22 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         final item = entry.value;
         final ivaPct = ivaValues[idx];
         final dctoPct = dctoValues[idx];
-        final precioBase = ivaPct > 0 && ivaPct < 100
-            ? item.precioUnitario / (1 + ivaPct / 100)
-            : item.precioUnitario;
-        final subtotal = precioBase * item.cantidad;
-        final valorDescuento = subtotal * (dctoPct / 100);
-        final baseGravable = subtotal - valorDescuento;
-        // base ya es el precio neto (sin IVA), así que IVA = base × rate/100
-        final valorImpuesto = ivaPct > 0 && ivaPct < 100
-            ? baseGravable * (ivaPct / 100)
-            : 0.0;
+        final precioBase = calculos.extraerPrecioBaseDeGravado(item.precioUnitario, ivaPct);
+        final calculo = calculos.calcularItemFactura(
+          cantidad: item.cantidad.toDouble(),
+          precioUnitario: precioBase,
+          porcentajeImpuesto: ivaPct,
+          descuentoIngresado: dctoPct,
+        );
         return ItemPedido(
           productoId: item.productoId,
           productoNombre: item.productoNombre,
           cantidad: item.cantidad,
           precioUnitario: precioBase,
           porcentajeImpuesto: ivaPct,
-          valorImpuesto: valorImpuesto,
+          valorImpuesto: calculo.valorImpuesto,
           porcentajeDescuento: dctoPct,
-          valorDescuento: valorDescuento,
+          valorDescuento: calculo.valorDescuento,
           origen: item.origen,
           trasladoId: item.trasladoId,
         );
@@ -625,24 +585,22 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       // Sin cambios: extraer precio base neto del precio asesor (IVA incluido)
       itemsCargados = pedido.items.map((item) {
         final ivaPct = item.porcentajeImpuesto;
-        final precioBase = ivaPct > 0 && ivaPct < 100
-            ? item.precioUnitario / (1 + ivaPct / 100)
-            : item.precioUnitario;
-        final subtotal = precioBase * item.cantidad;
-        final valorDescuento = subtotal * (item.porcentajeDescuento / 100);
-        final baseGravable = subtotal - valorDescuento;
-        final valorImpuesto = ivaPct > 0 && ivaPct < 100
-            ? baseGravable * (ivaPct / 100)
-            : 0.0;
+        final precioBase = calculos.extraerPrecioBaseDeGravado(item.precioUnitario, ivaPct);
+        final calculo = calculos.calcularItemFactura(
+          cantidad: item.cantidad.toDouble(),
+          precioUnitario: precioBase,
+          porcentajeImpuesto: ivaPct,
+          descuentoIngresado: item.porcentajeDescuento,
+        );
         return ItemPedido(
           productoId: item.productoId,
           productoNombre: item.productoNombre,
           cantidad: item.cantidad,
           precioUnitario: precioBase,
           porcentajeImpuesto: ivaPct,
-          valorImpuesto: valorImpuesto,
+          valorImpuesto: calculo.valorImpuesto,
           porcentajeDescuento: item.porcentajeDescuento,
-          valorDescuento: valorDescuento,
+          valorDescuento: calculo.valorDescuento,
           origen: item.origen,
           trasladoId: item.trasladoId,
         );
@@ -3211,18 +3169,15 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     final enteredDesc =
         double.tryParse(_porcentajeDescuentoController.text) ?? 0;
 
-    final subtotal = cantidad * valorUnit;
-    final double descuento;
-    if (_porcentajeTipoDescuento == 'Porcentaje') {
-      descuento = subtotal * (enteredDesc / 100);
-    } else {
-      descuento = enteredDesc;
-    }
-    final baseGravable = subtotal - descuento;
-    final impuesto = baseGravable * (porcentajeImp / 100);
-    final total = baseGravable + impuesto;
+    final calculo = calculos.calcularItemFactura(
+      cantidad: cantidad.toDouble(),
+      precioUnitario: valorUnit,
+      porcentajeImpuesto: porcentajeImp,
+      descuentoIngresado: enteredDesc,
+      descuentoEsPorcentaje: _porcentajeTipoDescuento == 'Porcentaje',
+    );
 
-    return CurrencyUtils.format(total);
+    return CurrencyUtils.format(calculo.total);
   }
 
   void _agregarItem() {
@@ -3282,22 +3237,16 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     final enteredDescuento =
         double.tryParse(_porcentajeDescuentoController.text) ?? 0;
 
-    final subtotal = cantidad * precioUnitario;
-
-    // 1. Descuento
-    final double valorDescuento;
-    final double porcentajeDescuento;
-    if (_porcentajeTipoDescuento == 'Porcentaje') {
-      valorDescuento = subtotal * (enteredDescuento / 100);
-      porcentajeDescuento = enteredDescuento;
-    } else { // 'Valor' — monto fijo
-      valorDescuento = enteredDescuento;
-      porcentajeDescuento = subtotal > 0 ? (enteredDescuento / subtotal) * 100 : 0;
-    }
-
-    // 2. IVA calculado sobre la base neta (precioUnitario ya es el valor sin IVA)
-    final baseGravable = subtotal - valorDescuento;
-    final valorImpuesto = baseGravable * (porcentajeImpuesto / 100);
+    final calculo = calculos.calcularItemFactura(
+      cantidad: cantidad.toDouble(),
+      precioUnitario: precioUnitario,
+      porcentajeImpuesto: porcentajeImpuesto,
+      descuentoIngresado: enteredDescuento,
+      descuentoEsPorcentaje: _porcentajeTipoDescuento == 'Porcentaje',
+    );
+    final valorDescuento = calculo.valorDescuento;
+    final porcentajeDescuento = calculo.porcentajeDescuento;
+    final valorImpuesto = calculo.valorImpuesto;
 
     final item = ItemPedido(
       // productoId DEBE ser el _id real de Mongo: el backend descuenta
@@ -3348,32 +3297,28 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   ItemPedido _recalcularItemDesdeTotal(ItemPedido item, double nuevoTotal) {
     final r = item.porcentajeImpuesto;
     final d = item.porcentajeDescuento;
-    final factorDescuento = 1 - (d / 100);
-    final factorImpuesto = 1 + (r / 100);
-    final denominador = factorDescuento * factorImpuesto;
-
-    final nuevoSubtotalBase = denominador > 0 ? nuevoTotal / denominador : nuevoTotal;
-    final nuevoPrecioUnitario =
-        item.cantidad > 0 ? nuevoSubtotalBase / item.cantidad : nuevoSubtotalBase;
-    final nuevoValorDescuento = nuevoSubtotalBase * (d / 100);
-    final baseGravable = nuevoSubtotalBase - nuevoValorDescuento;
-    final nuevoValorImpuesto = baseGravable * (r / 100);
+    final recalculo = calculos.recalcularBaseDesdeTotal(
+      nuevoTotal: nuevoTotal,
+      cantidad: item.cantidad.toDouble(),
+      porcentajeImpuesto: r,
+      porcentajeDescuento: d,
+    );
 
     return ItemPedido(
       id: item.id,
       productoId: item.productoId,
       productoNombre: item.productoNombre,
       cantidad: item.cantidad,
-      precioUnitario: nuevoPrecioUnitario,
+      precioUnitario: recalculo.precioUnitario,
       notas: item.notas,
       ingredientesSeleccionados: item.ingredientesSeleccionados,
       ingredientesUsados: item.ingredientesUsados,
       agregadoPor: item.agregadoPor,
       fechaAgregado: item.fechaAgregado,
       porcentajeImpuesto: r,
-      valorImpuesto: nuevoValorImpuesto,
+      valorImpuesto: recalculo.valorImpuesto,
       porcentajeDescuento: d,
-      valorDescuento: nuevoValorDescuento,
+      valorDescuento: recalculo.valorDescuento,
       origen: item.origen,
       trasladoId: item.trasladoId,
     );
@@ -4267,21 +4212,21 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         final item = entry.value;
         final ivaPct = ivaValues[idx];
         final dctoPct = dctoValues[idx];
-        final subtotal = item.precioUnitario * item.cantidad;
-        final valorDescuento = subtotal * (dctoPct / 100);
-        final baseGravable = subtotal - valorDescuento;
-        final valorImpuesto = ivaPct > 0 && ivaPct < 100
-            ? baseGravable * (ivaPct / 100)
-            : 0.0;
+        final calculo = calculos.calcularItemFactura(
+          cantidad: item.cantidad.toDouble(),
+          precioUnitario: item.precioUnitario,
+          porcentajeImpuesto: ivaPct,
+          descuentoIngresado: dctoPct,
+        );
         return ItemPedido(
           productoId: item.productoId,
           productoNombre: item.productoNombre,
           cantidad: item.cantidad,
           precioUnitario: item.precioUnitario,
           porcentajeImpuesto: ivaPct,
-          valorImpuesto: valorImpuesto,
+          valorImpuesto: calculo.valorImpuesto,
           porcentajeDescuento: dctoPct,
-          valorDescuento: valorDescuento,
+          valorDescuento: calculo.valorDescuento,
           origen: item.origen,
           trasladoId: item.trasladoId,
         );
@@ -4640,7 +4585,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         _items,
       ); // ✅ Copia antes de limpiar
       final metodoPagoUsado = _mapFormaPagoBackend(_metodoPago);
-      final medioPagoUsado = _medioPagoMap[_metodoPago] ?? 'efectivo';
+      final medioPagoUsado =
+          payment_mapping.medioPagoDianMap[_metodoPago] ?? 'efectivo';
       final detallePagoUsado = _detallePago;
       final clienteTexto = _clienteController.text;
       final tipoFacturaCapturado = _tipoFactura;

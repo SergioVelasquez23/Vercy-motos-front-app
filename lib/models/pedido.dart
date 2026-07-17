@@ -53,6 +53,7 @@ class Pedido {
   String? guardadoPor;
   DateTime? fechaCortesia;
   String? formaPago;
+  String? detallePago; // sub-categoría visual (nequi/bold/addi/credilondon/...)
   bool incluyePropina;
   double descuento;
   String? cuadreId; // ID del cuadre de caja al que pertenece este pedido
@@ -128,6 +129,7 @@ class Pedido {
     this.guardadoPor,
     this.fechaCortesia,
     this.formaPago,
+    this.detallePago,
     this.incluyePropina = false,
     this.descuento = 0,
     this.cuadreId, // ID del cuadre de caja (opcional pero recomendado)
@@ -288,6 +290,7 @@ class Pedido {
         ? _formatDateTimeLocal(fechaCortesia!)
         : null,
     'formaPago': formaPago,
+    if (detallePago != null) 'detallePago': detallePago,
     'incluyePropina': incluyePropina,
     'descuento': descuento,
     if (cuadreId != null)
@@ -367,6 +370,7 @@ class Pedido {
           ? DateTime.parse(json['fechaCortesia']).toLocal()
           : null,
       formaPago: json['formaPago'],
+      detallePago: json['detallePago'],
       incluyePropina: json['incluyePropina'] ?? false,
       descuento: (json['descuento'] ?? 0).toDouble(),
       cuadreId: json['cuadreId']

@@ -4,6 +4,7 @@ import 'dart:convert';
 import '../config/endpoints_config.dart';
 import '../utils/logger.dart';
 import '../utils/datetime_utils.dart';
+import '../utils/payment_mapping.dart' as payment_mapping;
 import 'base_api_service.dart';
 
 /// Servicio para integración con API de Facturación Matias
@@ -662,7 +663,10 @@ class MatiasService {
             : (totalNum * proporcion);
         return {
           'payment_method_id': 1, // Contado (un pago mixto se paga completo de inmediato)
-          'means_payment_id': _mapFormaPagoToMeansId(p.formaPago as String?),
+          'means_payment_id': _mapFormaPagoToMeansId(
+            p.formaPago as String?,
+            detallePago: p.detallePago as String?,
+          ),
           'value_paid': valorPago.toStringAsFixed(2),
           'payment_due_date': date,
         };
@@ -685,39 +689,27 @@ class MatiasService {
     return [
       {
         'payment_method_id': esCredito ? 2 : 1, // 1=Contado, 2=Crédito
-        'means_payment_id': _mapFormaPagoToMeansId(pedido.formaPago as String?),
+        'means_payment_id': _mapFormaPagoToMeansId(
+          pedido.formaPago as String?,
+          detallePago: pedido.detallePago as String?,
+        ),
         'value_paid': total,
         'payment_due_date': fechaVencimientoStr,
       }
     ];
   }
 
-  /// Mapea formaPago al `means_payment_id` (medio de pago) de Matías.
-  static int _mapFormaPagoToMeansId(String? formaPago) {
-    if (formaPago == null || formaPago.isEmpty) return 10;
-    final f = formaPago.toLowerCase().trim().replaceAll(' ', '_');
-    switch (f) {
-      case 'efectivo':
-        return 10; // Efectivo
-      case 'tarjeta':
-      case 'tarjeta_credito':
-      case 'credito':
-      case 'crédito': // _mapFormaPagoBackend('credito') en facturacion_screen.dart devuelve 'Crédito' con tilde
-        return 41; // Tarjeta crédito
-      case 'tarjeta_debito':
-      case 'debito':
-        return 42; // Tarjeta débito
-      case 'transferencia':
-      case 'nequi':
-      case 'daviplata':
-      case 'pse':
-        return 47; // Transferencia bancaria
-      case 'datafono':
-      case 'sistecredito':
-        return 41;
-      default:
-        return 10;
-    }
+  /// Mapea formaPago/detallePago al `means_payment_id` (medio de pago) de
+  /// Matías. Delega a lib/utils/payment_mapping.dart, compartido con
+  /// facturacion_screen.dart y con MatiasTransformer en el backend — ver el
+  /// comentario ahí: antes esta función tenía su propia tabla desalineada
+  /// (sistecredito y transferencia caían en códigos DIAN distintos a los que
+  /// usa el backend para el mismo pedido).
+  static int _mapFormaPagoToMeansId(String? formaPago, {String? detallePago}) {
+    return payment_mapping.mapFormaPagoToMeansId(
+      formaPago,
+      detallePago: detallePago,
+    );
   }
 
   /// Reenvía un POS rechazado por la DIAN.

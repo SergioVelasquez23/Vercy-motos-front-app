@@ -1,0 +1,25 @@
+name: Flutter CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  analyze_and_test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - run: flutter pub get
+      # El repo arrastra ~2500 issues preexistentes (mayormente
+      # deprecated_member_use de withOpacity/value, ver
+      # docs/AUDITORIA_SIN_FILTROS_V2.md punto 6) que aún no se han limpiado.
+      # --no-fatal-infos/--no-fatal-warnings evita que ese ruido bloquee cada
+      # PR; los errores reales (código que no compila) sí siguen rompiendo
+      # el build. Ir subiendo la vara a medida que se limpien esos warnings.
+      - run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      - run: flutter test

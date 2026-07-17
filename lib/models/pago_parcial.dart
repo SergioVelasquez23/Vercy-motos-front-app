@@ -5,12 +5,14 @@
 class PagoParcial {
   final double monto;
   final String formaPago; // "efectivo", "transferencia", "tarjeta"
+  final String? detallePago; // sub-categoría (nequi/bold/addi/credilondon/...)
   final DateTime fecha;
   final String procesadoPor;
 
   const PagoParcial({
     required this.monto,
     required this.formaPago,
+    this.detallePago,
     required this.fecha,
     required this.procesadoPor,
   });
@@ -20,6 +22,7 @@ class PagoParcial {
     return PagoParcial(
       monto: (json['monto'] as num).toDouble(),
       formaPago: json['formaPago'] as String,
+      detallePago: json['detallePago'] as String?,
       fecha: json['fecha'] != null
           ? DateTime.parse(json['fecha'])
           : DateTime.now(),
@@ -32,6 +35,7 @@ class PagoParcial {
     return {
       'monto': monto,
       'formaPago': formaPago,
+      if (detallePago != null) 'detallePago': detallePago,
       'fecha': fecha.toIso8601String(),
       'procesadoPor': procesadoPor,
     };
@@ -39,7 +43,7 @@ class PagoParcial {
 
   @override
   String toString() =>
-      'PagoParcial(monto: $monto, formaPago: $formaPago, fecha: $fecha, procesadoPor: $procesadoPor)';
+      'PagoParcial(monto: $monto, formaPago: $formaPago, detallePago: $detallePago, fecha: $fecha, procesadoPor: $procesadoPor)';
 
   @override
   bool operator ==(Object other) {
@@ -48,6 +52,7 @@ class PagoParcial {
     return other is PagoParcial &&
         other.monto == monto &&
         other.formaPago == formaPago &&
+        other.detallePago == detallePago &&
         other.fecha == fecha &&
         other.procesadoPor == procesadoPor;
   }
@@ -56,6 +61,7 @@ class PagoParcial {
   int get hashCode =>
       monto.hashCode ^
       formaPago.hashCode ^
+      detallePago.hashCode ^
       fecha.hashCode ^
       procesadoPor.hashCode;
 }
