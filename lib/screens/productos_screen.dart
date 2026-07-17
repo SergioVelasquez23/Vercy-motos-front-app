@@ -1,7 +1,6 @@
 import '../utils/submit_guard.dart';
 import '../utils/api_error.dart';
 import '../widgets/imagen_producto_widget.dart';
-import '../widgets/lazy_product_image_widget.dart';
 import '../widgets/optimized_loading_widget.dart';
 import '../config/performance_config.dart';
 import '../config/constants.dart';
@@ -15,7 +14,6 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:io' show File;
 import 'package:http/http.dart' as http;
 import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import 'dart:typed_data' show Uint8List;
@@ -47,7 +45,6 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
   static String get _backendBaseUrl => kBackendUrl;
   final ImageService _imageService = ImageService();
   final ProductoService _productoService = ProductoService();
-  final ImageLoaderService _imageLoader = ImageLoaderService();
   final TextEditingController _searchController = TextEditingController();
   String? _selectedCategoriaId;
   int _paginaActual = 0;
@@ -238,189 +235,6 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
     }
   }
 
-  /// Construye los controles de paginación (100% en memoria)
-  Widget _buildPaginationControls() {
-    final totalElementos = _productosFiltrados.length;
-    final totalPaginas = (totalElementos / _itemsPorPagina).ceil();
-    
-    if (totalPaginas <= 1) {
-      return SizedBox.shrink();
-    }
-    
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(
-          top: BorderSide(color: AppTheme.primary.withOpacity(0.2)),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          IconButton(
-            icon: Icon(Icons.arrow_back_ios, size: 18),
-            color: _paginaActual > 0 ? AppTheme.primary : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-            onPressed: _paginaActual > 0 ? _paginaAnterior : null,
-          ),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              'Página ${_paginaActual + 1} de $totalPaginas',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          SizedBox(width: 8),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              '$totalElementos productos',
-              style: TextStyle(
-                color: AppTheme.primary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          IconButton(
-            icon: Icon(Icons.arrow_forward_ios, size: 18),
-            color: _paginaActual < totalPaginas - 1
-                ? AppTheme.primary
-                : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-            onPressed: _paginaActual < totalPaginas - 1
-                ? _siguientePagina
-                : null,
-          ),
-          Container(
-            margin: EdgeInsets.only(left: 16),
-            padding: EdgeInsets.symmetric(horizontal: 8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<int>(
-                value: _itemsPorPagina,
-                dropdownColor: Theme.of(context).colorScheme.surface,
-                icon: Icon(Icons.arrow_drop_down, color: AppTheme.primary),
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                items: [5, 10, 20, 50, 100].map<DropdownMenuItem<int>>((
-                  int value,
-                ) {
-                  return DropdownMenuItem<int>(
-                    value: value,
-                    child: Text('$value por página'),
-                  );
-                }).toList(),
-                onChanged: (newValue) {
-                  setState(() {
-                    _itemsPorPagina = newValue!;
-                    _paginaActual = 0;
-                    _aplicarFiltrosYPaginacion();
-                  });
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Método para construir filtros de categorías
-  List<Widget> _buildCategoriaCompactRowProductos() {
-    List<Widget> widgets = [];
-
-    // Botón "Todas"
-    widgets.add(
-      GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedCategoriaId = null;
-            _paginaActual = 0;
-            _aplicarFiltrosYPaginacion();
-          });
-        },
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: _selectedCategoriaId == null
-                ? AppTheme.primary
-                : Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: _selectedCategoriaId == null
-                  ? AppTheme.primary
-                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3),
-            ),
-          ),
-          child: Text(
-            'Todas',
-            style: TextStyle(
-              color: _selectedCategoriaId == null
-                  ? Colors.white
-                  : Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ),
-    );
-
-    widgets.add(SizedBox(width: 8));
-
-    // Botones de categorías
-    for (var categoria in _categorias) {
-      widgets.add(
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedCategoriaId = categoria.id;
-              _paginaActual = 0;
-              _aplicarFiltrosYPaginacion();
-            });
-          },
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: _selectedCategoriaId == categoria.id
-                  ? AppTheme.primary
-                  : Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: _selectedCategoriaId == categoria.id
-                    ? AppTheme.primary
-                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3),
-              ),
-            ),
-            child: Text(
-              categoria.nombre,
-              style: TextStyle(
-                color: _selectedCategoriaId == categoria.id
-                    ? Colors.white
-                    : Theme.of(context).colorScheme.onSurface,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
-      );
-      widgets.add(SizedBox(width: 8));
-    }
-
-    return widgets;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -804,147 +618,6 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
     );
   }
 
-  Widget _buildProductoItem(Producto producto) {
-    // Buscar la categoría por ID (solo usando producto.categoria)
-    String categoriaNombre = 'Adicional';
-    if (producto.categoria != null && producto.categoria!.nombre.isNotEmpty) {
-      categoriaNombre = producto.categoria!.nombre;
-    } else {
-      categoriaNombre = 'Adicional';
-    }
-
-    return Card(
-      color: Theme.of(context).colorScheme.surface,
-      margin: EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: ListTile(
-        contentPadding: EdgeInsets.all(16),
-        leading: Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.withOpacity(0.3)),
-          ),
-          child: _buildProductImage(producto),
-        ),
-        title: Text(
-          producto.nombre,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(height: 4),
-            Row(
-              children: [
-                Text(
-                  formatCurrency(producto.precio),
-                  style: TextStyle(
-                    color: AppTheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(width: 12),
-                Text(
-                  'Costo: ${formatCurrency(producto.costo)}',
-                  style: TextStyle(
-                    color: Colors.blueAccent,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(Icons.category, color: Colors.orange, size: 16),
-                SizedBox(width: 4),
-                Text(
-                  categoriaNombre,
-                  style: TextStyle(
-                    color: Colors.orange,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-            if (producto.descripcion != null &&
-                producto.descripcion!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  producto.descripcion!,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: Icon(Icons.edit, color: Theme.of(context).colorScheme.onSurface),
-              onPressed: () async {
-                // 🔄 Cargar datos completos del producto antes de editar
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) =>
-                      Center(child: CircularProgressIndicator()),
-                );
-
-                try {
-                  final productoCompleto = await _productoService.getProducto(
-                    producto.id,
-                  );
-                  Navigator.pop(context); // Cerrar loading
-
-                  if (productoCompleto != null) {
-                    _showProductoDialog(producto: productoCompleto);
-                  } else {
-                    showErrorSnackBar(context, 'Error: No se pudo cargar el producto');
-                  }
-                } catch (e) {
-                  Navigator.pop(context); // Cerrar loading
-                  showErrorSnackBar(context, 'Error al cargar producto: ${errorMessage(e)}');
-                }
-              },
-            ),
-            IconButton(
-              icon: Icon(Icons.delete, color: Colors.redAccent),
-              onPressed: () {
-                _showDeleteConfirmationDialog(producto);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 🖼️ OPTIMIZADO: Usar lazy loading para imágenes
-  Widget _buildProductImage(Producto producto) {
-    return LazyProductImageWidget(
-      key: ValueKey('lazy-img-${producto.id}'), // Key única por producto
-      producto: producto,
-      width: 50,
-      height: 50,
-      fit: BoxFit.cover,
-      backendBaseUrl: _backendBaseUrl,
-    );
-  }
-
   void _showDeleteConfirmationDialog(Producto producto) {
     bool _isDeleting = false;
 
@@ -1030,27 +703,6 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
 
   void _showProductoDialog({Producto? producto}) {
     final bool isEditing = producto != null;
-
-    // ✅ LOGS DE DEPURACIÓN
-    if (isEditing) {
-        
-        
-        
-        
-        
-        
-        
-                                   
-        
-        
-        
-        
-
-        
-      for (var cat in _categorias) {
-          
-      }
-    }
 
     // Controladores para el formulario - INFORMACIÓN BÁSICA
     final nombreController = TextEditingController(
@@ -1237,22 +889,6 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
     List<IngredienteProducto> ingredientesOpcionales = isEditing
         ? List<IngredienteProducto>.from(producto.ingredientesOpcionales)
         : [];
-
-    if (isEditing) {
-        
-        
-        
-        
-        
-      for (var i = 0; i < ingredientesRequeridos.length; i++) {
-        final ing = ingredientesRequeridos[i];
-                 }
-        
-      for (var i = 0; i < ingredientesOpcionales.length; i++) {
-        final ing = ingredientesOpcionales[i];
-                 }
-        
-    }
 
     showDialog(
       context: context,
@@ -2847,16 +2483,6 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
 
                             if (isEditing) {
                               // Actualizar producto existente
-                                
-                                
-                                
-                                
-                                
-                                                                                                for (var ing in ingredientesRequeridos) {
-                                                                 }
-                                                               for (var ing in ingredientesOpcionales) {
-                                                                 }
-                              
                               final updatedProducto = Producto(
                                 id: producto.id,
                                 nombre: nombreController.text,
