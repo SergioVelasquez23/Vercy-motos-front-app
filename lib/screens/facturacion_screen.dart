@@ -28,6 +28,7 @@ import '../widgets/facturacion/observaciones_section.dart';
 import '../widgets/facturacion/totales_section.dart';
 import '../widgets/facturacion/botones_accion_facturacion.dart';
 import '../widgets/facturacion/dialogo_editar_iva_descuento.dart';
+import '../widgets/facturacion/metodo_pago_section.dart';
 
 import '../utils/busqueda_productos_utils.dart';
 import '../utils/datetime_utils.dart';
@@ -145,12 +146,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     {'value': 'multiple', 'label': 'Múltiple', 'icon': Icons.payments},
   ];
 
-  // Mapeos de forma/medio de pago: ver lib/utils/payment_mapping.dart
-  // (compartido con matias_service.dart para que ambos caminos hacia Matías
-  // — Factura vía backend y Documento POS vía frontend — coincidan).
-  String? _detalleParaMetodo(String metodo) =>
-      payment_mapping.detalleParaMetodo(metodo);
-
+  // Mapeo de forma de pago: ver lib/utils/payment_mapping.dart (compartido
+  // con matias_service.dart para que ambos caminos hacia Matías — Factura
+  // vía backend y Documento POS vía frontend — coincidan).
   String _mapFormaPagoBackend(String metodo) =>
       payment_mapping.mapFormaPagoBackend(metodo);
 
@@ -811,7 +809,28 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         SizedBox(height: spacing),
                         _buildDescuentoGeneral(),
                         SizedBox(height: spacing),
-                        _buildMetodoPago(),
+                        MetodoPagoSection(
+                          metodoPago: _metodoPago,
+                          metodosPago: _metodosPago,
+                          onMetodoPagoChanged: (value) {
+                            setState(() {
+                              _metodoPago = value;
+                              _detallePago = payment_mapping.detalleParaMetodo(value);
+                            });
+                            _guardarEstadoCompleto();
+                          },
+                          onMontoChanged: () => setState(() {}),
+                          montoEfectivoController: _montoEfectivoController,
+                          montoTransferenciaController: _montoTransferenciaController,
+                          montoNequiController: _montoNequiController,
+                          montoDaviplataController: _montoDaviplataController,
+                          montoBancolombiaController: _montoBancolombiaController,
+                          montoTarjetaController: _montoTarjetaController,
+                          montoSistereditoController: _montoSistereditoController,
+                          montoBoldController: _montoBoldController,
+                          montoAddiController: _montoAddiController,
+                          montoCredilondonController: _montoCredilondonController,
+                        ),
                         SizedBox(height: spacing),
                         TotalesSection(
                           items: _items,
@@ -3364,396 +3383,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
       showSuccessSnackBar(context, 'Cliente creado exitosamente');
     }
-  }
-
-  // Widget para seleccionar método de pago
-  Widget _buildMetodoPago() {
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.payment, color: AppTheme.primary),
-              SizedBox(width: 8),
-              Text(
-                'Método de Pago',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: _metodosPago.map((metodo) {
-              final isSelected = _metodoPago == metodo['value'];
-              return InkWell(
-                onTap: () {
-                  setState(() {
-                    _metodoPago = metodo['value'];
-                    _detallePago = _detalleParaMetodo(metodo['value']);
-                  });
-                  // 💾 Guardar estado completo al cambiar método de pago
-                  _guardarEstadoCompleto();
-                },
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppTheme.primary.withOpacity(0.2)
-                        : Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isSelected
-                          ? AppTheme.primary
-                          : Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3),
-                      width: isSelected ? 2 : 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        metodo['icon'],
-                        color: isSelected
-                            ? AppTheme.primary
-                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                        size: 24,
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        metodo['label'],
-                        style: TextStyle(
-                          color: isSelected
-                              ? AppTheme.primary
-                              : Theme.of(context).colorScheme.onSurface,
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-          // Advertencia de crédito
-          if (_metodoPago == 'credito') ...[
-            SizedBox(height: 12),
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.orange.withOpacity(0.4)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Se creará una deuda automáticamente para este cliente (vence en 30 días). El campo "Cliente" es obligatorio.',
-                      style: TextStyle(color: Colors.orange.shade800, fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          // Campos para pago múltiple
-          if (_metodoPago == 'multiple') ...[
-            SizedBox(height: 20),
-            Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3)),
-            SizedBox(height: 16),
-            Text(
-              'Distribución del pago',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-            SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Efectivo',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      TextField(
-                        controller: _montoEfectivoController,
-                        keyboardType: TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 16,
-                        ),
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 16,
-                          ),
-                          filled: true,
-                          fillColor: Theme.of(context).colorScheme.surface,
-                          prefixIcon: Icon(
-                            Icons.attach_money,
-                            color: AppTheme.primary,
-                          ),
-                          hintText: '0.00',
-                          hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-                        ),
-                        onChanged: (value) {
-                          setState(() {});
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: _buildCampoMontoMixto(
-                    'Transferencia (otro banco)',
-                    _montoTransferenciaController,
-                    Icons.account_balance,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildCampoMontoMixto(
-                    'Nequi',
-                    _montoNequiController,
-                    Icons.account_balance,
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: _buildCampoMontoMixto(
-                    'DaviPlata',
-                    _montoDaviplataController,
-                    Icons.account_balance,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildCampoMontoMixto(
-                    'Bancolombia',
-                    _montoBancolombiaController,
-                    Icons.account_balance,
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(child: SizedBox()),
-              ],
-            ),
-            SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Tarjeta',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      TextField(
-                        controller: _montoTarjetaController,
-                        keyboardType: TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 16,
-                        ),
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 16,
-                          ),
-                          filled: true,
-                          fillColor: Theme.of(context).colorScheme.surface,
-                          prefixIcon: Icon(
-                            Icons.credit_card,
-                            color: AppTheme.primary,
-                          ),
-                          hintText: '0.00',
-                          hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-                        ),
-                        onChanged: (value) {
-                          setState(() {});
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Sistecredito',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      TextField(
-                        controller: _montoSistereditoController,
-                        keyboardType: TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 16,
-                        ),
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 16,
-                          ),
-                          filled: true,
-                          fillColor: Theme.of(context).colorScheme.surface,
-                          prefixIcon: Icon(
-                            Icons.card_giftcard,
-                            color: AppTheme.primary,
-                          ),
-                          hintText: '0.00',
-                          hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-                        ),
-                        onChanged: (value) {
-                          setState(() {});
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildCampoMontoMixto(
-                    'Bold',
-                    _montoBoldController,
-                    Icons.point_of_sale,
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: _buildCampoMontoMixto(
-                    'Addi',
-                    _montoAddiController,
-                    Icons.shopping_bag_outlined,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildCampoMontoMixto(
-                    'Credilondon',
-                    _montoCredilondonController,
-                    Icons.shopping_bag_outlined,
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(child: SizedBox()),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  /// Campo de monto para una línea de "Pago Múltiple" (Bold/Addi/Credilondon).
-  /// Sigue el mismo patrón visual que los campos Efectivo/Transferencia/Tarjeta/
-  /// Sistecredito de esta misma sección, extraído para no repetir el bloque.
-  Widget _buildCampoMontoMixto(
-    String label,
-    TextEditingController controller,
-    IconData icon,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-          ),
-        ),
-        SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          keyboardType: TextInputType.numberWithOptions(decimal: true),
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface,
-            fontSize: 16,
-          ),
-          decoration: InputDecoration(
-            border: OutlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-            filled: true,
-            fillColor: Theme.of(context).colorScheme.surface,
-            prefixIcon: Icon(icon, color: AppTheme.primary),
-            hintText: '0.00',
-            hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-          ),
-          onChanged: (value) {
-            setState(() {});
-          },
-        ),
-      ],
-    );
   }
 
   // Cargar facturas en borrador
