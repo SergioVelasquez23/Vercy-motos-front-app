@@ -29,6 +29,10 @@ import '../widgets/facturacion/totales_section.dart';
 import '../widgets/facturacion/botones_accion_facturacion.dart';
 import '../widgets/facturacion/dialogo_editar_iva_descuento.dart';
 import '../widgets/facturacion/metodo_pago_section.dart';
+import '../widgets/facturacion/facturacion_header_section.dart';
+import '../widgets/facturacion/form_field_label.dart';
+import '../widgets/facturacion/fecha_picker_field.dart';
+import '../widgets/facturacion/tipo_factura_dropdown.dart';
 
 import '../utils/busqueda_productos_utils.dart';
 import '../utils/datetime_utils.dart';
@@ -786,7 +790,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
             return Column(
               children: [
-                _buildHeader(),
+                FacturacionHeaderSection(onMostrarBorradores: _mostrarBorradores),
                 Expanded(
                   child: SingleChildScrollView(
                     padding: EdgeInsets.all(padding),
@@ -862,102 +866,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       );
   }
 
-  Widget _buildHeader() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 500;
-        
-        return Container(
-          padding: EdgeInsets.all(isMobile ? 12 : 24),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black12,
-                blurRadius: 4,
-                offset: Offset(0, 2),
-              ),
-            ],
-          ),
-          child: isMobile
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.receipt_long,
-                          color: AppTheme.primary,
-                          size: 24,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Crear factura',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _mostrarBorradores,
-                        icon: Icon(Icons.drafts, size: 18),
-                        label: Text(
-                          'Facturas en borrador',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primary,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                )
-              : Row(
-                  children: [
-                    Icon(Icons.receipt_long, color: AppTheme.primary, size: 32),
-                    SizedBox(width: 12),
-                    Text(
-                      'Crear factura',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    Spacer(),
-                    ElevatedButton.icon(
-                      onPressed: _mostrarBorradores,
-                      icon: Icon(Icons.drafts),
-                      label: Text(
-                        'Facturas en borrador',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 16,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-        );
-      },
-    );
-  }
 
   Widget _buildMainForm() {
     return LayoutBuilder(
@@ -981,55 +889,87 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             children: [
               if (isMobile) ...[
                 // Diseño móvil - campos apilados verticalmente
-                _buildFormField('Tipo', _buildTipoDropdown()),
+                FormFieldLabel(
+                  label: 'Tipo',
+                  field: TipoFacturaDropdown(
+                    tipoFactura: _tipoFactura,
+                    onChanged: (value) => setState(() => _tipoFactura = value),
+                  ),
+                ),
                 SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
-                      child: _buildFormField(
-                        'F. Factura',
-                        _buildFechaFacturaPicker(),
+                      child: FormFieldLabel(
+                        label: 'F. Factura',
+                        field: FechaPickerField(
+                          fecha: _fechaFactura,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2030),
+                          onFechaSeleccionada: (fecha) => setState(() => _fechaFactura = fecha),
+                        ),
                       ),
                     ),
                     SizedBox(width: 8),
                     Expanded(
-                      child: _buildFormField(
-                        'F. Vencimiento',
-                        _buildFechaVencimientoPicker(),
+                      child: FormFieldLabel(
+                        label: 'F. Vencimiento',
+                        field: FechaPickerField(
+                          fecha: _fechaVencimiento,
+                          firstDate: _fechaFactura,
+                          lastDate: DateTime(2030),
+                          onFechaSeleccionada: (fecha) => setState(() => _fechaVencimiento = fecha),
+                        ),
                       ),
                     ),
                   ],
                 ),
                 SizedBox(height: 12),
-                _buildFormField('Cliente', _buildClienteField()),
+                FormFieldLabel(label: 'Cliente', field: _buildClienteField()),
               ] else ...[
                 // Diseño desktop - original
                 Row(
                   children: [
                     Expanded(
                       flex: 2,
-                      child: _buildFormField('Tipo', _buildTipoDropdown()),
+                      child: FormFieldLabel(
+                  label: 'Tipo',
+                  field: TipoFacturaDropdown(
+                    tipoFactura: _tipoFactura,
+                    onChanged: (value) => setState(() => _tipoFactura = value),
+                  ),
+                ),
                     ),
                     SizedBox(width: 16),
                     Expanded(
                       flex: 2,
-                      child: _buildFormField(
-                        'F. Factura',
-                        _buildFechaFacturaPicker(),
+                      child: FormFieldLabel(
+                        label: 'F. Factura',
+                        field: FechaPickerField(
+                          fecha: _fechaFactura,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2030),
+                          onFechaSeleccionada: (fecha) => setState(() => _fechaFactura = fecha),
+                        ),
                       ),
                     ),
                     SizedBox(width: 16),
                     Expanded(
                       flex: 2,
-                      child: _buildFormField(
-                        'F. Vencimiento',
-                        _buildFechaVencimientoPicker(),
+                      child: FormFieldLabel(
+                        label: 'F. Vencimiento',
+                        field: FechaPickerField(
+                          fecha: _fechaVencimiento,
+                          firstDate: _fechaFactura,
+                          lastDate: DateTime(2030),
+                          onFechaSeleccionada: (fecha) => setState(() => _fechaVencimiento = fecha),
+                        ),
                       ),
                     ),
                   ],
                 ),
                 SizedBox(height: 16),
-                _buildFormField('Cliente', _buildClienteField()),
+                FormFieldLabel(label: 'Cliente', field: _buildClienteField()),
               ],
             ],
           ),
@@ -1038,142 +978,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     );
   }
 
-  Widget _buildFormField(String label, Widget field) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.onSurface,
-            fontSize: 14,
-          ),
-        ),
-        SizedBox(height: 8),
-        field,
-      ],
-    );
-  }
-
-  Widget _buildTipoDropdown() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        DropdownButtonFormField<String>(
-          value: _tipoFactura,
-          decoration: InputDecoration(
-            border: OutlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-            filled: true,
-            fillColor: Theme.of(context).colorScheme.surface,
-          ),
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
-          items: const [
-            DropdownMenuItem(
-              value: 'LOCAL',
-              child: Text(''),
-            ),
-            DropdownMenuItem(
-              value: 'POS',
-              child: Text('Documento POS'),
-            ),
-            DropdownMenuItem(
-              value: 'FACTURA',
-              child: Text('Factura Electrónica'),
-            ),
-          ],
-          selectedItemBuilder: (context) => const [
-            SizedBox.shrink(),
-            Text('Documento POS'),
-            Text('Factura Electrónica'),
-          ],
-          onChanged: (value) => setState(() => _tipoFactura = value!),
-        ),
-        const SizedBox(height: 4),
-        if (_tipoFactura == 'FACTURA')
-          Text(
-            'Se enviará a la DIAN como Factura Electrónica',
-            style: TextStyle(
-              fontSize: 11,
-              color: AppTheme.primary,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        if (_tipoFactura == 'POS')
-          Text(
-            'Se puede enviar a la DIAN como documento POS',
-            style: TextStyle(
-              fontSize: 11,
-              color: AppTheme.primary,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildFechaFacturaPicker() {
-    return InkWell(
-      onTap: () async {
-        final fecha = await showDatePicker(
-          context: context,
-          initialDate: _fechaFactura,
-          firstDate: DateTime(2020),
-          lastDate: DateTime(2030),
-        );
-        if (fecha != null) setState(() => _fechaFactura = fecha);
-      },
-      child: InputDecorator(
-        decoration: InputDecoration(
-          border: OutlineInputBorder(),
-          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-          suffixIcon: Icon(
-            Icons.calendar_today,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-            size: 18,
-          ),
-          filled: true,
-          fillColor: Theme.of(context).colorScheme.surface,
-        ),
-        child: Text(
-          '${_fechaFactura.year}-${_fechaFactura.month.toString().padLeft(2, '0')}-${_fechaFactura.day.toString().padLeft(2, '0')}',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFechaVencimientoPicker() {
-    return InkWell(
-      onTap: () async {
-        final fecha = await showDatePicker(
-          context: context,
-          initialDate: _fechaVencimiento,
-          firstDate: _fechaFactura,
-          lastDate: DateTime(2030),
-        );
-        if (fecha != null) setState(() => _fechaVencimiento = fecha);
-      },
-      child: InputDecorator(
-        decoration: InputDecoration(
-          border: OutlineInputBorder(),
-          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-          suffixIcon: Icon(
-            Icons.calendar_today,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-            size: 18,
-          ),
-          filled: true,
-          fillColor: Theme.of(context).colorScheme.surface,
-        ),
-        child: Text(
-          '${_fechaVencimiento.year}-${_fechaVencimiento.month.toString().padLeft(2, '0')}-${_fechaVencimiento.day.toString().padLeft(2, '0')}',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
-        ),
-      ),
-    );
-  }
 
   Widget _buildClienteField() {
     return Row(
