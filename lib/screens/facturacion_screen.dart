@@ -28,6 +28,7 @@ import '../providers/facturacion_draft_provider.dart';
 import '../widgets/facturacion/observaciones_section.dart';
 import '../widgets/facturacion/totales_section.dart';
 import '../widgets/facturacion/botones_accion_facturacion.dart';
+import '../widgets/facturacion/dialogo_editar_iva_descuento.dart';
 
 import '../utils/busqueda_productos_utils.dart';
 import '../utils/datetime_utils.dart';
@@ -404,155 +405,19 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   Future<void> _mostrarDialogoEditarItemsPedidoAsesor(PedidoAsesor pedido) async {
     if (!mounted) return;
 
-    final ivaCtrs = pedido.items
-        .map((i) => TextEditingController(text: i.porcentajeImpuesto.toStringAsFixed(0)))
-        .toList();
-    final dctoCtrs = pedido.items
-        .map((i) => TextEditingController(text: i.porcentajeDescuento.toStringAsFixed(0)))
-        .toList();
-
-    final confirmar = await showDialog<bool>(
+    final resultado = await mostrarDialogoEditarIvaDescuento(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        final theme = Theme.of(context);
-        final textStyle = TextStyle(fontSize: 12, color: theme.colorScheme.onSurface);
-        final headerStyle = TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface);
-        final inputDec = InputDecoration(
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-          border: const OutlineInputBorder(),
-          suffixText: '%',
-          suffixStyle: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-        );
-
-        return AlertDialog(
-          backgroundColor: theme.colorScheme.surface,
-          title: Row(
-            children: [
-              Icon(Icons.receipt_long, color: AppTheme.primary, size: 22),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('Pedido de ${pedido.asesorNombre}', style: TextStyle(fontSize: 16, color: theme.colorScheme.onSurface)),
-                    Text('Edita IVA y descuento antes de cargar', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: 740,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Cabecera de columnas
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    children: [
-                      Expanded(flex: 4, child: Text('Producto', style: headerStyle)),
-                      SizedBox(width: 44, child: Text('Cant.', style: headerStyle, textAlign: TextAlign.center)),
-                      SizedBox(width: 78, child: Text('Precio c/IVA', style: headerStyle, textAlign: TextAlign.right)),
-                      const SizedBox(width: 8),
-                      SizedBox(width: 64, child: Text('IVA %', style: headerStyle, textAlign: TextAlign.center)),
-                      const SizedBox(width: 8),
-                      SizedBox(width: 64, child: Text('Dcto %', style: headerStyle, textAlign: TextAlign.center)),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-                const SizedBox(height: 4),
-                // Lista de items con scroll
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 340),
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: pedido.items.length,
-                    itemBuilder: (_, idx) {
-                      final item = pedido.items[idx];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 5),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              flex: 4,
-                              child: Text(
-                                item.productoNombre ?? '-',
-                                style: textStyle,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            SizedBox(
-                              width: 44,
-                              child: Text('${item.cantidad}', style: textStyle, textAlign: TextAlign.center),
-                            ),
-                            SizedBox(
-                              width: 78,
-                              child: Text(
-                                CurrencyUtils.format(item.precioUnitario),
-                                style: textStyle.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.55)),
-                                textAlign: TextAlign.right,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              width: 64,
-                              child: TextField(
-                                controller: ivaCtrs[idx],
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface),
-                                decoration: inputDec,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              width: 64,
-                              child: TextField(
-                                controller: dctoCtrs[idx],
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface),
-                                decoration: inputDec,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Sin cambios'),
-            ),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.pop(ctx, true),
-              icon: const Icon(Icons.check, size: 16),
-              label: const Text('Aplicar y cargar'),
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white),
-            ),
-          ],
-        );
-      },
+      titulo: 'Pedido de ${pedido.asesorNombre}',
+      items: pedido.items,
+      columnaPrecioLabel: 'Precio c/IVA',
     );
-
-    // Leer valores antes de hacer dispose
-    final ivaValues = ivaCtrs.map((c) => double.tryParse(c.text) ?? 0.0).toList();
-    final dctoValues = dctoCtrs.map((c) => double.tryParse(c.text) ?? 0.0).toList();
-    for (final c in ivaCtrs) { c.dispose(); }
-    for (final c in dctoCtrs) { c.dispose(); }
+    final ivaValues = resultado.ivaValues;
+    final dctoValues = resultado.dctoValues;
 
     if (!mounted) return;
 
     final List<ItemPedido> itemsCargados;
-    if (confirmar == true) {
+    if (resultado.confirmado) {
       // Aplicar IVA y descuento editados.
       // precioUnitario del asesor es siempre el precio FINAL con IVA incluido;
       // se extrae la base neta dividiendo por (1 + iva/100).
@@ -4056,155 +3921,19 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
     final items = List<ItemPedido>.from(pedido.items);
 
-    final ivaCtrs = items
-        .map((i) => TextEditingController(text: i.porcentajeImpuesto.toStringAsFixed(0)))
-        .toList();
-    final dctoCtrs = items
-        .map((i) => TextEditingController(text: i.porcentajeDescuento.toStringAsFixed(0)))
-        .toList();
-
-    final confirmar = await showDialog<bool>(
+    final resultado = await mostrarDialogoEditarIvaDescuento(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        final theme = Theme.of(context);
-        final textStyle = TextStyle(fontSize: 12, color: theme.colorScheme.onSurface);
-        final headerStyle = TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface);
-        final inputDec = InputDecoration(
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-          border: const OutlineInputBorder(),
-          suffixText: '%',
-          suffixStyle: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-        );
-
-        return AlertDialog(
-          backgroundColor: theme.colorScheme.surface,
-          title: Row(
-            children: [
-              Icon(Icons.receipt_long, color: AppTheme.primary, size: 22),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('Borrador de ${pedido.cliente ?? "cliente"}', style: TextStyle(fontSize: 16, color: theme.colorScheme.onSurface)),
-                    Text('Edita IVA y descuento antes de cargar', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: 740,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Cabecera de columnas
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    children: [
-                      Expanded(flex: 4, child: Text('Producto', style: headerStyle)),
-                      SizedBox(width: 44, child: Text('Cant.', style: headerStyle, textAlign: TextAlign.center)),
-                      SizedBox(width: 78, child: Text('Precio base', style: headerStyle, textAlign: TextAlign.right)),
-                      const SizedBox(width: 8),
-                      SizedBox(width: 64, child: Text('IVA %', style: headerStyle, textAlign: TextAlign.center)),
-                      const SizedBox(width: 8),
-                      SizedBox(width: 64, child: Text('Dcto %', style: headerStyle, textAlign: TextAlign.center)),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-                const SizedBox(height: 4),
-                // Lista de items con scroll
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 340),
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: items.length,
-                    itemBuilder: (_, idx) {
-                      final item = items[idx];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 5),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              flex: 4,
-                              child: Text(
-                                item.productoNombre ?? '-',
-                                style: textStyle,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            SizedBox(
-                              width: 44,
-                              child: Text('${item.cantidad}', style: textStyle, textAlign: TextAlign.center),
-                            ),
-                            SizedBox(
-                              width: 78,
-                              child: Text(
-                                CurrencyUtils.format(item.precioUnitario),
-                                style: textStyle.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.55)),
-                                textAlign: TextAlign.right,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              width: 64,
-                              child: TextField(
-                                controller: ivaCtrs[idx],
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface),
-                                decoration: inputDec,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              width: 64,
-                              child: TextField(
-                                controller: dctoCtrs[idx],
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface),
-                                decoration: inputDec,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Sin cambios'),
-            ),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.pop(ctx, true),
-              icon: const Icon(Icons.check, size: 16),
-              label: const Text('Aplicar y cargar'),
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white),
-            ),
-          ],
-        );
-      },
+      titulo: 'Borrador de ${pedido.cliente ?? "cliente"}',
+      items: items,
+      columnaPrecioLabel: 'Precio base',
     );
-
-    // Leer valores antes de hacer dispose
-    final ivaValues = ivaCtrs.map((c) => double.tryParse(c.text) ?? 0.0).toList();
-    final dctoValues = dctoCtrs.map((c) => double.tryParse(c.text) ?? 0.0).toList();
-    for (final c in ivaCtrs) { c.dispose(); }
-    for (final c in dctoCtrs) { c.dispose(); }
+    final ivaValues = resultado.ivaValues;
+    final dctoValues = resultado.dctoValues;
 
     if (!mounted) return;
 
     final List<ItemPedido> itemsCargados;
-    if (confirmar == true) {
+    if (resultado.confirmado) {
       // El precio base de un borrador propio ya es neto (sin IVA), así que
       // solo se recalculan descuento e impuesto con los % editados.
       itemsCargados = items.asMap().entries.map((entry) {
