@@ -14,7 +14,6 @@ import '../services/pedido_asesor_service.dart';
 import '../services/cotizacion_service.dart';
 import '../services/pdf_service.dart';
 import '../services/negocio_info_service.dart';
-import '../services/impresion_service.dart';
 import '../services/inventario_service.dart';
 import '../services/cliente_service.dart';
 import '../services/matias_service.dart';
@@ -71,10 +70,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   final TrasladoService _trasladoService = TrasladoService();
   final PDFService _pdfService = PDFService();
   final NegocioInfoService _negocioInfoService = NegocioInfoService();
-  final ImpresionService _impresionService = ImpresionService();
   final InventarioService _inventarioService = InventarioService();
   final ClienteService _clienteService = ClienteService();
-  final MatiasService _matiasService = MatiasService();
 
   // Controladores de formulario
   final TextEditingController _clienteController = TextEditingController(
@@ -3260,7 +3257,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     if (codigoLimpio.isEmpty) return;
 
     Producto? producto;
-    String codigoUsado = codigoLimpio;
 
     try {
       // 🚀 INTENTO 1: Buscar con el código completo
@@ -3275,10 +3271,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         producto = await _productoService.getProductoPorCodigoBarras(
           codigoSinUltimo,
         );
-        
-        if (producto != null) {
-          codigoUsado = codigoSinUltimo;
-        }
       }
 
       if (producto == null) {
@@ -4950,114 +4942,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     }
   }
 
-  // 📦 Registrar movimientos de inventario cuando se factura (venta)
-  // itemsOriginales: Si se proveen, usa estos items en lugar de los del pedido (para preservar origen)
-  Future<void> _registrarMovimientosInventarioVenta(
-    Pedido pedido, {
-    List<ItemPedido>? itemsOriginales,
-  }) async {
-    try {
-      final productoService = ProductoService();
-      
-      // ✅ USAR items originales si se proveen (tienen el campo origen correcto)
-      // El backend puede no guardar/devolver el campo origen, así que usamos los originales
-      final itemsParaProcesar = itemsOriginales ?? pedido.items;
-      
-      appLog('📦 Procesando ${itemsParaProcesar.length} items para movimientos de inventario');
-
-      // ⚡ OPTIMIZACIÓN: Procesar todos los productos en paralelo
-      await Future.wait(
-        itemsParaProcesar.map((item) async {
-          try {
-            // 🔍 Obtener el producto completo para actualizar stock
-            final productoCompleto = await productoService.getProducto(
-              item.productoId,
-            );
-
-            if (productoCompleto == null) return;
-
-            // 📍 Determinar el origen de la venta (BODEGA o ALMACÉN)
-            final origen = item.origen;
-            // Si el item tiene trasladoId, el traslado ya movió el stock BODEGA→ALMACÉN.
-            // En ese caso billing descuenta de ALMACÉN para no hacer doble descuento de BODEGA.
-            final hayTraslado = item.trasladoId != null && item.trasladoId!.isNotEmpty;
-            final origenEfectivo = hayTraslado ? 'ALMACÉN' : origen;
-            appLog(
-              '🏬 Procesando ${item.productoNombre}: origen="$origen" trasladoId=${item.trasladoId} → descuenta de "$origenEfectivo" (B:${productoCompleto.bodega}, A:${productoCompleto.almacen})',
-            );
-
-            // 📊 Obtener stock anterior según el origen efectivo
-            double stockAnterior = 0;
-            double nuevoStock = 0;
-
-            // ✅ Obtener valores actuales de AMBAS ubicaciones
-            double almacenActual = (productoCompleto.almacen ?? 0).toDouble();
-            double bodegaActual = (productoCompleto.bodega ?? 0).toDouble();
-
-            if (origenEfectivo.toUpperCase() == 'BODEGA') {
-              stockAnterior = bodegaActual;
-              nuevoStock = (stockAnterior - item.cantidad).clamp(
-                0,
-                double.infinity,
-              );
-              bodegaActual = nuevoStock;
-            } else {
-              stockAnterior = almacenActual;
-              nuevoStock = (stockAnterior - item.cantidad).clamp(
-                0,
-                double.infinity,
-              );
-              almacenActual = nuevoStock;
-            }
-
-            // 📋 Crear movimiento de inventario
-            final movimiento = MovimientoInventario(
-              inventarioId: item.productoId,
-              productoId: item.productoId,
-              productoNombre: item.productoNombre ?? 'Producto',
-              tipoMovimiento: 'Salida',
-              motivo: 'Venta - Factura ${pedido.id} (${origen})',
-              cantidadAnterior: stockAnterior,
-              cantidadMovimiento: item.cantidad.toDouble(),
-              cantidadNueva: nuevoStock,
-              responsable: pedido.mesero ?? 'Sistema',
-              referencia: 'FV-${pedido.id}',
-              observaciones:
-                  'Venta a ${pedido.cliente ?? 'CONSUMIDOR FINAL'} desde ${origen}',
-              costoUnitario: item.precioUnitario,
-              precioTotal: item.subtotal,
-              fecha: DateTimeUtils.nowColombia(),
-              facturaNo: pedido.id,
-              proveedor: null,
-            );
-
-            // 📝 Intentar registrar movimiento (no bloqueante)
-            _inventarioService.registrarMovimiento(movimiento).catchError((e) {
-              appLog('⚠️ Error movimiento: $e');
-            });
-
-            // 🔄 ACTUALIZAR STOCK EN EL PRODUCTO
-            final productoActualizado = productoCompleto.copyWith(
-              almacen: almacenActual.toInt(),
-              bodega: bodegaActual.toInt(),
-            );
-
-            appLog(
-              '💾 Guardando ${item.productoNombre}: B:${bodegaActual.toInt()}, A:${almacenActual.toInt()}',
-            );
-
-            // 💾 Guardar producto actualizado (CRÍTICO)
-            await _productoService.updateProducto(productoActualizado);
-          } catch (e) {
-            appLog('⚠️ Error item ${item.productoId}: $e');
-          }
-        }),
-      );
-    } catch (e) {
-      appLog('⚠️ Error general movimientos: $e');
-    }
-  }
-
   // 🧹 Versión no-blocking que se ejecuta en background sin esperar
   void _registrarMovimientosInventarioVentaEnBackground(
     Pedido pedido, {
@@ -5158,196 +5042,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         // Ignorar errores no críticos
       }
     });
-  }
-
-  // Mostrar diálogo de factura exitosa con opciones de impresión
-  Future<void> _mostrarDialogoFacturaExitosa(
-    Pedido pedido,
-    String medioPago,
-    double totalPagado,
-    double descuento,
-    double propina,
-  ) async {
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.success.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.check_circle, color: AppTheme.success, size: 32),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '¡Factura Pagada!',
-                    style: AppTheme.headlineMedium.copyWith(
-                      color: AppTheme.success,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    'ID: ${pedido.id}',
-                    style: AppTheme.bodySmall.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Resumen del pago
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildResumenItem('Cliente', pedido.cliente ?? 'CONSUMIDOR FINAL'),
-                  _buildResumenItem('Forma de pago', _formatearFormaPago(medioPago)),
-                  if (descuento > 0) _buildResumenItem('Descuento', '-${CurrencyUtils.format(descuento)}'),
-                  if (propina > 0) _buildResumenItem('Propina', '+${CurrencyUtils.format(propina)}'),
-                  Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3)),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'TOTAL PAGADO',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Text(
-                        CurrencyUtils.format(totalPagado),
-                        style: TextStyle(
-                          color: AppTheme.success,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 16),
-            Text(
-              '¿Qué desea hacer con la factura?',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
-            ),
-            SizedBox(height: 12),
-            // Opciones de impresión
-            Row(
-              children: [
-                Expanded(
-                  child: _buildOpcionFactura(
-                    icon: Icons.picture_as_pdf,
-                    label: 'Ver PDF',
-                    color: Colors.red,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      _generarYMostrarPDF(pedido, medioPago, totalPagado, descuento, propina);
-                    },
-                  ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: _buildOpcionFactura(
-                    icon: Icons.print,
-                    label: 'Imprimir',
-                    color: AppTheme.primary,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      _imprimirFactura(pedido, medioPago, totalPagado, descuento, propina);
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: Text(
-              'Cerrar sin imprimir',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildResumenItem(String label, String valor) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
-          ),
-          Text(
-            valor,
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOpcionFactura({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 28),
-            SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(color: color, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   String _formatearFormaPago(String formaPago) {
@@ -5479,170 +5173,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       }
       if (mounted) {
         showErrorSnackBar(context, 'Error generando vista previa: ${errorMessage(e)}');
-      }
-    }
-  }
-
-  // Generar y mostrar PDF de la factura
-  Future<void> _generarYMostrarPDF(
-    Pedido pedido,
-    String medioPago,
-    double totalPagado,
-    double descuento,
-    double propina,
-  ) async {
-    bool dialogoCargaAbierto = false;
-    try {
-      // Mostrar indicador de carga
-      dialogoCargaAbierto = true;
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          content: Row(
-            children: [
-              CircularProgressIndicator(color: AppTheme.primary),
-              SizedBox(width: 16),
-              Text('Generando PDF...', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
-            ],
-          ),
-        ),
-      );
-
-      // Obtener información del negocio
-      NegocioInfo? negocioInfo;
-      try {
-        negocioInfo = await _negocioInfoService.getNegocioInfo();
-      } catch (e) {
-
-      }
-
-      // Preparar el resumen para el PDF
-      final resumen = _prepararResumenFactura(
-        pedido,
-        medioPago,
-        totalPagado,
-        descuento,
-        propina,
-        negocioInfo,
-        retencionPct: pedido.retencion,
-        reteIVAPct: pedido.reteIVA,
-        reteICAPct: pedido.reteICA,
-        aiuPct: pedido.aiu != null
-            ? (pedido.aiu!['porcentaje'] as num?)?.toDouble()
-            : null,
-        dctoGeneral: pedido.descuentoGeneral,
-        retencionValor: pedido.valorRetencion,
-        reteIVAValor: pedido.valorReteIVA,
-        reteICAValor: pedido.valorReteICA,
-        aiuValor: pedido.aiu != null
-            ? (pedido.aiu!['valor'] as num?)?.toDouble()
-            : null,
-        observaciones: pedido.notas,
-      );
-
-      // rootNavigator: true — ver comentario en _mostrarVistaPreviaFactura:
-      // sin esto, el pop() puede cerrar la pantalla de Facturación en vez
-      // del diálogo de carga, porque showDialog() lo empuja al Navigator
-      // raíz mientras que esta pantalla vive en el Navigator anidado de la
-      // ShellRoute.
-      Navigator.of(context, rootNavigator: true).pop(); // Cerrar indicador de carga
-      dialogoCargaAbierto = false;
-
-      // Mostrar el PDF con nombre personalizable
-      await _mostrarPDFConNombrePersonalizado(
-        resumen: resumen,
-        esFactura: true,
-      );
-
-      if (mounted) {
-        showSuccessSnackBar(context, 'PDF generado correctamente');
-      }
-    } catch (e) {
-      if (dialogoCargaAbierto && mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
-      }
-      if (mounted) {
-        showErrorSnackBar(context, 'Error generando PDF: ${errorMessage(e)}');
-      }
-    }
-  }
-
-  // Imprimir factura
-  Future<void> _imprimirFactura(
-    Pedido pedido,
-    String medioPago,
-    double totalPagado,
-    double descuento,
-    double propina,
-  ) async {
-    bool dialogoCargaAbierto = false;
-    try {
-      // Mostrar indicador de carga
-      dialogoCargaAbierto = true;
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          content: Row(
-            children: [
-              CircularProgressIndicator(color: AppTheme.primary),
-              SizedBox(width: 16),
-              Text('Preparando impresión...', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
-            ],
-          ),
-        ),
-      );
-
-      // Obtener información del negocio
-      NegocioInfo? negocioInfo;
-      try {
-        negocioInfo = await _negocioInfoService.getNegocioInfo();
-      } catch (e) {
-
-      }
-
-      // Preparar el resumen para el PDF
-      final resumen = _prepararResumenFactura(
-        pedido,
-        medioPago,
-        totalPagado,
-        descuento,
-        propina,
-        negocioInfo,
-        retencionPct: pedido.retencion,
-        reteIVAPct: pedido.reteIVA,
-        reteICAPct: pedido.reteICA,
-        aiuPct: pedido.aiu != null
-            ? (pedido.aiu!['porcentaje'] as num?)?.toDouble()
-            : null,
-        dctoGeneral: pedido.descuentoGeneral,
-        retencionValor: pedido.valorRetencion,
-        reteIVAValor: pedido.valorReteIVA,
-        reteICAValor: pedido.valorReteICA,
-        aiuValor: pedido.aiu != null
-            ? (pedido.aiu!['valor'] as num?)?.toDouble()
-            : null,
-        observaciones: pedido.notas,
-      );
-
-      Navigator.of(context, rootNavigator: true).pop(); // Cerrar indicador de carga
-      dialogoCargaAbierto = false;
-
-      // Mostrar diálogo de impresión
-      await _pdfService.mostrarDialogoImpresion(resumen: resumen, esFactura: true);
-
-      if (mounted) {
-        showSuccessSnackBar(context, 'Factura enviada a impresión');
-      }
-    } catch (e) {
-      if (dialogoCargaAbierto && mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
-      }
-      if (mounted) {
-        showErrorSnackBar(context, 'Error al imprimir: ${errorMessage(e)}');
       }
     }
   }
@@ -5901,12 +5431,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     } catch (e) {
       appLog('⚠️ Error limpiando provider: $e');
     }
-  }
-
-  Future<void> _guardarFactura() async {
-    // Este método ahora solo se usa para compatibilidad
-    // La lógica principal está en _guardarYPagar y _guardarComoBorrador
-    await _guardarYPagar();
   }
 
   // Método para mostrar diálogo de edición de nombre de archivo PDF
