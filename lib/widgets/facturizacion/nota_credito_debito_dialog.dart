@@ -193,6 +193,11 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
   }
 
   Map<String, dynamic> _buildPayload(Factura factura, double valor) {
+    // La Factura no guarda el tipo de documento del cliente (CC/NIT/CE), solo
+    // el número (clienteNit); se infiere por longitud como en el resto de la
+    // integración Matias (documento_soporte_dialog.dart, matias_service.dart).
+    // Antes esto mandaba identity_document_id='3' fijo sin mirar el tipo real.
+    final esNit = (factura.clienteNit?.length ?? 0) >= 9;
     return {
       'prefix': _prefixCtrl.text.trim(),
       'operation_type_id': esCredito ? 12 : 1,
@@ -203,8 +208,8 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
       'time': _nowTime(),
       'customer': {
         'country_id': '45',
-        'identity_document_id': '3',
-        'type_organization_id': 1,
+        'identity_document_id': esNit ? '2' : '1',
+        'type_organization_id': esNit ? 2 : 1, // 1=Natural, 2=Jurídica
         'tax_regime_id': 2,
         'tax_level_id': 5,
         'company_name': factura.clienteNombre,
@@ -231,7 +236,7 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
       'time': _nowTime(),
       'customer': {
         'country_id': '45',
-        'identity_document_id': '3',
+        'identity_document_id': '1', // CC (catálogo unificado); sin datos reales del cliente en este flujo
         'type_organization_id': 1,
         'tax_regime_id': 2,
         'tax_level_id': 5,

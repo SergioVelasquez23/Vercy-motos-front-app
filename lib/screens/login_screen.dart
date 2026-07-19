@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -9,6 +10,7 @@ import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../services/keep_alive_service.dart';
 import '../utils/api_error.dart' as api_error;
+import '../utils/legal_texts.dart';
 import 'package:universal_html/html.dart' as html;
 
 // Extension para validación de email
@@ -414,9 +416,32 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
+  Future<void> _showLegalTextDialog(String title, String content) async {
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title, style: AppTheme.headlineMedium),
+        content: SizedBox(
+          width: 480,
+          child: SingleChildScrollView(
+            child: Text(content, style: AppTheme.bodySmall),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _showRegisterDialog() async {
     String? registerError;
     bool isLoading = false;
+    bool aceptaTerminos = false;
+    bool aceptaDatos = false;
     await showDialog(
       context: context,
       barrierColor: Colors.black54,
@@ -529,6 +554,74 @@ class _LoginScreenState extends State<LoginScreen>
                           ),
                         ),
                       ),
+                      SizedBox(height: AppTheme.spacingMedium),
+                      CheckboxListTile(
+                        value: aceptaTerminos,
+                        onChanged: (value) {
+                          setState(() {
+                            aceptaTerminos = value ?? false;
+                          });
+                        },
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        title: RichText(
+                          text: TextSpan(
+                            style: AppTheme.bodySmall,
+                            children: [
+                              TextSpan(text: 'He leído y acepto los '),
+                              TextSpan(
+                                text: 'Términos y Condiciones',
+                                style: AppTheme.bodySmall.copyWith(
+                                  color: AppTheme.primary,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = () => _showLegalTextDialog(
+                                        'Términos y Condiciones',
+                                        terminosYCondicionesTexto,
+                                      ),
+                              ),
+                              TextSpan(text: '.'),
+                            ],
+                          ),
+                        ),
+                      ),
+                      CheckboxListTile(
+                        value: aceptaDatos,
+                        onChanged: (value) {
+                          setState(() {
+                            aceptaDatos = value ?? false;
+                          });
+                        },
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        title: RichText(
+                          text: TextSpan(
+                            style: AppTheme.bodySmall,
+                            children: [
+                              TextSpan(
+                                text:
+                                    'Autorizo el tratamiento de mis datos personales de acuerdo con la ',
+                              ),
+                              TextSpan(
+                                text: 'Política de Tratamiento de Datos',
+                                style: AppTheme.bodySmall.copyWith(
+                                  color: AppTheme.primary,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = () => _showLegalTextDialog(
+                                        'Política de Tratamiento de Datos',
+                                        politicaTratamientoDatosTexto,
+                                      ),
+                              ),
+                              TextSpan(text: '.'),
+                            ],
+                          ),
+                        ),
+                      ),
                       SizedBox(height: AppTheme.spacingLarge),
                       Row(
                         children: [
@@ -544,6 +637,14 @@ class _LoginScreenState extends State<LoginScreen>
                               onPressed: isLoading
                                   ? null
                                   : () async {
+                                      if (!aceptaTerminos || !aceptaDatos) {
+                                        setState(() {
+                                          registerError =
+                                              'Debes aceptar los Términos y Condiciones y autorizar el tratamiento de tus datos personales para crear la cuenta.';
+                                        });
+                                        return;
+                                      }
+
                                       setState(() {
                                         isLoading = true;
                                         registerError = null;
@@ -555,6 +656,9 @@ class _LoginScreenState extends State<LoginScreen>
                                               registerNameController.text,
                                               registerEmailController.text,
                                               registerPasswordController.text,
+                                              aceptaTerminos: aceptaTerminos,
+                                              aceptaTratamientoDatos:
+                                                  aceptaDatos,
                                             );
 
                                         if (result['success'] == true) {

@@ -387,8 +387,8 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
       return {
         'country_id': '45',
         'city_id': _cityCodeCtrl.text.isNotEmpty ? _cityCodeCtrl.text : '149',
-        'identity_document_id': esNit ? '6' : '3',
-        'type_organization_id': esNit ? 1 : 2,
+        'identity_document_id': esNit ? '2' : '1',
+        'type_organization_id': esNit ? 2 : 1, // 1=Natural, 2=Jurídica (mismo criterio que el backend)
         'tax_regime_id': esNit ? 1 : 2,
         'tax_level_id': 5,
         'company_name': compra.proveedorNombre.isNotEmpty ? compra.proveedorNombre : 'PROVEEDOR',
@@ -435,8 +435,10 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
         'city_id': cityCode
       else
         'city_name': _ciudadExtranjeraCtrl.text.isNotEmpty ? _ciudadExtranjeraCtrl.text : 'Extranjero',
-      'identity_document_id': _mapTipoId(tipoId),
-      'type_organization_id': esJuridica ? 1 : 2,
+      // Proveedor no residente: DIAN exige identity_document_id="10" (NIT de
+      // extranjero) sin importar el tipo de documento guardado.
+      'identity_document_id': esResidente ? _mapTipoId(tipoId) : '10',
+      'type_organization_id': esJuridica ? 2 : 1, // 1=Natural, 2=Jurídica (mismo criterio que el backend)
       'tax_regime_id': taxRegimeId,
       'tax_level_id': taxLevelId,
       'company_name': _nombreCompleto(p).isNotEmpty ? _nombreCompleto(p) : 'PROVEEDOR',
@@ -514,7 +516,10 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
 
     final customer = <String, dynamic>{
       'country_id': esResidente ? '45' : (codigoPais?.isNotEmpty == true ? codigoPais! : '239'),
-      'identity_document_id': esResidente ? '3' : '10',
+      // Este payload simple no pide tipo de documento explícito, así que se
+      // asume Cédula (catálogo unificado: CC=1); "10"=NIT extranjero para no
+      // residentes es un caso aparte, no forma parte del catálogo CC/NIT/CE.
+      'identity_document_id': esResidente ? '1' : '10',
       'type_organization_id': 2,
       'tax_regime_id': 2,
       'tax_level_id': 5,
@@ -575,17 +580,9 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  String _mapTipoId(String tipo) {
-    switch (tipo.toUpperCase()) {
-      case 'CC': return '3';
-      case 'CE': return '2';
-      case 'NIT': return '6';
-      case 'TI': return '4';
-      case 'PAS':
-      case 'PASAPORTE': return '7';
-      default: return '3';
-    }
-  }
+  // Delegado al catálogo único de MatiasService (antes este archivo tenía su
+  // propio catálogo, distinto e inventado: CC=3, NIT=6).
+  String _mapTipoId(String tipo) => MatiasService.mapTipoIdentificacionToMatiasId(tipo);
 
   // ── UI ────────────────────────────────────────────────────────────────────
 

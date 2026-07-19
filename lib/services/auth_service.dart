@@ -20,8 +20,10 @@ class AuthService {
   Future<dynamic> registerUser(
     String name,
     String email,
-    String password,
-  ) async {
+    String password, {
+    required bool aceptaTerminos,
+    required bool aceptaTratamientoDatos,
+  }) async {
     final url = ApiConfig.instance.endpoints.auth.register;
     try {
       final response = await http.post(
@@ -32,6 +34,9 @@ class AuthService {
           'email': email,
           'password': password,
           'roles': ['asesor'], // Rol por defecto para nuevos usuarios
+          'aceptaTerminos': aceptaTerminos,
+          'aceptaTratamientoDatos': aceptaTratamientoDatos,
+          'fechaAceptacionTerminos': DateTime.now().toUtc().toIso8601String(),
         }),
       ).timeout(Duration(seconds: ApiConfig.requestTimeout));
       if (response.statusCode == 200 || response.statusCode == 201) {

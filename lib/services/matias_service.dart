@@ -572,8 +572,8 @@ class MatiasService {
     final correo = datos?['clienteCorreo']?.toString() ?? '';
 
     return {
-      'identity_document_id': _mapTipoIdentificacionToMatiasId(tipoId),
-      'type_organization_id': esNit ? 1 : 2, // 1=Jurídica, 2=Natural
+      'identity_document_id': mapTipoIdentificacionToMatiasId(tipoId),
+      'type_organization_id': esNit ? 2 : 1, // 1=Natural, 2=Jurídica (mismo criterio que el backend)
       'tax_regime_id': esNit ? 1 : 2,
       'tax_level_id': 5, // TODO: leer responsableIVA del cliente
       'company_name': nombreCliente,
@@ -592,7 +592,7 @@ class MatiasService {
   static Map<String, dynamic> _consumidorFinalDefault() {
     return {
       'identity_document_id': '1',
-      'type_organization_id': 2,
+      'type_organization_id': 1, // 1=Natural (mismo criterio que el backend)
       'tax_regime_id': 2,
       'tax_level_id': 5,
       'company_name': 'Consumidor Final',
@@ -606,22 +606,29 @@ class MatiasService {
     };
   }
 
-  /// Mapea el tipo de identificación del cliente al ID que espera Matías.
-  /// Los IDs de Matías pueden no coincidir con los códigos DIAN — verificar
-  /// con `lookup/tipos-documento` si hay rechazo.
-  static String _mapTipoIdentificacionToMatiasId(String tipo) {
+  /// Mapea el tipo de identificación del cliente/proveedor al
+  /// `identity_document_id` que espera Matías. Catálogo único para todo el
+  /// proyecto (backend `MatiasTransformer.extraerCodigoTipoDoc` y frontend),
+  /// confirmado con una factura real aceptada por DIAN usando CC=1. Antes este
+  /// archivo tenía su propio catálogo (CE=2, NIT=6, PAS=7) distinto e inventado
+  /// sin verificar, igual que `documento_soporte_dialog.dart` (CC=3, NIT=6) —
+  /// ver docs/MATIAS_FLUTTER_REFERENCE.md.
+  ///
+  /// "10" (NIT de extranjero/no residente) es un caso aparte, no parte de este
+  /// catálogo: solo aplica a proveedores no residentes en Documento Soporte.
+  static String mapTipoIdentificacionToMatiasId(String tipo) {
     switch (tipo.toUpperCase()) {
       case 'CC':
         return '1'; // Cédula de ciudadanía
-      case 'CE':
-        return '2'; // Cédula de extranjería
       case 'NIT':
-        return '6'; // NIT
-      case 'TI':
-        return '4'; // Tarjeta de identidad
+        return '2'; // NIT
+      case 'CE':
+        return '3'; // Cédula de extranjería
       case 'PAS':
       case 'PASAPORTE':
-        return '7';
+        return '4'; // Pasaporte
+      case 'TI':
+        return '1'; // Sin código DIAN documentado; se asume CC por defecto
       default:
         return '1';
     }
