@@ -1793,7 +1793,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
       final filas = _construirFilasParaExcel(pedidosEnRango, facturasPorPedido);
       for (final f in reconstruidasEnRango) {
         filas.add({
-          'tipo': 'FE',
+          'tipo': f.tipo,
           'numero': f.numero,
           'cliente': f.cliente,
           'fecha': '${f.fecha.year}-${f.fecha.month.toString().padLeft(2, '0')}-${f.fecha.day.toString().padLeft(2, '0')}',
