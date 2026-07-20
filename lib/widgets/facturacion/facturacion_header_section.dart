@@ -75,12 +75,15 @@ class FacturacionHeaderSection extends StatelessWidget {
                   children: [
                     Icon(Icons.receipt_long, color: AppTheme.primary, size: 32),
                     SizedBox(width: 12),
-                    Text(
-                      'Crear factura',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface,
+                    Flexible(
+                      child: Text(
+                        'Crear factura',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                       ),
                     ),
                     Spacer(),
