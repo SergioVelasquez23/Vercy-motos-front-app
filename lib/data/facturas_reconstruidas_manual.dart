@@ -12,10 +12,12 @@
 /// en el campo `notes` de cada documento) contra la colección `pedido`,
 /// para confirmar cuáles quedaron sin Pedido asociado. Se excluyen a
 /// propósito las notas/POS que son pruebas de la integración (montos de
-/// centavos, cliente el propio desarrollador). Se usa ÚNICAMENTE para
-/// completar el Excel exportado desde "Lista documentos" — no participa en
-/// ningún otro reporte, cuadre de caja o cálculo de
-/// inventario.
+/// centavos, cliente el propio desarrollador). Se usa para completar el
+/// Excel exportado desde "Lista documentos" y para corregir los totales de
+/// ventas (hoy/7 días/mes/año) del dashboard (ver
+/// dashboard_screen_v2.dart::_calcularTotalesCorregidos), ya que el backend
+/// no puede contarlas al no tener Pedido asociado. NO participa en cuadre
+/// de caja ni en cálculo de inventario.
 class FacturaReconstruidaManual {
   final String numero;
   final String cliente;

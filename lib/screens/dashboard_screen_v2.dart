@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../services/reportes_service.dart';
 import '../services/pedido_service.dart';
 import '../models/dashboard_data.dart';
+import '../data/facturas_reconstruidas_manual.dart';
 import '../providers/user_provider.dart';
 import '../widgets/admin_key_detector.dart';
 import '../widgets/dashboard/stats_cards_section.dart';
@@ -645,21 +646,43 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     return totalBackend;
   }
 
-  /// Calcula los totales corregidos consultando pedidos reales
+  /// Suma los totales de facturasReconstruidasManual cuya fecha cae dentro
+  /// del rango inicio-fin. Esas facturas fueron aceptadas por la DIAN pero no tienen
+  /// Pedido asociado (se borró antes de facturar), así que el backend no las
+  /// cuenta en ningún período de ventas — por eso el dashboard no coincidía
+  /// con el Excel de "Lista documentos", que sí las incluye.
+  double _sumaFacturasReconstruidasEnRango(DateTime inicio, DateTime fin) {
+    double suma = 0.0;
+    for (final f in facturasReconstruidasManual) {
+      if (!f.fecha.isBefore(inicio) && !f.fecha.isAfter(fin)) {
+        suma += f.total;
+      }
+    }
+    return suma;
+  }
+
+  /// Calcula los totales corregidos sumando al total del backend las
+  /// facturas reconstruidas manualmente que caen en cada período, usando los
+  /// mismos rangos que ReporteService.getDashboard (hoy = desde medianoche;
+  /// semana/mes = últimos 7/30 días; año = desde el 1 de enero).
   Future<void> _calcularTotalesCorregidos() async {
     try {
-      // Por ahora, mantener los valores del backend
-      // En el futuro implementar lógica completa para obtener pedidos y recalcular
-      // TODO: Obtener pedidos de hoy, 7 días, 30 días y año usando PedidoService
-      // TODO: Aplicar PaymentCalculator.calcularTotalReal a cada pedido
-      // TODO: Sumar totales corregidos por período
+      final ahora = DateTime.now();
+      final inicioDia = DateTime(ahora.year, ahora.month, ahora.day);
+      final inicioSemana = ahora.subtract(const Duration(days: 7));
+      final inicioMes = ahora.subtract(const Duration(days: 30));
+      final inicioAnio = DateTime(ahora.year, 1, 1);
 
       setState(() {
         _totalesCorregidos = {
-          'hoy': _dashboardData?.ventasHoy.total ?? 0.0,
-          'semana': _dashboardData?.ventas7Dias.total ?? 0.0,
-          'mes': _dashboardData?.ventas30Dias.total ?? 0.0,
-          'año': _dashboardData?.ventasAnio.total ?? 0.0,
+          'hoy': (_dashboardData?.ventasHoy.total ?? 0.0) +
+              _sumaFacturasReconstruidasEnRango(inicioDia, ahora),
+          'semana': (_dashboardData?.ventas7Dias.total ?? 0.0) +
+              _sumaFacturasReconstruidasEnRango(inicioSemana, ahora),
+          'mes': (_dashboardData?.ventas30Dias.total ?? 0.0) +
+              _sumaFacturasReconstruidasEnRango(inicioMes, ahora),
+          'año': (_dashboardData?.ventasAnio.total ?? 0.0) +
+              _sumaFacturasReconstruidasEnRango(inicioAnio, ahora),
         };
         _calculosCorregidos = true;
       });
