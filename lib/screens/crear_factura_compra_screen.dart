@@ -18,6 +18,9 @@ import '../utils/api_error.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/snackbar_helper.dart';
+import '../widgets/compras/field_label.dart';
+import '../widgets/compras/descripcion_y_retenciones_compacto.dart';
+import '../widgets/compras/resumen_compra_lateral.dart';
 
 class CrearFacturaCompraScreen extends StatefulWidget {
   final FacturaCompra? facturaParaEditar;
@@ -673,7 +676,13 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                                 SizedBox(height: 24),
                                 _buildDatosProducto(),
                                 SizedBox(height: 24),
-                                _buildDescripcionYRetencionesCompacto(),
+                                DescripcionYRetencionesCompacto(
+                            descripcionController: _descripcionController,
+                            porcentajeRetencionController: _porcentajeRetencionController,
+                            porcentajeReteIvaController: _porcentajeReteIvaController,
+                            porcentajeReteIcaController: _porcentajeReteIcaController,
+                            onRetencionChanged: () => setState(() {}),
+                          ),
                                 SizedBox(height: 24),
                                 _buildBotones(),
                               ],
@@ -685,7 +694,16 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                           width: 350,
                           child: SingleChildScrollView(
                             padding: EdgeInsets.all(24),
-                            child: _buildResumenLateral(),
+                            child: ResumenCompraLateral(
+                              items: _items,
+                              descuentoGeneralValorController: _descuentoGeneralValorController,
+                              tipoDescuentoGeneral: _tipoDescuentoGeneral,
+                              onTipoDescuentoGeneralChanged: (v) => setState(() => _tipoDescuentoGeneral = v),
+                              onDescuentoGeneralChanged: () => setState(() {}),
+                              porcentajeRetencionController: _porcentajeRetencionController,
+                              porcentajeReteIvaController: _porcentajeReteIvaController,
+                              porcentajeReteIcaController: _porcentajeReteIcaController,
+                            ),
                           ),
                         ),
                       ],
@@ -701,9 +719,24 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                           SizedBox(height: 20),
                           _buildDatosProducto(),
                           SizedBox(height: 20),
-                          _buildDescripcionYRetencionesCompacto(),
+                          DescripcionYRetencionesCompacto(
+                            descripcionController: _descripcionController,
+                            porcentajeRetencionController: _porcentajeRetencionController,
+                            porcentajeReteIvaController: _porcentajeReteIvaController,
+                            porcentajeReteIcaController: _porcentajeReteIcaController,
+                            onRetencionChanged: () => setState(() {}),
+                          ),
                           SizedBox(height: 20),
-                          _buildResumenLateral(),
+                          ResumenCompraLateral(
+                              items: _items,
+                              descuentoGeneralValorController: _descuentoGeneralValorController,
+                              tipoDescuentoGeneral: _tipoDescuentoGeneral,
+                              onTipoDescuentoGeneralChanged: (v) => setState(() => _tipoDescuentoGeneral = v),
+                              onDescuentoGeneralChanged: () => setState(() {}),
+                              porcentajeRetencionController: _porcentajeRetencionController,
+                              porcentajeReteIvaController: _porcentajeReteIvaController,
+                              porcentajeReteIcaController: _porcentajeReteIcaController,
+                            ),
                           SizedBox(height: 20),
                           _buildBotones(),
                         ],
@@ -1138,10 +1171,10 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
         // Fila 2: Código, Nombre, Cantidad, Valor unitario
         Row(
           children: [
-            _buildFieldLabel('Código', flex: 1),
-            _buildFieldLabel('Nombre producto', flex: 3),
-            _buildFieldLabel('Cantidad', flex: 1),
-            _buildFieldLabel('Valor unitario', flex: 1),
+            FieldLabel('Código', flex: 1),
+            FieldLabel('Nombre producto', flex: 3),
+            FieldLabel('Cantidad', flex: 1),
+            FieldLabel('Valor unitario', flex: 1),
           ],
         ),
         SizedBox(height: 4),
@@ -1711,18 +1744,18 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
               children: [
                 // Etiquetas fila 1
                 Row(children: [
-                  _buildFieldLabel('Total', flex: 2),
-                  _buildFieldLabel('Imp.', flex: 2),
-                  _buildFieldLabel('%', flex: 2),
-                  _buildFieldLabel('Dcto', flex: 2),
-                  _buildFieldLabel('%', flex: 2),
+                  FieldLabel('Total', flex: 2),
+                  FieldLabel('Imp.', flex: 2),
+                  FieldLabel('%', flex: 2),
+                  FieldLabel('Dcto', flex: 2),
+                  FieldLabel('%', flex: 2),
                 ]),
                 SizedBox(height: 4),
                 Row(children: [valorTotalWidget, SizedBox(width: 6), tipoImpWidget, SizedBox(width: 6), pctImpWidget, SizedBox(width: 6), tipoDctoWidget, SizedBox(width: 6), pctDctoWidget]),
                 SizedBox(height: 8),
                 // Etiquetas fila 2
                 Row(children: [
-                  _buildFieldLabel('Destino', flex: 3),
+                  FieldLabel('Destino', flex: 3),
                   if (stockWidget != null) SizedBox(width: 8),
                   SizedBox(width: 60),
                 ]),
@@ -1744,12 +1777,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(children: [
-                _buildFieldLabel('Valor total', flex: 2),
-                _buildFieldLabel('', flex: 2),
-                _buildFieldLabel('% Imp.', flex: 2),
-                _buildFieldLabel('', flex: 2),
-                _buildFieldLabel('% Desc.', flex: 2),
-                _buildFieldLabel('Destino', flex: 3),
+                FieldLabel('Valor total', flex: 2),
+                FieldLabel('', flex: 2),
+                FieldLabel('% Imp.', flex: 2),
+                FieldLabel('', flex: 2),
+                FieldLabel('% Desc.', flex: 2),
+                FieldLabel('Destino', flex: 3),
                 SizedBox(width: 64),
               ]),
               SizedBox(height: 4),
@@ -2059,313 +2092,6 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
     );
   }
 
-  Widget _buildFieldLabel(String label, {int flex = 1}) {
-    return Expanded(
-      flex: flex,
-      child: Text(
-        label,
-        style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
-      ),
-    );
-  }
-
-  // Descripción y Retenciones lado a lado como en la imagen
-  Widget _buildDescripcionYRetencionesCompacto() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Descripción
-        Expanded(
-          flex: 2,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Descripción',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
-              ),
-              SizedBox(height: 8),
-              TextField(
-                controller: _descripcionController,
-                maxLines: 4,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: 'Descripción de la compra...',
-                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surface,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(width: 24),
-        // Retenciones
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildRetencionField('Retención', _porcentajeRetencionController),
-              SizedBox(height: 8),
-              _buildRetencionField('Reteiva', _porcentajeReteIvaController),
-              SizedBox(height: 8),
-              _buildRetencionField('Reteica', _porcentajeReteIcaController),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRetencionField(String label, TextEditingController controller) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 80,
-          child: Text(
-            label,
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
-          ),
-        ),
-        Expanded(
-          child: TextField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
-            decoration: InputDecoration(
-              isDense: true,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-              suffixText: '%',
-              suffixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-              filled: true,
-              fillColor: Theme.of(context).colorScheme.surface,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4),
-                borderSide: BorderSide.none,
-              ),
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Resumen lateral como en la imagen
-  Widget _buildResumenLateral() {
-    // Calcular totales
-    final subtotalItems = _items.fold<double>(
-      0,
-      (sum, item) => sum + item.subtotal,
-    );
-    final totalDescuentosItems = _items.fold<double>(
-      0,
-      (sum, item) => sum + item.valorDescuento,
-    );
-
-    final descuentoGeneralValor =
-        double.tryParse(_descuentoGeneralValorController.text) ?? 0;
-    double descuentoGeneralAplicado = 0;
-    if (_tipoDescuentoGeneral == 'Porcentaje') {
-      descuentoGeneralAplicado = subtotalItems * (descuentoGeneralValor / 100);
-    } else {
-      descuentoGeneralAplicado = descuentoGeneralValor;
-    }
-
-    final baseGravable =
-        subtotalItems - totalDescuentosItems - descuentoGeneralAplicado;
-    final totalImpuestosItems = _items.fold<double>(
-      0,
-      (sum, item) => sum + item.valorImpuesto,
-    );
-
-    final porcRetencion =
-        double.tryParse(_porcentajeRetencionController.text) ?? 0;
-    final porcReteIva = double.tryParse(_porcentajeReteIvaController.text) ?? 0;
-    final porcReteIca = double.tryParse(_porcentajeReteIcaController.text) ?? 0;
-
-    final valorRetencion = baseGravable * (porcRetencion / 100);
-    final valorReteIva = totalImpuestosItems * (porcReteIva / 100);
-    final valorReteIca = baseGravable * (porcReteIca / 100);
-
-    final totalFinal =
-        baseGravable +
-        totalImpuestosItems -
-        valorRetencion -
-        valorReteIva -
-        valorReteIca;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildResumenRowCompacto('Subtotal', subtotalItems),
-        _buildResumenRowCompacto(
-          'Dcto Producto',
-          totalDescuentosItems,
-          isNegative: true,
-        ),
-        // Dcto General con dropdown — label arriba, controles abajo para
-        // evitar overflow en el panel lateral angosto.
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Dcto General',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                SizedBox(
-                  width: 80,
-                  height: 36,
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _tipoDescuentoGeneral == 'Porcentaje' ? '%' : 'Valor',
-                    isExpanded: true,
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      filled: true,
-                      fillColor: Theme.of(context).colorScheme.surface,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(4),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    dropdownColor: Theme.of(context).colorScheme.surface,
-                    items: const [
-                      DropdownMenuItem(value: 'Valor', child: Text('Valor')),
-                      DropdownMenuItem(value: '%', child: Text('%')),
-                    ],
-                    onChanged: (v) {
-                      setState(
-                        () => _tipoDescuentoGeneral =
-                            v == '%' ? 'Porcentaje' : 'Valor',
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: SizedBox(
-                    height: 36,
-                    child: TextField(
-                      controller: _descuentoGeneralValorController,
-                      keyboardType: TextInputType.number,
-                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 8,
-                        ),
-                        prefixText: _tipoDescuentoGeneral == 'Porcentaje' ? null : '\$',
-                        suffixText: _tipoDescuentoGeneral == 'Porcentaje' ? '%' : null,
-                        prefixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-                        suffixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-                        filled: true,
-                        fillColor: Theme.of(context).colorScheme.surface,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(4),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        SizedBox(height: 8),
-        _buildResumenRowCompacto('Impuesto', totalImpuestosItems),
-        _buildResumenRowCompacto('Retención', valorRetencion, isNegative: true),
-        _buildResumenRowCompacto('Reteiva', valorReteIva, isNegative: true),
-        _buildResumenRowCompacto('Reteica', valorReteIca, isNegative: true),
-        SizedBox(height: 8),
-        Divider(color: AppTheme.primary.withOpacity(0.3)),
-        SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'TOTAL',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                CurrencyUtils.format(totalFinal),
-                style: TextStyle(
-                  color: AppTheme.primary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildResumenRowCompacto(
-    String label,
-    double valor, {
-    bool isNegative = false,
-  }) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
-          ),
-          Container(
-            width: 120,
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              '${isNegative && valor > 0 ? "-" : ""}${CurrencyUtils.format(valor.abs())}',
-              style: TextStyle(
-                color: isNegative && valor > 0
-                    ? Colors.red[300]
-                    : Theme.of(context).colorScheme.onSurface,
-                fontSize: 13,
-              ),
-              textAlign: TextAlign.right,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   String _formatearFechaISO(DateTime fecha) {
     return '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}';
   }
@@ -2526,7 +2252,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
       // baseGravable. El resumen (Subtotal / Dcto Producto / Impuesto / Total)
       // ya resta el descuento por separado: si aquí se guarda ya neto, el
       // descuento se resta dos veces y el Total sale más bajo de lo que
-      // debería (ver _buildResumenLateral/_buildResumen).
+      // debería (ver ResumenCompraLateral en lib/widgets/compras/).
       subtotal: subtotal,
       valorImpuesto: impuesto,
       valorDescuento: descuento,
