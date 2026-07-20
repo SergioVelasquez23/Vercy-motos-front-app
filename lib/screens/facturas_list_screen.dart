@@ -322,10 +322,10 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
             );
           },
         ),
-        ScreenHeaderAction.secondary(
+        ScreenHeaderAction.iconOnly(
           icon: _mostrarLocales ? Icons.visibility_off : Icons.visibility,
-          label: _mostrarLocales ? 'Ocultar locales' : 'Mostrar locales',
-          mobileLabel: _mostrarLocales ? 'Ocultar loc.' : 'Mostrar loc.',
+          tooltip: _mostrarLocales ? 'Ocultar locales' : 'Mostrar locales',
+          color: AppTheme.secondary,
           onPressed: () {
             setState(() {
               _mostrarLocales = !_mostrarLocales;

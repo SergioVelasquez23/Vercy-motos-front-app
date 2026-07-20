@@ -235,6 +235,89 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
     }
   }
 
+  // Método para construir filtros de categorías
+  List<Widget> _buildCategoriaCompactRowProductos() {
+    List<Widget> widgets = [];
+
+    // Botón "Todas"
+    widgets.add(
+      GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedCategoriaId = null;
+            _paginaActual = 0;
+            _aplicarFiltrosYPaginacion();
+          });
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: _selectedCategoriaId == null
+                ? AppTheme.primary
+                : Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: _selectedCategoriaId == null
+                  ? AppTheme.primary
+                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3),
+            ),
+          ),
+          child: Text(
+            'Todas',
+            style: TextStyle(
+              color: _selectedCategoriaId == null
+                  ? Colors.white
+                  : Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    widgets.add(SizedBox(width: 8));
+
+    // Botones de categorías
+    for (var categoria in _categorias) {
+      widgets.add(
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedCategoriaId = categoria.id;
+              _paginaActual = 0;
+              _aplicarFiltrosYPaginacion();
+            });
+          },
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: _selectedCategoriaId == categoria.id
+                  ? AppTheme.primary
+                  : Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: _selectedCategoriaId == categoria.id
+                    ? AppTheme.primary
+                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3),
+              ),
+            ),
+            child: Text(
+              categoria.nombre,
+              style: TextStyle(
+                color: _selectedCategoriaId == categoria.id
+                    ? Colors.white
+                    : Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      );
+      widgets.add(SizedBox(width: 8));
+    }
+
+    return widgets;
+  }
 
   @override
   Widget build(BuildContext context) {
