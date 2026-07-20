@@ -4,7 +4,6 @@ import '../widgets/imagen_producto_widget.dart';
 import '../widgets/optimized_loading_widget.dart';
 import '../config/performance_config.dart';
 import '../config/constants.dart';
-import 'package:barcode_widget/barcode_widget.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -30,6 +29,9 @@ import '../services/image_loader_service.dart';
 import '../utils/format_utils.dart';
 import '../utils/logger.dart';
 import '../widgets/productos/producto_item_card.dart';
+import '../widgets/productos/categoria_filter_row.dart';
+import '../widgets/productos/labeled_dropdown_field.dart';
+import '../widgets/productos/codigo_barras_preview.dart';
 import '../widgets/common/pagination_controls.dart';
 import '../utils/snackbar_helper.dart';
 import '../utils/dialogs_helper.dart';
@@ -233,90 +235,6 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
         _aplicarFiltrosYPaginacion();
       });
     }
-  }
-
-  // Método para construir filtros de categorías
-  List<Widget> _buildCategoriaCompactRowProductos() {
-    List<Widget> widgets = [];
-
-    // Botón "Todas"
-    widgets.add(
-      GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedCategoriaId = null;
-            _paginaActual = 0;
-            _aplicarFiltrosYPaginacion();
-          });
-        },
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: _selectedCategoriaId == null
-                ? AppTheme.primary
-                : Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: _selectedCategoriaId == null
-                  ? AppTheme.primary
-                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3),
-            ),
-          ),
-          child: Text(
-            'Todas',
-            style: TextStyle(
-              color: _selectedCategoriaId == null
-                  ? Colors.white
-                  : Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ),
-    );
-
-    widgets.add(SizedBox(width: 8));
-
-    // Botones de categorías
-    for (var categoria in _categorias) {
-      widgets.add(
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedCategoriaId = categoria.id;
-              _paginaActual = 0;
-              _aplicarFiltrosYPaginacion();
-            });
-          },
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: _selectedCategoriaId == categoria.id
-                  ? AppTheme.primary
-                  : Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: _selectedCategoriaId == categoria.id
-                    ? AppTheme.primary
-                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3),
-              ),
-            ),
-            child: Text(
-              categoria.nombre,
-              style: TextStyle(
-                color: _selectedCategoriaId == categoria.id
-                    ? Colors.white
-                    : Theme.of(context).colorScheme.onSurface,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
-      );
-      widgets.add(SizedBox(width: 8));
-    }
-
-    return widgets;
   }
 
   @override
@@ -585,9 +503,16 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                       left: 4, // Padding mínimo a la izquierda
                       right: 16,
                     ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: _buildCategoriaCompactRowProductos(),
+                    child: CategoriaFilterRow(
+                      categorias: _categorias,
+                      selectedCategoriaId: _selectedCategoriaId,
+                      onCategoriaSelected: (id) {
+                        setState(() {
+                          _selectedCategoriaId = id;
+                          _paginaActual = 0;
+                          _aplicarFiltrosYPaginacion();
+                        });
+                      },
                     ),
                   ),
                 ),
@@ -4055,32 +3980,32 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                       runSpacing: 12,
                       children: [
                         // Unidad de medida
-                        _buildDropdownField(
-                          'Unidad',
-                          unidadMedida,
-                          ['Unics', 'Kg', 'Lt', 'Mt', 'Und'],
-                          (value) =>
+                        LabeledDropdownField(
+                          label: 'Unidad',
+                          value: unidadMedida,
+                          items: ['Unics', 'Kg', 'Lt', 'Mt', 'Und'],
+                          onChanged: (value) =>
                               setDialogState(() => unidadMedida = value!),
-                          120,
+                          width: 120,
                         ),
 
                         // Tipo de fecha
-                        _buildDropdownField(
-                          'Fecha',
-                          tipoFecha,
-                          ['-Fect', '+Fect', 'N/A'],
-                          (value) => setDialogState(() => tipoFecha = value!),
-                          120,
+                        LabeledDropdownField(
+                          label: 'Fecha',
+                          value: tipoFecha,
+                          items: ['-Fect', '+Fect', 'N/A'],
+                          onChanged: (value) => setDialogState(() => tipoFecha = value!),
+                          width: 120,
                         ),
 
                         // Mostrar precio
-                        _buildDropdownField(
-                          'Precio',
-                          mostrarPrecio,
-                          ['Si', 'No'],
-                          (value) =>
+                        LabeledDropdownField(
+                          label: 'Precio',
+                          value: mostrarPrecio,
+                          items: ['Si', 'No'],
+                          onChanged: (value) =>
                               setDialogState(() => mostrarPrecio = value!),
-                          100,
+                          width: 100,
                         ),
 
                         // Cantidad
@@ -4126,21 +4051,21 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                         ),
 
                         // Lista de precios
-                        _buildDropdownField(
-                          'Lista',
-                          tipoLista,
-                          ['-Lis.p', '+Lis.p', 'Detal', 'Mayor'],
-                          (value) => setDialogState(() => tipoLista = value!),
-                          120,
+                        LabeledDropdownField(
+                          label: 'Lista',
+                          value: tipoLista,
+                          items: ['-Lis.p', '+Lis.p', 'Detal', 'Mayor'],
+                          onChanged: (value) => setDialogState(() => tipoLista = value!),
+                          width: 120,
                         ),
 
                         // Tipo de precio
-                        _buildDropdownField(
-                          'Tipo',
-                          tipoPrecio,
-                          ['-Prec', '+Prec', 'Base'],
-                          (value) => setDialogState(() => tipoPrecio = value!),
-                          120,
+                        LabeledDropdownField(
+                          label: 'Tipo',
+                          value: tipoPrecio,
+                          items: ['-Prec', '+Prec', 'Base'],
+                          onChanged: (value) => setDialogState(() => tipoPrecio = value!),
+                          width: 120,
                         ),
                       ],
                     ),
@@ -4170,8 +4095,8 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                               ),
                             ),
                             SizedBox(height: 12),
-                            _buildCodigoBarrasPreview(
-                              productoSeleccionado!,
+                            CodigoBarrasPreview(
+                              producto: productoSeleccionado!,
                               mostrarPrecio: mostrarPrecio == 'Si',
                               unidadMedida: unidadMedida,
                               tipoFecha: tipoFecha,
@@ -4220,160 +4145,6 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
     );
   }
 
-  Widget _buildDropdownField(
-    String label,
-    String value,
-    List<String> items,
-    void Function(String?) onChanged,
-    double width,
-  ) {
-    return Container(
-      width: width,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
-          ),
-          SizedBox(height: 4),
-          DropdownButtonFormField<String>(
-            value: value,
-            items: items
-                .map((item) => DropdownMenuItem(value: item, child: Text(item)))
-                .toList(),
-            onChanged: onChanged,
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
-            dropdownColor: Theme.of(context).colorScheme.surface,
-            decoration: InputDecoration(
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              filled: true,
-              fillColor: Theme.of(context).colorScheme.surface,
-              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCodigoBarrasPreview(
-    Producto producto, {
-    required bool mostrarPrecio,
-    required String unidadMedida,
-    required String tipoFecha,
-    required String tipoLista,
-    required String tipoPrecio,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Unidad de medida y tipo de fecha
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                unidadMedida,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                tipoFecha,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 4),
-          // Nombre del producto
-          Text(
-            producto.nombre,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          SizedBox(height: 4),
-          // Tipo de lista y tipo de precio
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                tipoLista,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 9),
-              ),
-              Text(
-                tipoPrecio,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 9),
-              ),
-            ],
-          ),
-          SizedBox(height: 4),
-          // Precio (solo si está seleccionado)
-          if (mostrarPrecio)
-            Text(
-              formatCurrency(producto.precio),
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          if (mostrarPrecio) SizedBox(height: 8),
-          // Código de barras
-          if (producto.codigoBarras != null &&
-              producto.codigoBarras!.isNotEmpty)
-            BarcodeWidget(
-              barcode: Barcode.code128(),
-              data: producto.codigoBarras!,
-              width: 180,
-              height: 60,
-              drawText: false,
-            )
-          else if (producto.codigo != null && producto.codigo!.isNotEmpty)
-            BarcodeWidget(
-              barcode: Barcode.code128(),
-              data: producto.codigo!,
-              width: 180,
-              height: 60,
-              drawText: false,
-            )
-          else
-            Container(
-              padding: EdgeInsets.all(20),
-              child: Text(
-                'Sin código de barras',
-                style: TextStyle(color: Colors.red, fontSize: 12),
-              ),
-            ),
-          SizedBox(height: 4),
-          // Número del código
-          Text(
-            producto.codigoBarras ?? producto.codigo ?? 'N/A',
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 10),
-          ),
-        ],
-      ),
-    );
-  }
 
   Future<void> _imprimirCodigoBarras(
     Producto producto,
