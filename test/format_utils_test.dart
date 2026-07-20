@@ -30,19 +30,17 @@ void main() {
       expect(formatNumberWithDots('\$ 55500 '), '55.500');
     });
 
-    test(
-      'BUG conocido: un String con coma de miles estilo US se malinterpreta como decimal',
-      () {
-        // El código reemplaza ',' por '.' asumiendo que la coma es separador de
-        // miles (comentario: "Comas por puntos"), pero luego parsea con
-        // double.tryParse, que trata un solo punto como separador DECIMAL. Por
-        // eso "55,500" (55500) termina leyéndose como 55.5 y se redondea a 56,
-        // no a 55.500. No se corrige aquí — esto solo agrega tests, no cambia
-        // lógica de producción — se deja caracterizado el comportamiento real
-        // para que quien lo revise sepa que existe.
-        expect(formatNumberWithDots('55,500'), '56');
-      },
-    );
+    test('un String con coma de miles estilo US se interpreta correctamente (no como decimal)', () {
+      // Antes: la coma se reemplazaba por punto y double.tryParse la leía
+      // como separador decimal ("55,500" -> 55.5 -> redondeaba a 56).
+      // Ahora se descarta igual que hace CurrencyUtils.parse en el resto
+      // del código (esta app no maneja centavos de peso).
+      expect(formatNumberWithDots('55,500'), '55.500');
+    });
+
+    test('un String con coma de miles y punto decimal estilo US también se interpreta bien', () {
+      expect(formatNumberWithDots('1,234.56'), '1.235'); // redondea, sin decimales
+    });
 
     test('String vacío o no numérico da "0"', () {
       expect(formatNumberWithDots(''), '0');

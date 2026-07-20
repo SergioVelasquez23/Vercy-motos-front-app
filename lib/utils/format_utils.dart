@@ -26,9 +26,17 @@ String formatNumberWithDots(dynamic value) {
       _formatCache[cacheKey] = '0';
       return '0';
     }
-    // Limpiar cualquier formato existente que pueda venir del backend
+    // Limpiar cualquier formato existente que pueda venir del backend.
+    //
+    // BUG corregido: antes se reemplazaba ',' por '.' asumiendo que la coma
+    // era separador de miles (ej. "55,500"), pero double.tryParse interpreta
+    // un solo punto como separador DECIMAL — "55,500" terminaba leyéndose
+    // como 55.5 en vez de 55500. Igual que CurrencyUtils.parse (que ya
+    // descarta puntos Y comas por completo, sin soporte de decimales, porque
+    // el peso colombiano no maneja centavos en esta app), la coma se
+    // descarta en vez de convertirse en punto.
     final cleanValue = value
-        .replaceAll(',', '.') // Comas por puntos
+        .replaceAll(',', '') // Comas de miles se descartan
         .replaceAll(' ', '') // Espacios
         .replaceAll('\$', '') // Símbolos de moneda
         .replaceAll('\n', '') // Saltos de línea
