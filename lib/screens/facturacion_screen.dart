@@ -304,6 +304,12 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     // Precargar nombre del cliente
     _clienteController.text = pedido.clienteNombre;
 
+    // Precargar las observaciones que el asesor dejó al crear el pedido, para
+    // que caja las vea sin tener que volver a preguntarle al cliente/asesor.
+    if (pedido.observaciones != null && pedido.observaciones!.isNotEmpty) {
+      _observacionesController.text = pedido.observaciones!;
+    }
+
     Cliente? clienteEncontrado;
     if (pedido.clienteId != null) {
       clienteEncontrado = _clientesDisponibles
