@@ -13,6 +13,7 @@ import '../services/pedido_asesor_service.dart';
 import '../services/producto_service.dart';
 import '../services/cliente_service.dart';
 import '../services/traslado_service.dart';
+import '../services/colombia_location_service.dart';
 import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
@@ -224,6 +225,8 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
             productoNombre: producto.nombre,
             cantidad: cantidad,
             precioUnitario: precioIngresado,
+            porcentajeImpuesto: producto.impuestos,
+            valorImpuesto: cantidad * precioIngresado * producto.impuestos / 100,
             origen: 'ALMACÉN',
           ),
         );
@@ -313,11 +316,17 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
 
       if (index >= 0) {
         // Ya existe un item con el mismo producto y origen, incrementar cantidad
+        final nuevaCantidad = _carrito[index].cantidad + cantidad;
         _carrito[index] = ItemPedido(
           productoId: _carrito[index].productoId,
           productoNombre: _carrito[index].productoNombre ?? 'Producto',
-          cantidad: _carrito[index].cantidad + cantidad,
+          cantidad: nuevaCantidad,
           precioUnitario: _carrito[index].precioUnitario,
+          porcentajeImpuesto: _carrito[index].porcentajeImpuesto,
+          valorImpuesto: nuevaCantidad *
+              _carrito[index].precioUnitario *
+              _carrito[index].porcentajeImpuesto /
+              100,
           origen: origen,
         );
       } else {
@@ -328,6 +337,8 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
             productoNombre: producto.nombre,
             cantidad: cantidad,
             precioUnitario: producto.precio,
+            porcentajeImpuesto: producto.impuestos,
+            valorImpuesto: cantidad * producto.precio * producto.impuestos / 100,
             origen: origen,
           ),
         );
@@ -396,6 +407,8 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
         productoNombre: item.productoNombre ?? 'Producto',
         cantidad: nuevaCantidad,
         precioUnitario: item.precioUnitario,
+        porcentajeImpuesto: item.porcentajeImpuesto,
+        valorImpuesto: nuevaCantidad * item.precioUnitario * item.porcentajeImpuesto / 100,
         origen: item.origen, // ✅ Preservar el origen seleccionado
       );
       _calcularTotales();
@@ -427,6 +440,14 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
   bool _esManoDeObra(Producto? producto) {
     final nombre = producto?.nombre.toUpperCase() ?? '';
     return nombre.contains('MANO') && nombre.contains('OBRA');
+  }
+
+  // 📦 Si quien crea/edita el pedido es el propio usuario de bodega, no tiene
+  // sentido generar un traslado (bodega no se lo transfiere a sí misma) ni
+  // disparar la notificación de sonido que alerta al equipo de bodega de un
+  // traslado pendiente por preparar.
+  bool _esUsuarioBodega(UserProvider userProvider) {
+    return userProvider.userName?.toLowerCase().contains('bodega') ?? false;
   }
 
   TextEditingController _ctrlPrecio(ItemPedido item) {
@@ -498,8 +519,11 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
       }
       final bodegaItems = _carrito.where((item) => item.origen == 'BODEGA').toList();
       appLog('🔍 [Traslado] Items de BODEGA encontrados: ${bodegaItems.length}');
+      final esUsuarioBodega = _esUsuarioBodega(userProvider);
 
-      if (bodegaItems.isNotEmpty) {
+      if (bodegaItems.isNotEmpty && esUsuarioBodega) {
+        appLog('ℹ️ [Traslado] Usuario de bodega crea su propio pedido → se omite traslado y notificación');
+      } else if (bodegaItems.isNotEmpty) {
         appLog('🔍 [Traslado] Creando traslado con ${bodegaItems.length} item(s)...');
         try {
           final traslado = await _trasladoService.crearTraslado(
@@ -509,7 +533,8 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
             origen: 'BODEGA',
             destino: 'ALMACEN',
             asesor: userProvider.userName ?? 'Asesor',
-            observaciones: 'Pedido asesor - cliente: ${_clienteSeleccionado!.razonSocial ?? '${_clienteSeleccionado!.nombres ?? ''} ${_clienteSeleccionado!.apellidos ?? ''}'.trim()}',
+            observaciones: 'Pedido asesor - cliente: ${_clienteSeleccionado!.razonSocial ?? '${_clienteSeleccionado!.nombres ?? ''} ${_clienteSeleccionado!.apellidos ?? ''}'.trim()}'
+                '${_observacionesController.text.trim().isNotEmpty ? ' | Obs: ${_observacionesController.text.trim()}' : ''}',
           );
           appLog('✅ [Traslado] Creado con id: ${traslado.id}');
           final trasladoId = traslado.id;
@@ -522,6 +547,8 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                   cantidad: item.cantidad,
                   precioUnitario: item.precioUnitario,
                   notas: item.notas,
+                  porcentajeImpuesto: item.porcentajeImpuesto,
+                  valorImpuesto: item.valorImpuesto,
                   origen: item.origen,
                   trasladoId: trasladoId,
                 );
@@ -882,15 +909,16 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
             // Gestionar traslados de bodega en los nuevos items
             List<ItemPedido> nuevosFinales = List.from(nuevosItems);
             final bodegaItems = nuevosItems.where((i) => i.origen == 'BODEGA').toList();
-            if (bodegaItems.isNotEmpty) {
+            final userProvider = Provider.of<UserProvider>(context, listen: false);
+            if (bodegaItems.isNotEmpty && !_esUsuarioBodega(userProvider)) {
               try {
-                final userProvider = Provider.of<UserProvider>(context, listen: false);
                 final traslado = await _trasladoService.crearTraslado(
                   items: bodegaItems.map((i) => {'productoId': i.productoId, 'cantidad': i.cantidad}).toList(),
                   origen: 'BODEGA',
                   destino: 'ALMACEN',
                   asesor: userProvider.userName ?? 'Asesor',
-                  observaciones: 'Adición a pedido - cliente: ${pedido.clienteNombre}',
+                  observaciones: 'Adición a pedido - cliente: ${pedido.clienteNombre}'
+                      '${(pedido.observaciones?.trim().isNotEmpty ?? false) ? ' | Obs: ${pedido.observaciones!.trim()}' : ''}',
                 );
                 final trasladoId = traslado.id;
                 if (trasladoId != null) {
@@ -901,6 +929,8 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                         productoNombre: i.productoNombre,
                         cantidad: i.cantidad,
                         precioUnitario: i.precioUnitario,
+                        porcentajeImpuesto: i.porcentajeImpuesto,
+                        valorImpuesto: i.valorImpuesto,
                         origen: i.origen,
                         trasladoId: trasladoId,
                       );
@@ -3083,8 +3113,11 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
       }
       final bodegaItems = _carrito.where((item) => item.origen == 'BODEGA').toList();
       appLog('🔍 [Traslado/Modal] Items de BODEGA: ${bodegaItems.length}');
+      final esUsuarioBodega = _esUsuarioBodega(userProvider);
 
-      if (bodegaItems.isNotEmpty) {
+      if (bodegaItems.isNotEmpty && esUsuarioBodega) {
+        appLog('ℹ️ [Traslado/Modal] Usuario de bodega crea su propio pedido → se omite traslado y notificación');
+      } else if (bodegaItems.isNotEmpty) {
         appLog('🔍 [Traslado/Modal] Creando traslado...');
         try {
           final traslado = await _trasladoService.crearTraslado(
@@ -3094,7 +3127,8 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
             origen: 'BODEGA',
             destino: 'ALMACEN',
             asesor: userProvider.userName ?? 'Asesor',
-            observaciones: 'Pedido asesor - cliente: ${_clienteSeleccionado!.razonSocial ?? '${_clienteSeleccionado!.nombres ?? ''} ${_clienteSeleccionado!.apellidos ?? ''}'.trim()}',
+            observaciones: 'Pedido asesor - cliente: ${_clienteSeleccionado!.razonSocial ?? '${_clienteSeleccionado!.nombres ?? ''} ${_clienteSeleccionado!.apellidos ?? ''}'.trim()}'
+                '${_observacionesController.text.trim().isNotEmpty ? ' | Obs: ${_observacionesController.text.trim()}' : ''}',
           );
           appLog('✅ [Traslado/Modal] Traslado creado: ${traslado.id}');
           final trasladoId = traslado.id;
@@ -3107,6 +3141,8 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                   cantidad: item.cantidad,
                   precioUnitario: item.precioUnitario,
                   notas: item.notas,
+                  porcentajeImpuesto: item.porcentajeImpuesto,
+                  valorImpuesto: item.valorImpuesto,
                   origen: item.origen,
                   trasladoId: trasladoId,
                 );
@@ -3321,13 +3357,79 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
     final docController = TextEditingController();
     final telefonoController = TextEditingController();
     final correoController = TextEditingController();
+    final direccionController = TextEditingController();
+    final codigoPostalController = TextEditingController();
+    final telefonoSecundarioController = TextEditingController();
+    final diasCreditoController = TextEditingController(text: '0');
+    final cupoCreditoController = TextEditingController();
     String tipoDoc = 'CC';
     String tipoPersona = 'Persona Natural';
+
+    // 📋 Datos opcionales (dirección, tributarios, comerciales) — ocultos por
+    // defecto detrás de "Mostrar más datos" para no saturar al asesor con
+    // campos que casi nunca necesita llenar en una venta rápida.
+    bool mostrarMas = false;
+    bool cargandoDepartamentos = false;
+    bool cargandoMunicipios = false;
+    List<Departamento> departamentos = [];
+    List<Municipio> municipios = [];
+    Departamento? departamentoSeleccionado;
+    Municipio? municipioSeleccionado;
+    String responsableIVA = 'No';
+    String calidadAgenteRetencion = 'No aplica';
+    String? regimenTributario;
+    String condicionPago = 'contado';
+    final locationService = ColombiaLocationService();
+
+    InputDecoration decoracionCampo(BuildContext context, String label) {
+      return InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+        filled: true,
+        fillColor: Theme.of(context).colorScheme.surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
+      );
+    }
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+        builder: (context, setDialogState) {
+          Future<void> cargarDepartamentos() async {
+            if (departamentos.isNotEmpty || cargandoDepartamentos) return;
+            setDialogState(() => cargandoDepartamentos = true);
+            try {
+              final result = await locationService.getDepartamentos();
+              setDialogState(() {
+                departamentos = result;
+                cargandoDepartamentos = false;
+              });
+            } catch (_) {
+              setDialogState(() => cargandoDepartamentos = false);
+            }
+          }
+
+          Future<void> cargarMunicipios(int departamentoId) async {
+            setDialogState(() {
+              cargandoMunicipios = true;
+              municipios = [];
+              municipioSeleccionado = null;
+            });
+            try {
+              final result = await locationService.getMunicipios(departamentoId);
+              setDialogState(() {
+                municipios = result;
+                cargandoMunicipios = false;
+              });
+            } catch (_) {
+              setDialogState(() => cargandoMunicipios = false);
+            }
+          }
+
+          return AlertDialog(
           backgroundColor: Theme.of(context).colorScheme.surface,
           title: Text(
             'Crear Nuevo Cliente',
@@ -3484,6 +3586,274 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                     ),
                   ),
                 ),
+                SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () {
+                      setDialogState(() => mostrarMas = !mostrarMas);
+                      if (mostrarMas) cargarDepartamentos();
+                    },
+                    icon: Icon(
+                      mostrarMas ? Icons.expand_less : Icons.expand_more,
+                      color: AppTheme.primary,
+                    ),
+                    label: Text(
+                      mostrarMas ? 'Ocultar datos adicionales' : 'Mostrar más datos (opcional)',
+                      style: TextStyle(color: AppTheme.primary),
+                    ),
+                  ),
+                ),
+                if (mostrarMas) ...[
+                  TextField(
+                    controller: direccionController,
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                    decoration: decoracionCampo(context, 'Dirección'),
+                  ),
+                  SizedBox(height: 12),
+                  TextField(
+                    controller: telefonoSecundarioController,
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                    keyboardType: TextInputType.phone,
+                    decoration: decoracionCampo(context, 'Teléfono Secundario'),
+                  ),
+                  SizedBox(height: 12),
+                  cargandoDepartamentos
+                      ? InputDecorator(
+                          decoration: decoracionCampo(context, 'Departamento'),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary),
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                'Cargando departamentos...',
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                              ),
+                            ],
+                          ),
+                        )
+                      : Autocomplete<Departamento>(
+                          displayStringForOption: (d) => d.name,
+                          initialValue: departamentoSeleccionado != null
+                              ? TextEditingValue(text: departamentoSeleccionado!.name)
+                              : null,
+                          optionsBuilder: (TextEditingValue textEditingValue) {
+                            if (textEditingValue.text.isEmpty) return departamentos;
+                            return departamentos.where(
+                              (d) => d.name.toLowerCase().contains(textEditingValue.text.toLowerCase()),
+                            );
+                          },
+                          onSelected: (Departamento d) {
+                            setDialogState(() => departamentoSeleccionado = d);
+                            cargarMunicipios(d.id);
+                          },
+                          fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
+                            return TextField(
+                              controller: textController,
+                              focusNode: focusNode,
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                              decoration: decoracionCampo(context, 'Departamento'),
+                            );
+                          },
+                          optionsViewBuilder: (context, onSelected, options) {
+                            return Align(
+                              alignment: Alignment.topLeft,
+                              child: Material(
+                                elevation: 4,
+                                color: Theme.of(context).colorScheme.surface,
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  constraints: BoxConstraints(maxHeight: 250, maxWidth: 320),
+                                  child: ListView.builder(
+                                    padding: EdgeInsets.zero,
+                                    shrinkWrap: true,
+                                    itemCount: options.length,
+                                    itemBuilder: (context, index) {
+                                      final d = options.elementAt(index);
+                                      return ListTile(
+                                        dense: true,
+                                        title: Text(
+                                          d.name,
+                                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                                        ),
+                                        onTap: () => onSelected(d),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                  SizedBox(height: 12),
+                  cargandoMunicipios
+                      ? InputDecorator(
+                          decoration: decoracionCampo(context, 'Ciudad / Municipio'),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary),
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                'Cargando municipios...',
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                              ),
+                            ],
+                          ),
+                        )
+                      : departamentoSeleccionado == null
+                          ? InputDecorator(
+                              decoration: decoracionCampo(context, 'Ciudad / Municipio'),
+                              child: Text(
+                                'Seleccione primero un departamento',
+                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                              ),
+                            )
+                          : Autocomplete<Municipio>(
+                              displayStringForOption: (m) => m.name,
+                              initialValue: municipioSeleccionado != null
+                                  ? TextEditingValue(text: municipioSeleccionado!.name)
+                                  : null,
+                              optionsBuilder: (TextEditingValue textEditingValue) {
+                                if (textEditingValue.text.isEmpty) return municipios;
+                                return municipios.where(
+                                  (m) => m.name.toLowerCase().contains(textEditingValue.text.toLowerCase()),
+                                );
+                              },
+                              onSelected: (Municipio m) {
+                                setDialogState(() => municipioSeleccionado = m);
+                              },
+                              fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
+                                return TextField(
+                                  controller: textController,
+                                  focusNode: focusNode,
+                                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                                  decoration: decoracionCampo(context, 'Ciudad / Municipio'),
+                                );
+                              },
+                              optionsViewBuilder: (context, onSelected, options) {
+                                return Align(
+                                  alignment: Alignment.topLeft,
+                                  child: Material(
+                                    elevation: 4,
+                                    color: Theme.of(context).colorScheme.surface,
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      constraints: BoxConstraints(maxHeight: 250, maxWidth: 320),
+                                      child: ListView.builder(
+                                        padding: EdgeInsets.zero,
+                                        shrinkWrap: true,
+                                        itemCount: options.length,
+                                        itemBuilder: (context, index) {
+                                          final m = options.elementAt(index);
+                                          return ListTile(
+                                            dense: true,
+                                            title: Text(
+                                              m.name,
+                                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                                            ),
+                                            onTap: () => onSelected(m),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                  SizedBox(height: 12),
+                  TextField(
+                    controller: codigoPostalController,
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                    keyboardType: TextInputType.number,
+                    decoration: decoracionCampo(context, 'Código Postal'),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Datos tributarios y comerciales',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: responsableIVA,
+                    decoration: decoracionCampo(context, 'Responsable de IVA'),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                    dropdownColor: Theme.of(context).colorScheme.surface,
+                    items: ['Sí', 'No', 'No Aplica']
+                        .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                        .toList(),
+                    onChanged: (value) => setDialogState(() => responsableIVA = value!),
+                  ),
+                  SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: calidadAgenteRetencion,
+                    decoration: decoracionCampo(context, 'Agente Retenedor'),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                    dropdownColor: Theme.of(context).colorScheme.surface,
+                    items: ['Autorretenedor', 'Agente de retención', 'No aplica']
+                        .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                        .toList(),
+                    onChanged: (value) => setDialogState(() => calidadAgenteRetencion = value!),
+                  ),
+                  SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: regimenTributario,
+                    decoration: decoracionCampo(context, 'Régimen Tributario'),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                    dropdownColor: Theme.of(context).colorScheme.surface,
+                    hint: Text('Sin especificar', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
+                    items: ['Común', 'Simplificado']
+                        .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                        .toList(),
+                    onChanged: (value) => setDialogState(() => regimenTributario = value),
+                  ),
+                  SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: condicionPago,
+                    decoration: decoracionCampo(context, 'Condición de Pago'),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                    dropdownColor: Theme.of(context).colorScheme.surface,
+                    items: ['contado', 'credito']
+                        .map((v) => DropdownMenuItem(value: v, child: Text(v == 'contado' ? 'Contado' : 'Crédito')))
+                        .toList(),
+                    onChanged: (value) => setDialogState(() => condicionPago = value!),
+                  ),
+                  if (condicionPago == 'credito') ...[
+                    SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: diasCreditoController,
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                            keyboardType: TextInputType.number,
+                            decoration: decoracionCampo(context, 'Días de Crédito'),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: cupoCreditoController,
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                            keyboardType: TextInputType.number,
+                            decoration: decoracionCampo(context, 'Cupo de Crédito'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ],
             ),
           ),
@@ -3535,10 +3905,27 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                     correo: correoController.text.trim().isEmpty
                         ? null
                         : correoController.text.trim(),
-                    responsableIVA: 'No',
-                    calidadAgenteRetencion: 'No aplica',
-                    diasCredito: 0,
-                    cupoCredito: 0,
+                    telefonoSecundario: telefonoSecundarioController.text.trim().isEmpty
+                        ? null
+                        : telefonoSecundarioController.text.trim(),
+                    direccion: direccionController.text.trim().isEmpty
+                        ? null
+                        : direccionController.text.trim(),
+                    departamento: departamentoSeleccionado?.name,
+                    ciudad: municipioSeleccionado?.name,
+                    codigoPostal: codigoPostalController.text.trim().isEmpty
+                        ? null
+                        : codigoPostalController.text.trim(),
+                    responsableIVA: responsableIVA,
+                    calidadAgenteRetencion: calidadAgenteRetencion,
+                    regimenTributario: regimenTributario,
+                    condicionPago: condicionPago,
+                    diasCredito: condicionPago == 'credito'
+                        ? (int.tryParse(diasCreditoController.text.trim()) ?? 0)
+                        : 0,
+                    cupoCredito: condicionPago == 'credito'
+                        ? (double.tryParse(cupoCreditoController.text.trim()) ?? 0)
+                        : 0,
                     saldoActual: 0,
                     estado: 'activo',
                     habilitadoFacturacionElectronica: false,
@@ -3567,7 +3954,8 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
               child: Text('Crear', style: TextStyle(color: Colors.white)),
             ),
           ],
-        ),
+        );
+        },
       ),
     );
   }

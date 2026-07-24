@@ -64,10 +64,12 @@ class NotificacionesProvider extends ChangeNotifier {
   static const _emailsNotificadosTraslado = {
     'francia@gmail.com',
     'diegoalek01@gmail.com',
+    'bodegavercy@gmail.com',
   };
   static const _usuariosNotificadosTraslado = {
     'francia',
     'diego',
+    'bodega',
   };
 
   final CarteraService _carteraService;
