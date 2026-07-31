@@ -823,6 +823,34 @@ class PedidoService {
     }
   }
 
+  /// Registra (o limpia, pasando null/vacío) el último error al intentar
+  /// emitir este pedido pagado como documento electrónico ante Matias/DIAN.
+  /// Endpoint dedicado y liviano — a diferencia de [updatePedido] no recalcula
+  /// totales ni toca inventario, solo deja visible por qué falló para poder
+  /// revisarlo después en la lista de facturas.
+  Future<Pedido> setErrorFacturacionElectronica(
+    String pedidoId,
+    String? mensaje,
+  ) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/pedidos/$pedidoId/error-facturacion-electronica'),
+        headers: headers,
+        body: json.encode({'mensaje': mensaje ?? ''}),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return Pedido.fromJson(responseData['data']);
+      }
+      throwBackendError(response.body, response.statusCode,
+          prefix: 'Error al registrar el error de facturación');
+    } catch (e) {
+      wrapOrThrow(e, context: 'Error al registrar el error de facturación');
+    }
+  }
+
   // Método estático para compatibilidad
   static Future<Pedido> actualizarEstado(
     String pedidoId,

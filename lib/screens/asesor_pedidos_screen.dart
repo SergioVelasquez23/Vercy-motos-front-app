@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -23,6 +24,7 @@ import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import '../utils/datetime_utils.dart';
 import '../utils/currency_utils.dart';
+import '../utils/legal_texts.dart';
 
 class AsesorPedidosScreen extends StatefulWidget {
   const AsesorPedidosScreen({super.key});
@@ -149,6 +151,8 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
       final pedidos = await _pedidoService.listarPedidos(
         asesorId: userProvider.userId,
       );
+      // Más recientes arriba, más antiguos abajo.
+      pedidos.sort((a, b) => b.fechaCreacion.compareTo(a.fechaCreacion));
       if (!mounted) return;
       setState(() {
         _misPedidos = pedidos;
@@ -448,6 +452,27 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
   // traslado pendiente por preparar.
   bool _esUsuarioBodega(UserProvider userProvider) {
     return userProvider.userName?.toLowerCase().contains('bodega') ?? false;
+  }
+
+  Future<void> _mostrarTextoLegal(BuildContext context, String titulo, String texto) {
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(titulo),
+        content: SizedBox(
+          width: dialogWidth(context, 480),
+          child: SingleChildScrollView(
+            child: Text(
+              texto.trim(),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12, height: 1.4),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar')),
+        ],
+      ),
+    );
   }
 
   TextEditingController _ctrlPrecio(ItemPedido item) {
@@ -3380,6 +3405,10 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
     String? regimenTributario;
     String condicionPago = 'contado';
     final locationService = ColombiaLocationService();
+    // 🔒 Aviso visual de tratamiento de datos personales (Ley 1581/2012). Por
+    // ahora solo informativo: no bloquea la creación del cliente ni se
+    // guarda en el backend todavía.
+    bool autorizaTratamientoDatos = false;
 
     InputDecoration decoracionCampo(BuildContext context, String label) {
       return InputDecoration(
@@ -3854,6 +3883,40 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                     ),
                   ],
                 ],
+                SizedBox(height: 8),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  dense: true,
+                  value: autorizaTratamientoDatos,
+                  onChanged: (value) =>
+                      setDialogState(() => autorizaTratamientoDatos = value ?? false),
+                  title: RichText(
+                    text: TextSpan(
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                        fontSize: 12,
+                      ),
+                      children: [
+                        const TextSpan(text: 'El cliente autorizó el tratamiento de sus datos personales según la '),
+                        TextSpan(
+                          text: 'Política de Tratamiento de Datos',
+                          style: const TextStyle(
+                            color: AppTheme.primary,
+                            decoration: TextDecoration.underline,
+                          ),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () => _mostrarTextoLegal(
+                                  context,
+                                  'Política de Tratamiento de Datos',
+                                  politicaTratamientoDatosTexto,
+                                ),
+                        ),
+                        const TextSpan(text: '.'),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

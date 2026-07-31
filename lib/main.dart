@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
@@ -82,6 +83,19 @@ class MyApp extends StatelessWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: themeProvider.mode,
       routerConfig: router,
+      // Sin esto, los widgets de Material que dependen de localización
+      // (selector de fecha, diálogos de confirmación nativos, etc.) caen al
+      // inglés por defecto aunque el resto de la app esté en español.
+      locale: const Locale('es', 'CO'),
+      supportedLocales: const [
+        Locale('es', 'CO'),
+        Locale('es'),
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
     );
   }
 }

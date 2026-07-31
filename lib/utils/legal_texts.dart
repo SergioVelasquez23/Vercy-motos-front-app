@@ -1,11 +1,20 @@
-// Textos legales mostrados en el registro de usuario.
-// TODO: completar los datos marcados como [PENDIENTE] antes de publicar en producción
-// (razón social, NIT, dirección física, correo de contacto para PQRS/derechos ARCO).
+// Textos legales de la Plataforma. Los datos de identificación del
+// responsable (razón social, NIT, dirección, contacto) se tomaron de la
+// papelería fiscal real del negocio (facturas/tiquetes emitidos). Revisar
+// con un abogado antes de considerarlos definitivos: este archivo es un
+// punto de partida razonable, no asesoría legal.
+
+const String _nombreResponsable = 'VERCY MOTOS';
+const String _nitResponsable = '1002576776-7';
+const String _direccionResponsable = 'Carrera 24B #41-42, Caldas, Manizales';
+const String _correoContacto = 'vercymotos@gmail.com';
+const String _telefonoContacto = '304 454 7430';
+const String _ultimaActualizacion = '24 de julio de 2026';
 
 const String terminosYCondicionesTexto = '''
 TÉRMINOS Y CONDICIONES DE USO
 
-Última actualización: [PENDIENTE]
+Última actualización: $_ultimaActualizacion
 
 1. Objeto
 Estos Términos y Condiciones regulan el acceso y uso de Vercy Motos (en adelante, "la Plataforma"), un sistema ERP para la gestión administrativa, de inventario y facturación de establecimientos dedicados a la venta y/o servicio técnico de motocicletas. Al crear una cuenta, el usuario declara haber leído y aceptado estos términos.
@@ -28,7 +37,7 @@ La Plataforma se ofrece "tal cual" y "según disponibilidad". Pueden existir int
 El proveedor no será responsable por daños indirectos, pérdida de datos, lucro cesante o perjuicios derivados del uso inadecuado de la Plataforma, de la pérdida de credenciales por negligencia del usuario, o de causas ajenas a su control razonable. El usuario es responsable de la exactitud de la información financiera y contable que registre.
 
 6. Suspensión o cancelación de cuentas
-El proveedor podrá suspender o cancelar una cuenta cuando detecte uso indebido, incumplimiento de estos Términos, o a solicitud del administrador del establecimiento asociado a la cuenta. El usuario puede solicitar la cancelación de su cuenta en cualquier momento a través de [PENDIENTE: canal de contacto].
+El proveedor podrá suspender o cancelar una cuenta cuando detecte uso indebido, incumplimiento de estos Términos, o a solicitud del administrador del establecimiento asociado a la cuenta. El usuario puede solicitar la cancelación de su cuenta en cualquier momento escribiendo a $_correoContacto.
 
 7. Propiedad intelectual
 El software, su código, diseño, marca y demás elementos de la Plataforma son propiedad de Vercy Motos o de sus licenciantes. El uso de la Plataforma no otorga al usuario ningún derecho de propiedad intelectual sobre el software, más allá de la licencia de uso necesaria para operar la cuenta.
@@ -40,12 +49,12 @@ Estos Términos pueden actualizarse. Los cambios sustanciales serán informados 
 const String politicaTratamientoDatosTexto = '''
 POLÍTICA DE TRATAMIENTO DE DATOS PERSONALES
 
-Última actualización: [PENDIENTE]
+Última actualización: $_ultimaActualizacion
 
-En cumplimiento de la Ley 1581 de 2012 y el Decreto 1377 de 2013 de la República de Colombia, Vercy Motos informa lo siguiente respecto al tratamiento de sus datos personales.
+En cumplimiento de la Ley 1581 de 2012 y el Decreto 1377 de 2013 de la República de Colombia, $_nombreResponsable informa lo siguiente respecto al tratamiento de sus datos personales.
 
 1. Responsable del tratamiento
-Vercy Motos ([PENDIENTE: razón social, NIT y dirección]) es el responsable del tratamiento de los datos personales recolectados a través de la Plataforma.
+$_nombreResponsable, NIT $_nitResponsable, con domicilio en $_direccionResponsable, es el responsable del tratamiento de los datos personales recolectados a través de la Plataforma.
 
 2. Datos que recopilamos
 - Datos de identificación y contacto del usuario: nombre y correo electrónico, suministrados al momento del registro.
@@ -78,8 +87,20 @@ Como titular de sus datos personales, usted tiene derecho a:
 - Presentar quejas ante la Superintendencia de Industria y Comercio por infracciones a la ley.
 - Revocar la autorización y/o solicitar la supresión de sus datos, cuando no exista un deber legal o contractual que impida su eliminación.
 
-Para ejercer estos derechos, puede escribir a [PENDIENTE: correo de contacto para PQRS/derechos ARCO], indicando su nombre, el derecho que desea ejercer y adjuntando los documentos que soporten su solicitud.
+Para ejercer estos derechos, puede escribir a $_correoContacto o comunicarse al $_telefonoContacto, indicando su nombre, el derecho que desea ejercer y adjuntando los documentos que soporten su solicitud.
 
 8. Autorización
-Al marcar la casilla de aceptación en el formulario de registro, usted autoriza a Vercy Motos a tratar sus datos personales conforme a esta Política, de manera libre, previa, expresa e informada.
+Al marcar la casilla de aceptación correspondiente, usted autoriza a $_nombreResponsable a tratar sus datos personales conforme a esta Política, de manera libre, previa, expresa e informada.
+''';
+
+const String avisoPrivacidadTexto = '''
+AVISO DE PRIVACIDAD
+
+Última actualización: $_ultimaActualizacion
+
+$_nombreResponsable, NIT $_nitResponsable, con domicilio en $_direccionResponsable, es responsable del tratamiento de los datos personales que usted nos suministra como usuario de la Plataforma o como cliente de nuestro establecimiento.
+
+Sus datos (identificación, contacto y, en el caso de clientes, información de facturación) se usan para gestionar su cuenta, prestar el servicio, cumplir obligaciones contables/tributarias (incluida la facturación electrónica ante la DIAN) y atender sus solicitudes. No se venden ni se ceden a terceros con fines comerciales.
+
+Usted puede conocer, actualizar, rectificar o solicitar la supresión de sus datos, así como revocar la autorización otorgada, escribiendo a $_correoContacto o llamando al $_telefonoContacto. El tratamiento completo de sus datos se rige por nuestra Política de Tratamiento de Datos Personales, disponible en esta misma sección.
 ''';

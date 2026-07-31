@@ -194,7 +194,26 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
   }
 
   Future<void> _selectDate(bool isDesde) async {
-    // Eliminado: ya no se usa el selector de calendario
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: isDesde ? _fechaDesde : _fechaHasta,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      locale: const Locale('es', 'CO'),
+      helpText: isDesde ? 'Fecha desde' : 'Fecha hasta',
+      cancelText: 'Cancelar',
+      confirmText: 'Aceptar',
+    );
+    if (picked == null) return;
+    setState(() {
+      if (isDesde) {
+        _fechaDesde = picked;
+        _fechaDesdeController.text = _dateFormat.format(picked);
+      } else {
+        _fechaHasta = picked;
+        _fechaHastaController.text = _dateFormat.format(picked);
+      }
+    });
   }
 
   Future<void> _generarInforme(String tipo) async {
@@ -387,41 +406,52 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Generar informe productos',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.onSurface,
+                    // 📱 El título + el toggle "Filtrar por caja activa" en una
+                    // sola fila no caben en un teléfono (se desbordaba a la
+                    // derecha) — en mobile el toggle baja debajo del título.
+                    Builder(builder: (context) {
+                      final titulo = Text(
+                        'Generar informe productos',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      );
+                      final toggle = Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Filtrar por caja activa',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                            ),
                           ),
-                        ),
-                        Row(
-                          children: [
-                            Text(
-                              'Filtrar por caja activa',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                              ),
-                            ),
-                            Switch(
-                              value: _filtrarPorCaja,
-                              onChanged: (v) {
-                                setState(() {
-                                  _filtrarPorCaja = v;
-                                });
-                              },
-                              activeColor: AppTheme.success,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                          Switch(
+                            value: _filtrarPorCaja,
+                            onChanged: (v) {
+                              setState(() {
+                                _filtrarPorCaja = v;
+                              });
+                            },
+                            activeColor: AppTheme.success,
+                          ),
+                        ],
+                      );
+                      if (context.isMobile) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [titulo, toggle],
+                        );
+                      }
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [titulo, toggle],
+                      );
+                    }),
                     const SizedBox(height: 24),
-                    // Fila 1: Fechas (solo campos de texto)
+                    // Fila 1: Fechas (selector de calendario, ver _selectDate)
                     Row(
                       children: [
                         Expanded(
@@ -439,8 +469,11 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                               const SizedBox(height: 8),
                               TextField(
                                 controller: _fechaDesdeController,
+                                readOnly: true,
+                                onTap: () => _selectDate(true),
                                 decoration: InputDecoration(
-                                  hintText: 'yyyy-MM-dd',
+                                  hintText: 'Seleccionar fecha',
+                                  suffixIcon: const Icon(Icons.calendar_today, size: 18),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(6),
                                   ),
@@ -473,8 +506,11 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                               const SizedBox(height: 8),
                               TextField(
                                 controller: _fechaHastaController,
+                                readOnly: true,
+                                onTap: () => _selectDate(false),
                                 decoration: InputDecoration(
-                                  hintText: 'yyyy-MM-dd',
+                                  hintText: 'Seleccionar fecha',
+                                  suffixIcon: const Icon(Icons.calendar_today, size: 18),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(6),
                                   ),

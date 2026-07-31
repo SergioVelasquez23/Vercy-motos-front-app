@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import '../models/cliente.dart';
 import '../services/cliente_service.dart';
 import '../utils/submit_guard.dart';
@@ -6,6 +7,7 @@ import '../services/colombia_location_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/legal_texts.dart';
 
 class ClienteFormScreen extends StatefulWidget {
   final Cliente? cliente;
@@ -28,6 +30,11 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> with SubmitGuard 
   Municipio? _selectedMunicipio;
   bool _loadingDepartamentos = true;
   bool _loadingMunicipios = false;
+
+  // 🔒 Aviso visual de tratamiento de datos personales (Ley 1581/2012). Por
+  // ahora solo informativo: no bloquea la creación/edición ni se guarda en
+  // el backend todavía.
+  bool _autorizaTratamientoDatos = false;
 
   // Controladores - Identificación
   final _tipoPersonaController = TextEditingController();
@@ -909,6 +916,27 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> with SubmitGuard 
     );
   }
 
+  Future<void> _mostrarTextoLegal(String titulo, String texto) {
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(titulo),
+        content: SizedBox(
+          width: dialogWidth(context, 480),
+          child: SingleChildScrollView(
+            child: Text(
+              texto.trim(),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12, height: 1.4),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar')),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBottomBar() {
     return Container(
       padding: EdgeInsets.all(16),
@@ -916,7 +944,37 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> with SubmitGuard 
         color: Theme.of(context).colorScheme.surface,
         border: Border(top: BorderSide(color: Colors.grey.shade800, width: 1)),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!_esEdicion)
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              dense: true,
+              value: _autorizaTratamientoDatos,
+              onChanged: (value) => setState(() => _autorizaTratamientoDatos = value ?? false),
+              title: RichText(
+                text: TextSpan(
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                    fontSize: 12,
+                  ),
+                  children: [
+                    const TextSpan(text: 'El cliente autorizó el tratamiento de sus datos personales según la '),
+                    TextSpan(
+                      text: 'Política de Tratamiento de Datos',
+                      style: const TextStyle(color: AppTheme.primary, decoration: TextDecoration.underline),
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = () =>
+                            _mostrarTextoLegal('Política de Tratamiento de Datos', politicaTratamientoDatosTexto),
+                    ),
+                    const TextSpan(text: '.'),
+                  ],
+                ),
+              ),
+            ),
+          Row(
         children: [
           Expanded(
             child: OutlinedButton(
@@ -954,6 +1012,8 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> with SubmitGuard 
                 padding: EdgeInsets.symmetric(vertical: 16),
               ),
             ),
+          ),
+        ],
           ),
         ],
       ),

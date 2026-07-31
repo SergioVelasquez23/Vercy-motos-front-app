@@ -101,6 +101,11 @@ class Pedido {
   Map<String, dynamic>?
   datosAdicionales; // Información extra (cliente completo, etc.)
 
+  // ⚠️ Último error al intentar emitir este pedido pagado ante Matias/DIAN
+  // (null si nunca falló o si el último reintento fue exitoso).
+  String? errorFacturacionElectronica;
+  DateTime? fechaErrorFacturacionElectronica;
+
   void setFormaPago(String formaPago) {
     this.formaPago = formaPago;
   }
@@ -162,6 +167,8 @@ class Pedido {
     this.totalRetenciones = 0.0,
     this.totalFinal = 0.0,
     this.datosAdicionales,
+    this.errorFacturacionElectronica,
+    this.fechaErrorFacturacionElectronica,
   });
 
   String get tipoTexto {
@@ -327,6 +334,11 @@ class Pedido {
     'totalRetenciones': totalRetenciones,
     'totalFinal': totalFinal,
     if (datosAdicionales != null) 'datosAdicionales': datosAdicionales,
+    if (errorFacturacionElectronica != null)
+      'errorFacturacionElectronica': errorFacturacionElectronica,
+    if (fechaErrorFacturacionElectronica != null)
+      'fechaErrorFacturacionElectronica':
+          _formatDateTimeLocal(fechaErrorFacturacionElectronica!),
   };
 
   factory Pedido.fromJson(Map<String, dynamic> json) {
@@ -412,6 +424,11 @@ class Pedido {
       datosAdicionales: json['datosAdicionales'] != null
           ? Map<String, dynamic>.from(json['datosAdicionales'])
           : null,
+      errorFacturacionElectronica: json['errorFacturacionElectronica'],
+      fechaErrorFacturacionElectronica:
+          json['fechaErrorFacturacionElectronica'] != null
+              ? DateTime.parse(json['fechaErrorFacturacionElectronica']).toLocal()
+              : null,
     );
   }
 }

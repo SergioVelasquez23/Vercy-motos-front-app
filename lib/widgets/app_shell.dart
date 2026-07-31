@@ -71,23 +71,29 @@ class _AppShellState extends State<AppShell> {
       child: Scaffold(
         key: _scaffoldKey,
         drawer: isMobile ? _buildMobileDrawer(context, userProvider, userName) : null,
-        body: Row(
-          children: [
-            if (!isMobile && _isSidebarVisible) _buildSidebar(context, userProvider, userName),
-            Expanded(
-              child: Column(
-                children: [
-                  _buildTopBar(context, userName, isMobile),
-                  Expanded(
-                    child: Container(
-                      color: Theme.of(context).scaffoldBackgroundColor,
-                      child: widget.child,
+        // 🔝 Sin SafeArea, la topbar arranca en y=0 y la barra de estado del
+        // teléfono (hora/batería/notificaciones) se dibuja encima de sus
+        // primeros ~24-40px — por eso se veía "cortada" con solo una tira de
+        // íconos asomando. SafeArea empuja el contenido debajo de esa franja.
+        body: SafeArea(
+          child: Row(
+            children: [
+              if (!isMobile && _isSidebarVisible) _buildSidebar(context, userProvider, userName),
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildTopBar(context, userName, isMobile),
+                    Expanded(
+                      child: Container(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        child: widget.child,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -243,6 +249,9 @@ class _AppShellState extends State<AppShell> {
           _MenuItem(icon: Icons.swap_horiz, label: 'Traslados', route: '/traslados', currentRoute: _currentRoute),
           _MenuItem(icon: Icons.add_shopping_cart, label: 'Crear Compra', route: '/facturas-compras', currentRoute: _currentRoute),
           _MenuItem(icon: Icons.people_outline, label: 'Proveedores', route: '/proveedores', currentRoute: _currentRoute),
+          // Solo ver la lista y las cantidades — productos_list_screen.dart
+          // oculta Nuevo/Editar/Eliminar/Carga masiva cuando el rol es asesor.
+          _MenuItem(icon: Icons.inventory_2, label: 'Lista Productos', route: '/productos-lista', currentRoute: _currentRoute),
         ],
         if (!userProvider.isAsesor) ...[
           _MenuItem(icon: Icons.receipt, label: 'Facturar', route: '/facturar', currentRoute: _currentRoute),
@@ -375,6 +384,12 @@ class _AppShellState extends State<AppShell> {
                 ),
               ],
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.gavel_outlined, size: 20),
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            tooltip: 'Legal y Privacidad',
+            onPressed: () => context.go('/legal'),
           ),
           IconButton(
             icon: const Icon(Icons.logout, size: 20),

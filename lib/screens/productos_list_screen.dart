@@ -12,6 +12,7 @@ import '../models/producto.dart';
 import '../models/categoria.dart';
 import '../services/producto_service.dart';
 import '../providers/datos_cache_provider.dart';
+import '../providers/user_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/productos/tabs/tab_basico_producto.dart';
 import '../widgets/productos/tabs/tab_precios_producto.dart';
@@ -36,6 +37,10 @@ class ProductosListScreen extends StatefulWidget {
 
 class _ProductosListScreenState extends State<ProductosListScreen> with PaginacionMixin<ProductosListScreen> {
   final ProductoService _productoService = ProductoService();
+
+  // Rol asesor: solo puede ver la lista y las cantidades, no crear, editar,
+  // eliminar productos ni cargar cambios masivos por Excel.
+  bool get _esAsesor => Provider.of<UserProvider>(context, listen: false).isAsesor;
 
   // Controladores de filtros
   final _filtroCodigoController = TextEditingController();
@@ -217,31 +222,35 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                 }
               },
               itemBuilder: (BuildContext context) => [
-                PopupMenuItem<String>(
-                  value: 'carga-bodega',
-                  child: Row(children: [
-                    Icon(Icons.cloud_upload, color: AppTheme.success),
-                    SizedBox(width: 12),
-                    Text('Carga - Bodega'),
-                  ]),
-                ),
-                PopupMenuItem<String>(
-                  value: 'carga-almacen',
-                  child: Row(children: [
-                    Icon(Icons.cloud_upload, color: AppTheme.info),
-                    SizedBox(width: 12),
-                    Text('Carga - Almacén'),
-                  ]),
-                ),
-                PopupMenuItem<String>(
-                  value: 'carga-ambos',
-                  child: Row(children: [
-                    Icon(Icons.cloud_upload, color: Colors.purple),
-                    SizedBox(width: 12),
-                    Text('Carga - Ambos'),
-                  ]),
-                ),
-                const PopupMenuDivider(),
+                // La carga masiva modifica cantidades/productos en bloque —
+                // el rol asesor solo puede ver y descargar, no cargar cambios.
+                if (!_esAsesor) ...[
+                  PopupMenuItem<String>(
+                    value: 'carga-bodega',
+                    child: Row(children: [
+                      Icon(Icons.cloud_upload, color: AppTheme.success),
+                      SizedBox(width: 12),
+                      Text('Carga - Bodega'),
+                    ]),
+                  ),
+                  PopupMenuItem<String>(
+                    value: 'carga-almacen',
+                    child: Row(children: [
+                      Icon(Icons.cloud_upload, color: AppTheme.info),
+                      SizedBox(width: 12),
+                      Text('Carga - Almacén'),
+                    ]),
+                  ),
+                  PopupMenuItem<String>(
+                    value: 'carga-ambos',
+                    child: Row(children: [
+                      Icon(Icons.cloud_upload, color: Colors.purple),
+                      SizedBox(width: 12),
+                      Text('Carga - Ambos'),
+                    ]),
+                  ),
+                  const PopupMenuDivider(),
+                ],
                 PopupMenuItem<String>(
                   value: 'descarga-bodega',
                   child: Row(children: [
@@ -283,12 +292,13 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                 ),
               ),
             ),
-            ScreenHeaderAction.primary(
-              icon: Icons.add,
-              label: 'Nuevo Producto',
-              mobileLabel: 'Nuevo',
-              onPressed: _crearNuevoProducto,
-            ),
+            if (!_esAsesor)
+              ScreenHeaderAction.primary(
+                icon: Icons.add,
+                label: 'Nuevo Producto',
+                mobileLabel: 'Nuevo',
+                onPressed: _crearNuevoProducto,
+              ),
           ],
         ),
         Expanded(
@@ -700,21 +710,22 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                       tooltip: 'Ver detalles',
                     ),
                   ),
-                  Container(
-                    width: 32,
-                    height: 32,
-                    margin: const EdgeInsets.only(right: 4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary,
-                      shape: BoxShape.circle,
+                  if (!_esAsesor)
+                    Container(
+                      width: 32,
+                      height: 32,
+                      margin: const EdgeInsets.only(right: 4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(Icons.edit, color: Colors.white, size: 16),
+                        onPressed: () => _editarProducto(producto),
+                        tooltip: 'Editar producto',
+                      ),
                     ),
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      icon: const Icon(Icons.edit, color: Colors.white, size: 16),
-                      onPressed: () => _editarProducto(producto),
-                      tooltip: 'Editar producto',
-                    ),
-                  ),
                   Container(
                     width: 32,
                     height: 32,
@@ -746,20 +757,21 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                       tooltip: 'Movimientos de stock',
                     ),
                   ),
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade600,
-                      shape: BoxShape.circle,
+                  if (!_esAsesor)
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade600,
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(Icons.delete, color: Colors.white, size: 16),
+                        onPressed: () => _eliminarProducto(producto),
+                        tooltip: 'Eliminar producto',
+                      ),
                     ),
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      icon: const Icon(Icons.delete, color: Colors.white, size: 16),
-                      onPressed: () => _eliminarProducto(producto),
-                      tooltip: 'Eliminar producto',
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -3578,7 +3590,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
             return AlertDialog(
               title: Text('Movimientos: ${producto.nombre}'),
               content: SizedBox(
-                width: 600,
+                width: dialogWidth(context, 600),
                 height: 400,
                 child: movimientos.isEmpty
                     ? const Center(child: Text('Sin movimientos registrados'))

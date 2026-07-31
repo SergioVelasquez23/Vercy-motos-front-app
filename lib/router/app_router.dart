@@ -51,6 +51,7 @@ import '../screens/documentos_pendientes_screen.dart';
 import '../screens/matias_test_screen.dart';
 import '../screens/configuracion_screen.dart';
 import '../screens/libro_contable_screen.dart';
+import '../screens/legal_screen.dart';
 
 GoRouter buildAppRouter(UserProvider userProvider) => GoRouter(
   initialLocation: '/splash',
@@ -167,6 +168,7 @@ GoRouter buildAppRouter(UserProvider userProvider) => GoRouter(
         GoRoute(path: '/documentos-pendientes', builder: (c, s) => const DocumentosPendientesScreen()),
         GoRoute(path: '/matias-test', builder: (c, s) => const MatiasTestScreen()),
         GoRoute(path: '/configuracion', builder: (c, s) => const ConfiguracionScreen()),
+        GoRoute(path: '/legal', builder: (c, s) => const LegalScreen()),
       ],
     ),
   ],

@@ -1,20 +1,20 @@
+import 'dart:convert';
 import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/pedido.dart';
 import '../models/item_pedido.dart';
 import '../models/producto.dart';
 import '../models/pedido_asesor.dart';
 import '../models/cotizacion.dart';
-import '../models/movimiento_inventario.dart';
 import '../services/pedido_service.dart';
 import '../services/producto_service.dart';
 import '../services/pedido_asesor_service.dart';
 import '../services/cotizacion_service.dart';
 import '../services/pdf_service.dart';
 import '../services/negocio_info_service.dart';
-import '../services/inventario_service.dart';
 import '../services/cliente_service.dart';
 import '../services/matias_service.dart';
 import '../services/traslado_service.dart';
@@ -68,6 +68,9 @@ class FacturacionScreen extends StatefulWidget {
 
 class _FacturacionScreenState extends State<FacturacionScreen> {
   FacturacionDraftProvider? _draftProvider; // cacheado para dispose() seguro
+  // Borradores guardados solo en este dispositivo por un fallo al guardar y
+  // pagar (ej. caja cerrada) — ver _guardarBorradorLocalPorFallo.
+  int _borradoresLocalesCount = 0;
   final PedidoService _pedidoService = PedidoService();
   final ProductoService _productoService = ProductoService();
   final PedidoAsesorService _pedidoAsesorService = PedidoAsesorService();
@@ -75,7 +78,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   final TrasladoService _trasladoService = TrasladoService();
   final PDFService _pdfService = PDFService();
   final NegocioInfoService _negocioInfoService = NegocioInfoService();
-  final InventarioService _inventarioService = InventarioService();
   final ClienteService _clienteService = ClienteService();
 
   // Controladores de formulario
@@ -232,6 +234,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   void initState() {
     super.initState();
     _cargarProductos();
+    _actualizarContadorBorradoresLocales();
 
     // 🔴 Escuchar actualizaciones de productos desde otras pestañas
     _productosChannel = html.BroadcastChannel('productos_actualizados');
@@ -796,7 +799,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
             return Column(
               children: [
-                FacturacionHeaderSection(onMostrarBorradores: _mostrarBorradores),
+                FacturacionHeaderSection(
+                  onMostrarBorradores: _mostrarBorradores,
+                  onVerBorradoresLocales: _verBorradoresLocalesFallidos,
+                  borradoresLocalesCount: _borradoresLocalesCount,
+                ),
                 Expanded(
                   child: SingleChildScrollView(
                     padding: EdgeInsets.all(padding),
@@ -1696,9 +1703,15 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                   ),
                   SizedBox(height: 16),
                   // Fila de datos del producto
-                  Row(
-                    children: [
-                      Expanded(
+                  // 📱 código/nombre/cantidad/valor unit/valor total eran 5
+                  // Expanded en una sola Row (flex 1:3:1:1:1) — en mobile
+                  // cada uno recibía tan poco ancho que ni el hint cabía
+                  // ("C...", "$", "$"), sin forma de distinguirlos. Se
+                  // extraen a variables para reordenarlos: en mobile,
+                  // "Producto" a todo el ancho y el resto en parejas; en
+                  // desktop, la misma fila de siempre.
+                  Builder(builder: (context) {
+                      final campoCodigo = Expanded(
                         flex: 1,
                         child: Autocomplete<Producto>(
                           key: ValueKey(
@@ -1813,9 +1826,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 );
                               },
                         ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
+                      );
+
+                      final campoNombre = Expanded(
                         flex: 3,
                         child: Autocomplete<Producto>(
                           key: ValueKey(
@@ -1969,9 +1982,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 );
                               },
                         ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
+                      );
+
+                      final campoCantidad = Expanded(
                         flex: 1,
                         child: TextField(
                           controller: _cantidadController,
@@ -1994,9 +2007,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                           ),
                           keyboardType: TextInputType.number,
                         ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
+                      );
+
+                      final campoValorUnit = Expanded(
                         flex: 1,
                         child: TextField(
                           controller: _valorUnitController,
@@ -2022,9 +2035,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                           keyboardType: TextInputType.numberWithOptions(decimal: true),
                           inputFormatters: [MilesInputFormatter(decimalDigits: 2)],
                         ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
+                      );
+
+                      final campoValorTotal = Expanded(
                         flex: 1,
                         child: TextField(
                           enabled: false,
@@ -2049,9 +2062,33 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             text: _calcularValorTotal(),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                      );
+
+                      return context.isMobile
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(children: [campoNombre]),
+                                SizedBox(height: 12),
+                                Row(children: [campoCodigo, SizedBox(width: 12), campoCantidad]),
+                                SizedBox(height: 12),
+                                Row(children: [campoValorUnit, SizedBox(width: 12), campoValorTotal]),
+                              ],
+                            )
+                          : Row(
+                              children: [
+                                campoCodigo,
+                                SizedBox(width: 12),
+                                campoNombre,
+                                SizedBox(width: 12),
+                                campoCantidad,
+                                SizedBox(width: 12),
+                                campoValorUnit,
+                                SizedBox(width: 12),
+                                campoValorTotal,
+                              ],
+                            );
+                    }),
                   SizedBox(height: 16),
                   // 📦 MOSTRAR STOCK DISPONIBLE CON BOTÓN REFRESCAR
                   if (_productoSeleccionado != null)
@@ -2791,8 +2828,34 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   }
 
   Widget _buildDescuentoGeneral() {
+    final icono = Icon(Icons.local_offer, color: AppTheme.primary, size: 22);
+    final etiqueta = Text(
+      'Descuento General',
+      style: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: Theme.of(context).colorScheme.onSurface,
+      ),
+    );
+    final campo = TextField(
+      controller: _dctoGeneralController,
+      keyboardType: TextInputType.numberWithOptions(decimal: true),
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 15),
+      onChanged: (_) => setState(() {}),
+      decoration: InputDecoration(
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        filled: true,
+        fillColor: Theme.of(context).colorScheme.surface,
+        prefixText: '\$ ',
+        prefixStyle: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
+        hintText: '0',
+        hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
+      ),
+    );
+
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: EdgeInsets.symmetric(horizontal: context.isMobile ? 16 : 24, vertical: 16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
@@ -2800,41 +2863,28 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
         ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Icon(Icons.local_offer, color: AppTheme.primary, size: 22),
-          SizedBox(width: 12),
-          Text(
-            'Descuento General',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.onSurface,
+      // 📱 Ícono + etiqueta + campo de $180px fijo en una sola Row no cabía en
+      // un teléfono (se desbordaba a la derecha) — en mobile el campo baja
+      // debajo de la etiqueta, a ancho completo.
+      child: context.isMobile
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [icono, SizedBox(width: 12), etiqueta]),
+                SizedBox(height: 12),
+                campo,
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                icono,
+                SizedBox(width: 12),
+                etiqueta,
+                SizedBox(width: 16),
+                SizedBox(width: 180, child: campo),
+              ],
             ),
-          ),
-          SizedBox(width: 16),
-          SizedBox(
-            width: 180,
-            child: TextField(
-              controller: _dctoGeneralController,
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 15),
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                filled: true,
-                fillColor: Theme.of(context).colorScheme.surface,
-                prefixText: '\$ ',
-                prefixStyle: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
-                hintText: '0',
-                hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -3319,6 +3369,12 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 await _pedidoService.eliminarPedido(
                                   borrador.id,
                                 );
+                                // El backend ya devuelve el stock, pero el
+                                // caché local de productos no se entera solo.
+                                if (mounted) {
+                                  Provider.of<DatosCacheProvider>(context, listen: false)
+                                      .limpiarProductos();
+                                }
                                 Navigator.pop(context);
                                 _mostrarBorradores();
                               } catch (e) {
@@ -3422,6 +3478,253 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     });
 
     showSuccessSnackBar(context, 'Borrador cargado correctamente');
+  }
+
+  // ─── Borradores locales por fallo (caja cerrada u otro error al pagar) ────
+  // A diferencia de "Guardar como borrador" (abajo), este NO llama al backend
+  // — el pedido nunca se creó porque falló antes de eso. Se guarda solo en
+  // este dispositivo (SharedPreferences) para no perder lo que el usuario ya
+  // había armado, y se puede recuperar después desde "Ver borradores locales".
+  static const String _kDraftKeyFallido = 'facturacion_borradores_fallidos';
+
+  Future<void> _guardarBorradorLocalPorFallo({
+    required List<ItemPedido> items,
+    required String cliente,
+    String? clienteId,
+    required String tipoFactura,
+    required DateTime fechaFactura,
+    required DateTime? fechaVencimiento,
+    required String metodoPago,
+    required Map<String, double> montosPago,
+    required double dctoGeneral,
+    required double retencionPct,
+    required double reteIVAPct,
+    required double reteICAPct,
+    required double aiuPct,
+    required String observaciones,
+    required String motivo,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kDraftKeyFallido);
+      final List<dynamic> borradores = raw != null ? jsonDecode(raw) : [];
+      borradores.add({
+        'timestamp': DateTime.now().toIso8601String(),
+        'motivo': motivo,
+        'items': items.map((i) => i.toJson()).toList(),
+        'cliente': cliente,
+        'clienteId': clienteId,
+        'tipoFactura': tipoFactura,
+        'fechaFactura': fechaFactura.toIso8601String(),
+        'fechaVencimiento': fechaVencimiento?.toIso8601String(),
+        'metodoPago': metodoPago,
+        'montosPago': montosPago,
+        'dctoGeneral': dctoGeneral,
+        'retencionPct': retencionPct,
+        'reteIVAPct': reteIVAPct,
+        'reteICAPct': reteICAPct,
+        'aiuPct': aiuPct,
+        'observaciones': observaciones,
+      });
+      // Mantener máximo 10 borradores fallidos
+      if (borradores.length > 10) borradores.removeAt(0);
+      await prefs.setString(_kDraftKeyFallido, jsonEncode(borradores));
+      appLog('💾 Borrador local guardado por fallo: $motivo');
+    } catch (e) {
+      appLog('❌ No se pudo guardar el borrador local: $e', level: LogLevel.error);
+    }
+  }
+
+  /// Cuenta cuántos borradores locales por fallo hay guardados (para avisar al entrar).
+  Future<int> _contarBorradoresLocalesFallidos() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kDraftKeyFallido);
+      if (raw == null) return 0;
+      return (jsonDecode(raw) as List).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  Future<void> _actualizarContadorBorradoresLocales() async {
+    final n = await _contarBorradoresLocalesFallidos();
+    if (mounted) setState(() => _borradoresLocalesCount = n);
+  }
+
+  /// Muestra la lista de borradores locales guardados por un fallo al guardar y
+  /// pagar (ej. caja cerrada), y permite cargar uno de vuelta al formulario.
+  Future<void> _verBorradoresLocalesFallidos() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kDraftKeyFallido);
+      if (raw == null || raw == '[]') {
+        if (mounted) showInfoSnackBar(context, 'No hay borradores locales guardados');
+        return;
+      }
+
+      final List<dynamic> borradores = jsonDecode(raw);
+      if (!mounted) return;
+
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          title: Text(
+            'Borradores locales sin guardar (${borradores.length})',
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold),
+          ),
+          content: SizedBox(
+            width: dialogWidth(context, 520),
+            height: 380,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Quedaron guardados solo en este dispositivo porque no se pudieron procesar. Cargalos cuando el problema esté resuelto (ej. abrir caja) y volvé a intentar "Guardar y Pagar".',
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: borradores.length,
+                    separatorBuilder: (_, __) => Divider(height: 1, color: Colors.white12),
+                    itemBuilder: (_, i) {
+                      final b = borradores[borradores.length - 1 - i] as Map<String, dynamic>;
+                      final fecha = DateTime.tryParse(b['timestamp'] ?? '')?.toLocal();
+                      final fechaStr = fecha != null
+                          ? '${fecha.day}/${fecha.month}/${fecha.year} ${fecha.hour}:${fecha.minute.toString().padLeft(2, '0')}'
+                          : 'Fecha desconocida';
+                      final cliente = b['cliente'] ?? 'CONSUMIDOR FINAL';
+                      final nItems = (b['items'] as List?)?.length ?? 0;
+                      final motivo = b['motivo'] ?? 'Error desconocido';
+
+                      return ListTile(
+                        leading: Icon(Icons.warning_amber_rounded, color: AppTheme.warning),
+                        title: Text(cliente, style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '$fechaStr · $nItems ítem(s)',
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
+                            ),
+                            Text(
+                              motivo,
+                              style: TextStyle(color: AppTheme.error, fontSize: 11),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                        isThreeLine: true,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TextButton(
+                              child: const Text('Cargar', style: TextStyle(color: Colors.greenAccent)),
+                              onPressed: () async {
+                                // Se quita de la lista guardada al cargarlo: si vuelve a
+                                // fallar, se vuelve a guardar como una entrada nueva.
+                                borradores.removeAt(borradores.length - 1 - i);
+                                await prefs.setString(_kDraftKeyFallido, jsonEncode(borradores));
+                                if (ctx.mounted) Navigator.pop(ctx, b);
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                              tooltip: 'Eliminar borrador',
+                              onPressed: () async {
+                                borradores.removeAt(borradores.length - 1 - i);
+                                await prefs.setString(_kDraftKeyFallido, jsonEncode(borradores));
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                _verBorradoresLocalesFallidos();
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cerrar', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
+            ),
+          ],
+        ),
+      ).then((borrador) {
+        if (borrador is Map<String, dynamic>) {
+          _cargarBorradorLocalFallido(borrador);
+        }
+      });
+      await _actualizarContadorBorradoresLocales();
+    } catch (e) {
+      appLog('Error mostrando borradores locales: $e', level: LogLevel.error);
+    }
+  }
+
+  /// Carga un borrador local (guardado por un fallo previo) de vuelta al formulario.
+  void _cargarBorradorLocalFallido(Map<String, dynamic> b) {
+    setState(() {
+      _items.clear();
+      if (b['items'] != null) {
+        for (final item in b['items'] as List) {
+          try {
+            _items.add(ItemPedido.fromJson(item as Map<String, dynamic>));
+          } catch (_) {}
+        }
+      }
+      _clienteController.text = b['cliente'] ?? 'CONSUMIDOR FINAL';
+      _tipoFactura = b['tipoFactura'] ?? 'LOCAL';
+      if (b['fechaFactura'] != null) {
+        _fechaFactura = DateTime.tryParse(b['fechaFactura']) ?? DateTime.now();
+      }
+      if (b['fechaVencimiento'] != null) {
+        _fechaVencimiento = DateTime.tryParse(b['fechaVencimiento']) ?? DateTime.now().add(Duration(days: 30));
+      }
+      _metodoPago = b['metodoPago'] ?? 'efectivo';
+      final montos = (b['montosPago'] as Map?)?.cast<String, dynamic>() ?? {};
+      _montoEfectivoController.text = '${montos['efectivo'] ?? 0}';
+      _montoTransferenciaController.text = '${montos['transferencia'] ?? 0}';
+      _montoTarjetaController.text = '${montos['tarjeta'] ?? 0}';
+      _montoSistereditoController.text = '${montos['sistecredito'] ?? 0}';
+      _montoDatafonoController.text = '${montos['datafono'] ?? 0}';
+      _montoBoldController.text = '${montos['bold'] ?? 0}';
+      _montoAddiController.text = '${montos['addi'] ?? 0}';
+      _montoCredilondonController.text = '${montos['credilondon'] ?? 0}';
+      _montoNequiController.text = '${montos['nequi'] ?? 0}';
+      _montoDaviplataController.text = '${montos['daviplata'] ?? 0}';
+      _montoBancolombiaController.text = '${montos['bancolombia'] ?? 0}';
+      _dctoGeneralController.text = '${b['dctoGeneral'] ?? 0}';
+      _retencionController.text = '${b['retencionPct'] ?? 0}';
+      _reteIVAController.text = '${b['reteIVAPct'] ?? 0}';
+      _reteICAController.text = '${b['reteICAPct'] ?? 0}';
+      _aiuController.text = '${b['aiuPct'] ?? 0}';
+      _observacionesController.text = b['observaciones'] ?? '';
+    });
+
+    // Si el borrador trae un clienteId, buscar el cliente completo (dirección,
+    // NIT, etc.) para que quede seleccionado igual que si se hubiera elegido
+    // del autocompletar, no solo el nombre en texto.
+    final clienteId = b['clienteId'] as String?;
+    if (clienteId != null && clienteId.isNotEmpty) {
+      _clienteService.buscarClientes(b['cliente'] ?? '').then((resultados) {
+        final match = resultados.where((c) => c.id == clienteId).firstOrNull;
+        if (match != null && mounted) {
+          setState(() => _clienteSeleccionado = match);
+        }
+      }).catchError((_) {});
+    }
+
+    showSuccessSnackBar(context, 'Borrador local cargado — revisá los datos antes de guardar');
   }
 
   // Guardar como borrador (pedido activo sin pagar)
@@ -3765,6 +4068,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       final itemsOriginales = List<ItemPedido>.from(
         _items,
       ); // ✅ Copia antes de limpiar
+      final metodoPagoOriginal = _metodoPago; // para reconstruir el borrador local si falla
       final metodoPagoUsado = _mapFormaPagoBackend(_metodoPago);
       final medioPagoUsado =
           payment_mapping.medioPagoDianMap[_metodoPago] ?? 'efectivo';
@@ -3982,11 +4286,12 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             }
           }
 
-          // Registrar movimientos de inventario
-          _registrarMovimientosInventarioVentaEnBackground(
-            pedidoPagado,
-            itemsOriginales: itemsOriginales,
-          );
+          // El inventario ya se descontó en el backend al crear el pedido
+          // (InventarioService.procesarPedidoParaInventario, disparado desde
+          // PedidosController.create()) — ver por qué se quitó la llamada a
+          // _registrarMovimientosInventarioVentaEnBackground que estaba acá:
+          // volvía a restar la misma cantidad sobre el stock que el backend
+          // ya había descontado, duplicando la salida en cada venta.
 
           // Enviar directamente a DIAN para POS y Factura Electrónica
           if (tipoFacturaCapturado == 'POS' || tipoFacturaCapturado == 'FACTURA') {
@@ -4268,8 +4573,45 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           }
         } catch (e) {
           appLog('⚠️ Error en procesamiento background: $e');
+          final motivo = errorMessage(e);
+          // No se pudo crear/pagar el pedido (ej. caja cerrada): nada quedó
+          // guardado en el backend, así que se guarda localmente para no
+          // perder lo que ya se había armado.
+          await _guardarBorradorLocalPorFallo(
+            items: itemsOriginales,
+            cliente: clienteTexto,
+            clienteId: clienteCapturado?.id,
+            tipoFactura: tipoFacturaCapturado,
+            fechaFactura: fechaFacturaCapturada,
+            fechaVencimiento: fechaVencimientoCapturada,
+            metodoPago: metodoPagoOriginal,
+            montosPago: {
+              'efectivo': montoEfectivo,
+              'transferencia': montoTransferencia,
+              'tarjeta': montoTarjeta,
+              'sistecredito': montoSistecredito,
+              'datafono': montoDatafono,
+              'bold': montoBold,
+              'addi': montoAddi,
+              'credilondon': montoCredilondon,
+              'nequi': montoNequi,
+              'daviplata': montoDaviplata,
+              'bancolombia': montoBancolombia,
+            },
+            dctoGeneral: dctoGeneral,
+            retencionPct: retencionPct,
+            reteIVAPct: reteIVAPct,
+            reteICAPct: reteICAPct,
+            aiuPct: aiuPct,
+            observaciones: observacionesCapturadas,
+            motivo: motivo,
+          );
+          await _actualizarContadorBorradoresLocales();
           if (mounted) {
-            showErrorDialog(context, errorMessage(e));
+            showErrorDialog(
+              context,
+              '$motivo\n\nEl pedido se guardó como borrador local en este dispositivo — tocá el ícono de borradores para recuperarlo.',
+            );
           }
         }
       });
@@ -4317,8 +4659,15 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
         appLog('📋 [DIAN] Resultado: success=${resultado.success}, message=${resultado.message}');
 
-        if (!mounted) return;
         if (resultado.success) {
+          // Éxito (posiblemente en un reintento): limpiar cualquier error
+          // previo guardado para este pedido.
+          _pedidoService.setErrorFacturacionElectronica(pedido.id, null).catchError((e) {
+            appLog('⚠️ No se pudo limpiar el error de facturación guardado: $e');
+            return pedido;
+          });
+
+          if (!mounted) return;
           final cufe = resultado.documentKey ?? '';
           final factResult = FacturacionResult(
             success: true,
@@ -4338,6 +4687,16 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             ),
           );
         } else {
+          // No lanzó excepción, pero Matias/DIAN rechazó el documento: guardar
+          // el motivo para poder revisarlo después desde Facturas Electrónicas.
+          _pedidoService
+              .setErrorFacturacionElectronica(pedido.id, resultado.message)
+              .catchError((e) {
+            appLog('⚠️ No se pudo guardar el error de facturación: $e');
+            return pedido;
+          });
+
+          if (!mounted) return;
           messenger.showSnackBar(
             SnackBar(
               content: Text('⚠️ Error DIAN ($nombreDoc): ${resultado.message}'),
@@ -4347,9 +4706,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           );
         }
       } catch (e) {
+        final motivo = errorMessage(e);
         appLog('❌ [DIAN] Error al emitir documento: $e');
+        _pedidoService.setErrorFacturacionElectronica(pedido.id, motivo).catchError((e2) {
+          appLog('⚠️ No se pudo guardar el error de facturación: $e2');
+          return pedido;
+        });
         if (!mounted) return;
-        showErrorDialog(context, 'Error al enviar a DIAN: ${errorMessage(e)}');
+        showErrorDialog(context, 'Error al enviar a DIAN: $motivo');
       }
     });
   }
@@ -4400,92 +4764,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         showErrorDialog(context, 'Error al descargar PDF: ${errorMessage(e)}');
       }
     }
-  }
-
-  // 🧹 Versión no-blocking que se ejecuta en background sin esperar
-  void _registrarMovimientosInventarioVentaEnBackground(
-    Pedido pedido, {
-    List<ItemPedido>? itemsOriginales,
-  }) {
-    // Ejecutar en microtask para no bloquear la UI
-    Future.microtask(() async {
-      try {
-        final productoService = ProductoService();
-        final itemsParaProcesar = itemsOriginales ?? pedido.items;
-        
-        appLog('📦 [BG] Procesando ${itemsParaProcesar.length} items para inventario');
-
-        // Procesar todos en paralelo sin bloquear
-        await Future.wait(
-          itemsParaProcesar.map((item) async {
-            try {
-              final productoCompleto = await productoService.getProducto(
-                item.productoId,
-              );
-
-              if (productoCompleto == null) return;
-
-              final origen = item.origen;
-              double almacenActual = (productoCompleto.almacen ?? 0).toDouble();
-              double bodegaActual = (productoCompleto.bodega ?? 0).toDouble();
-              double stockAnterior = 0;
-              double nuevoStock = 0;
-
-              if (origen.toUpperCase() == 'BODEGA') {
-                stockAnterior = bodegaActual;
-                nuevoStock = (stockAnterior - item.cantidad).clamp(0, double.infinity);
-                bodegaActual = nuevoStock;
-              } else {
-                stockAnterior = almacenActual;
-                nuevoStock = (stockAnterior - item.cantidad).clamp(0, double.infinity);
-                almacenActual = nuevoStock;
-              }
-
-              // Crear movimiento
-              final movimiento = MovimientoInventario(
-                inventarioId: item.productoId,
-                productoId: item.productoId,
-                productoNombre: item.productoNombre ?? 'Producto',
-                tipoMovimiento: 'Salida',
-                motivo: 'Venta - Factura ${pedido.id} (${origen})',
-                cantidadAnterior: stockAnterior,
-                cantidadMovimiento: item.cantidad.toDouble(),
-                cantidadNueva: nuevoStock,
-                responsable: pedido.mesero ?? 'Sistema',
-                referencia: 'FV-${pedido.id}',
-                observaciones: 'Venta a ${pedido.cliente ?? 'CONSUMIDOR FINAL'} desde ${origen}',
-                costoUnitario: item.precioUnitario,
-                precioTotal: item.subtotal,
-                fecha: DateTimeUtils.nowColombia(),
-                facturaNo: pedido.id,
-                proveedor: null,
-              );
-
-              // Registrar movimiento (no bloquear)
-              _inventarioService.registrarMovimiento(movimiento).catchError((e) {
-                appLog('⚠️ [BG] Error mov: $e');
-              });
-
-              // Actualizar stock
-              final productoActualizado = productoCompleto.copyWith(
-                almacen: almacenActual.toInt(),
-                bodega: bodegaActual.toInt(),
-              );
-
-              await _productoService.updateProducto(productoActualizado);
-              appLog('✅ [BG] ${item.productoNombre} actualizado');
-            } catch (e) {
-              appLog('⚠️ [BG] Error item: $e');
-            }
-          }),
-          eagerError: false, // No fallar si alguno falla
-        );
-        
-        appLog('✅ [BG] Inventario actualizado completamente');
-      } catch (e) {
-        appLog('⚠️ [BG] Error general: $e');
-      }
-    });
   }
 
   // 🔄 Refrescar cache en segundo plano

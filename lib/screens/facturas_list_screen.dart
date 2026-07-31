@@ -288,11 +288,21 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
       body: Column(
         children: [
           _buildHeader(),
-          _buildFiltros(),
           Expanded(
             child: _isLoading
                 ? Center(child: CircularProgressIndicator())
-                : _buildTable(),
+                // 📱 Antes _buildFiltros() quedaba fijo arriba y solo la
+                // tabla scrolleaba dentro de su propio Expanded — en un
+                // celular eso tapaba media pantalla con los buscadores todo
+                // el tiempo. Ahora todo va en un solo scroll vertical.
+                : SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        _buildFiltros(),
+                        _buildTable(),
+                      ],
+                    ),
+                  ),
           ),
         ],
       ),
@@ -411,152 +421,158 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
   }
 
   Widget _buildFiltros() {
+    final campoTipo = DropdownButtonFormField<String>(
+      value: _filtroTipo,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: 'Tipo',
+        labelStyle: TextStyle(color: Colors.grey),
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        filled: true,
+        fillColor: Theme.of(context).colorScheme.surface,
+      ),
+      dropdownColor: Theme.of(context).colorScheme.surface,
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+      items: [
+        DropdownMenuItem(value: 'POS', child: Text('POS')),
+        DropdownMenuItem(value: 'FE', child: Text('FE')),
+        DropdownMenuItem(value: '', child: Text('Todos')),
+      ],
+      onChanged: (value) {
+        setState(() {
+          _filtroTipo = value ?? '';
+          _aplicarFiltros();
+        });
+      },
+    );
+
+    final campoNumero = TextField(
+      controller: _filtroNumeroController,
+      decoration: InputDecoration(
+        labelText: 'N. Pos',
+        labelStyle: TextStyle(color: Colors.grey),
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        filled: true,
+        fillColor: Theme.of(context).colorScheme.surface,
+      ),
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+      onChanged: (value) {
+        setState(() {
+          _filtroNumero = value;
+          _aplicarFiltros();
+        });
+      },
+    );
+
+    final campoCliente = TextField(
+      controller: _filtroClienteController,
+      decoration: InputDecoration(
+        labelText: 'Nombre cliente',
+        labelStyle: TextStyle(color: Colors.grey),
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        filled: true,
+        fillColor: Theme.of(context).colorScheme.surface,
+      ),
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+      onChanged: (value) {
+        setState(() {
+          _filtroCliente = value;
+          _aplicarFiltros();
+        });
+      },
+    );
+
+    final campoOrden = TextField(
+      controller: _filtroOrdenController,
+      decoration: InputDecoration(
+        labelText: 'Orden',
+        labelStyle: TextStyle(color: Colors.grey),
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        filled: true,
+        fillColor: Theme.of(context).colorScheme.surface,
+      ),
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+      onChanged: (value) {
+        setState(() {
+          _filtroOrden = value;
+        });
+      },
+    );
+
+    final botonOtros = PopupMenuButton<String>(
+      onSelected: (value) async {
+        if (value == 'exportar_excel') {
+          _exportarExcel();
+        } else if (value == 'limpiar_filtros') {
+          setState(() {
+            _filtroNumeroController.clear();
+            _filtroClienteController.clear();
+            _filtroOrdenController.clear();
+
+            _filtroNumero = '';
+            _filtroCliente = '';
+            _filtroOrden = '';
+            _filtroTipo = '';
+            _mostrarLocales = false;
+          });
+          _cargarDocumentos(); // Recargar si es necesario o _aplicarFiltros()
+        }
+      },
+      itemBuilder: (_) => [
+        PopupMenuItem(value: 'exportar_excel', child: Row(children: [Icon(Icons.grid_on, size: 18, color: AppTheme.success), SizedBox(width: 8), Text('Exportar Excel', style: TextStyle(color: Theme.of(context).colorScheme.onSurface))])),
+        PopupMenuItem(value: 'limpiar_filtros', child: Row(children: [Icon(Icons.clear_all, size: 18, color: Theme.of(context).colorScheme.onSurface), SizedBox(width: 8), Text('Limpiar filtros', style: TextStyle(color: Theme.of(context).colorScheme.onSurface))])),
+      ],
+      color: Theme.of(context).colorScheme.surface,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(8)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [Text('Otros', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)), SizedBox(width: 4), Icon(Icons.arrow_drop_down, color: Theme.of(context).colorScheme.onSurface)]),
+      ),
+    );
+
+    // 📱 4 campos + un botón en una sola Row (con "Tipo" a ancho fijo de
+    // 120px) no caben en un teléfono — los 3 TextField Expanded quedaban
+    // aplastados a casi 0px de ancho, mostrándose como cajas en blanco. En
+    // mobile se apilan verticalmente a ancho completo.
+    if (context.isMobile) {
+      return Container(
+        padding: EdgeInsets.all(16),
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: Column(
+          children: [
+            campoTipo,
+            SizedBox(height: 12),
+            campoNumero,
+            SizedBox(height: 12),
+            campoCliente,
+            SizedBox(height: 12),
+            campoOrden,
+            SizedBox(height: 12),
+            Align(alignment: Alignment.centerRight, child: botonOtros),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: EdgeInsets.all(24),
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Row(
         children: [
           // Filtro por tipo
-          Container(
-            width: 120,
-            child: DropdownButtonFormField<String>(
-              value: _filtroTipo,
-              decoration: InputDecoration(
-                labelText: 'Tipo',
-                labelStyle: TextStyle(color: Colors.grey),
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                filled: true,
-                fillColor: Theme.of(context).colorScheme.surface,
-              ),
-              dropdownColor: Theme.of(context).colorScheme.surface,
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-              items: [
-                DropdownMenuItem(value: 'POS', child: Text('POS')),
-                DropdownMenuItem(value: 'FE', child: Text('FE')),
-                DropdownMenuItem(value: '', child: Text('Todos')),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _filtroTipo = value ?? '';
-                  _aplicarFiltros();
-                });
-              },
-            ),
-          ),
+          SizedBox(width: 120, child: campoTipo),
           SizedBox(width: 16),
-
-          // Filtro por número
-          Expanded(
-            child: TextField(
-              controller: _filtroNumeroController,
-              decoration: InputDecoration(
-                labelText: 'N. Pos',
-                labelStyle: TextStyle(color: Colors.grey),
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                filled: true,
-                fillColor: Theme.of(context).colorScheme.surface,
-              ),
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-              onChanged: (value) {
-                setState(() {
-                  _filtroNumero = value;
-                  _aplicarFiltros();
-                });
-              },
-            ),
-          ),
+          Expanded(child: campoNumero),
           SizedBox(width: 16),
-
-          // Filtro por cliente
-          Expanded(
-            child: TextField(
-              controller: _filtroClienteController,
-              decoration: InputDecoration(
-                labelText: 'Nombre cliente',
-                labelStyle: TextStyle(color: Colors.grey),
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                filled: true,
-                fillColor: Theme.of(context).colorScheme.surface,
-              ),
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-              onChanged: (value) {
-                setState(() {
-                  _filtroCliente = value;
-                  _aplicarFiltros();
-                });
-              },
-            ),
-          ),
+          Expanded(child: campoCliente),
           SizedBox(width: 16),
-
-          // Filtro por orden
-          Expanded(
-            child: TextField(
-              controller: _filtroOrdenController,
-              decoration: InputDecoration(
-                labelText: 'Orden',
-                labelStyle: TextStyle(color: Colors.grey),
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                filled: true,
-                fillColor: Theme.of(context).colorScheme.surface,
-              ),
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-              onChanged: (value) {
-                setState(() {
-                  _filtroOrden = value;
-                });
-              },
-            ),
-          ),
+          Expanded(child: campoOrden),
           SizedBox(width: 16),
-
-          // Botón otros
-          PopupMenuButton<String>(
-            onSelected: (value) async {
-              if (value == 'exportar_excel') {
-                _exportarExcel();
-              } else if (value == 'limpiar_filtros') {
-                setState(() {
-                  _filtroNumeroController.clear();
-                  _filtroClienteController.clear();
-                  _filtroOrdenController.clear();
-
-                  _filtroNumero = '';
-                  _filtroCliente = '';
-                  _filtroOrden = '';
-                  _filtroTipo = '';
-                  _mostrarLocales = false;
-                });
-                _cargarDocumentos(); // Recargar si es necesario o _aplicarFiltros()
-              }
-            },
-            itemBuilder: (_) => [
-              PopupMenuItem(value: 'exportar_excel', child: Row(children: [Icon(Icons.grid_on, size: 18, color: AppTheme.success), SizedBox(width: 8), Text('Exportar Excel', style: TextStyle(color: Theme.of(context).colorScheme.onSurface))])),
-              PopupMenuItem(value: 'limpiar_filtros', child: Row(children: [Icon(Icons.clear_all, size: 18, color: Theme.of(context).colorScheme.onSurface), SizedBox(width: 8), Text('Limpiar filtros', style: TextStyle(color: Theme.of(context).colorScheme.onSurface))])),
-            ],
-            color: Theme.of(context).colorScheme.surface,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(8)),
-              child: Row(children: [Text('Otros', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)), SizedBox(width: 4), Icon(Icons.arrow_drop_down, color: Theme.of(context).colorScheme.onSurface)]),
-            ),
-          ),
+          botonOtros,
         ],
       ),
     );
@@ -717,51 +733,54 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
           ),
 
           // Filas de la tabla
-          Expanded(
-            child: _documentosFiltrados.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.receipt_long,
-                          size: 64,
-                          color: Colors.grey.shade600,
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'No hay documentos registrados',
-                          style: TextStyle(
-                            color: Colors.grey.shade400,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : Column(
+          _documentosFiltrados.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 48),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: paginarLista(_documentosFiltrados).length,
-                          itemBuilder: (context, index) {
-                            final documento = paginarLista(_documentosFiltrados)[index];
-                            try {
-                              return _buildTableRow(documento, index);
-                            } catch (e) {
-                              appLog('❌ Error renderizando fila $index: $e');
-                              return Container();
-                            }
-                          },
-                        ),
+                      Icon(
+                        Icons.receipt_long,
+                        size: 64,
+                        color: Colors.grey.shade600,
                       ),
-                      buildPaginacion(
-                        totalItems: _documentosFiltrados.length,
-                        accentColor: AppTheme.primary,
+                      SizedBox(height: 16),
+                      Text(
+                        'No hay documentos registrados',
+                        style: TextStyle(
+                          color: Colors.grey.shade400,
+                          fontSize: 16,
+                        ),
                       ),
                     ],
                   ),
-          ),
+                )
+              : Column(
+                  children: [
+                    // shrinkWrap + NeverScrollableScrollPhysics: esta lista
+                    // ya no es la que scrollea (ahora lo hace el
+                    // SingleChildScrollView exterior que también incluye
+                    // los buscadores), solo se dimensiona a su contenido.
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: paginarLista(_documentosFiltrados).length,
+                      itemBuilder: (context, index) {
+                        final documento = paginarLista(_documentosFiltrados)[index];
+                        try {
+                          return _buildTableRow(documento, index);
+                        } catch (e) {
+                          appLog('❌ Error renderizando fila $index: $e');
+                          return Container();
+                        }
+                      },
+                    ),
+                    buildPaginacion(
+                      totalItems: _documentosFiltrados.length,
+                      accentColor: AppTheme.primary,
+                    ),
+                  ],
+                ),
         ],
       );
   }
@@ -810,6 +829,11 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
     } else {
       return SizedBox.shrink();
     }
+
+    // Último error al intentar emitir este pedido pagado ante Matias/DIAN
+    // (null si nunca falló o si el último reintento fue exitoso).
+    final String? errorFacturacion =
+        documento is Pedido ? documento.errorFacturacionElectronica : null;
 
     final Color badgeColor = switch (categoria) {
       'FE' => AppTheme.success,
@@ -915,34 +939,53 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
           // Estado
           Expanded(
             flex: 2,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: isPagado
-                    ? AppTheme.success.withValues(alpha:0.2)
-                    : AppTheme.warning.withValues(alpha:0.2),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    isPagado ? Icons.check : Icons.pending,
-                    color: isPagado ? AppTheme.success : AppTheme.warning,
-                    size: 16,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    isPagado ? 'PAGADO' : 'PENDIENTE',
-                    style: TextStyle(
-                      color: isPagado ? AppTheme.success : AppTheme.warning,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isPagado
+                          ? AppTheme.success.withValues(alpha:0.2)
+                          : AppTheme.warning.withValues(alpha:0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isPagado ? Icons.check : Icons.pending,
+                          color: isPagado ? AppTheme.success : AppTheme.warning,
+                          size: 16,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          isPagado ? 'PAGADO' : 'PENDIENTE',
+                          style: TextStyle(
+                            color: isPagado ? AppTheme.success : AppTheme.warning,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+                // Quedó pagado pero la última emisión electrónica falló: se
+                // guardó el motivo real (ver setErrorFacturacionElectronica)
+                // para poder revisarlo sin depender de haber visto el diálogo
+                // del momento.
+                if (errorFacturacion != null)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Tooltip(
+                      message: 'Falló la emisión electrónica:\n$errorFacturacion',
+                      child: Icon(Icons.error_outline, color: AppTheme.error, size: 18),
+                    ),
+                  ),
+              ],
             ),
           ),
 

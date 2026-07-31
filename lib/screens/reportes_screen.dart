@@ -78,6 +78,28 @@ class _ReportesScreenState extends State<ReportesScreen>
     _cargarDatos();
   }
 
+  Future<void> _seleccionarFechaPersonalizada({required bool esInicio}) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: esInicio ? _fechaInicio : _fechaFin,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      locale: const Locale('es', 'CO'),
+      helpText: esInicio ? 'Fecha inicio' : 'Fecha fin',
+      cancelText: 'Cancelar',
+      confirmText: 'Aceptar',
+    );
+    if (picked == null) return;
+    setState(() {
+      if (esInicio) {
+        _fechaInicio = picked;
+      } else {
+        _fechaFin = picked;
+      }
+    });
+    _cargarDatos();
+  }
+
   Future<void> _cargarClientes() async {
     try {
       final clientes = await _clienteService.obtenerClientes();
@@ -617,9 +639,7 @@ class _ReportesScreenState extends State<ReportesScreen>
                 children: [
                   Expanded(
                     child: InkWell(
-                      onTap: () async {
-                        // Aquí se integraría un DatePicker
-                      },
+                      onTap: () => _seleccionarFechaPersonalizada(esInicio: true),
                       child: InputDecorator(
                         decoration: InputDecoration(
                           labelText: 'Fecha inicio',
@@ -644,9 +664,7 @@ class _ReportesScreenState extends State<ReportesScreen>
                   SizedBox(width: 16),
                   Expanded(
                     child: InkWell(
-                      onTap: () async {
-                        // Aquí se integraría un DatePicker
-                      },
+                      onTap: () => _seleccionarFechaPersonalizada(esInicio: false),
                       child: InputDecorator(
                         decoration: InputDecoration(
                           labelText: 'Fecha fin',
