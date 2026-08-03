@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../providers/user_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/notificaciones_provider.dart';
+import '../providers/datos_cache_provider.dart';
 import '../utils/notification_sound.dart';
 
 /// Shell persistente: sidebar a la izquierda + topbar minimal + área de contenido.
@@ -52,6 +53,11 @@ class _AppShellState extends State<AppShell> {
     _notifProvider?.startAutoRefresh();
     _notifProvider?.startBeepRepeat();
     _notifProvider?.iniciarEscuchaTiempoReal();
+
+    // Mismo motivo que arriba: engancha acá (y no solo en SplashScreen) para
+    // cubrir recargar el navegador estando ya en una ruta protegida.
+    Provider.of<DatosCacheProvider>(context, listen: false)
+        .iniciarEscuchaTiempoReal();
   }
 
   @override

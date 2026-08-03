@@ -4,6 +4,8 @@ import '../models/producto.dart';
 import '../models/categoria.dart';
 import '../models/ingrediente.dart';
 import '../services/producto_service.dart';
+import '../services/traslado_websocket_service.dart';
+import '../config/constants.dart';
 import '../utils/logger.dart';
 
 class DatosCacheProvider extends ChangeNotifier {
@@ -37,6 +39,7 @@ class DatosCacheProvider extends ChangeNotifier {
 
   // Servicios
   final ProductoService _productoService = ProductoService();
+  final TrasladoWebSocketService _wsService = TrasladoWebSocketService();
 
   // Getters
   List<Producto>? get productos => _productos;
@@ -73,6 +76,64 @@ class DatosCacheProvider extends ChangeNotifier {
     // Las categorías se cargarán bajo demanda cuando se necesiten
     // await _cargarCategorias(force: false, silent: false);
     _startPolling(); // ✅ Iniciar polling automático
+  }
+
+  /// Conecta al WebSocket (canal /rt/traslados, reutilizado — ver
+  /// TrasladoWebSocketService/ProductoRealtimeService en el backend) para
+  /// enterarse al instante cuando un producto se crea, se edita o le cambia
+  /// el stock (compra, venta, traslado), en vez de esperar hasta 10-12 min
+  /// al siguiente refresh del caché o depender de que alguien recargue a
+  /// mano. El polling periódico sigue activo como respaldo — si el
+  /// WebSocket se cae, la reconexión automática lo retoma solo.
+  void iniciarEscuchaTiempoReal() {
+    _wsService.connect(
+      baseUrl: kDynamicBackendUrl,
+      onEvent: (data) {
+        switch (data['tipo']) {
+          case 'PRODUCTOS_ACTUALIZADOS':
+            final lista = data['productos'] as List<dynamic>? ?? [];
+            for (final json in lista) {
+              try {
+                _upsertProductoEnCache(
+                  Producto.fromJson(json as Map<String, dynamic>),
+                );
+              } catch (e) {
+                appLog('⚠️ Error parseando producto de PRODUCTOS_ACTUALIZADOS: $e');
+              }
+            }
+            break;
+          case 'PRODUCTOS_ELIMINADOS':
+            final ids = data['productoIds'] as List<dynamic>? ?? [];
+            for (final id in ids) {
+              eliminarProductoDelCache(id.toString());
+            }
+            break;
+          case 'PRODUCTOS_CAMBIO_MASIVO':
+            // Carga masiva (ej. importación de Excel): en vez de parchear
+            // cache por cache, se recarga todo una sola vez.
+            forceRefreshProductos();
+            break;
+        }
+      },
+    );
+  }
+
+  void detenerEscuchaTiempoReal() {
+    _wsService.disconnect();
+  }
+
+  /// Inserta el producto si no estaba en caché, o lo reemplaza si ya
+  /// existía — a diferencia de agregarProductoAlCache/actualizarProductoEnCache
+  /// por separado, no asume de antemano si es nuevo o no.
+  void _upsertProductoEnCache(Producto producto) {
+    if (_productos == null || producto.id.isEmpty) return;
+    final index = _productos!.indexWhere((p) => p.id == producto.id);
+    if (index >= 0) {
+      _productos![index] = producto;
+    } else {
+      _productos!.insert(0, producto);
+    }
+    notifyListeners();
   }
 
   // 🔥 WARMUP: Precargar productos en background SIN IMÁGENES
@@ -329,6 +390,7 @@ class DatosCacheProvider extends ChangeNotifier {
   @override
   void dispose() {
     _pollingTimer?.cancel();
+    _wsService.disconnect();
     super.dispose();
   }
 }
