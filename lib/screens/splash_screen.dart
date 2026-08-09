@@ -93,7 +93,12 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     if (userProvider.isAuthenticated) {
-      if (userProvider.isOnlyAsesor) {
+      // Este correo es de uso exclusivo de la pantalla simplificada de stock
+      // (ver editar_stock_simple_screen.dart) — nunca debe caer en pedidos ni
+      // en el dashboard normal, ni siquiera al recargar el navegador.
+      if (userProvider.userEmail?.trim().toLowerCase() == 'francia@gmail.com') {
+        context.go('/editar-stock');
+      } else if (userProvider.isOnlyAsesor) {
         context.go('/asesor-pedidos');
       } else {
         context.go('/dashboard');

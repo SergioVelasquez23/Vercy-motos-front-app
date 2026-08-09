@@ -7,7 +7,6 @@ import '../models/cliente.dart';
 import '../models/producto.dart';
 import '../services/cotizacion_service.dart';
 import '../services/cliente_service.dart';
-import '../services/producto_service.dart';
 import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/busqueda_productos_utils.dart';
@@ -27,7 +26,6 @@ class CotizacionFormScreen extends StatefulWidget {
 class _CotizacionFormScreenState extends State<CotizacionFormScreen> with SubmitGuard {
   final CotizacionService _cotizacionService = CotizacionService();
   final ClienteService _clienteService = ClienteService();
-  final ProductoService _productoService = ProductoService();
   final _formKey = GlobalKey<FormState>();
 
   // Controladores
@@ -56,6 +54,8 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
   double _reteIVA = 0;
   double _reteICA = 0;
 
+  DatosCacheProvider? _cacheProvider;
+
   @override
   void initState() {
     super.initState();
@@ -65,6 +65,28 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
 
     if (_esEdicion) {
       _cargarDatosCotizacion();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Sin esto, un producto creado/editado en otro dispositivo mientras esta
+    // pantalla está abierta nunca se reflejaba: _cargarProductos() solo lee
+    // el caché una vez al entrar.
+    final newProvider = Provider.of<DatosCacheProvider>(context, listen: false);
+    if (_cacheProvider != newProvider) {
+      _cacheProvider?.removeListener(_onCacheActualizado);
+      _cacheProvider = newProvider;
+      _cacheProvider!.addListener(_onCacheActualizado);
+    }
+  }
+
+  void _onCacheActualizado() {
+    if (!mounted) return;
+    final productosCache = _cacheProvider?.productos;
+    if (productosCache != null && productosCache.isNotEmpty) {
+      setState(() => _productosDisponibles = List.from(productosCache));
     }
   }
 
@@ -81,14 +103,15 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
         _productosDisponibles = cacheProvider.productos!;
       });
     } else {
-      // Si no hay productos en cache, cargarlos
+      // Si no hay productos en cache, cargarlos vía el provider (queda
+      // cacheado ahí para el resto de la app).
       try {
-        final productos = await _productoService.getProductos();
+        final productos = await cacheProvider.obtenerProductos();
         setState(() {
           _productosDisponibles = productos;
         });
       } catch (e) {
-          
+
       }
     }
   }
@@ -140,6 +163,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
 
   @override
   void dispose() {
+    _cacheProvider?.removeListener(_onCacheActualizado);
     _clienteController.dispose();
     _descripcionController.dispose();
     _validezController.dispose();
@@ -192,6 +216,38 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
     );
   }
 
+  /// Varios campos lado a lado (Fecha/Validez/Vence, Código/Producto/
+  /// Cantidad/Precio, etc.) no caben en un teléfono — cada uno queda tan
+  /// angosto que no se distinguen. En mobile se apilan a todo el ancho; en
+  /// desktop se mantiene la fila con las proporciones de [flexes] (o 1 parejo
+  /// si no se especifican).
+  Widget _filaResponsiva(
+    List<Widget> campos, {
+    List<int>? flexes,
+    double spacing = 16,
+  }) {
+    if (context.isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (int i = 0; i < campos.length; i++) ...[
+            if (i > 0) SizedBox(height: spacing),
+            campos[i],
+          ],
+        ],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (int i = 0; i < campos.length; i++) ...[
+          if (i > 0) SizedBox(width: spacing),
+          Expanded(flex: flexes != null ? flexes[i] : 1, child: campos[i]),
+        ],
+      ],
+    );
+  }
+
   Widget _buildEncabezado() {
     return Container(
       padding: EdgeInsets.all(24),
@@ -214,125 +270,115 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
             ),
           ),
           SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Fecha',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
+          _filaResponsiva(
+            flexes: [2, 1, 2],
+            [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Fecha',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
                     ),
-                    SizedBox(height: 8),
-                    InkWell(
-                      onTap: () async {
-                        final fecha = await showDatePicker(
-                          context: context,
-                          initialDate: _fecha,
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime(2030),
-                        );
-                        if (fecha != null) setState(() => _fecha = fecha);
-                      },
-                      child: InputDecorator(
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          suffixIcon: Icon(Icons.calendar_today),
-                        ),
-                        child: Text(
-                          '${_fecha.year}-${_fecha.month.toString().padLeft(2, '0')}-${_fecha.day.toString().padLeft(2, '0')}',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: 16),
-              Expanded(
-                flex: 1,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Validez (días)',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    TextField(
-                      controller: _validezController,
-                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                  ),
+                  SizedBox(height: 8),
+                  InkWell(
+                    onTap: () async {
+                      final fecha = await showDatePicker(
+                        context: context,
+                        initialDate: _fecha,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2030),
+                      );
+                      if (fecha != null) setState(() => _fecha = fecha);
+                    },
+                    child: InputDecorator(
                       decoration: InputDecoration(
                         border: OutlineInputBorder(),
                         contentPadding: EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 8,
                         ),
-                        suffixText: 'días',
+                        suffixIcon: Icon(Icons.calendar_today),
                       ),
-                      keyboardType: TextInputType.number,
-                      onChanged: (value) {
-                        final dias = int.tryParse(value) ?? 30;
-                        setState(() {
-                          _fechaVencimiento = _fecha.add(Duration(days: dias));
-                        });
-                      },
+                      child: Text(
+                        '${_fecha.year}-${_fecha.month.toString().padLeft(2, '0')}-${_fecha.day.toString().padLeft(2, '0')}',
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              SizedBox(width: 16),
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Vence',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Validez (días)',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  TextField(
+                    controller: _validezController,
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      suffixText: 'días',
+                    ),
+                    keyboardType: TextInputType.number,
+                    onChanged: (value) {
+                      final dias = int.tryParse(value) ?? 30;
+                      setState(() {
+                        _fechaVencimiento = _fecha.add(Duration(days: dias));
+                      });
+                    },
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Vence',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  InkWell(
+                    onTap: () async {
+                      final fecha = await showDatePicker(
+                        context: context,
+                        initialDate: _fechaVencimiento,
+                        firstDate: _fecha,
+                        lastDate: DateTime(2030),
+                      );
+                      if (fecha != null)
+                        setState(() => _fechaVencimiento = fecha);
+                    },
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        suffixIcon: Icon(Icons.event),
+                      ),
+                      child: Text(
+                        '${_fechaVencimiento.year}-${_fechaVencimiento.month.toString().padLeft(2, '0')}-${_fechaVencimiento.day.toString().padLeft(2, '0')}',
                       ),
                     ),
-                    SizedBox(height: 8),
-                    InkWell(
-                      onTap: () async {
-                        final fecha = await showDatePicker(
-                          context: context,
-                          initialDate: _fechaVencimiento,
-                          firstDate: _fecha,
-                          lastDate: DateTime(2030),
-                        );
-                        if (fecha != null)
-                          setState(() => _fechaVencimiento = fecha);
-                      },
-                      child: InputDecorator(
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          suffixIcon: Icon(Icons.event),
-                        ),
-                        child: Text(
-                          '${_fechaVencimiento.year}-${_fechaVencimiento.month.toString().padLeft(2, '0')}-${_fechaVencimiento.day.toString().padLeft(2, '0')}',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -507,23 +553,19 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
             ),
           ),
           SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                flex: 1,
-                child: TextField(
-                  controller: _codigoProductoController,
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                  decoration: InputDecoration(
-                    labelText: 'Código',
-                    border: OutlineInputBorder(),
-                  ),
+          _filaResponsiva(
+            spacing: 12,
+            flexes: [1, 3, 1, 1],
+            [
+              TextField(
+                controller: _codigoProductoController,
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                decoration: InputDecoration(
+                  labelText: 'Código',
+                  border: OutlineInputBorder(),
                 ),
               ),
-              SizedBox(width: 12),
-              Expanded(
-                flex: 3,
-                child: Autocomplete<Producto>(
+              Autocomplete<Producto>(
                   optionsBuilder: (TextEditingValue textEditingValue) {
                     if (textEditingValue.text.isEmpty) {
                       return const Iterable<Producto>.empty();
@@ -659,80 +701,63 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
                         );
                       },
                 ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                flex: 1,
-                child: TextField(
-                  controller: _cantidadController,
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                  decoration: InputDecoration(
-                    labelText: 'Cantidad',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
+              TextField(
+                controller: _cantidadController,
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                decoration: InputDecoration(
+                  labelText: 'Cantidad',
+                  border: OutlineInputBorder(),
                 ),
+                keyboardType: TextInputType.number,
               ),
-              SizedBox(width: 12),
-              Expanded(
-                flex: 1,
-                child: TextField(
-                  controller: _precioController,
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                  decoration: InputDecoration(
-                    labelText: 'Precio',
-                    prefixText: '\$',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
+              TextField(
+                controller: _precioController,
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                decoration: InputDecoration(
+                  labelText: 'Precio',
+                  prefixText: '\$',
+                  border: OutlineInputBorder(),
                 ),
+                keyboardType: TextInputType.number,
               ),
             ],
           ),
           SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _tipoImpuesto,
-                  decoration: InputDecoration(
-                    labelText: 'Tipo Impuesto',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: ['IVA', 'INC', 'Exento']
-                      .map(
-                        (tipo) =>
-                            DropdownMenuItem(value: tipo, child: Text(tipo)),
-                      )
-                      .toList(),
-                  onChanged: (value) => setState(() => _tipoImpuesto = value!),
+          _filaResponsiva(
+            spacing: 12,
+            [
+              DropdownButtonFormField<String>(
+                value: _tipoImpuesto,
+                decoration: InputDecoration(
+                  labelText: 'Tipo Impuesto',
+                  border: OutlineInputBorder(),
                 ),
+                items: ['IVA', 'INC', 'Exento']
+                    .map(
+                      (tipo) =>
+                          DropdownMenuItem(value: tipo, child: Text(tipo)),
+                    )
+                    .toList(),
+                onChanged: (value) => setState(() => _tipoImpuesto = value!),
               ),
-              SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _porcentajeImpuestoController,
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                  decoration: InputDecoration(
-                    labelText: '% Impuesto',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
+              TextField(
+                controller: _porcentajeImpuestoController,
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                decoration: InputDecoration(
+                  labelText: '% Impuesto',
+                  border: OutlineInputBorder(),
                 ),
+                keyboardType: TextInputType.number,
               ),
-              SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _porcentajeDescuentoController,
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                  decoration: InputDecoration(
-                    labelText: '% Descuento',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
+              TextField(
+                controller: _porcentajeDescuentoController,
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                decoration: InputDecoration(
+                  labelText: '% Descuento',
+                  border: OutlineInputBorder(),
                 ),
+                keyboardType: TextInputType.number,
               ),
-              SizedBox(width: 12),
               ElevatedButton.icon(
                 onPressed: _agregarItem,
                 icon: Icon(Icons.add),
@@ -895,42 +920,34 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
             ),
           ),
           SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  decoration: InputDecoration(
-                    labelText: '% Retención',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) =>
-                      setState(() => _retencion = double.tryParse(value) ?? 0),
+          _filaResponsiva(
+            [
+              TextField(
+                decoration: InputDecoration(
+                  labelText: '% Retención',
+                  border: OutlineInputBorder(),
                 ),
+                keyboardType: TextInputType.number,
+                onChanged: (value) =>
+                    setState(() => _retencion = double.tryParse(value) ?? 0),
               ),
-              SizedBox(width: 16),
-              Expanded(
-                child: TextField(
-                  decoration: InputDecoration(
-                    labelText: '% Rete IVA',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) =>
-                      setState(() => _reteIVA = double.tryParse(value) ?? 0),
+              TextField(
+                decoration: InputDecoration(
+                  labelText: '% Rete IVA',
+                  border: OutlineInputBorder(),
                 ),
+                keyboardType: TextInputType.number,
+                onChanged: (value) =>
+                    setState(() => _reteIVA = double.tryParse(value) ?? 0),
               ),
-              SizedBox(width: 16),
-              Expanded(
-                child: TextField(
-                  decoration: InputDecoration(
-                    labelText: '% Rete ICA',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) =>
-                      setState(() => _reteICA = double.tryParse(value) ?? 0),
+              TextField(
+                decoration: InputDecoration(
+                  labelText: '% Rete ICA',
+                  border: OutlineInputBorder(),
                 ),
+                keyboardType: TextInputType.number,
+                onChanged: (value) =>
+                    setState(() => _reteICA = double.tryParse(value) ?? 0),
               ),
             ],
           ),
@@ -1143,7 +1160,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold),
             ),
             content: SizedBox(
-              width: 450,
+              width: dialogWidth(context, 450),
               height: 380,
               child: Column(
                 children: [

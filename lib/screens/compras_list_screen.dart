@@ -168,8 +168,13 @@ class _ComprasListScreenState extends State<ComprasListScreen>
             ),
           ],
         ),
+        // 📱 Antes los buscadores (número, fechas) quedaban fijos arriba y
+        // solo la tabla scrolleaba adentro de su propio Expanded — en un
+        // celular eso les tapaba media pantalla todo el tiempo. Ahora todo
+        // (buscadores + tabla) va en un solo scroll vertical, así que al
+        // subir la lista los buscadores se van con ella.
         Expanded(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: EdgeInsets.all(context.isMobile ? 12 : 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -178,7 +183,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
                 const SizedBox(height: 16),
                 _buildSegundaFilaFiltros(),
                 const SizedBox(height: 16),
-                Expanded(child: _buildTabla()),
+                _buildTabla(),
               ],
             ),
           ),
@@ -544,24 +549,29 @@ class _ComprasListScreenState extends State<ComprasListScreen>
               ),
 
               // Filas
-              Expanded(
-                child: _comprasFiltradas.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.shopping_cart_outlined, size: 64, color: Colors.grey.shade600),
-                            SizedBox(height: 16),
-                            Text('No hay compras registradas',
-                                style: TextStyle(color: Colors.grey.shade400, fontSize: 16)),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: _comprasFiltradas.length,
-                        itemBuilder: (context, index) => _buildFilaTabla(_comprasFiltradas[index], index),
+              _comprasFiltradas.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 48),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.shopping_cart_outlined, size: 64, color: Colors.grey.shade600),
+                          SizedBox(height: 16),
+                          Text('No hay compras registradas',
+                              style: TextStyle(color: Colors.grey.shade400, fontSize: 16)),
+                        ],
                       ),
-              ),
+                    )
+                  // shrinkWrap + NeverScrollableScrollPhysics: esta lista ya
+                  // no es la que scrollea (ahora lo hace el SingleChildScrollView
+                  // exterior que también incluye los buscadores), solo se
+                  // dimensiona a su contenido.
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _comprasFiltradas.length,
+                      itemBuilder: (context, index) => _buildFilaTabla(_comprasFiltradas[index], index),
+                    ),
             ],
           ),
         );

@@ -7,7 +7,17 @@ const String kBackendUrl =
 const String kLocalBackendUrl = 'http://localhost:8081';
 
 // URL dinámica que considera el entorno de desarrollo
+//
+// Permite forzar la URL de producción en un build debug/profile (p.ej. al
+// probar un APK debug en un celular real, donde no hay backend corriendo en
+// "localhost" — ese localhost es el propio teléfono, no el servidor) pasando
+// --dart-define=USE_PROD_BACKEND=true al compilar. Sin ese flag, el
+// comportamiento de siempre no cambia: local en debug, producción en release.
 String get kDynamicBackendUrl {
+  const forzarProduccion = bool.fromEnvironment('USE_PROD_BACKEND');
+  if (forzarProduccion) {
+    return kBackendUrl;
+  }
   if (const bool.fromEnvironment('dart.vm.product') == false) {
     return kLocalBackendUrl; // local en debug
   }

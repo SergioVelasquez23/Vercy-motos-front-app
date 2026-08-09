@@ -10,6 +10,7 @@ import '../services/cuadre_caja_service.dart';
 import '../services/inventario_service.dart';
 import '../services/notification_service.dart';
 import '../providers/user_provider.dart';
+import '../providers/datos_cache_provider.dart';
 import '../utils/format_utils.dart';
 import '../utils/datetime_utils.dart';
 import '../theme/app_theme.dart';
@@ -931,6 +932,13 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
           fallidos++;
             
         }
+      }
+
+      // El backend ya devuelve el stock al eliminar, pero el caché local de
+      // productos no se entera solo — sin esto, Productos/Facturación
+      // seguían mostrando el stock viejo hasta que expirara el TTL.
+      if (exitosos > 0 && mounted) {
+        Provider.of<DatosCacheProvider>(context, listen: false).limpiarProductos();
       }
 
       // Recargar la lista de pedidos

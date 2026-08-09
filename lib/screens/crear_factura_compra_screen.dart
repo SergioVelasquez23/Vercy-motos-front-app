@@ -88,6 +88,8 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
   // Estados de carga para productos y proveedores
   bool _cargandoProductos = true;
 
+  DatosCacheProvider? _cacheProvider;
+
   @override
   void initState() {
     super.initState();
@@ -99,6 +101,28 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
     }
     _cargarProductos();
     _cargarProveedores();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Sin esto, un producto creado/editado en otro dispositivo mientras esta
+    // pantalla está abierta nunca se reflejaba: _cargarProductos() solo lee
+    // el caché una vez al entrar.
+    final newProvider = Provider.of<DatosCacheProvider>(context, listen: false);
+    if (_cacheProvider != newProvider) {
+      _cacheProvider?.removeListener(_onCacheActualizado);
+      _cacheProvider = newProvider;
+      _cacheProvider!.addListener(_onCacheActualizado);
+    }
+  }
+
+  void _onCacheActualizado() {
+    if (!mounted) return;
+    final productosCache = _cacheProvider?.productos;
+    if (productosCache != null && productosCache.isNotEmpty) {
+      setState(() => _productos = List.from(productosCache));
+    }
   }
 
   void _cargarDatosFacturaParaEditar() {
@@ -133,6 +157,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
 
   @override
   void dispose() {
+    _cacheProvider?.removeListener(_onCacheActualizado);
     _proveedorNitController.dispose();
     _proveedorNombreController.dispose();
     _descripcionController.dispose();
@@ -178,9 +203,10 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
           ); // Solo actualizar estado de carga
         }
       } else {
-        // Si no hay productos en cache, cargarlos del servicio
+        // Si no hay productos en cache, cargarlos vía el provider (queda
+        // cacheado ahí para el resto de la app, no solo para esta pantalla).
         if (mounted) setState(() => _cargandoProductos = true);
-        final productos = await _productoService.getProductos();
+        final productos = await cacheProvider.obtenerProductos();
         if (mounted) {
           setState(() {
             _productos = productos;
@@ -755,111 +781,27 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Fila 1: Fecha y Vencimiento
-        Row(
-          children: [
-            // Fecha
-            Expanded(
-              child: Row(
+        // 📱 En mobile "Fecha"/"Vencimiento" van apiladas (label arriba, caja
+        // de fecha a todo el ancho) — lado a lado con label inline + gap fijo
+        // de 32px entre ambas no dejaba espacio para el contenido de la caja
+        // (fecha + ícono) y se desbordaba a la derecha, sobre todo en la de
+        // "Vencimiento" (label más largo que "Fecha").
+        context.isMobile
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Fecha',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                      fontSize: 14,
-                    ),
-                  ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => _seleccionarFecha(context, true),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              _formatearFechaISO(_fechaFactura),
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface,
-                                fontSize: 14,
-                              ),
-                            ),
-                            Icon(
-                              Icons.calendar_today,
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                              size: 18,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                  _campoFechaCompacto('Fecha', _fechaFactura, () => _seleccionarFecha(context, true)),
+                  SizedBox(height: 12),
+                  _campoFechaCompacto('Vencimiento', _fechaVencimiento, () => _seleccionarFecha(context, false)),
+                ],
+              )
+            : Row(
+                children: [
+                  Expanded(child: _campoFechaCompacto('Fecha', _fechaFactura, () => _seleccionarFecha(context, true))),
+                  SizedBox(width: 32),
+                  Expanded(child: _campoFechaCompacto('Vencimiento', _fechaVencimiento, () => _seleccionarFecha(context, false))),
                 ],
               ),
-            ),
-            SizedBox(width: 32),
-            // Vencimiento
-            Expanded(
-              child: Row(
-                children: [
-                  Text(
-                    'Vencimiento',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                      fontSize: 14,
-                    ),
-                  ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => _seleccionarFecha(context, false),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              _formatearFechaISO(_fechaVencimiento),
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface,
-                                fontSize: 14,
-                              ),
-                            ),
-                            Icon(
-                              Icons.calendar_today,
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                              size: 18,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
         SizedBox(height: 16),
         // Fila 2: Proveedor y Factura
         Row(
@@ -1089,6 +1031,56 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
               ],
             ),
           ),
+      ],
+    );
+  }
+
+  /// Label + caja de fecha tocable, usado por Fecha/Vencimiento en
+  /// [_buildFechasYProveedor]. En mobile se apilan (ver ahí); en desktop van
+  /// lado a lado dentro de un `Expanded`.
+  Widget _campoFechaCompacto(String label, DateTime valor, VoidCallback onTap) {
+    return Row(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            fontSize: 14,
+          ),
+        ),
+        SizedBox(width: 16),
+        Expanded(
+          child: InkWell(
+            onTap: onTap,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _formatearFechaISO(valor),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Icon(
+                    Icons.calendar_today,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    size: 18,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -1626,6 +1618,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
               decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(4)),
               child: DropdownButtonFormField<String>(
                 value: _tipoImpuesto,
+                isExpanded: true,
                 style: TextStyle(color: cs.onSurface, fontSize: 13),
                 decoration: InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8), border: InputBorder.none),
                 dropdownColor: cs.surface,
@@ -1658,6 +1651,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
               decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(4)),
               child: DropdownButtonFormField<String>(
                 value: _tipoDescuento,
+                isExpanded: true,
                 style: TextStyle(color: cs.onSurface, fontSize: 13),
                 decoration: InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8), border: InputBorder.none),
                 dropdownColor: cs.surface,
@@ -1690,6 +1684,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
               decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(4)),
               child: DropdownButtonFormField<String>(
                 value: _destinoSeleccionado,
+                isExpanded: true,
                 style: TextStyle(color: cs.onSurface, fontSize: 13),
                 decoration: InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8), border: InputBorder.none, hintText: 'Destino'),
                 dropdownColor: cs.surface,
@@ -2356,7 +2351,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
             style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold),
           ),
           content: SizedBox(
-            width: 500,
+            width: (MediaQuery.of(context).size.width * 0.9).clamp(0, 500),
             height: 350,
             child: ListView.separated(
               itemCount: borradores.length,
@@ -2627,9 +2622,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
       );
 
         
-      final facturaCreada = await _facturaCompraService.crearFacturaCompra(
-        factura,
-      );
+      final facturaCreada = _modoEdicion
+          ? await _facturaCompraService.actualizarFacturaCompra(
+              widget.facturaParaEditar!.id!,
+              factura,
+            )
+          : await _facturaCompraService.crearFacturaCompra(
+              factura,
+            );
         
 
       // ✅ NO actualizar stock desde el frontend - el backend ya actualiza el stock

@@ -74,6 +74,8 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
   List<PedidoAsesor> _misPedidos = [];
   bool _isLoadingPedidos = false;
 
+  DatosCacheProvider? _cacheProvider;
+
   @override
   void initState() {
     super.initState();
@@ -84,7 +86,23 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Sin esto, un producto creado/editado en otro dispositivo (o en otra
+    // pantalla) nunca aparecía acá hasta reabrir la pantalla: _cargarDatos()
+    // solo lee el caché una vez al entrar y no se enteraba de los cambios
+    // que el WebSocket sigue empujando a DatosCacheProvider en segundo plano.
+    final newProvider = Provider.of<DatosCacheProvider>(context, listen: false);
+    if (_cacheProvider != newProvider) {
+      _cacheProvider?.removeListener(_onCacheActualizado);
+      _cacheProvider = newProvider;
+      _cacheProvider!.addListener(_onCacheActualizado);
+    }
+  }
+
+  @override
   void dispose() {
+    _cacheProvider?.removeListener(_onCacheActualizado);
     _tabController.dispose();
     _clienteController.dispose();
     _telefonoController.dispose();
@@ -98,19 +116,27 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
     super.dispose();
   }
 
+  void _onCacheActualizado() {
+    if (!mounted) return;
+    final productosCache = _cacheProvider?.productos;
+    if (productosCache != null && productosCache.isNotEmpty) {
+      setState(() {
+        _productos = List.from(productosCache);
+      });
+      _filtrarProductos();
+    }
+  }
+
   Future<void> _cargarDatos() async {
     setState(() => _isLoading = true);
     try {
-      // Cargar productos
+      // Cargar productos: reusa el caché compartido (ver DatosCacheProvider)
+      // en vez de pedirle al servicio su propia copia del catálogo.
       final cacheProvider = Provider.of<DatosCacheProvider>(
         context,
         listen: false,
       );
-      List<Producto> productos = cacheProvider.productos ?? [];
-
-      if (productos.isEmpty) {
-        productos = await _productoService.getProductos();
-      }
+      final productos = await cacheProvider.obtenerProductos();
 
       // Cargar categorías
       List<Categoria> categorias = [];

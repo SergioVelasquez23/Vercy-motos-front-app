@@ -230,6 +230,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   // ✅ Key para forzar reconstrucción de Autocompletes al limpiar formulario
   int _autocompleteResetKey = 0;
 
+  DatosCacheProvider? _cacheProvider;
+
   @override
   void initState() {
     super.initState();
@@ -277,6 +279,29 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       });
       // 📝 Restaurar borrador existente (si no es pedido asesor)
       Future.microtask(() => _restaurarBorrador());
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Sin esto, un producto creado/editado en otro dispositivo mientras esta
+    // pantalla está abierta nunca se reflejaba: _cargarProductos() solo lee
+    // el caché una vez al entrar (el BroadcastChannel de arriba solo cubre
+    // otra pestaña del mismo navegador, no otro dispositivo).
+    final newProvider = Provider.of<DatosCacheProvider>(context, listen: false);
+    if (_cacheProvider != newProvider) {
+      _cacheProvider?.removeListener(_onCacheActualizado);
+      _cacheProvider = newProvider;
+      _cacheProvider!.addListener(_onCacheActualizado);
+    }
+  }
+
+  void _onCacheActualizado() {
+    if (!mounted) return;
+    final productosCache = _cacheProvider?.productos;
+    if (productosCache != null && productosCache.isNotEmpty) {
+      setState(() => _productosDisponibles = List.from(productosCache));
     }
   }
 
@@ -515,10 +540,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         '📦 Productos cargados desde cache: ${_productosDisponibles.length}, con código: $conCodigo',
       );
     } else {
-      // Si no hay productos en cache, cargarlos
+      // Si no hay productos en cache, cargarlos vía el provider (queda
+      // cacheado ahí para el resto de la app).
       appLog('⚠️ No hay productos en cache, cargando desde API...');
       try {
-        final productos = await _productoService.getProductos();
+        final productos = await cacheProvider.obtenerProductos();
         setState(() {
           _productosDisponibles = productos;
         });
@@ -607,6 +633,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
     // 🔴 Cerrar canal de sincronización entre pestañas
     _productosChannel?.close();
+    _cacheProvider?.removeListener(_onCacheActualizado);
 
     super.dispose();
   }
@@ -2578,7 +2605,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                   children: [
                     Expanded(
                       flex: 3,
-                      child: Text(
+                      child: SelectableText(
                         item.productoNombre ?? 'Producto',
                         style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       ),

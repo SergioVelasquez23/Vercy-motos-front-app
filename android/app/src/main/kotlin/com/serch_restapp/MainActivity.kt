@@ -1,4 +1,4 @@
-package com.example.serch_restapp
+package com.serch_restapp
 
 import io.flutter.embedding.android.FlutterActivity
 

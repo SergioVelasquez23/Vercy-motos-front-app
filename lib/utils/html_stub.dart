@@ -126,6 +126,6 @@ class AudioElement {
   // ignore: avoid_unused_constructor_parameters
   AudioElement([String? src]);
   double volume = 1.0;
-  void play() {}
+  Future<void> play() async {}
   void pause() {}
 }

@@ -332,8 +332,14 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
   Widget _buildBotonesAccion(String userName) {
     return Container(
       margin: EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+      // Wrap en vez de Row: 3 botones con texto ("Ubicaciones",
+      // "Actualizar", "Crear Traslados") no caben en una fila en mobile — en
+      // vez de desbordarse a la derecha, el que no quepa baja a una
+      // siguiente línea.
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        spacing: 12,
+        runSpacing: 12,
         children: [
           _buildBotonAccion(
             icon: Icons.warehouse,
@@ -341,14 +347,12 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
             color: AppTheme.secondary,
             onPressed: () => context.push('/bodegas'),
           ),
-          SizedBox(width: 12),
           _buildBotonAccion(
             icon: Icons.refresh,
             label: 'Actualizar',
             color: AppTheme.metal,
             onPressed: _cargarDatos,
           ),
-          SizedBox(width: 12),
           _buildBotonAccion(
             icon: Icons.add,
             label: 'Crear Traslados',
@@ -426,6 +430,12 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
   Widget _buildTablaTraslados() {
     // ⚡ OPTIMIZACIÓN: Usar ListView.builder en lugar de DataTable
     // Renderiza solo los elementos visibles (scroll virtual)
+    //
+    // 📱 8 columnas con Expanded/flex no cabían en un teléfono — "Origen"/
+    // "Destino" (BODEGA/ALMACÉN) se partían letra por letra y "Acciones" se
+    // desbordaba a la derecha. Ahora la tabla tiene ancho fijo por columna y
+    // se scrollea horizontal en pantallas angostas (encabezado y filas
+    // juntos, para que no se desalineen).
     return Container(
       margin: EdgeInsets.fromLTRB(16, 0, 16, 16),
       decoration: BoxDecoration(
@@ -435,45 +445,59 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        child: Column(
-          children: [
-            // Encabezado fijo
-            Container(
-              color: AppTheme.primary.withOpacity(0.1),
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
-                children: [
-                  Expanded(flex: 2, child: _buildColumnHeader('#')),
-                  const SizedBox(width: 8),
-                  Expanded(flex: 5, child: _buildColumnHeader('Fecha')),
-                  const SizedBox(width: 8),
-                  Expanded(flex: 4, child: _buildColumnHeader('Asesor')),
-                  const SizedBox(width: 8),
-                  Expanded(flex: 3, child: _buildColumnHeader('Origen')),
-                  const SizedBox(width: 8),
-                  Expanded(flex: 3, child: _buildColumnHeader('Destino')),
-                  const SizedBox(width: 8),
-                  Expanded(flex: 2, child: _buildColumnHeader('Cant.')),
-                  const SizedBox(width: 8),
-                  Expanded(flex: 4, child: _buildColumnHeader('Producto')),
-                  const SizedBox(width: 8),
-                  Expanded(flex: 3, child: _buildColumnHeader('Acciones')),
-                ],
-              ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: _anchoTotalTablaTraslados,
+            child: Column(
+              children: [
+                // Encabezado fijo
+                Container(
+                  color: AppTheme.primary.withOpacity(0.1),
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _celdaTraslado(_anchosColumnasTraslado[0], _buildColumnHeader('#')),
+                      _celdaTraslado(_anchosColumnasTraslado[1], _buildColumnHeader('Fecha')),
+                      _celdaTraslado(_anchosColumnasTraslado[2], _buildColumnHeader('Asesor')),
+                      _celdaTraslado(_anchosColumnasTraslado[3], _buildColumnHeader('Origen')),
+                      _celdaTraslado(_anchosColumnasTraslado[4], _buildColumnHeader('Destino')),
+                      _celdaTraslado(_anchosColumnasTraslado[5], _buildColumnHeader('Cant.')),
+                      _celdaTraslado(_anchosColumnasTraslado[6], _buildColumnHeader('Producto')),
+                      _celdaTraslado(_anchosColumnasTraslado[7], _buildColumnHeader('Acciones')),
+                    ],
+                  ),
+                ),
+                // Lista con scroll virtual (vertical — el ClipRRect/Container
+                // de más arriba ya limita la altura visible de la pantalla)
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _trasladosFiltrados.length,
+                    itemBuilder: (context, index) {
+                      final traslado = _trasladosFiltrados[index];
+                      return _buildFilaTraslado(traslado);
+                    },
+                  ),
+                ),
+              ],
             ),
-            // Lista con scroll virtual
-            Expanded(
-              child: ListView.builder(
-                itemCount: _trasladosFiltrados.length,
-                itemBuilder: (context, index) {
-                  final traslado = _trasladosFiltrados[index];
-                  return _buildFilaTraslado(traslado);
-                },
-              ),
-            ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  static const List<double> _anchosColumnasTraslado = [50, 100, 90, 90, 90, 50, 140, 90];
+  static const double _gapColumnasTraslado = 8;
+  static double get _anchoTotalTablaTraslados =>
+      _anchosColumnasTraslado.reduce((a, b) => a + b) +
+      _gapColumnasTraslado * _anchosColumnasTraslado.length;
+
+  Widget _celdaTraslado(double width, Widget child) {
+    return Padding(
+      padding: EdgeInsets.only(right: _gapColumnasTraslado),
+      child: SizedBox(width: width, child: child),
     );
   }
 
@@ -497,10 +521,11 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
       ),
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            flex: 2,
-            child: Container(
+          _celdaTraslado(
+            _anchosColumnasTraslado[0],
+            Container(
               padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
               decoration: BoxDecoration(
                 color: AppTheme.primary.withOpacity(0.1),
@@ -513,10 +538,9 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 5,
-            child: Text(
+          _celdaTraslado(
+            _anchosColumnasTraslado[1],
+            Text(
               traslado.fechaSolicitud != null
                   ? DateFormat('yy-MM-dd HH:mm').format(traslado.fechaSolicitud!)
                   : '-',
@@ -524,31 +548,26 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 4,
-            child: Text(
+          _celdaTraslado(
+            _anchosColumnasTraslado[2],
+            Text(
               traslado.solicitante ?? '-',
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 11),
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(flex: 3, child: _buildBodegaChip(traslado.origenBodegaNombre ?? '-')),
-          const SizedBox(width: 8),
-          Expanded(flex: 3, child: _buildBodegaChip(traslado.destinoBodegaNombre ?? '-')),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 2,
-            child: Text(
+          _celdaTraslado(_anchosColumnasTraslado[3], _buildBodegaChip(traslado.origenBodegaNombre ?? '-')),
+          _celdaTraslado(_anchosColumnasTraslado[4], _buildBodegaChip(traslado.destinoBodegaNombre ?? '-')),
+          _celdaTraslado(
+            _anchosColumnasTraslado[5],
+            Text(
               '${traslado.cantidad?.toStringAsFixed(0) ?? 0}',
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 11),
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 4,
-            child: Text(
+          _celdaTraslado(
+            _anchosColumnasTraslado[6],
+            Text(
               traslado.items.isNotEmpty
                   ? traslado.items.map((i) => i.nombreProducto ?? '-').join(', ')
                   : traslado.productoNombre ?? '-',
@@ -557,8 +576,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
               maxLines: 1,
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(flex: 3, child: _buildAccionesCompactas(traslado)),
+          _celdaTraslado(_anchosColumnasTraslado[7], _buildAccionesCompactas(traslado)),
         ],
       ),
     );
@@ -653,6 +671,8 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
       ),
       child: Text(
         nombre,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13,
         ),
       ),
@@ -785,7 +805,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
           ],
         ),
         content: SizedBox(
-          width: 400,
+          width: dialogWidth(context, 400),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1004,7 +1024,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
         ),
         content: SingleChildScrollView(
           child: SizedBox(
-            width: 450,
+            width: dialogWidth(context, 450),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

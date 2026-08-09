@@ -102,7 +102,13 @@ class FacturaCompra {
     // siempre se muestra la fecha de HOY y el estado por defecto, no lo real.
     final fechaFacturaRaw =
         json['fecha'] ?? json['fechaFactura'] ?? json['fechaCreacion'];
-    final estadoDerivado = json['pagado'] == true ? 'PAGADO' : 'PENDIENTE';
+    // 🐛 Este valor se compara como 'PAGADA' en toda la UI (compras_list_screen,
+    // detalle_factura_compra_screen, facturas_compras_screen) — con 'PAGADO'
+    // (masculino) esa comparación nunca matcheaba y la lista mostraba
+    // "Pendiente" para compras ya pagadas, sin importar cuántas veces se
+    // editaran/guardaran (el backend siempre manda pagado=true, pero eso
+    // nunca se veía reflejado por el género equivocado).
+    final estadoDerivado = json['pagado'] == true ? 'PAGADA' : 'PENDIENTE';
 
     return FacturaCompra(
       id: json['_id'] ?? '',

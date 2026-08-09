@@ -822,7 +822,9 @@ class _DocumentosPendientesScreenState
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      child: Row(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
         children: estados.map((e) {
           final (valor, label, color, count) = e;
           final activo = _filtroEstado == valor;
@@ -868,6 +870,7 @@ class _DocumentosPendientesScreenState
             ),
           );
         }).toList(),
+        ),
       ),
     );
   }

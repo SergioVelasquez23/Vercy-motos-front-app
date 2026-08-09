@@ -38,6 +38,7 @@ import '../screens/importar_factura_compra_pdf_screen.dart';
 import '../screens/gastos_list_screen.dart';
 import '../screens/productos_list_screen.dart';
 import '../screens/productos_screen.dart';
+import '../screens/editar_stock_simple_screen.dart';
 import '../screens/cartera_screen.dart';
 import '../screens/deudas_list_screen.dart';
 import '../screens/cuentas_por_cobrar_screen.dart';
@@ -53,6 +54,13 @@ import '../screens/configuracion_screen.dart';
 import '../screens/libro_contable_screen.dart';
 import '../screens/legal_screen.dart';
 
+// Pantalla de edición de stock simplificada (ver editar_stock_simple_screen.dart):
+// solo para este correo. Duplicado a propósito en app_shell.dart (mismo criterio
+// que usa notificaciones_provider.dart para su whitelist de traslados) en vez de
+// una constante compartida — es un único valor usado en dos lugares, no vale la
+// pena el archivo extra.
+const _emailEditarStockAutorizado = 'francia@gmail.com';
+
 GoRouter buildAppRouter(UserProvider userProvider) => GoRouter(
   initialLocation: '/splash',
   refreshListenable: userProvider,
@@ -65,6 +73,14 @@ GoRouter buildAppRouter(UserProvider userProvider) => GoRouter(
     if (userProvider.isAuthenticated && userProvider.isAsesor) {
       const rutasBloqueasAsesor = ['/facturar', '/admin-pedidos-asesor'];
       if (rutasBloqueasAsesor.contains(path)) return '/asesor-pedidos';
+    }
+
+    // Ruta de un solo usuario: bloquear por URL directa además de solo
+    // ocultar el ítem del menú (ver app_shell.dart).
+    if (userProvider.isAuthenticated &&
+        path == '/editar-stock' &&
+        userProvider.userEmail?.trim().toLowerCase() != _emailEditarStockAutorizado) {
+      return '/dashboard';
     }
 
     return null;
@@ -113,6 +129,7 @@ GoRouter buildAppRouter(UserProvider userProvider) => GoRouter(
         ),
         GoRoute(path: '/productos-lista', builder: (c, s) => const ProductosListScreen()),
         GoRoute(path: '/productos', builder: (c, s) => ProductosScreen()),
+        GoRoute(path: '/editar-stock', builder: (c, s) => const EditarStockSimpleScreen()),
         GoRoute(path: '/traslados', builder: (c, s) => const TrasladosScreen()),
         GoRoute(path: '/bodegas', builder: (c, s) => const BodegasScreen()),
         GoRoute(path: '/cuadre_caja', builder: (c, s) => CuadreCajaScreen()),

@@ -520,6 +520,76 @@ class FacturaCompraService {
     }
   }
 
+  /// Actualiza una compra existente (PUT /{id}) — usado al editar desde
+  /// crear_factura_compra_screen.dart. Antes esa pantalla, en modo edición,
+  /// seguía llamando a crearFacturaCompra() al guardar (nunca se implementó
+  /// este método), así que "editar y guardar" creaba una compra nueva
+  /// duplicada en vez de actualizar la existente — con su propio doble
+  /// conteo de stock, ya que el backend suma inventario en cada compra que
+  /// procesa.
+  Future<FacturaCompra> actualizarFacturaCompra(
+    String id,
+    FacturaCompra facturaCompra,
+  ) async {
+    try {
+      double calculatedTotal = facturaCompra.items.fold<double>(
+        0,
+        (sum, item) => sum + item.subtotal,
+      );
+
+      final facturaJson = facturaCompra.toJson();
+      if (facturaJson['total'] == 0 && calculatedTotal > 0) {
+        facturaJson['total'] = calculatedTotal;
+      }
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/$id'),
+        headers: await headers,
+        body: json.encode(facturaJson),
+      ).timeout(_timeout);
+
+      if (response.statusCode != 200) {
+        throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar factura de compra');
+      }
+
+      final dynamic jsonData = json.decode(response.body);
+      if (jsonData is! Map<String, dynamic>) {
+        throw Exception('Formato de respuesta no válido al actualizar factura: ${jsonData.runtimeType}');
+      }
+      if (jsonData['success'] == false) {
+        throw Exception(jsonData['message'] ?? 'Error desconocido al actualizar factura');
+      }
+
+      // El backend devuelve la compra actualizada en el campo 'compra' (PUT
+      // /{id} en CompraController, igual que POST /crear).
+      final facturaData = jsonData['compra'] is Map<String, dynamic>
+          ? jsonData['compra'] as Map<String, dynamic>
+          : jsonData;
+
+      final facturaActualizada = FacturaCompra.fromJson(facturaData);
+      if (facturaActualizada.total == 0 && calculatedTotal > 0) {
+        return FacturaCompra(
+          id: facturaActualizada.id,
+          numeroFactura: facturaActualizada.numeroFactura,
+          proveedorNit: facturaActualizada.proveedorNit,
+          proveedorNombre: facturaActualizada.proveedorNombre,
+          fechaFactura: facturaActualizada.fechaFactura,
+          fechaVencimiento: facturaActualizada.fechaVencimiento,
+          total: calculatedTotal,
+          estado: facturaActualizada.estado,
+          pagadoDesdeCaja: facturaActualizada.pagadoDesdeCaja,
+          items: facturaCompra.items,
+          fechaCreacion: facturaActualizada.fechaCreacion,
+          fechaActualizacion: facturaActualizada.fechaActualizacion,
+        );
+      }
+      return facturaActualizada;
+    } catch (e) {
+      wrapOrThrow(e, context: 'Error al actualizar factura de compra');
+      rethrow;
+    }
+  }
+
   // Nuevos métodos para filtros específicos
   Future<List<FacturaCompra>> getFacturasPagadasDesdeCaja() async {
     try {

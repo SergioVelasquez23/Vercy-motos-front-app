@@ -594,10 +594,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
               thumbVisibility: false,
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                child: Text(
+                child: SelectableText(
                   producto.nombre.toUpperCase(),
                   style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
-                  softWrap: false,
+                  maxLines: 1,
                 ),
               ),
             ),
@@ -790,10 +790,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
             Icon(Icons.inventory_2, color: AppTheme.primary),
             SizedBox(width: 12),
             Expanded(
-              child: Text(
+              child: SelectableText(
                 producto.nombre,
                 style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18),
-                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ),
           ],
@@ -878,7 +878,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
             ),
           ),
           Expanded(
-            child: Text(value, style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+            child: SelectableText(
+              value,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+            ),
           ),
         ],
       ),
@@ -903,7 +906,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              SelectableText(
                 producto.nombre,
                 style: TextStyle(
                   color: AppTheme.success,
@@ -2903,7 +2906,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                         ),
                       ),
                       SizedBox(height: 4),
-                      Text(
+                      SelectableText(
                         producto.nombre,
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurface,

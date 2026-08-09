@@ -160,6 +160,8 @@ class _CategoriasScreenState extends State<CategoriasScreen>
         ),
         title: Text(
           categoria.nombre,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(color: textLight, fontWeight: FontWeight.bold),
         ),
         trailing: Row(

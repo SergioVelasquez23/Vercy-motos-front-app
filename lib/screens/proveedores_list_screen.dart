@@ -471,7 +471,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
             ],
           ),
           content: Container(
-            width: 800,
+            width: dialogWidth(context, 800),
             height: 500,
             child: DefaultTabController(
               length: 4,
@@ -992,6 +992,11 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
       padding: EdgeInsets.only(bottom: 16),
       child: DropdownButtonFormField<String>(
         initialValue: value,
+        // Sin isExpanded, el dropdown se dimensiona según el ítem más ancho
+        // de la lista (p.ej. "Persona Jurídica", "Barranquilla") en vez del
+        // ancho de su columna — eso es lo que lo hacía desbordarse a la
+        // derecha cuando el diálogo se angosta en mobile.
+        isExpanded: true,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: TextStyle(color: cs.onSurface.withValues(alpha:0.6), fontWeight: FontWeight.w500),
@@ -1008,7 +1013,14 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
             value: null,
             child: Text('--', style: TextStyle(color: cs.onSurface.withValues(alpha:0.4))),
           ),
-          ...opciones.map((opcion) => DropdownMenuItem<String>(value: opcion, child: Text(opcion))),
+          // maxLines/overflow: sin esto, un texto que no cabe en el ancho de
+          // la columna (p.ej. "Persona Natural" en mobile) se envolvía a una
+          // segunda línea en vez de truncarse, descuadrando la fila con el
+          // campo de al lado.
+          ...opciones.map((opcion) => DropdownMenuItem<String>(
+                value: opcion,
+                child: Text(opcion, maxLines: 1, overflow: TextOverflow.ellipsis),
+              )),
         ],
         onChanged: onChanged,
       ),

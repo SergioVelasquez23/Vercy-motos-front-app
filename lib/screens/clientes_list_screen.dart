@@ -285,49 +285,102 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
     );
   }
 
+  // 📱 En mobile, meter 4 IconButtons de tamaño normal en el `trailing` de un
+  // ListTile deja casi nada de ancho para el nombre (se ve forzado a saltar
+  // de línea letra por letra) — aquí se hacen compactos (sin el padding/
+  // tap-target de 48px por defecto) para que quepan sin aplastar el nombre.
+  Widget _iconoAccionCompacto({
+    required IconData icono,
+    required Color color,
+    required VoidCallback onPressed,
+    required String tooltip,
+  }) {
+    return IconButton(
+      icon: Icon(icono, color: color, size: 20),
+      onPressed: onPressed,
+      tooltip: tooltip,
+      padding: EdgeInsets.all(6),
+      constraints: BoxConstraints(),
+      visualDensity: VisualDensity.compact,
+    );
+  }
+
   Widget _buildClienteItem(Cliente cliente) {
     final esEmpresa = cliente.tipoPersona == 'juridica';
     final cupoDisponiblePorcentaje = cliente.cupoCredito > 0
         ? (cliente.cupoDisponible / cliente.cupoCredito * 100)
         : 0.0;
+    final isMobile = context.isMobile;
 
-    return ListTile(
-      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      leading: CircleAvatar(
-        backgroundColor: cliente.estado == 'activo'
-            ? Colors.green[100]
-            : Colors.red[100],
-        child: Icon(
-          esEmpresa ? Icons.business : Icons.person,
-          color: cliente.estado == 'activo'
-              ? Colors.green[700]
-              : Colors.red[700],
-        ),
+    final avatar = CircleAvatar(
+      backgroundColor: cliente.estado == 'activo'
+          ? Colors.green[100]
+          : Colors.red[100],
+      child: Icon(
+        esEmpresa ? Icons.business : Icons.person,
+        color: cliente.estado == 'activo'
+            ? Colors.green[700]
+            : Colors.red[700],
       ),
-      title: Row(
-        children: [
-          Expanded(
-            child: Text(
-              cliente.nombreCompleto,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
+    );
+
+    final nombreYEstado = Row(
+      children: [
+        Expanded(
+          child: Text(
+            cliente.nombreCompleto,
+            maxLines: isMobile ? 2 : 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
-          if (cliente.estado == 'bloqueado')
-            Chip(
-              label: Text(
-                'Bloqueado',
-                style: TextStyle(fontSize: 12, color: Colors.white),
-              ),
-              backgroundColor: Colors.red[900],
-              padding: EdgeInsets.zero,
+        ),
+        if (cliente.estado == 'bloqueado')
+          Chip(
+            label: Text(
+              'Bloqueado',
+              style: TextStyle(fontSize: 12, color: Colors.white),
             ),
-        ],
-      ),
-      subtitle: Builder(builder: (context) {
+            backgroundColor: Colors.red[900],
+            padding: EdgeInsets.zero,
+          ),
+      ],
+    );
+
+    final accionesCompactas = Wrap(
+      spacing: 0,
+      children: [
+        _iconoAccionCompacto(
+          icono: Icons.visibility,
+          color: AppTheme.primary,
+          onPressed: () => _verDetalle(cliente),
+          tooltip: 'Ver detalle',
+        ),
+        _iconoAccionCompacto(
+          icono: Icons.edit,
+          color: Colors.blue,
+          onPressed: () => _navegarAFormulario(cliente),
+          tooltip: 'Editar',
+        ),
+        _iconoAccionCompacto(
+          icono: cliente.estado == 'activo' ? Icons.block : Icons.check_circle,
+          color: cliente.estado == 'activo' ? Colors.red : Colors.green,
+          onPressed: () => _toggleEstado(cliente),
+          tooltip: cliente.estado == 'activo' ? 'Bloquear' : 'Activar',
+        ),
+        _iconoAccionCompacto(
+          icono: Icons.delete,
+          color: Colors.red,
+          onPressed: () => _confirmarEliminar(cliente),
+          tooltip: 'Eliminar',
+        ),
+      ],
+    );
+
+    final subtitleBuilder = Builder(builder: (context) {
         final onSurface = Theme.of(context).colorScheme.onSurface;
         final muted = onSurface.withOpacity(0.7);
         final saldoColor = cliente.saldoActual > 0 ? AppTheme.warning : AppTheme.success;
@@ -428,7 +481,40 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
             ),
           ],
         );
-      }),
+      });
+
+    // 📱 En mobile las acciones bajan debajo del contenido (en vez de ir en
+    // el `trailing` del ListTile) para que el nombre tenga todo el ancho
+    // disponible y no se vea forzado a partirse letra por letra.
+    if (isMobile) {
+      return Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                avatar,
+                SizedBox(width: 12),
+                Expanded(child: nombreYEstado),
+              ],
+            ),
+            Padding(
+              padding: EdgeInsets.only(left: 52),
+              child: subtitleBuilder,
+            ),
+            Align(alignment: Alignment.centerRight, child: accionesCompactas),
+          ],
+        ),
+      );
+    }
+
+    return ListTile(
+      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      leading: avatar,
+      title: nombreYEstado,
+      subtitle: subtitleBuilder,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

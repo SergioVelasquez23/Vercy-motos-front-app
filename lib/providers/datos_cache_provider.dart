@@ -52,6 +52,12 @@ class DatosCacheProvider extends ChangeNotifier {
   bool get isLoadingProductos => _isLoadingProductos;
   bool get isLoadingCategorias => _isLoadingCategorias;
 
+  // Estado del WebSocket de sincronización en tiempo real (/rt/traslados) —
+  // sin esto, un dispositivo puede quedarse con el socket caído sin que
+  // nadie en la UI lo note hasta que un producto nuevo no aparece solo.
+  bool _tiempoRealConectado = false;
+  bool get tiempoRealConectado => _tiempoRealConectado;
+
   bool get hasData =>
       _productos != null && _categorias != null;
 
@@ -88,6 +94,10 @@ class DatosCacheProvider extends ChangeNotifier {
   void iniciarEscuchaTiempoReal() {
     _wsService.connect(
       baseUrl: kDynamicBackendUrl,
+      onConnectionStatusChanged: (conectado) {
+        _tiempoRealConectado = conectado;
+        notifyListeners();
+      },
       onEvent: (data) {
         switch (data['tipo']) {
           case 'PRODUCTOS_ACTUALIZADOS':
@@ -189,6 +199,20 @@ class DatosCacheProvider extends ChangeNotifier {
     });
   }
 
+  /// Devuelve los productos ya cargados en caché si están vigentes; si no,
+  /// espera a que se carguen (sea porque esta llamada dispara la carga o
+  /// porque ya había una en curso, ej. el warmup del login) y los devuelve.
+  /// Pensado para pantallas que antes llamaban a ProductoService.getProductos()
+  /// directamente (facturación, cotización, crear compra, importar PDF,
+  /// pedidos de asesor, editar stock) — cada una hacía su propio GET del
+  /// catálogo completo en vez de reusar el mismo caché que ya mantiene este
+  /// provider, lo que multiplicaba llamadas de red idénticas y, para las que
+  /// heredaban useProgressive:true por default, la carga lenta de a 40 en 40.
+  Future<List<Producto>> obtenerProductos() async {
+    await _cargarProductos();
+    return _productos ?? [];
+  }
+
   // ✅ NUEVO: Métodos públicos para control de caché
   Future<void> forceRefresh() async {
       
@@ -212,6 +236,8 @@ class DatosCacheProvider extends ChangeNotifier {
       
   }
 
+  Future<void>? _cargaProductosEnCurso;
+
   // Cargar productos (con cache inteligente)
   Future<void> _cargarProductos({
     bool force = false,
@@ -223,49 +249,57 @@ class DatosCacheProvider extends ChangeNotifier {
       return;
     }
 
-    // Guard: si lleva más de 60s cargando, probablemente está colgado — resetear.
-    if (_isLoadingProductos) return;
+    // Ya hay una carga en curso (disparada por este mismo método desde otro
+    // lugar, ej. el warmup del login): esperarla en vez de no hacer nada.
+    // Antes esto era "if (_isLoadingProductos) return;" sin esperar nada —
+    // eso era una carrera real: si una pantalla pedía productos justo
+    // mientras el warmup del login ya los estaba cargando, este método
+    // volvía de inmediato con _productos todavía en null, y la pantalla se
+    // quedaba con la lista vacía hasta recargar o volver a loguearse.
+    if (_cargaProductosEnCurso != null) {
+      return _cargaProductosEnCurso;
+    }
 
     _isLoadingProductos = true;
     // ✅ MEJORADO: Solo notificar si no es silencioso
     if (!silent) notifyListeners();
 
+    final future = _cargarProductosDesdeServicio(
+      useProgressive: useProgressive,
+      useLigero: useLigero,
+    );
+    _cargaProductosEnCurso = future;
     try {
-      if (useProgressive) {
-      } else {
-      }
-      
+      await future;
+    } finally {
+      _cargaProductosEnCurso = null;
+      _isLoadingProductos = false;
+      // ✅ MEJORADO: Solo notificar si no es silencioso
+      if (!silent) notifyListeners();
+    }
+  }
+
+  Future<void> _cargarProductosDesdeServicio({
+    required bool useProgressive,
+    required bool useLigero,
+  }) async {
+    try {
       final productos = await _productoService.getProductos(
         useProgressive: useProgressive,
         useLigero: useLigero,
       );
       _productos = productos;
       _ultimaCargaProductos = DateTime.now();
-
-      if (productos.isEmpty) {
-      } else {
-  
-      }
     } catch (e) {
-        
-        
-
-      try {
-        // Respaldo: intentar método tradicional
-        final productos = await _productoService.getProductos(
-          useProgressive: false,
-        );
-        _productos = productos;
-        _ultimaCargaProductos = DateTime.now();
-
-      } catch (backupError) {
-        // Mantener productos existentes en caso de error total
-
-      }
-    } finally {
-      _isLoadingProductos = false;
-      // ✅ MEJORADO: Solo notificar si no es silencioso
-      if (!silent) notifyListeners();
+      // getProductos() ya intentó el endpoint ligero con reintentos y cayó a
+      // su propio respaldo internamente (ver _getProductosLigero en
+      // ProductoService) — reintentar aquí desde cero repetía exactamente la
+      // misma cascada de timeouts crecientes por segunda vez, pudiendo
+      // duplicar el tiempo de espera (~2 min) sin ganar nada. Si de verdad
+      // falló todo, es mejor dejar el caché existente (aunque esté vencido)
+      // que bloquear la UI otro par de minutos repitiendo lo mismo — el
+      // polling y el WebSocket seguirán intentando por su cuenta.
+      appLog('⚠️ Error cargando productos, se mantiene el caché existente: $e');
     }
   }
 

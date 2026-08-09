@@ -516,12 +516,19 @@ class _ResumenCierreDetalladoScreenState
   }
 
   Widget _buildInfoRow(String label, String value, {Color? valueColor}) {
+    // Un Row con dos Text sueltos se desborda cuando ambos juntos no caben
+    // (p.ej. "Efectivo Esperado" + un monto grande, en la mitad angosta de
+    // una cuadrícula de 2 columnas en mobile) — la etiqueta ahora es
+    // Expanded y puede pasar a una segunda línea; el valor (un monto) nunca
+    // se trunca.
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 6), // Increased vertical padding
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: textLight, fontSize: 14)),
+          Expanded(
+            child: Text(label, style: TextStyle(color: textLight, fontSize: 14)),
+          ),
+          SizedBox(width: 8),
           Text(
             value,
             style: TextStyle(
@@ -928,6 +935,7 @@ class _ResumenCierreDetalladoScreenState
               Divider(height: 20, color: textLight.withOpacity(0.3)),
 
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(
                     Icons.account_balance_wallet,
@@ -935,12 +943,14 @@ class _ResumenCierreDetalladoScreenState
                     size: 16,
                   ),
                   SizedBox(width: 8),
-                  Text(
-                    'Totales por Método de Pago (con pagos mixtos desagregados):',
-                    style: TextStyle(
-                      color: primary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                  Expanded(
+                    child: Text(
+                      'Totales por Método de Pago (con pagos mixtos desagregados):',
+                      style: TextStyle(
+                        color: primary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],

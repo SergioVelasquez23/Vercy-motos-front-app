@@ -11,6 +11,7 @@ import '../theme/app_theme.dart';
 import '../services/keep_alive_service.dart';
 import '../utils/api_error.dart' as api_error;
 import '../utils/legal_texts.dart';
+import '../utils/dialogs_helper.dart';
 import 'package:universal_html/html.dart' as html;
 
 // Extension para validación de email
@@ -349,7 +350,12 @@ class _LoginScreenState extends State<LoginScreen>
             await Future.delayed(Duration(milliseconds: 100));
 
             // Redirigir según el rol del usuario
-            if (userProvider.isOnlyAsesor) {
+            // Este correo es de uso exclusivo de la pantalla simplificada de
+            // stock (ver editar_stock_simple_screen.dart) — nunca debe pasar
+            // por la pantalla de pedidos de asesor ni el dashboard normal.
+            if (userProvider.userEmail?.trim().toLowerCase() == 'francia@gmail.com') {
+              context.go('/editar-stock');
+            } else if (userProvider.isOnlyAsesor) {
               // Los asesores van directamente a su pantalla de pedidos
               context.go('/asesor-pedidos');
             } else {
@@ -422,7 +428,7 @@ class _LoginScreenState extends State<LoginScreen>
       builder: (context) => AlertDialog(
         title: Text(title, style: AppTheme.headlineMedium),
         content: SizedBox(
-          width: 480,
+          width: dialogWidth(context, 480),
           child: SingleChildScrollView(
             child: Text(content, style: AppTheme.bodySmall),
           ),

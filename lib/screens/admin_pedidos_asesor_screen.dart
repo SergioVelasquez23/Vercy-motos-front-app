@@ -5,6 +5,7 @@ import '../models/pedido_asesor.dart';
 import '../services/pedido_asesor_service.dart';
 import '../theme/app_theme.dart';
 import '../providers/user_provider.dart';
+import '../providers/datos_cache_provider.dart';
 import '../utils/currency_utils.dart';
 import 'facturacion_screen.dart';
 import '../utils/api_error.dart';
@@ -108,6 +109,13 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
     if (confirmar == true) {
       try {
         await _pedidoService.cancelarPedido(pedidoId);
+        // El backend ya revierte el traslado y devuelve el stock, pero el
+        // caché local de productos (DatosCacheProvider) no se entera solo —
+        // sin esto, Productos/Facturación seguían mostrando el stock viejo
+        // hasta que expirara el TTL, pareciendo que el producto no volvió.
+        if (mounted) {
+          Provider.of<DatosCacheProvider>(context, listen: false).limpiarProductos();
+        }
         _mostrarExito('Pedido cancelado');
         _cargarPedidos();
       } catch (e) {
@@ -186,21 +194,24 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
           bottom: BorderSide(color: AppTheme.primary.withOpacity(0.3)),
         ),
       ),
-      child: Row(
-        children: [
-          Text(
-            'Estado:',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.bold,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            Text(
+              'Estado:',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-          SizedBox(width: 12),
-          _buildFiltroChip('TODOS'),
-          _buildFiltroChip('PENDIENTE'),
-          _buildFiltroChip('FACTURADO'),
-          _buildFiltroChip('CANCELADO'),
-        ],
+            SizedBox(width: 12),
+            _buildFiltroChip('TODOS'),
+            _buildFiltroChip('PENDIENTE'),
+            _buildFiltroChip('FACTURADO'),
+            _buildFiltroChip('CANCELADO'),
+          ],
+        ),
       ),
     );
   }

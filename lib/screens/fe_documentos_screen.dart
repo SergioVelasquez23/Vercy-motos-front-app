@@ -10,6 +10,7 @@ import '../models/factura.dart';
 import '../widgets/facturizacion/documento_soporte_dialog.dart';
 import '../widgets/facturizacion/nota_credito_debito_dialog.dart';
 import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 
 /// Pantalla central para gestionar documentos electrónicos adicionales:
 ///   • Documento Soporte
@@ -596,7 +597,7 @@ class _BuscarDSDialogState extends State<_BuscarDSDialog> {
         ],
       ),
       content: SizedBox(
-        width: 440,
+        width: dialogWidth(context, 440),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1012,7 +1013,7 @@ class _BuscarFacturaParaNotaDialogState
         ],
       ),
       content: SizedBox(
-        width: 480,
+        width: dialogWidth(context, 480),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

@@ -15,6 +15,7 @@ import '../utils/currency_utils.dart';
 import '../utils/snackbar_helper.dart';
 import '../utils/api_error.dart';
 import '../utils/datetime_utils.dart';
+import '../utils/dialogs_helper.dart';
 
 /// Fila editable de la vista previa: envuelve el ítem parseado del PDF con
 /// controladores editables. Nada de esto se persiste hasta confirmar.
@@ -98,6 +99,7 @@ class _ImportarFacturaCompraPdfScreenState
     'IDLASER': 'IDLASER (Ingeniería y Diseño Laser SAS)',
     'INDUSTRIA_IP': 'Industria IP S.A.S',
     'INVERSIONES_PG': 'Inversiones P&G SAS (Motos y Accesorios)',
+    'PYSTA': 'PYSTA SAS',
   };
 
   bool _cargandoPreview = false;
@@ -114,10 +116,31 @@ class _ImportarFacturaCompraPdfScreenState
   String _destinoGlobal = 'ALMACÉN';
   List<Producto> _productosParaBusqueda = [];
 
+  DatosCacheProvider? _cacheProvider;
+
   @override
   void initState() {
     super.initState();
     _cargarProductosParaBusqueda();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final newProvider = Provider.of<DatosCacheProvider>(context, listen: false);
+    if (_cacheProvider != newProvider) {
+      _cacheProvider?.removeListener(_onCacheActualizado);
+      _cacheProvider = newProvider;
+      _cacheProvider!.addListener(_onCacheActualizado);
+    }
+  }
+
+  void _onCacheActualizado() {
+    if (!mounted) return;
+    final productosCache = _cacheProvider?.productos;
+    if (productosCache != null && productosCache.isNotEmpty) {
+      setState(() => _productosParaBusqueda = List.from(productosCache));
+    }
   }
 
   Future<void> _cargarProductosParaBusqueda() async {
@@ -126,7 +149,7 @@ class _ImportarFacturaCompraPdfScreenState
       if (cacheProvider.productos != null && cacheProvider.productos!.isNotEmpty) {
         _productosParaBusqueda = cacheProvider.productos!;
       } else {
-        _productosParaBusqueda = await _productoService.getProductos();
+        _productosParaBusqueda = await cacheProvider.obtenerProductos();
       }
     } catch (_) {
       // No crítico: si falla, "Agregar ítem" solo permitirá texto libre (producto nuevo).
@@ -135,6 +158,7 @@ class _ImportarFacturaCompraPdfScreenState
 
   @override
   void dispose() {
+    _cacheProvider?.removeListener(_onCacheActualizado);
     _proveedorNombreController.dispose();
     _proveedorNitController.dispose();
     _origenCompraController.dispose();
@@ -281,7 +305,7 @@ class _ImportarFacturaCompraPdfScreenState
             ),
             content: SingleChildScrollView(
               child: SizedBox(
-                width: 420,
+                width: dialogWidth(context, 420),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,

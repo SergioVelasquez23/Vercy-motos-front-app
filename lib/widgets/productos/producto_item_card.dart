@@ -53,6 +53,8 @@ class ProductoItemCard extends StatelessWidget {
         ),
         title: Text(
           producto.nombre,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
@@ -63,7 +65,9 @@ class ProductoItemCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(height: 4),
-            Row(
+            Wrap(
+              spacing: 12,
+              runSpacing: 2,
               children: [
                 Text(
                   formatCurrency(producto.precio),
@@ -72,7 +76,6 @@ class ProductoItemCard extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(width: 12),
                 Text(
                   'Costo: ${formatCurrency(producto.costo)}',
                   style: TextStyle(

@@ -427,7 +427,12 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> with SubmitGuard 
                                   style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
                                 ),
                               ),
-                              title: Text(p.nombre, style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.bold)),
+                              title: Text(
+                                p.nombre,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.bold),
+                              ),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [

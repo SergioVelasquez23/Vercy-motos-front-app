@@ -126,8 +126,18 @@ class ProductoService {
   }
 
   // Obtener todos los productos - Método principal optimizado
+  //
+  // useProgressive por defecto en false: de los 7 call-sites de este método
+  // en la app, solo categorias_screen.dart (y un archivo de debug) piden
+  // carga progresiva a propósito — el resto (asesor_pedidos_screen,
+  // facturacion_screen, cotizacion_form_screen, crear_factura_compra_screen,
+  // importar_factura_compra_pdf_screen) solo querían "todos los productos
+  // ya" y heredaban sin querer el default en true, que carga de a
+  // pageSize:40 con 300ms de pausa entre página y página más su propia
+  // cascada de reintentos por página — mucho más lento que el único GET que
+  // hace _getProductosLigero() con useLigero:true.
   Future<List<Producto>> getProductos({
-    bool useProgressive = true,
+    bool useProgressive = false,
     bool useLigero = true,
   }) async {
     // Si ya hay una petición en curso, volver la misma Future
@@ -691,8 +701,13 @@ class ProductoService {
       final response = await _retryStrategy.execute(
         operation: () => http.get(Uri.parse(url), headers: headers),
         timeoutPerAttempt: _getFastTimeoutForEnvironment(),
+        // Solo reintentar timeouts/errores de red: reintentar un error de
+        // parseo o un 4xx/5xx no cambia el resultado y solo suma tiempo de
+        // espera antes de caer al respaldo de abajo.
         shouldRetry: (error) {
-          return true;
+          return error is TimeoutException ||
+              error.toString().contains('SocketException') ||
+              error.toString().contains('Connection');
         },
       );
 

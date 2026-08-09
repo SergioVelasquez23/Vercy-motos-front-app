@@ -336,106 +336,172 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
     final estadoColor = _getEstadoColor(cotizacion.estado);
     final diasVigencia =
         cotizacion.fechaVencimiento?.difference(DateTime.now()).inDays ?? 0;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final isMobile = context.isMobile;
 
-    return ListTile(
-      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      leading: Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          color: estadoColor.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
+    final icono = Container(
+      width: 50,
+      height: 50,
+      decoration: BoxDecoration(
+        color: estadoColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(_getEstadoIcon(cotizacion.estado), color: estadoColor),
+    );
+
+    final encabezado = Row(
+      children: [
+        Expanded(
+          child: Text(
+            'Cotización #${cotizacion.id?.substring(0, 8) ?? 'N/A'}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: onSurface,
+            ),
+          ),
         ),
-        child: Icon(_getEstadoIcon(cotizacion.estado), color: estadoColor),
-      ),
-      title: Row(
-        children: [
-          Expanded(
-            child: Text(
-              'Cotización #${cotizacion.id?.substring(0, 8) ?? 'N/A'}',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Colors.white,
-              ),
-            ),
+        Chip(
+          label: Text(
+            _getEstadoLabel(cotizacion.estado),
+            style: TextStyle(fontSize: 12, color: Colors.white),
           ),
-          Chip(
-            label: Text(
-              _getEstadoLabel(cotizacion.estado),
-              style: TextStyle(fontSize: 12, color: Colors.white),
-            ),
-            backgroundColor: estadoColor,
-            padding: EdgeInsets.zero,
-          ),
-        ],
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(Icons.person, size: 14, color: Theme.of(context).colorScheme.onSurface),
-              SizedBox(width: 4),
-              Text(
+          backgroundColor: estadoColor,
+          padding: EdgeInsets.zero,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+        ),
+      ],
+    );
+
+    // ⚠️ Antes esto era el `subtitle` de un ListTile: con 4 filas de texto +
+    // el badge de total, fácilmente supera la altura que ListTile reserva
+    // para su subtítulo y genera un "BOTTOM OVERFLOWED" en pantallas
+    // angostas donde el texto necesita más líneas. Un Column suelto (sin las
+    // restricciones de alto de ListTile) no tiene ese problema.
+    final detalle = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: 4),
+        Row(
+          children: [
+            Icon(Icons.person, size: 14, color: onSurface),
+            SizedBox(width: 4),
+            Flexible(
+              child: Text(
                 'Cliente: ${cotizacion.clienteNombre ?? 'CONSUMIDOR FINAL'}',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                style: TextStyle(color: onSurface),
+                overflow: TextOverflow.ellipsis,
               ),
-            ],
-          ),
-          SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(Icons.calendar_today, size: 14, color: Theme.of(context).colorScheme.onSurface),
-              SizedBox(width: 4),
-              Text(
-                'Fecha: ${cotizacion.fecha.day}/${cotizacion.fecha.month}/${cotizacion.fecha.year}',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-              ),
-              SizedBox(width: 16),
-              if (cotizacion.fechaVencimiento != null) ...[
-                Icon(Icons.event, size: 14, color: Theme.of(context).colorScheme.onSurface),
+            ),
+          ],
+        ),
+        SizedBox(height: 4),
+        Wrap(
+          spacing: 16,
+          runSpacing: 4,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.calendar_today, size: 14, color: onSurface),
                 SizedBox(width: 4),
                 Text(
-                  'Vence: ${cotizacion.fechaVencimiento!.day}/${cotizacion.fechaVencimiento!.month}/${cotizacion.fechaVencimiento!.year}',
-                  style: TextStyle(
-                    color: diasVigencia < 0 ? Colors.red : Theme.of(context).colorScheme.onSurface,
-                  ),
+                  'Fecha: ${cotizacion.fecha.day}/${cotizacion.fecha.month}/${cotizacion.fecha.year}',
+                  style: TextStyle(color: onSurface),
                 ),
               ],
-            ],
-          ),
-          SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(Icons.shopping_cart, size: 14, color: Theme.of(context).colorScheme.onSurface),
-              SizedBox(width: 4),
-              Text(
-                '${cotizacion.items.length} items',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-              ),
-            ],
-          ),
-          SizedBox(height: 8),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(4),
             ),
-            child: Text(
-              'Total: ${CurrencyUtils.format(cotizacion.totalFinal)}',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.primary,
+            if (cotizacion.fechaVencimiento != null)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.event, size: 14, color: onSurface),
+                  SizedBox(width: 4),
+                  Text(
+                    'Vence: ${cotizacion.fechaVencimiento!.day}/${cotizacion.fechaVencimiento!.month}/${cotizacion.fechaVencimiento!.year}',
+                    style: TextStyle(
+                      color: diasVigencia < 0 ? Colors.red : onSurface,
+                    ),
+                  ),
+                ],
               ),
+          ],
+        ),
+        SizedBox(height: 4),
+        Row(
+          children: [
+            Icon(Icons.shopping_cart, size: 14, color: onSurface),
+            SizedBox(width: 4),
+            Text(
+              '${cotizacion.items.length} items',
+              style: TextStyle(color: onSurface),
+            ),
+          ],
+        ),
+        SizedBox(height: 8),
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppTheme.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            'Total: ${CurrencyUtils.format(cotizacion.totalFinal)}',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.primary,
             ),
           ),
+        ),
+      ],
+    );
+
+    final acciones = _buildAcciones(cotizacion);
+
+    // 📱 En mobile las acciones bajan debajo del contenido en vez de ir a la
+    // derecha (mismo motivo que en la lista de clientes: no caben 3-4
+    // IconButtons junto al encabezado sin aplastarlo).
+    if (isMobile) {
+      return Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                icono,
+                SizedBox(width: 12),
+                Expanded(child: encabezado),
+              ],
+            ),
+            Padding(padding: EdgeInsets.only(left: 62), child: detalle),
+            Align(alignment: Alignment.centerRight, child: acciones),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          icono,
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [encabezado, detalle],
+            ),
+          ),
+          acciones,
         ],
       ),
-      trailing: _buildAcciones(cotizacion),
     );
   }
 

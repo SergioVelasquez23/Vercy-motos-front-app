@@ -76,7 +76,13 @@ Future<ResultadoEdicionIvaDescuento> mostrarDialogoEditarIvaDescuento({
             ),
           ],
         ),
-        content: SizedBox(
+        // 📱 Esta tabla tiene columnas de ancho fijo (cantidad, precio, IVA%,
+        // Dcto%) que no caben en un celular sin aplastar la columna de
+        // nombre del producto — en vez de encogerlas (ilegible), se deja el
+        // ancho completo y se scrollea horizontal en pantallas angostas.
+        content: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
           width: 740,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -157,6 +163,7 @@ Future<ResultadoEdicionIvaDescuento> mostrarDialogoEditarIvaDescuento({
                 ),
               ),
             ],
+          ),
           ),
         ),
         actions: [

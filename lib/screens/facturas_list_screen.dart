@@ -1446,8 +1446,17 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
           },
           token: token,
         );
-        if (!mounted) return;
         if (resultado.success) {
+          // Éxito (posiblemente en un reintento): limpiar cualquier error
+          // previo guardado para este pedido — sin esto, el ícono rojo de
+          // "falló la emisión" se quedaba pegado en Documentos aunque la
+          // factura ya se hubiera emitido bien.
+          _pedidoService.setErrorFacturacionElectronica(pedido.id, null).catchError((e) {
+            appLog('⚠️ No se pudo limpiar el error de facturación guardado: $e');
+            return pedido;
+          });
+
+          if (!mounted) return;
           final cufe = resultado.documentKey ?? '';
           final factResult = FacturacionResult(
             success: true,
@@ -1470,6 +1479,16 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
             ),
           );
         } else {
+          // No lanzó excepción, pero Matias/DIAN rechazó el documento: guardar
+          // el motivo para poder revisarlo después desde Documentos.
+          _pedidoService
+              .setErrorFacturacionElectronica(pedido.id, resultado.message)
+              .catchError((e) {
+            appLog('⚠️ No se pudo guardar el error de facturación: $e');
+            return pedido;
+          });
+
+          if (!mounted) return;
           messenger.showSnackBar(SnackBar(
             content: Text('⚠️ Error DIAN: ${resultado.message}'),
             backgroundColor: Colors.orange.shade800,
@@ -1477,8 +1496,13 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
           ));
         }
       } catch (e) {
+        final motivo = errorMessage(e);
+        _pedidoService.setErrorFacturacionElectronica(pedido.id, motivo).catchError((e2) {
+          appLog('⚠️ No se pudo guardar el error de facturación: $e2');
+          return pedido;
+        });
         if (!mounted) return;
-        showErrorDialog(context, 'Error al enviar a DIAN: ${errorMessage(e)}');
+        showErrorDialog(context, 'Error al enviar a DIAN: $motivo');
       } finally {
         if (mounted) setState(() => _emitiendoFE.remove(pedido.id));
       }
@@ -1799,13 +1823,26 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
     // Solo documentos POS/FE (excluye locales, sin importar el toggle
     // "Mostrar locales" en pantalla) dentro del rango. `_categoriaPedido` ya
     // descarta como LOCAL todo lo anterior al 3 de julio de 2026 (nunca
-    // llegó de verdad a la DIAN), así que cualquier pedido que siga
-    // categorizando como FE/POS aquí sí debe entrar al Excel — no hace
-    // falta (ni conviene) exigir además que tengamos el número FAEL "bonito"
-    // resuelto: si no hay registro `Factura`, se exporta con el
-    // identificador de respaldo (ver `_numeroRealDocumento`).
+    // llegó de verdad a la DIAN).
+    //
+    // ⚠️ Un pedido con tipoFactura == 'FACTURA' solo indica que el cajero
+    // *quería* facturarlo electrónicamente — no que la DIAN realmente la
+    // haya aceptado. `_extraerNumeroDian` (usado también por
+    // `_numeroRealDocumento` para la columna "Número") es la única fuente
+    // confiable de esto: si no logra resolver un número real (ni
+    // respuestaDIAN, ni numeroDocumentoElectronico, ni Factura.numero), la
+    // "FE" nunca se emitió de verdad — quedó marcada como tal pero no
+    // salió — y no debe contarse como una ni aparecer en el Excel; hay que
+    // facturarla de nuevo aparte. (Antes se exigía solo que existiera un
+    // `Factura.cufe`, pero una Factura puede tener cufe sin tener ninguno
+    // de esos tres campos resueltos, y ese caso seguía coleándose.)
     final pedidosEnRango = _documentosFiltrados.whereType<Pedido>().where((p) {
-      if (_categoriaPedido(p) == 'LOCAL') return false;
+      final categoria = _categoriaPedido(p);
+      if (categoria == 'LOCAL') return false;
+      if (categoria == 'FE') {
+        final factura = facturasPorPedido[p.id];
+        if (factura == null || _extraerNumeroDian(factura) == null) return false;
+      }
       final fecha = p.fechaPago ?? p.fecha;
       return !fecha.isBefore(desde) && !fecha.isAfter(hasta);
     }).toList();
@@ -1813,7 +1850,19 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
     // FE reales cuyo Pedido de origen se eliminó por error del cajero (ver
     // lib/data/facturas_reconstruidas_manual.dart): solo entran al Excel si
     // su fecha cae en el rango elegido, igual que cualquier otro documento.
+    //
+    // Esa lista se armó cruzando Mongo en un momento dado para confirmar
+    // "no existe Pedido asociado" — si luego ese pedido se restauró (o el
+    // cruce se hizo mal), ahora SÍ aparece también como fila normal más
+    // arriba, duplicando el número FAEL en el Excel. Para no depender de ir
+    // editando esa lista estática cada vez que eso pase, se descarta aquí
+    // cualquier entrada reconstruida cuyo número ya haya salido de un
+    // Pedido real.
+    final numerosYaIncluidos = pedidosEnRango
+        .map((p) => _numeroRealDocumento(p, facturasPorPedido))
+        .toSet();
     final reconstruidasEnRango = facturasReconstruidasManual.where((f) {
+      if (numerosYaIncluidos.contains(f.numero)) return false;
       return !f.fecha.isBefore(desde) && !f.fecha.isAfter(hasta);
     }).toList();
 

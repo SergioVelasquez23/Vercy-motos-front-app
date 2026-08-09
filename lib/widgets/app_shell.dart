@@ -196,6 +196,7 @@ class _AppShellState extends State<AppShell> {
             },
           ),
           const Spacer(),
+          const _TiempoRealIndicator(),
           const _NotificacionesBell(),
           IconButton(
             icon: Icon(
@@ -236,7 +237,29 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
+  // Pantalla de un solo usuario (ver editar_stock_simple_screen.dart y el
+  // mismo correo duplicado en app_router.dart) — no se agrega como
+  // constante compartida por lo mismo que se explica allá.
+  static const _emailEditarStockAutorizado = 'francia@gmail.com';
+
   Widget _buildMenuItems(BuildContext context, UserProvider userProvider) {
+    // Este usuario no debe ver nada del menú normal (Dashboard, Facturar,
+    // etc.) — solo la pantalla simplificada de stock. Se corta acá antes de
+    // construir el resto de ítems, en vez de ocultarlos uno por uno.
+    if (userProvider.userEmail?.trim().toLowerCase() == _emailEditarStockAutorizado) {
+      return ListView(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        children: [
+          _MenuItem(
+            icon: Icons.edit,
+            label: 'Editar Stock',
+            route: '/editar-stock',
+            currentRoute: _currentRoute,
+          ),
+        ],
+      );
+    }
+
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
@@ -571,6 +594,31 @@ class _SubMenuTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Solo se muestra cuando el WebSocket de sincronización en tiempo real
+/// (/rt/traslados — productos, stock, traslados) está caído: antes de esto
+/// no había forma de saber, desde la UI, si los cambios hechos en otro
+/// dispositivo iban a llegar solos o si hacía falta recargar a mano.
+class _TiempoRealIndicator extends StatelessWidget {
+  const _TiempoRealIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    final conectado = context.watch<DatosCacheProvider>().tiempoRealConectado;
+    if (conectado) return const SizedBox.shrink();
+
+    return Tooltip(
+      message:
+          'Sin conexión en tiempo real: los cambios hechos en otros '
+          'dispositivos pueden tardar en aparecer aquí. Reconectando '
+          'automáticamente…',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Icon(Icons.cloud_off, color: AppTheme.warning, size: 20),
       ),
     );
   }

@@ -773,6 +773,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
+                          isExpanded: true,
                           decoration: InputDecoration(
                             labelText: 'Caja',
                             labelStyle: TextStyle(color: textLight),
@@ -805,6 +806,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                       SizedBox(width: 16),
                       Expanded(
                         child: DropdownButtonFormField<String>(
+                          isExpanded: true,
                           decoration: InputDecoration(
                             labelText: 'Responsable',
                             labelStyle: TextStyle(color: textLight),
@@ -837,6 +839,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                       SizedBox(width: 16),
                       Expanded(
                         child: DropdownButtonFormField<String>(
+                          isExpanded: true,
                           decoration: InputDecoration(
                             labelText: 'Estado',
                             labelStyle: TextStyle(color: textLight),

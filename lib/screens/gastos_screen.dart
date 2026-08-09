@@ -1613,52 +1613,59 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
     );
   }
 
+  // 📱 Esta tabla (encabezado + filas + fila de nuevo concepto) usa columnas
+  // de ancho fijo que suman ~940px — no cabe en un teléfono. En vez de
+  // encoger las columnas (ilegible), se deja el ancho completo y se
+  // scrollea horizontal en pantallas angostas (mismo criterio que en
+  // dialogo_editar_iva_descuento.dart).
   Widget _buildConceptosTable() {
-    return Column(
-      children: [
-        // Header de la tabla
-        Container(
-          decoration: BoxDecoration(
-            color: AppTheme.primary,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(4),
-              topRight: Radius.circular(4),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Column(
+        children: [
+          // Header de la tabla
+          Container(
+            decoration: BoxDecoration(
+              color: AppTheme.primary,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(4),
+                topRight: Radius.circular(4),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildTableHeader('Concepto', width: 240),
+                _buildTableHeaderButton('Valor', width: 280),
+                _buildTableHeaderButton('Impuesto', width: 180),
+                _buildTableHeaderButton('Total', width: 160),
+                SizedBox(width: 80), // Espacio para columna eliminar/agregar
+              ],
             ),
           ),
-          child: Row(
-            children: [
-              _buildTableHeader('Concepto', flex: 5),
-              _buildTableHeaderButton('Valor', width: 280),
-              _buildTableHeaderButton('Impuesto', width: 180),
-              _buildTableHeaderButton('Total', width: 160),
-              SizedBox(width: 80), // Espacio para columna eliminar/agregar
-            ],
-          ),
-        ),
-        // Filas de conceptos
-        ..._conceptosGasto.asMap().entries.map((entry) {
-          final index = entry.key;
-          final concepto = entry.value;
-          return _buildConceptoRow(index, concepto);
-        }),
-        // Fila para agregar nuevo concepto
-        _buildNuevoConceptoRow(),
-      ],
+          // Filas de conceptos
+          ..._conceptosGasto.asMap().entries.map((entry) {
+            final index = entry.key;
+            final concepto = entry.value;
+            return _buildConceptoRow(index, concepto);
+          }),
+          // Fila para agregar nuevo concepto
+          _buildNuevoConceptoRow(),
+        ],
+      ),
     );
   }
 
-  Widget _buildTableHeader(String text, {int flex = 1}) {
-    return Expanded(
-      flex: flex,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 17,
-          ),
+  Widget _buildTableHeader(String text, {double width = 240}) {
+    return Container(
+      width: width,
+      padding: EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 17,
         ),
       ),
     );
@@ -1697,15 +1704,14 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
         ),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            flex: 5,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-              child: Text(
-                concepto['concepto'] ?? '',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
-              ),
+          Container(
+            width: 240,
+            padding: EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            child: Text(
+              concepto['concepto'] ?? '',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
             ),
           ),
           _buildTableCell(
@@ -1763,10 +1769,11 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
         ),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           // Campo concepto
-          Expanded(
-            flex: 5,
+          SizedBox(
+            width: 240,
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               child: TextField(
@@ -1946,91 +1953,100 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
   }
 
   Widget _buildBottomSection() {
+    final descripcion = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Descripción',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        SizedBox(height: 12),
+        TextField(
+          controller: _descripcionController,
+          maxLines: 5,
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 15),
+          decoration: InputDecoration(
+            hintText: '',
+            hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+            filled: true,
+            fillColor: Theme.of(context).colorScheme.surface,
+            contentPadding: EdgeInsets.all(16),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+      ],
+    );
+
+    final retenciones = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextButton(
+          onPressed: () {
+            setState(() => _mostrarRetenciones = !_mostrarRetenciones);
+          },
+          child: Text(
+            'Agregar Retenciones',
+            style: TextStyle(
+              color: AppTheme.primary,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        if (_mostrarRetenciones) ...[
+          SizedBox(height: 16),
+          _buildRetencionField('Retención', _retencionController),
+          SizedBox(height: 12),
+          _buildRetencionField('Reteiva', _reteivaController),
+          SizedBox(height: 12),
+          _buildRetencionField('Reteica', _reteicaController),
+        ],
+      ],
+    );
+
+    final resumen = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildResumenRow('Subtotal', _subtotalGasto),
+        _buildResumenRow('Descuento', _descuentoGasto),
+        _buildResumenRow('Impuestos', _impuestosGasto),
+        SizedBox(height: 12),
+        Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3)),
+        _buildResumenRow('Total', _totalGasto, isTotal: true),
+      ],
+    );
+
+    // 📱 Descripción + Retenciones + Resumen lado a lado (2 Expanded + un
+    // panel de 320px fijo) no cabían en un teléfono — los labels se
+    // aplastaban letra por letra. En mobile se apilan en una sola columna.
+    if (context.isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          descripcion,
+          SizedBox(height: 24),
+          retenciones,
+          SizedBox(height: 24),
+          resumen,
+        ],
+      );
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Descripción
-        Expanded(
-          flex: 2,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Descripción',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              SizedBox(height: 12),
-              TextField(
-                controller: _descripcionController,
-                maxLines: 5,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 15),
-                decoration: InputDecoration(
-                  hintText: '',
-                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surface,
-                  contentPadding: EdgeInsets.all(16),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        Expanded(flex: 2, child: descripcion),
         SizedBox(width: 32),
-
-        // Link Agregar Retenciones
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(height: 32),
-              TextButton(
-                onPressed: () {
-                  setState(() => _mostrarRetenciones = !_mostrarRetenciones);
-                },
-                child: Text(
-                  'Agregar Retenciones',
-                  style: TextStyle(
-                    color: AppTheme.primary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              if (_mostrarRetenciones) ...[
-                SizedBox(height: 16),
-                _buildRetencionField('Retención', _retencionController),
-                SizedBox(height: 12),
-                _buildRetencionField('Reteiva', _reteivaController),
-                SizedBox(height: 12),
-                _buildRetencionField('Reteica', _reteicaController),
-              ],
-            ],
-          ),
-        ),
+        Expanded(child: retenciones),
         SizedBox(width: 32),
-
-        // Panel de resumen
-        Container(
-          width: 320,
-          child: Column(
-            children: [
-              _buildResumenRow('Subtotal', _subtotalGasto),
-              _buildResumenRow('Descuento', _descuentoGasto),
-              _buildResumenRow('Impuestos', _impuestosGasto),
-              SizedBox(height: 12),
-              Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3)),
-              _buildResumenRow('Total', _totalGasto, isTotal: true),
-            ],
-          ),
-        ),
+        Container(width: 320, child: resumen),
       ],
     );
   }
@@ -2112,7 +2128,7 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
     return Align(
       alignment: Alignment.centerRight,
       child: SizedBox(
-        width: 320,
+        width: dialogWidth(context, 320),
         child: ElevatedButton(
           onPressed: _guardandoGasto ? null : () => runGuarded(_saveGastoNuevo),
           style: ElevatedButton.styleFrom(

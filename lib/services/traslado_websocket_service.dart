@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
@@ -23,6 +24,15 @@ class TrasladoWebSocketService {
   static const String _websocketPath = '/rt/traslados';
   static const Duration _reconnectDelayBase = Duration(seconds: 5);
   static const Duration _reconnectDelayMax = Duration(minutes: 2);
+  // Renovación preventiva de la conexión: en algunos escenarios (pestaña
+  // suspendida y reanudada, proxy/red que cierra el socket sin mandar un
+  // frame de cierre) ni onError ni onDone llegan a dispararse nunca, y
+  // _isConnected se queda pegado en true con un socket zombie que ya no
+  // recibe nada — sin esto, la app nunca vuelve a intentar reconectar por su
+  // cuenta y el usuario deja de recibir cambios en tiempo real hasta que
+  // recarga a mano. Al forzar un ciclo de reconexión cada cierto tiempo, el
+  // peor caso de "conectado pero sordo" queda acotado a este intervalo.
+  static const Duration _watchdogInterval = Duration(minutes: 3);
 
   WebSocketChannel? _channel;
   OnTrasladoEvent? _onEvent;
@@ -30,6 +40,7 @@ class TrasladoWebSocketService {
   bool _isConnected = false;
   bool _isDisposing = false;
   String? _baseUrl;
+  Timer? _watchdogTimer;
   // Backoff exponencial: si el endpoint no está disponible (backend caído,
   // ruta no desplegada, etc.) evita machacar la consola y la red con un
   // intento cada 5s indefinidamente — el intervalo se duplica en cada fallo
@@ -62,6 +73,7 @@ class TrasladoWebSocketService {
       _isConnected = true;
       _intentosFallidos = 0;
       _onConnectionStatusChanged?.call(true);
+      _iniciarWatchdog();
       appLog('✅ [TrasladoWS] Conectado');
 
       _channel!.stream.listen(
@@ -69,12 +81,14 @@ class TrasladoWebSocketService {
         onError: (error) {
           appLog('❌ [TrasladoWS] Error: $error');
           _isConnected = false;
+          _watchdogTimer?.cancel();
           _onConnectionStatusChanged?.call(false);
           if (!_isDisposing) _scheduledReconnect();
         },
         onDone: () {
           appLog('⚠️ [TrasladoWS] Desconectado');
           _isConnected = false;
+          _watchdogTimer?.cancel();
           _onConnectionStatusChanged?.call(false);
           if (!_isDisposing) _scheduledReconnect();
         },
@@ -82,6 +96,7 @@ class TrasladoWebSocketService {
     } catch (e) {
       appLog('❌ [TrasladoWS] Error conectando: $e');
       _isConnected = false;
+      _watchdogTimer?.cancel();
       _onConnectionStatusChanged?.call(false);
       if (!_isDisposing) _scheduledReconnect();
     }
@@ -94,6 +109,28 @@ class TrasladoWebSocketService {
     } catch (e) {
       appLog('⚠️ [TrasladoWS] Error procesando mensaje: $e');
     }
+  }
+
+  void _iniciarWatchdog() {
+    _watchdogTimer?.cancel();
+    _watchdogTimer = Timer.periodic(_watchdogInterval, (_) => _forzarReconexion());
+  }
+
+  Future<void> _forzarReconexion() async {
+    if (_isDisposing || _baseUrl == null || _onEvent == null) return;
+    appLog('🔄 [TrasladoWS] Watchdog: renovando conexión preventivamente');
+    try {
+      await _channel?.sink.close(status.goingAway);
+    } catch (e) {
+      // Ignorado: si el socket ya estaba muerto, cerrar solo confirma lo que
+      // el watchdog sospechaba.
+    }
+    _isConnected = false;
+    await connect(
+      baseUrl: _baseUrl!,
+      onEvent: _onEvent!,
+      onConnectionStatusChanged: _onConnectionStatusChanged,
+    );
   }
 
   Future<void> _scheduledReconnect() async {
@@ -117,6 +154,7 @@ class TrasladoWebSocketService {
   Future<void> disconnect() async {
     _isDisposing = true;
     _intentosFallidos = 0;
+    _watchdogTimer?.cancel();
     if (_channel != null) {
       try {
         await _channel!.sink.close(status.goingAway);

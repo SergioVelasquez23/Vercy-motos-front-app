@@ -5,6 +5,7 @@ import '../services/deuda_service.dart';
 import '../providers/user_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
+import '../utils/dialogs_helper.dart';
 import '../widgets/common/screen_header.dart';
 
 class DeudasListScreen extends StatefulWidget {
@@ -407,7 +408,7 @@ class _PagoDialogState extends State<_PagoDialog> {
         ],
       ),
       content: SizedBox(
-        width: 380,
+        width: dialogWidth(context, 380),
         child: Form(
           key: _formKey,
           child: Column(
@@ -579,7 +580,7 @@ class _DetalleDialogState extends State<_DetalleDialog> {
         ],
       ),
       content: SizedBox(
-        width: 450,
+        width: dialogWidth(context, 450),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

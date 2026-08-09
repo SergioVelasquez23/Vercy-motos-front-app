@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
+/// Ancho responsivo para el contenido de un diálogo que normalmente usa un
+/// `SizedBox(width: preferido)` fijo: en pantallas anchas usa [preferido],
+/// pero nunca más del 90% del ancho de pantalla — evita que ese ancho fijo
+/// se salga del diálogo en un celular (donde 90% ya puede ser mucho menos
+/// que [preferido]).
+double dialogWidth(BuildContext context, double preferido) {
+  final disponible = MediaQuery.of(context).size.width * 0.9;
+  return preferido < disponible ? preferido : disponible;
+}
+
 /// Muestra un diálogo de confirmación estándar.
 /// Retorna `true` si el usuario confirmó, `false` si canceló.
 Future<bool> showConfirmDialog(
