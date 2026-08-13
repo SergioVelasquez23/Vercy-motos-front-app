@@ -206,24 +206,27 @@ class CuadreCajaService {
   }
 
   // Obtener la caja activa actual (primera caja abierta)
+  // Devuelve null solo cuando se CONFIRMÓ que no hay caja abierta (alguno de
+  // los dos endpoints respondió con una lista vacía). Si ambos fallan por un
+  // problema real (red, timeout, backend caído), esto se propaga como
+  // excepción en vez de devolver null — antes un simple error de conexión se
+  // veía exactamente igual a "no hay caja abierta" y disparaba el mensaje
+  // "Debe abrir caja" aunque la caja siguiera abierta.
   Future<CuadreCaja?> getCajaActiva() async {
     // Try the dedicated /abiertas endpoint first
     try {
       final cajasAbiertas = await getCajasAbiertas();
-      if (cajasAbiertas.isNotEmpty) {
-        return cajasAbiertas.first;
-      }
-    } catch (_) {}
-
-    // Fallback: get all cuadres and filter client-side
-    try {
-      final todos = await getAllCuadres();
-      final abiertas = todos.where((c) => !c.cerrada).toList();
-      abiertas.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));
-      return abiertas.isNotEmpty ? abiertas.first : null;
-    } catch (e) {
-      return null;
+      return cajasAbiertas.isNotEmpty ? cajasAbiertas.first : null;
+    } catch (_) {
+      // Este endpoint falló — probar el de respaldo antes de rendirse.
     }
+
+    // Fallback: get all cuadres and filter client-side. Si esto también
+    // falla, se deja subir la excepción (no se convierte en null).
+    final todos = await getAllCuadres();
+    final abiertas = todos.where((c) => !c.cerrada).toList();
+    abiertas.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));
+    return abiertas.isNotEmpty ? abiertas.first : null;
   }
 
   // Validar si hay una caja abierta (método de conveniencia)

@@ -164,22 +164,40 @@ class PedidoService {
 
   /// Obtener cuadreId activo — siempre consulta el backend (sin cache)
   /// para evitar que un cuadreId de caja cerrada sea enviado en pedidos.
+  ///
+  /// A propósito NO atrapa errores acá: null solo debe significar "se
+  /// confirmó que no hay caja abierta", nunca "no se pudo verificar". Antes
+  /// esto atrapaba cualquier excepción (red, timeout, backend caído) y
+  /// devolvía null igual, así que un simple error de conexión terminaba
+  /// mostrando "Debe abrir caja" con la caja abierta y todo. Quien llama a
+  /// este método decide cómo mostrar el error real si la consulta falla.
   Future<String?> _getCuadreIdActivo() async {
+    final cajaActiva = await _cuadreCajaService.getCajaActiva();
+    appLog('[PedidoService] cajaActiva.id = ${cajaActiva?.id}');
+    _cuadreIdActivo = cajaActiva?.id;
+    return _cuadreIdActivo;
+  }
+
+  /// Resuelve el cuadreId activo distinguiendo "no hay caja abierta"
+  /// (confirmado) de "no se pudo verificar" (error real) — ver
+  /// _getCuadreIdActivo. Lanza el mensaje correcto para cada caso.
+  Future<String> _requerirCuadreIdActivo() async {
+    String? cuadreIdActivo;
     try {
-      final cajaActiva = await _cuadreCajaService.getCajaActiva();
-      appLog('[PedidoService] cajaActiva.id = ${cajaActiva?.id}');
-
-      if (cajaActiva != null) {
-        _cuadreIdActivo = cajaActiva.id;
-        return _cuadreIdActivo;
-      }
-
-      _cuadreIdActivo = null;
-      return null;
+      cuadreIdActivo = await _getCuadreIdActivo();
     } catch (e) {
-      appLog('⚠️ Error obteniendo cuadreId activo: $e');
-      return null;
+      throw Exception(
+        'No se pudo verificar si hay caja abierta (revisa tu conexión e '
+        'intenta de nuevo). Detalle: ${errorMessage(e)}',
+      );
     }
+
+    if (cuadreIdActivo == null) {
+      throw Exception(
+        'Debe abrir caja para continuar. Para registrar pedidos primero debe abrir la caja del día.',
+      );
+    }
+    return cuadreIdActivo;
   }
 
   void limpiarCacheCuadreId() {
@@ -635,17 +653,8 @@ class PedidoService {
   // Crear nuevo pedido (método legacy - ahora usa validación de caja)
   Future<Pedido> crearPedido(Pedido pedido) async {
     try {
-      // ⚡ VALIDACIÓN OPTIMIZADA: Usar caché de cuadreId para no llamar getAllCuadres() cada vez
-      final cuadreIdActivo = await _getCuadreIdActivo();
-
-      if (cuadreIdActivo == null) {
-        throw Exception(
-          'Debe abrir caja para continuar. Para registrar pedidos primero debe abrir la caja del día.',
-        );
-      }
-
       // Asignar cuadreId al pedido automáticamente
-      pedido.cuadreId = cuadreIdActivo;
+      pedido.cuadreId = await _requerirCuadreIdActivo();
          
       final headers = await _getHeaders();
       final response = await http.post(
@@ -668,17 +677,8 @@ class PedidoService {
   // Crear un nuevo pedido
   Future<Pedido> createPedido(Pedido pedido) async {
     try {
-      // ⚡ VALIDACIÓN OPTIMIZADA: Usar caché de cuadreId para no llamar getAllCuadres() cada vez
-      final cuadreIdActivo = await _getCuadreIdActivo();
-
-      if (cuadreIdActivo == null) {
-        throw Exception(
-          'Debe abrir caja para continuar. Para registrar pedidos primero debe abrir la caja del día.',
-        );
-      }
-
       // Asignar cuadreId al pedido automáticamente
-      pedido.cuadreId = cuadreIdActivo;
+      pedido.cuadreId = await _requerirCuadreIdActivo();
          
       // Validar que los items del pedido sean válidos
       if (pedido.items.isEmpty) {
