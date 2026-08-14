@@ -75,4 +75,73 @@ class LibroContableService {
       rethrow;
     }
   }
+
+  /// Igual que [getLibroContableMensual] pero para un rango de fechas
+  /// arbitrario en vez de un mes calendario completo — incluye "utilidadBruta"
+  /// (ventas − compras − gastos del mismo rango), equivalente al balance de
+  /// cierre de caja pero calculado sobre el período elegido.
+  Future<Map<String, dynamic>> getLibroContablePorRango(
+    DateTime desde,
+    DateTime hasta,
+  ) async {
+    try {
+      final token = await _baseService.getToken();
+      if (token == null) {
+        throw Exception('No hay token de autenticación');
+      }
+
+      final url = Uri.parse(
+        '$_baseUrl/api/reportes/libro-contable/rango'
+        '?fechaDesde=${desde.toIso8601String()}&fechaHasta=${hasta.toIso8601String()}',
+      );
+
+      final response = await http
+          .get(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(
+            const Duration(seconds: 120),
+            onTimeout: () {
+              throw Exception(
+                'El servidor tardó demasiado en responder. Intenta con un rango más corto.',
+              );
+            },
+          );
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+
+        if (jsonData['success'] == true) {
+          return jsonData['data'] as Map<String, dynamic>;
+        } else {
+          throw Exception(jsonData['message'] ?? 'Error desconocido');
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('No autorizado. Verifica tus credenciales.');
+      } else if (response.statusCode == 403) {
+        throw Exception(
+          'No tienes permisos para ver el libro contable.',
+        );
+      } else {
+        final errorBody = response.body.isNotEmpty
+            ? response.body
+            : 'Sin detalles del error';
+        throw Exception(
+          'Error del servidor (${response.statusCode}): $errorBody',
+        );
+      }
+    } on SocketException {
+      throw Exception('Sin conexión a internet. Verifica tu conectividad.');
+    } on http.ClientException {
+      throw Exception('Error de conexión con el servidor.');
+    } on FormatException {
+      throw Exception('Error en el formato de respuesta del servidor.');
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

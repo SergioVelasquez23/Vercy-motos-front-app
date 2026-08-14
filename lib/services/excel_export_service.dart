@@ -1137,6 +1137,37 @@ class ExcelExportService {
       );
       row++;
     }
+
+    // El total de "Mixto" ya quedó como una fila arriba (monto completo, sin
+    // partir) — acá se agrega, aparte, de qué submétodos reales estaba
+    // compuesto ese monto (efectivo/transferencia/etc. dentro del mismo pago
+    // mixto). Antes el Excel no traía esta información en absoluto.
+    final desgloseMixto =
+        seccionVentas['desgloseMixto'] as Map<String, dynamic>? ?? {};
+    if (desgloseMixto.isNotEmpty) {
+      row++;
+      sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+        'Desglose de "Mixto" por submétodo:',
+      );
+      sheet.cell(CellIndex.indexByString('A$row')).cellStyle = headerStyle;
+      row++;
+      for (var entry in desgloseMixto.entries) {
+        final detalle = entry.value as Map<String, dynamic>? ?? {};
+        sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+          '  ${entry.key}',
+        );
+        sheet.cell(CellIndex.indexByString('B$row')).value = DoubleCellValue(
+          double.tryParse(detalle['monto']?.toString() ?? '0') ?? 0,
+        );
+        sheet.cell(CellIndex.indexByString('C$row')).value = IntCellValue(
+          int.tryParse(detalle['cantidad']?.toString() ?? '0') ?? 0,
+        );
+        sheet.cell(CellIndex.indexByString('D$row')).value = DoubleCellValue(
+          double.tryParse(detalle['porcentaje']?.toString() ?? '0') ?? 0,
+        );
+        row++;
+      }
+    }
   }
 
   /// Escribe un bloque de desglose (clave → monto/cantidad) empezando en
