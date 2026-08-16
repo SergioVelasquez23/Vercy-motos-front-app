@@ -133,7 +133,7 @@ class _AutorizacionesScreenState extends State<AutorizacionesScreen> {
                     SizedBox(height: 16),
                     Text(
                       'No hay usuarios pendientes',
-                      style: TextStyle(fontSize: 18, color: Colors.white),
+                      style: TextStyle(fontSize: 18, color: Theme.of(context).colorScheme.onSurface),
                     ),
                     Text(
                       'Todos los usuarios han sido autorizados',
@@ -194,7 +194,7 @@ class _AutorizacionesScreenState extends State<AutorizacionesScreen> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     SizedBox(height: 4),

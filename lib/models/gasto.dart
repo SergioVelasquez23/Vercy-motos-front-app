@@ -16,6 +16,10 @@ class Gasto {
   final double subtotal;
   final double impuestos;
   final bool pagadoDesdeCaja;
+  // Desglose cuando formaPago == 'Mixto' (efectivo + transferencia = monto).
+  // Solo montoEfectivo afecta el efectivo esperado de caja.
+  final double montoEfectivo;
+  final double montoTransferencia;
 
   Gasto({
     this.id,
@@ -33,6 +37,8 @@ class Gasto {
     this.subtotal = 0.0,
     this.impuestos = 0.0,
     this.pagadoDesdeCaja = false,
+    this.montoEfectivo = 0.0,
+    this.montoTransferencia = 0.0,
   });
 
   factory Gasto.fromJson(Map<String, dynamic> json) {
@@ -54,6 +60,8 @@ class Gasto {
       subtotal: (json['subtotal'] ?? 0).toDouble(),
       impuestos: (json['impuestos'] ?? 0).toDouble(),
       pagadoDesdeCaja: json['pagadoDesdeCaja'] ?? false,
+      montoEfectivo: (json['montoEfectivo'] ?? 0).toDouble(),
+      montoTransferencia: (json['montoTransferencia'] ?? 0).toDouble(),
     );
   }
 
@@ -74,6 +82,8 @@ class Gasto {
       'subtotal': subtotal,
       'impuestos': impuestos,
       'pagadoDesdeCaja': pagadoDesdeCaja,
+      'montoEfectivo': montoEfectivo,
+      'montoTransferencia': montoTransferencia,
     };
   }
 
@@ -93,6 +103,8 @@ class Gasto {
     double? subtotal,
     double? impuestos,
     bool? pagadoDesdeCaja,
+    double? montoEfectivo,
+    double? montoTransferencia,
   }) {
     return Gasto(
       id: id ?? this.id,
@@ -110,6 +122,8 @@ class Gasto {
       subtotal: subtotal ?? this.subtotal,
       impuestos: impuestos ?? this.impuestos,
       pagadoDesdeCaja: pagadoDesdeCaja ?? this.pagadoDesdeCaja,
+      montoEfectivo: montoEfectivo ?? this.montoEfectivo,
+      montoTransferencia: montoTransferencia ?? this.montoTransferencia,
     );
   }
 

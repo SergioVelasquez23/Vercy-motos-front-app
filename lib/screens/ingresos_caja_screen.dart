@@ -104,13 +104,10 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
       lastDate: DateTime.now().add(Duration(days: 365)),
       builder: (context, child) {
         return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: ColorScheme.dark(
-            primary: AppTheme.primary,
-              onPrimary: Colors.white,
-              surface: Theme.of(context).colorScheme.surface,
-              onSurface: Theme.of(context).colorScheme.onSurface,
-            ),
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: AppTheme.primary),
           ),
           child: child!,
         );
@@ -257,7 +254,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                                         style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                       ),
                                       style: TextButton.styleFrom(
-                                        backgroundColor: Colors.grey[800],
+                                        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                                       ),
                                     ),
                                   ),
@@ -276,7 +273,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                                         style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                       ),
                                       style: TextButton.styleFrom(
-                                        backgroundColor: Colors.grey[800],
+                                        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                                       ),
                                     ),
                                   ),
@@ -295,7 +292,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                                     color: AppTheme.primary,
                                   ),
                                   filled: true,
-                                  fillColor: Colors.grey[800],
+                                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
                                     borderSide: BorderSide.none,

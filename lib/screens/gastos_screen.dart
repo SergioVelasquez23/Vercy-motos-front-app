@@ -45,6 +45,11 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
       TextEditingController();
   final TextEditingController _subtotalController = TextEditingController();
   final TextEditingController _impuestosController = TextEditingController();
+  // Desglose de pago Mixto (efectivo + transferencia = total del gasto)
+  final TextEditingController _montoEfectivoMixtoController =
+      TextEditingController();
+  final TextEditingController _montoTransferenciaMixtoController =
+      TextEditingController();
 
   // Estado
   List<Gasto> _gastos = [];
@@ -68,7 +73,12 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
   Gasto? _gastoEditando;
 
   // Opciones de forma de pago
-  final List<String> _formasPago = ['Efectivo', 'Transferencia', 'Cheque'];
+  final List<String> _formasPago = [
+    'Efectivo',
+    'Transferencia',
+    'Cheque',
+    'Mixto',
+  ];
 
   // Variables para filtros de búsqueda
   DateTime? _fechaInicio;
@@ -118,6 +128,8 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
     _numeroFacturaController.dispose();
     _subtotalController.dispose();
     _impuestosController.dispose();
+    _montoEfectivoMixtoController.dispose();
+    _montoTransferenciaMixtoController.dispose();
     _conceptoBusquedaController.dispose();
     _nuevoConceptoController.dispose();
     _nuevoValorController.dispose();
@@ -262,6 +274,12 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
       _selectedDate = gasto.fechaGasto;
       _selectedCuadreId = gasto.cuadreCajaId;
       _pagadoDesdeCaja = gasto.pagadoDesdeCaja;
+      _montoEfectivoMixtoController.text = gasto.montoEfectivo > 0
+          ? gasto.montoEfectivo.toString()
+          : '';
+      _montoTransferenciaMixtoController.text = gasto.montoTransferencia > 0
+          ? gasto.montoTransferencia.toString()
+          : '';
 
       // Para el nuevo formulario
       _selectedTipoGastoIdNuevo = gasto.tipoGastoId;
@@ -297,6 +315,8 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
       _generateInvoiceNumber();
 
       // Limpiar nuevo formulario
+      _montoEfectivoMixtoController.clear();
+      _montoTransferenciaMixtoController.clear();
       _fechaVencimiento = null;
       _selectedTipoGastoIdNuevo = null;
       _documentoSoporte = false;
@@ -962,6 +982,12 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
           _buildHeaderRow(),
           SizedBox(height: 24),
 
+          // Desglose Efectivo/Transferencia cuando la forma de pago es Mixto
+          if (_selectedFormaPago == 'Mixto') ...[
+            _buildCamposMixto(),
+            SizedBox(height: 24),
+          ],
+
           // Tabla de conceptos
           _buildConceptosTable(),
           SizedBox(height: 32),
@@ -974,6 +1000,103 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
           _buildPayButton(),
         ],
       ),
+    );
+  }
+
+  /// Desglose Efectivo/Transferencia para forma de pago "Mixto": la suma de
+  /// ambos campos debe igualar el total del gasto (validado en
+  /// _saveGastoNuevo). Solo la porción en efectivo se descuenta de caja
+  /// cuando "Pagado desde Caja" está activo — la transferencia nunca la toca.
+  Widget _buildCamposMixto() {
+    final montoEfectivo = double.tryParse(_montoEfectivoMixtoController.text) ?? 0.0;
+    final montoTransferencia = double.tryParse(_montoTransferenciaMixtoController.text) ?? 0.0;
+    final diferencia = _totalGasto - (montoEfectivo + montoTransferencia);
+    final cuadra = diferencia.abs() < 0.01;
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Desglose de pago Mixto',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+          ),
+          SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _buildCampoMontoMixto(
+                  'Efectivo',
+                  _montoEfectivoMixtoController,
+                ),
+              ),
+              SizedBox(width: 20),
+              Expanded(
+                child: _buildCampoMontoMixto(
+                  'Transferencia',
+                  _montoTransferenciaMixtoController,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          Text(
+            cuadra
+                ? 'Suma correcta: ${CurrencyUtils.format(montoEfectivo + montoTransferencia)}'
+                : 'La suma (${CurrencyUtils.format(montoEfectivo + montoTransferencia)}) debe igualar el total del gasto (${CurrencyUtils.format(_totalGasto)})',
+            style: TextStyle(
+              color: cuadra ? Colors.green : Colors.orange,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCampoMontoMixto(String label, TextEditingController controller) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            fontSize: 13,
+          ),
+        ),
+        SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          keyboardType: TextInputType.numberWithOptions(decimal: true),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 15),
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            prefixText: '\$ ',
+            prefixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+            filled: true,
+            fillColor: Theme.of(context).colorScheme.surface,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: BorderSide.none,
+            ),
+          ),
+          onChanged: (_) => setState(() {}),
+        ),
+      ],
     );
   }
 
@@ -2235,6 +2358,20 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
       return;
     }
 
+    double? montoEfectivoMixto;
+    double? montoTransferenciaMixto;
+    if (_selectedFormaPago == 'Mixto') {
+      montoEfectivoMixto = double.tryParse(_montoEfectivoMixtoController.text) ?? 0.0;
+      montoTransferenciaMixto = double.tryParse(_montoTransferenciaMixtoController.text) ?? 0.0;
+      final diferencia = _totalGasto - (montoEfectivoMixto + montoTransferenciaMixto);
+      if (diferencia.abs() >= 0.01) {
+        _showError(
+          'La suma de Efectivo + Transferencia debe igualar el total del gasto (${CurrencyUtils.format(_totalGasto)})',
+        );
+        return;
+      }
+    }
+
     if (_guardandoGasto) return;
 
     setState(() {
@@ -2275,6 +2412,8 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
           subtotal: _subtotalGasto,
           impuestos: _impuestosGasto,
           pagadoDesdeCaja: _pagadoDesdeCaja,
+          montoEfectivo: montoEfectivoMixto,
+          montoTransferencia: montoTransferenciaMixto,
         );
         _gastoEditando = null;
         _showSuccess('Gasto actualizado exitosamente');
@@ -2294,6 +2433,8 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
           subtotal: _subtotalGasto,
           impuestos: _impuestosGasto,
           pagadoDesdeCaja: _pagadoDesdeCaja,
+          montoEfectivo: montoEfectivoMixto,
+          montoTransferencia: montoTransferenciaMixto,
         );
         _showSuccess('Gasto creado exitosamente');
       }

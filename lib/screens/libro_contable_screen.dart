@@ -23,6 +23,14 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
   bool _isExporting = false;
   Map<String, dynamic>? _datosPreview;
 
+  // La vista previa detallada (ventas FE/POS, ventas locales, compras y
+  // gastos desglosados) puede pedirse por mes calendario completo o por un
+  // rango de fechas arbitrario — ambos casos los resuelve el mismo endpoint
+  // de backend (getLibroContablePorRango), getLibroContableMensual es solo
+  // un atajo que calcula el rango de un mes.
+  bool _modoRango = false;
+  DateTimeRange? _rangoPreviewSeleccionado;
+
   bool _isLoadingUtilidad = false;
   DateTimeRange? _rangoUtilidadSeleccionado;
   Map<String, dynamic>? _utilidadBrutaResultado;
@@ -109,12 +117,32 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Seleccionar Mes y Año',
+              'Período a Consultar',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildModoPeriodoBoton(
+                    label: 'Mes completo',
+                    seleccionado: !_modoRango,
+                    onTap: () => _cambiarModoPeriodo(false),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildModoPeriodoBoton(
+                    label: 'Rango personalizado',
+                    seleccionado: _modoRango,
+                    onTap: () => _cambiarModoPeriodo(true),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             InkWell(
-              onTap: _mostrarSelectorFecha,
+              onTap: _modoRango ? _elegirRangoPreview : _mostrarSelectorFecha,
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -126,7 +154,12 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
                     const Icon(Icons.calendar_today, color: Colors.blue),
                     const SizedBox(width: 12),
                     Text(
-                      DateFormat('MMMM yyyy', 'es_ES').format(_fechaSeleccionada),
+                      _modoRango
+                          ? (_rangoPreviewSeleccionado == null
+                              ? 'Elegir fechas'
+                              : '${_formatearFechaCorta(_rangoPreviewSeleccionado!.start)} - '
+                                    '${_formatearFechaCorta(_rangoPreviewSeleccionado!.end)}')
+                          : DateFormat('MMMM yyyy', 'es_ES').format(_fechaSeleccionada),
                       style: const TextStyle(fontSize: 16),
                     ),
                     const Spacer(),
@@ -141,6 +174,71 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
     );
   }
 
+  Widget _buildModoPeriodoBoton({
+    required String label,
+    required bool seleccionado,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: seleccionado
+              ? Theme.of(context).primaryColor.withOpacity(0.15)
+              : Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: seleccionado
+                ? Theme.of(context).primaryColor
+                : Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
+            width: seleccionado ? 2 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontWeight: seleccionado ? FontWeight.bold : FontWeight.normal,
+            color: seleccionado
+                ? Theme.of(context).primaryColor
+                : Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _cambiarModoPeriodo(bool aRango) {
+    if (_modoRango == aRango) return;
+    setState(() {
+      _modoRango = aRango;
+      _datosPreview = null;
+    });
+    // Al cambiar de modo, recargar de una vez si ya hay una selección válida
+    // para el nuevo modo — evita el mismo problema de "no se refresca" que
+    // tenía el selector de mes antes: cambiar de modo ya deja ver el período
+    // que corresponda sin un paso extra.
+    if (!aRango || _rangoPreviewSeleccionado != null) {
+      _cargarPreview();
+    }
+  }
+
+  Future<void> _elegirRangoPreview() async {
+    final rango = await _seleccionarRangoFechas(
+      titulo: 'Rango de Fechas a Consultar',
+      valorInicial: _rangoPreviewSeleccionado,
+    );
+    if (rango == null) return;
+
+    setState(() {
+      _rangoPreviewSeleccionado = rango;
+      _datosPreview = null;
+    });
+    _cargarPreview();
+  }
+
   Widget _buildBotonesAccion() {
     return Card(
       elevation: 2,
@@ -151,7 +249,9 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _isLoading ? null : _cargarPreview,
+                onPressed: (_isLoading || (_modoRango && _rangoPreviewSeleccionado == null))
+                    ? null
+                    : _cargarPreview,
                 icon: _isLoading
                     ? const SizedBox(
                         width: 20,
@@ -445,35 +545,145 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
   }
 
   void _mostrarSelectorFecha() async {
-    final DateTime? fechaSeleccionada = await showDatePicker(
-      context: context,
-      initialDate: _fechaSeleccionada,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-      selectableDayPredicate: (DateTime date) => date.day == 1,
-      helpText: 'Seleccionar mes y año',
-      fieldLabelText: 'Mes/Año',
-    );
+    final DateTime? fechaSeleccionada = await _seleccionarMesAnio();
 
     if (fechaSeleccionada != null) {
       setState(() {
-        _fechaSeleccionada = DateTime(fechaSeleccionada.year, fechaSeleccionada.month, 1);
+        _fechaSeleccionada = fechaSeleccionada;
         _datosPreview = null;
       });
+      // Igual que el selector de rango de Utilidad Bruta: elegir el mes ya
+      // dispara la carga, sin depender de que se recuerde apretar aparte
+      // "Cargar Vista Previa" (eso era lo que hacía parecer que el informe
+      // "no se refrescaba" al volver de un rango de fechas a un mes).
+      _cargarPreview();
     }
   }
 
+  /// Selector de Mes/Año simplificado: solo muestra los 12 meses del año
+  /// elegido (con flechas para cambiar de año), en vez del calendario día a
+  /// día de showDatePicker forzado a solo aceptar el día 1.
+  Future<DateTime?> _seleccionarMesAnio() async {
+    int anio = _fechaSeleccionada.year;
+    const mesesAbrev = [
+      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+    ];
+
+    return showDialog<DateTime>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            final cs = Theme.of(dialogContext).colorScheme;
+            return AlertDialog(
+              title: const Text('Seleccionar Mes y Año'),
+              content: SizedBox(
+                width: 320,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left),
+                          onPressed: () => setDialogState(() => anio--),
+                        ),
+                        Text(
+                          '$anio',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right),
+                          onPressed: () => setDialogState(() => anio++),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    GridView.count(
+                      shrinkWrap: true,
+                      crossAxisCount: 3,
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      childAspectRatio: 1.6,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: List.generate(12, (index) {
+                        final mes = index + 1;
+                        final esSeleccionado = anio == _fechaSeleccionada.year &&
+                            mes == _fechaSeleccionada.month;
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () =>
+                              Navigator.of(dialogContext).pop(DateTime(anio, mes, 1)),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: esSeleccionado
+                                  ? Theme.of(dialogContext).primaryColor
+                                  : cs.surface,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: esSeleccionado
+                                    ? Theme.of(dialogContext).primaryColor
+                                    : cs.onSurface.withOpacity(0.2),
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              mesesAbrev[index],
+                              style: TextStyle(
+                                color: esSeleccionado ? Colors.white : cs.onSurface,
+                                fontWeight:
+                                    esSeleccionado ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancelar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _cargarPreview() async {
+    if (_modoRango && _rangoPreviewSeleccionado == null) return;
+
     setState(() {
       _isLoading = true;
       _datosPreview = null;
     });
 
     try {
-      final datos = await _libroContableService.getLibroContableMensual(
-        _fechaSeleccionada.year,
-        _fechaSeleccionada.month,
-      );
+      final Map<String, dynamic> datos;
+      if (_modoRango) {
+        final rango = _rangoPreviewSeleccionado!;
+        // 'hasta' incluye el día completo (23:59:59), igual que en Utilidad
+        // Bruta, para no cortar los movimientos del último día del rango.
+        final hastaFinDia =
+            DateTime(rango.end.year, rango.end.month, rango.end.day, 23, 59, 59);
+        datos = await _libroContableService.getLibroContablePorRango(rango.start, hastaFinDia);
+      } else {
+        datos = await _libroContableService.getLibroContableMensual(
+          _fechaSeleccionada.year,
+          _fechaSeleccionada.month,
+        );
+      }
 
       setState(() {
         _datosPreview = datos;
@@ -498,7 +708,7 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
       if (mounted) {
         String errorMsg = 'Error al cargar el libro contable';
         if (e.toString().contains('timeout') || e.toString().contains('Timeout')) {
-          errorMsg = 'El servidor tardó demasiado. Intenta con un mes con menos datos.';
+          errorMsg = 'El servidor tardó demasiado. Intenta con un período con menos datos.';
         } else if (e.toString().contains('No autorizado') || e.toString().contains('401')) {
           errorMsg = 'Sesión expirada. Vuelve a iniciar sesión.';
         } else if (e.toString().contains('Sin conexión') || e.toString().contains('SocketException')) {
@@ -664,7 +874,10 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
   }
 
   Future<void> _seleccionarRangoYCalcularUtilidad() async {
-    final rango = await _seleccionarRangoFechasUtilidad();
+    final rango = await _seleccionarRangoFechas(
+      titulo: 'Utilidad Bruta por Rango',
+      valorInicial: _rangoUtilidadSeleccionado,
+    );
     if (rango == null) return;
 
     setState(() {
@@ -695,9 +908,12 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
     }
   }
 
-  Future<DateTimeRange?> _seleccionarRangoFechasUtilidad() async {
-    DateTime desde = _rangoUtilidadSeleccionado?.start ?? DateTime.now().subtract(const Duration(days: 30));
-    DateTime hasta = _rangoUtilidadSeleccionado?.end ?? DateTime.now();
+  Future<DateTimeRange?> _seleccionarRangoFechas({
+    required String titulo,
+    DateTimeRange? valorInicial,
+  }) async {
+    DateTime desde = valorInicial?.start ?? DateTime.now().subtract(const Duration(days: 30));
+    DateTime hasta = valorInicial?.end ?? DateTime.now();
 
     return showDialog<DateTimeRange>(
       context: context,
@@ -723,7 +939,7 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
             }
 
             return AlertDialog(
-              title: const Text('Utilidad Bruta por Rango'),
+              title: Text(titulo),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,

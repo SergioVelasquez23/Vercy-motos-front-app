@@ -166,6 +166,8 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
                   const SizedBox(height: 16),
                   _buildSegundaFilaFiltros(),
                   const SizedBox(height: 16),
+                  _buildTotalFiltrado(),
+                  const SizedBox(height: 16),
                   _buildTabla(),
                   if (_gastosFiltrados.isNotEmpty)
                     buildPaginacion(totalItems: _gastosFiltrados.length),
@@ -258,11 +260,10 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
                   lastDate: DateTime.now().add(Duration(days: 365)),
                   builder: (context, child) {
                     return Theme(
-                      data: ThemeData.dark().copyWith(
-                        colorScheme: ColorScheme.dark(
-                          primary: AppTheme.primary,
-                          surface: Theme.of(context).colorScheme.surface,
-                        ),
+                      data: Theme.of(context).copyWith(
+                        colorScheme: Theme.of(
+                          context,
+                        ).colorScheme.copyWith(primary: AppTheme.primary),
                       ),
                       child: child!,
                     );
@@ -293,11 +294,10 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
                   lastDate: DateTime.now().add(Duration(days: 365)),
                   builder: (context, child) {
                     return Theme(
-                      data: ThemeData.dark().copyWith(
-                        colorScheme: ColorScheme.dark(
-                          primary: AppTheme.primary,
-                          surface: Theme.of(context).colorScheme.surface,
-                        ),
+                      data: Theme.of(context).copyWith(
+                        colorScheme: Theme.of(
+                          context,
+                        ).colorScheme.copyWith(primary: AppTheme.primary),
                       ),
                       child: child!,
                     );
@@ -375,6 +375,44 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
     );
   }
 
+  Widget _buildTotalFiltrado() {
+    final total = _gastosFiltrados.fold<double>(0, (suma, g) => suma + g.monto);
+    final hayFiltroFecha = _fechaInicio != null || _fechaFin != null;
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.summarize, color: AppTheme.primary, size: 20),
+          SizedBox(width: 10),
+          Text(
+            hayFiltroFecha
+                ? 'Total del período filtrado (${_gastosFiltrados.length} gastos):'
+                : 'Total (${_gastosFiltrados.length} gastos):',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Spacer(),
+          Text(
+            '\$ ${formatNumberWithDots(total)}',
+            style: TextStyle(
+              color: AppTheme.primary,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCampoFiltro({
     required TextEditingController controller,
     required String hint,
@@ -429,7 +467,9 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
                     ? '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}'
                     : label,
                 style: TextStyle(
-                  color: fecha != null ? Colors.white : Colors.grey.shade500,
+                  color: fecha != null
+                      ? Theme.of(context).colorScheme.onSurface
+                      : Colors.grey.shade500,
                   fontSize: 14,
                 ),
               ),
@@ -689,7 +729,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
             child: Text(
               '\$ ${formatNumberWithDots(porPagar)}',
               style: TextStyle(
-                color: porPagar > 0 ? Colors.orange : Colors.white,
+                color: porPagar > 0 ? Colors.orange : Theme.of(context).colorScheme.onSurface,
                 fontSize: 13,
               ),
               textAlign: TextAlign.right,
@@ -789,6 +829,16 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
                 '\$ ${formatNumberWithDots(gasto.monto)}',
               ),
               _buildDetalleItem('Forma de Pago', gasto.formaPago ?? 'N/A'),
+              if (gasto.formaPago?.toLowerCase() == 'mixto') ...[
+                _buildDetalleItem(
+                  '  Efectivo',
+                  '\$ ${formatNumberWithDots(gasto.montoEfectivo)}',
+                ),
+                _buildDetalleItem(
+                  '  Transferencia',
+                  '\$ ${formatNumberWithDots(gasto.montoTransferencia)}',
+                ),
+              ],
               _buildDetalleItem('Responsable', gasto.responsable),
               _buildDetalleItem(
                 'Fecha',

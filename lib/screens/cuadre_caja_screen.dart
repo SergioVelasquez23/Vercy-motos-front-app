@@ -684,17 +684,10 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                               lastDate: DateTime(2100),
                               builder: (context, child) {
                                 return Theme(
-                                  data: ThemeData.dark().copyWith(
-                                    primaryColor: primary,
-                                    colorScheme: ColorScheme.dark(
-                                      primary: primary,
-                                      onPrimary: Colors.white,
-                                      surface: cardBg,
-                                      onSurface: textDark,
-                                    ),
-                                    buttonTheme: ButtonThemeData(
-                                      textTheme: ButtonTextTheme.primary,
-                                    ),
+                                  data: Theme.of(context).copyWith(
+                                    colorScheme: Theme.of(
+                                      context,
+                                    ).colorScheme.copyWith(primary: primary),
                                   ),
                                   child: child!,
                                 );
@@ -736,17 +729,10 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                               lastDate: DateTime(2100),
                               builder: (context, child) {
                                 return Theme(
-                                  data: ThemeData.dark().copyWith(
-                                    primaryColor: primary,
-                                    colorScheme: ColorScheme.dark(
-                                      primary: primary,
-                                      onPrimary: Colors.white,
-                                      surface: cardBg,
-                                      onSurface: textDark,
-                                    ),
-                                    buttonTheme: ButtonThemeData(
-                                      textTheme: ButtonTextTheme.primary,
-                                    ),
+                                  data: Theme.of(context).copyWith(
+                                    colorScheme: Theme.of(
+                                      context,
+                                    ).colorScheme.copyWith(primary: primary),
                                   ),
                                   child: child!,
                                 );

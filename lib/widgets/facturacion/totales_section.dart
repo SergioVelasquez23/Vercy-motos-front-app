@@ -59,37 +59,46 @@ class TotalesSection extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _buildTotalRow('Subtotal', subtotal),
+          _buildTotalRow(context, 'Subtotal', subtotal),
           if (totalDctoProductos > 0)
-            _buildTotalRow('Dcto Producto', -totalDctoProductos),
-          _buildTotalRow('Impuesto', totalImpuestos),
+            _buildTotalRow(context, 'Dcto Producto', -totalDctoProductos),
+          _buildTotalRow(context, 'Impuesto', totalImpuestos),
           if (dctoGeneral > 0)
-            _buildTotalRow('Dcto General', -dctoGeneral),
+            _buildTotalRow(context, 'Dcto General', -dctoGeneral),
           if (retencionValor > 0)
             _buildTotalRow(
+              context,
               'Retención (${retencionPct.toStringAsFixed(1)}%)',
               -retencionValor,
             ),
           if (reteIVAValor > 0)
             _buildTotalRow(
+              context,
               'ReteIVA (${reteIVAPct.toStringAsFixed(1)}%)',
               -reteIVAValor,
             ),
           if (reteICAValor > 0)
             _buildTotalRow(
+              context,
               'ReteICA (${reteICAPct.toStringAsFixed(1)}%)',
               -reteICAValor,
             ),
           if (aiuValor > 0)
-            _buildTotalRow('AIU (${aiuPct.toStringAsFixed(1)}%)', aiuValor),
+            _buildTotalRow(context, 'AIU (${aiuPct.toStringAsFixed(1)}%)', aiuValor),
           Divider(thickness: 2, color: Colors.grey.shade700),
-          _buildTotalRow('TOTAL', total, isTotal: true),
+          _buildTotalRow(context, 'TOTAL', total, isTotal: true),
         ],
       ),
     );
   }
 
-  Widget _buildTotalRow(String label, double valor, {bool isTotal = false}) {
+  Widget _buildTotalRow(
+    BuildContext context,
+    String label,
+    double valor, {
+    bool isTotal = false,
+  }) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -100,7 +109,7 @@ class TotalesSection extends StatelessWidget {
             style: TextStyle(
               fontSize: isTotal ? 20 : 16,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              color: Colors.white,
+              color: onSurface,
             ),
           ),
           Text(
@@ -108,7 +117,7 @@ class TotalesSection extends StatelessWidget {
             style: TextStyle(
               fontSize: isTotal ? 20 : 16,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              color: isTotal ? AppTheme.primary : Colors.white,
+              color: isTotal ? AppTheme.primary : onSurface,
             ),
           ),
         ],

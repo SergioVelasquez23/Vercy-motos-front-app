@@ -1302,7 +1302,14 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
         'cantidadArticulos': documento.items.length,
         'cantidadProductos': documento.items.length,
         'metodoPago': documento.formaPago ?? 'EFECTIVO',
-        'formaPago': _formatearFormaPagoPdf(documento.formaPago ?? 'EFECTIVO'),
+        // ⚠️ Se prefiere detallePago (lo que el usuario eligió realmente, ej.
+        // "addi") sobre formaPago (el bucket contable al que se mapea para
+        // el cuadre de caja, ej. "sistecredito" — ver mapFormaPagoBackend en
+        // payment_mapping.dart). La factura impresa debe mostrar el método
+        // de pago real, no la categoría contable interna.
+        'formaPago': _formatearFormaPagoPdf(
+          documento.detallePago ?? documento.formaPago ?? 'EFECTIVO',
+        ),
         'vendedor': documento.mesero,
         'mesero': documento.mesero,
         // Desglose de pagos mixtos
@@ -1310,7 +1317,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
           'pagosParciales': documento.pagosParciales
               .map(
                 (p) => {
-                  'formaPago': _formatearFormaPagoPdf(p.formaPago),
+                  'formaPago': _formatearFormaPagoPdf(p.detallePago ?? p.formaPago),
                   'monto': p.monto,
                 },
               )
@@ -1515,12 +1522,28 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
         return 'Efectivo';
       case 'tarjeta':
         return 'Tarjeta';
+      case 'tarjeta_credito':
+        return 'Tarjeta Crédito';
       case 'transferencia':
         return 'Transferencia';
+      case 'nequi':
+        return 'Nequi';
+      case 'daviplata':
+        return 'DaviPlata';
+      case 'bancolombia':
+        return 'Bancolombia';
+      case 'bold':
+        return 'Bold';
+      case 'addi':
+        return 'Addi';
+      case 'credilondon':
+        return 'Credilondon';
       case 'sistecredito':
         return 'Sistecredito';
       case 'datafono':
         return 'Datafono';
+      case 'credito':
+        return 'A Crédito';
       case 'mixto':
         return 'Pago Mixto';
       case 'multiple':

@@ -101,7 +101,7 @@ class BotonesAccionFacturacion extends StatelessWidget {
                       icon: Icon(Icons.drafts),
                       label: Text('Guardar Borrador'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
+                        foregroundColor: Theme.of(context).colorScheme.onSurface,
                         side: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                         padding: EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(

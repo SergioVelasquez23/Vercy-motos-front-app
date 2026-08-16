@@ -309,7 +309,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> with SubmitGuard 
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -979,7 +979,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> with SubmitGuard 
           Expanded(
             child: OutlinedButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Cancelar', style: TextStyle(color: Colors.white)),
+              child: Text('Cancelar', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
               style: OutlinedButton.styleFrom(
                 padding: EdgeInsets.symmetric(vertical: 16),
                 side: BorderSide(color: Colors.grey.shade600),

@@ -4214,7 +4214,12 @@ class _ScannerScreenState extends State<_ScannerScreen> {
               child: Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  // Fondo fijo (no Theme.of(context).colorScheme.onSurface):
+                  // este overlay va encima de la vista de la cámara, no de
+                  // una superficie de la app — en modo oscuro onSurface es
+                  // un color claro y el texto blanco quedaba con muy poco
+                  // contraste.
+                  color: Colors.black.withOpacity(0.7),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(

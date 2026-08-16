@@ -801,7 +801,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
                       Text(
                         bodega.nombre,
                         style: TextStyle(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),

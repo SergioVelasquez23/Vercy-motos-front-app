@@ -289,11 +289,10 @@ class _ComprasListScreenState extends State<ComprasListScreen>
                   lastDate: DateTime.now().add(Duration(days: 365)),
                   builder: (context, child) {
                     return Theme(
-                      data: ThemeData.dark().copyWith(
-                        colorScheme: ColorScheme.dark(
-                          primary: AppTheme.primary,
-                          surface: Theme.of(context).colorScheme.surface,
-                        ),
+                      data: Theme.of(context).copyWith(
+                        colorScheme: Theme.of(
+                          context,
+                        ).colorScheme.copyWith(primary: AppTheme.primary),
                       ),
                       child: child!,
                     );
@@ -324,11 +323,10 @@ class _ComprasListScreenState extends State<ComprasListScreen>
                   lastDate: DateTime.now().add(Duration(days: 365)),
                   builder: (context, child) {
                     return Theme(
-                      data: ThemeData.dark().copyWith(
-                        colorScheme: ColorScheme.dark(
-                          primary: AppTheme.primary,
-                          surface: Theme.of(context).colorScheme.surface,
-                        ),
+                      data: Theme.of(context).copyWith(
+                        colorScheme: Theme.of(
+                          context,
+                        ).colorScheme.copyWith(primary: AppTheme.primary),
                       ),
                       child: child!,
                     );
@@ -491,7 +489,9 @@ class _ComprasListScreenState extends State<ComprasListScreen>
                     ? '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}'
                     : label,
                 style: TextStyle(
-                  color: fecha != null ? Colors.white : Colors.grey.shade500,
+                  color: fecha != null
+                      ? Theme.of(context).colorScheme.onSurface
+                      : Colors.grey.shade500,
                   fontSize: 14,
                 ),
               ),

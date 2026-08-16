@@ -461,7 +461,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                 : 'Seleccionar todo',
           ),
           style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.white,
+            foregroundColor: Theme.of(context).colorScheme.onSurface,
             side: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3)),
           ),
         ),

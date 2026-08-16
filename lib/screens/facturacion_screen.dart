@@ -4386,9 +4386,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             // Preparar resumen con datos completos del cliente
             // ✅ itemsOverride: usa los items del formulario (con precios editados)
             //    porque el backend puede devolver items con precios del catálogo
+            // ⚠️ Se usa metodoPagoOriginal (lo que el usuario eligió, ej. "addi")
+            //    y NO metodoPagoUsado (el bucket contable al que se mapea para
+            //    el cuadre de caja, ej. "sistecredito" — ver mapFormaPagoBackend
+            //    en payment_mapping.dart). La factura impresa debe mostrar el
+            //    método de pago real, no la categoría contable interna.
             final resumen = _prepararResumenFactura(
               pedidoPagado,
-              metodoPagoUsado,
+              metodoPagoOriginal,
               total,
               totalDescuentos + totalRetenciones,
               0.0,
@@ -4427,6 +4432,24 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                 });
               if (montoDatafono > 0)
                 desglose.add({'formaPago': 'Datafono', 'monto': montoDatafono});
+              if (montoNequi > 0)
+                desglose.add({'formaPago': 'Nequi', 'monto': montoNequi});
+              if (montoDaviplata > 0)
+                desglose.add({'formaPago': 'DaviPlata', 'monto': montoDaviplata});
+              if (montoBancolombia > 0)
+                desglose.add({
+                  'formaPago': 'Bancolombia',
+                  'monto': montoBancolombia,
+                });
+              if (montoBold > 0)
+                desglose.add({'formaPago': 'Bold', 'monto': montoBold});
+              if (montoAddi > 0)
+                desglose.add({'formaPago': 'Addi', 'monto': montoAddi});
+              if (montoCredilondon > 0)
+                desglose.add({
+                  'formaPago': 'Credilondon',
+                  'monto': montoCredilondon,
+                });
               if (desglose.isNotEmpty) resumen['pagosParciales'] = desglose;
             }
 
@@ -4813,9 +4836,17 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     switch (formaPago.toLowerCase()) {
       case 'efectivo': return 'Efectivo';
       case 'tarjeta': return 'Tarjeta';
+      case 'tarjeta_credito': return 'Tarjeta Crédito';
       case 'transferencia': return 'Transferencia';
+      case 'nequi': return 'Nequi';
+      case 'daviplata': return 'DaviPlata';
+      case 'bancolombia': return 'Bancolombia';
+      case 'bold': return 'Bold';
+      case 'addi': return 'Addi';
+      case 'credilondon': return 'Credilondon';
       case 'sistecredito': return 'Sistecredito';
       case 'datafono': return 'Datafono';
+      case 'credito': return 'A Crédito';
       case 'mixto': return 'Pago Mixto';
       case 'multiple': return 'Pago Múltiple';
       default: return formaPago;

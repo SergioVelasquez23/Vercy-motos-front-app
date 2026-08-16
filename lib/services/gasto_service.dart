@@ -122,6 +122,8 @@ class GastoService {
     double? subtotal,
     double? impuestos,
     bool? pagadoDesdeCaja,
+    double? montoEfectivo,
+    double? montoTransferencia,
   }) async {
     try {
 
@@ -140,6 +142,8 @@ class GastoService {
         if (subtotal != null) 'subtotal': subtotal,
         if (impuestos != null) 'impuestos': impuestos,
         if (pagadoDesdeCaja != null) 'pagadoDesdeCaja': pagadoDesdeCaja,
+        if (montoEfectivo != null) 'montoEfectivo': montoEfectivo,
+        if (montoTransferencia != null) 'montoTransferencia': montoTransferencia,
       };
 
         
@@ -208,6 +212,8 @@ class GastoService {
     double? subtotal,
     double? impuestos,
     bool? pagadoDesdeCaja,
+    double? montoEfectivo,
+    double? montoTransferencia,
   }) async {
     try {
       final headers = await _getHeaders();
@@ -225,6 +231,8 @@ class GastoService {
         if (subtotal != null) 'subtotal': subtotal,
         if (impuestos != null) 'impuestos': impuestos,
         if (pagadoDesdeCaja != null) 'pagadoDesdeCaja': pagadoDesdeCaja,
+        if (montoEfectivo != null) 'montoEfectivo': montoEfectivo,
+        if (montoTransferencia != null) 'montoTransferencia': montoTransferencia,
       };
 
       final response = await http.put(
@@ -262,29 +270,30 @@ class GastoService {
       // Obtener información del gasto antes de eliminarlo
       final gastoInfo = await getGastoById(id);
       final pagadoDesdeCaja = gastoInfo?.pagadoDesdeCaja ?? false;
-      final monto = gastoInfo?.monto ?? 0.0;
-
-        
-        
-      if (pagadoDesdeCaja) {
-          
-      }
+      // Igual que el backend (GastoService.eliminarGasto): solo la porción
+      // en efectivo físico se revierte a caja. Con "mixto" es montoEfectivo;
+      // con cualquier otra forma de pago que no sea "efectivo" no se revierte nada.
+      final formaPago = gastoInfo?.formaPago?.toLowerCase();
+      final montoRevertido = !pagadoDesdeCaja
+          ? 0.0
+          : formaPago == 'mixto'
+              ? (gastoInfo?.montoEfectivo ?? 0.0)
+              : formaPago == 'efectivo'
+                  ? (gastoInfo?.monto ?? 0.0)
+                  : 0.0;
 
       final response = await http.delete(
         Uri.parse('$baseUrl/api/gastos/$id'),
         headers: headers,
       ).timeout(Duration(seconds: ApiConfig.requestTimeout));
 
-        
-        
-
       if (response.statusCode == 200 || response.statusCode == 204) {
         // Preparar respuesta exitosa
         Map<String, dynamic> result = {
           'success': true,
           'message': 'Gasto eliminado correctamente',
-          'dineroRevertido': pagadoDesdeCaja,
-          'montoRevertido': pagadoDesdeCaja ? monto : 0.0,
+          'dineroRevertido': montoRevertido > 0,
+          'montoRevertido': montoRevertido,
         };
 
         // Intentar obtener más información de la respuesta si está disponible

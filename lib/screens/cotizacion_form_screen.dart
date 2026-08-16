@@ -266,7 +266,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           SizedBox(height: 16),
@@ -280,7 +280,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
                     'Fecha',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   SizedBox(height: 8),
@@ -317,7 +317,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
                     'Validez (días)',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   SizedBox(height: 8),
@@ -349,7 +349,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
                     'Vence',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   SizedBox(height: 8),
@@ -390,7 +390,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
                 'Cliente *',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               SizedBox(height: 8),
@@ -506,7 +506,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
                 'Observaciones',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               SizedBox(height: 8),
@@ -549,7 +549,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           SizedBox(height: 16),
@@ -916,7 +916,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           SizedBox(height: 16),
@@ -1008,7 +1008,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
             style: TextStyle(
               fontSize: isTotal ? 20 : 16,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           Text(
@@ -1016,7 +1016,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
             style: TextStyle(
               fontSize: isTotal ? 20 : 16,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              color: isTotal ? AppTheme.primary : Colors.white,
+              color: isTotal ? AppTheme.primary : Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ],
