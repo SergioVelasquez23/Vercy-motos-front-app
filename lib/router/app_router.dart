@@ -52,6 +52,10 @@ import '../screens/documentos_pendientes_screen.dart';
 import '../screens/matias_test_screen.dart';
 import '../screens/configuracion_screen.dart';
 import '../screens/libro_contable_screen.dart';
+import '../screens/costeo_inventario_screen.dart';
+import '../screens/rentabilidad_screen.dart';
+import '../screens/comparativo_periodos_screen.dart';
+import '../screens/anomalias_screen.dart';
 import '../screens/legal_screen.dart';
 
 // Pantalla de edición de stock simplificada (ver editar_stock_simple_screen.dart):
@@ -181,6 +185,10 @@ GoRouter buildAppRouter(UserProvider userProvider) => GoRouter(
         GoRoute(path: '/reportes/clientes', builder: (c, s) => const ReportesScreen(initialReportIndex: 4)),
         GoRoute(path: '/informes/productos', builder: (c, s) => const InformesProductosScreen()),
         GoRoute(path: '/libro-contable', builder: (c, s) => const LibroContableScreen()),
+        GoRoute(path: '/costeo-inventario', builder: (c, s) => const CosteoInventarioScreen()),
+        GoRoute(path: '/rentabilidad', builder: (c, s) => const RentabilidadScreen()),
+        GoRoute(path: '/comparativo-periodos', builder: (c, s) => const ComparativoPeriodosScreen()),
+        GoRoute(path: '/anomalias', builder: (c, s) => const AnomaliasScreen()),
         GoRoute(path: '/facturacion-electronica', builder: (c, s) => const FEDocumentosScreen()),
         GoRoute(path: '/documentos-pendientes', builder: (c, s) => const DocumentosPendientesScreen()),
         GoRoute(path: '/matias-test', builder: (c, s) => const MatiasTestScreen()),

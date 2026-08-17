@@ -2024,4 +2024,642 @@ class PDFService {
       ],
     );
   }
+
+  /// Fila de un informe explicado: título + valor en negrita, con una línea
+  /// gris debajo aclarando qué significa la cifra (para que el informe se
+  /// pueda leer como una explicación contable, no solo una tabla de números).
+  pw.Widget _buildFilaExplicada(
+    String label,
+    String valor,
+    String explicacion,
+    pw.Font font,
+    pw.Font fontBold,
+  ) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 8),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(label, style: pw.TextStyle(font: fontBold, fontSize: 10)),
+              pw.Text(valor, style: pw.TextStyle(font: fontBold, fontSize: 10)),
+            ],
+          ),
+          pw.SizedBox(height: 2),
+          pw.Text(
+            explicacion,
+            style: pw.TextStyle(font: font, fontSize: 8, color: PdfColors.grey700),
+          ),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildSeccionTitulo(String texto, pw.Font fontBold) {
+    return pw.Container(
+      width: double.infinity,
+      color: const PdfColor.fromInt(0xFFF5F5F5),
+      padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      margin: const pw.EdgeInsets.only(bottom: 8, top: 4),
+      child: pw.Text(texto, style: pw.TextStyle(font: fontBold, fontSize: 11)),
+    );
+  }
+
+  /// Informe de Costeo de Inventario y Utilidad Real: explica, en formato de
+  /// informe contable descargable, cómo se calculó la utilidad real del
+  /// período (costo de mercancía vendida por los dos métodos: por venta y
+  /// por inventario) además de la utilidad neta tras gastos operativos.
+  Future<Uint8List> generarInformeCosteoPDF({
+    required Map<String, dynamic> resumen,
+  }) async {
+    final pdf = pw.Document();
+    final font = await _getFontRegular();
+    final fontBold = await _getFontBold();
+
+    final nombreNegocio = _toSafeString(resumen['nombreNegocio'], 'VERCY MOTOS');
+    final fecha = _toSafeString(resumen['fecha']);
+    final hora = _toSafeString(resumen['hora']);
+    final fechaDesde = _toSafeString(resumen['fechaDesde']);
+    final fechaHasta = _toSafeString(resumen['fechaHasta']);
+
+    final ventasPeriodo = (resumen['ventasPeriodo'] ?? 0.0).toDouble();
+    final metodoPorVenta = resumen['metodoPorVenta'] as Map<String, dynamic>? ?? {};
+    final metodoPorInventario = resumen['metodoPorInventario'] as Map<String, dynamic>? ?? {};
+    final gastosOperativos = (resumen['gastosOperativos'] ?? 0.0).toDouble();
+    final utilidadNeta = (resumen['utilidadNeta'] ?? 0.0).toDouble();
+    final margenNetoPorcentaje = (resumen['margenNetoPorcentaje'] ?? 0.0).toDouble();
+    final huboEstimacion = metodoPorVenta['huboEstimacion'] == true;
+
+    final inventarioInicial = metodoPorInventario['inventarioInicial'];
+    final tieneInventarioInicial = inventarioInicial != null;
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.letter,
+        margin: const pw.EdgeInsets.all(20),
+        build: (pw.Context context) => [
+          pw.Container(
+            decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.black, width: 1)),
+            padding: const pw.EdgeInsets.all(12),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(nombreNegocio, style: pw.TextStyle(font: fontBold, fontSize: 18)),
+                pw.SizedBox(height: 4),
+                pw.Text('Costeo de Inventario y Utilidad Real', style: pw.TextStyle(font: fontBold, fontSize: 14)),
+                pw.SizedBox(height: 8),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('Generado: $fecha $hora', style: pw.TextStyle(font: font, fontSize: 10)),
+                    pw.Text('Periodo: $fechaDesde a $fechaHasta', style: pw.TextStyle(font: font, fontSize: 10)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 4),
+          _buildSeccionTitulo('VENTAS DEL PERIODO', fontBold),
+          _buildFilaExplicada(
+            'Ventas',
+            _formatearMoneda(ventasPeriodo),
+            'Suma de todas las ventas pagadas/completadas del periodo elegido.',
+            font,
+            fontBold,
+          ),
+          _buildSeccionTitulo('METODO 1: COSTO POR VENTA (detalle de costos)', fontBold),
+          _buildFilaExplicada(
+            'Costo de Mercancia Vendida (COGS)',
+            _formatearMoneda(metodoPorVenta['costoMercanciaVendida']),
+            'Suma de (cantidad x costo) de cada producto vendido en el periodo. '
+            'Usa el costo guardado al momento de cada venta; si una venta es '
+            'anterior a que el sistema empezara a guardarlo, se estima con el '
+            'costo actual del producto.',
+            font,
+            fontBold,
+          ),
+          _buildFilaExplicada(
+            'Utilidad Bruta Real',
+            _formatearMoneda(metodoPorVenta['utilidadBruta']),
+            'Ventas menos Costo de Mercancia Vendida. Es la ganancia real antes '
+            'de gastos operativos (arriendo, salarios, servicios, etc.).',
+            font,
+            fontBold,
+          ),
+          _buildFilaExplicada(
+            'Margen Bruto',
+            '${((metodoPorVenta['margenBrutoPorcentaje'] ?? 0.0) as num).toStringAsFixed(1)}%',
+            'Utilidad Bruta Real dividida entre Ventas. Indica que porcentaje de '
+            'cada venta queda como ganancia antes de gastos operativos.',
+            font,
+            fontBold,
+          ),
+          if (huboEstimacion)
+            pw.Container(
+              padding: const pw.EdgeInsets.all(6),
+              margin: const pw.EdgeInsets.only(bottom: 8),
+              decoration: pw.BoxDecoration(
+                color: const PdfColor.fromInt(0xFFFFF3CD),
+                border: pw.Border.all(color: PdfColors.orange),
+              ),
+              child: pw.Text(
+                'Aviso: ${metodoPorVenta['cantidadItemsEstimados']} de '
+                '${metodoPorVenta['cantidadItemsTotal']} productos vendidos en este '
+                'periodo no tenian su costo guardado; se uso el costo actual del '
+                'producto como aproximacion.',
+                style: pw.TextStyle(font: font, fontSize: 8),
+              ),
+            ),
+          _buildSeccionTitulo('METODO 2: COSTO POR INVENTARIO (formula contable)', fontBold),
+          _buildFilaExplicada(
+            'Inventario Inicial',
+            tieneInventarioInicial ? _formatearMoneda(inventarioInicial) : 'No informado',
+            'Valor a costo de la mercancia que habia en existencia al inicio del '
+            'periodo. Se informa manualmente porque el sistema no guarda un '
+            'historico de inventario por fecha.',
+            font,
+            fontBold,
+          ),
+          _buildFilaExplicada(
+            'Compras del Periodo (sin IVA)',
+            _formatearMoneda(metodoPorInventario['comprasSinIva']),
+            'Total de compras a proveedores en el periodo, sin incluir el IVA '
+            '(usado en la formula de costeo).',
+            font,
+            fontBold,
+          ),
+          _buildFilaExplicada(
+            'Compras del Periodo (con IVA)',
+            _formatearMoneda(metodoPorInventario['comprasConIva']),
+            'Total de compras a proveedores en el periodo, incluyendo el IVA '
+            '(lo que realmente se pago).',
+            font,
+            fontBold,
+          ),
+          _buildFilaExplicada(
+            'Inventario Final',
+            _formatearMoneda(metodoPorInventario['inventarioFinalCalculado']),
+            'Valor a costo de la mercancia en existencia hoy (cantidad x costo '
+            'de cada producto activo). Solo es exacto si el fin del periodo es hoy.',
+            font,
+            fontBold,
+          ),
+          _buildFilaExplicada(
+            'Costo de Mercancia Vendida',
+            tieneInventarioInicial ? _formatearMoneda(metodoPorInventario['costoMercanciaVendida']) : 'N/D',
+            'Formula contable clasica: Inventario Inicial + Compras (sin IVA) − '
+            'Inventario Final.',
+            font,
+            fontBold,
+          ),
+          _buildFilaExplicada(
+            'Utilidad Bruta (por inventario)',
+            tieneInventarioInicial ? _formatearMoneda(metodoPorInventario['utilidadBruta']) : 'N/D',
+            'Ventas menos el Costo de Mercancia Vendida calculado por este '
+            'metodo. Sirve para comparar/validar contra el Metodo 1.',
+            font,
+            fontBold,
+          ),
+          _buildSeccionTitulo('RESUMEN FINAL', fontBold),
+          pw.Container(
+            decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.black, width: 0.5)),
+            padding: const pw.EdgeInsets.all(8),
+            child: pw.Column(
+              children: [
+                _buildTotalRowInforme('Gastos Operativos', _formatearMoneda(gastosOperativos), font, fontBold),
+                pw.SizedBox(height: 4),
+                pw.Container(
+                  decoration: const pw.BoxDecoration(
+                    border: pw.Border(top: pw.BorderSide(color: PdfColors.black, width: 0.5)),
+                  ),
+                  padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('UTILIDAD NETA', style: pw.TextStyle(font: fontBold, fontSize: 11)),
+                      pw.Text(
+                        '${_formatearMoneda(utilidadNeta)}  (${margenNetoPorcentaje.toStringAsFixed(1)}%)',
+                        style: pw.TextStyle(font: fontBold, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 12),
+          pw.Center(
+            child: pw.Text(
+              'Este es un documento generado automaticamente por el sistema de gestion - $nombreNegocio',
+              style: pw.TextStyle(font: font, fontSize: 8),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  Future<void> mostrarVistaPreviewInformeCosteo(Map<String, dynamic> resumen) async {
+    try {
+      final pdfBytes = await generarInformeCosteoPDF(resumen: resumen);
+
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdfBytes,
+        name: 'Informe_Costeo_Utilidad_${DateTime.now().millisecondsSinceEpoch}',
+        format: PdfPageFormat.letter,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  pw.Widget _buildEncabezadoInforme(
+    String nombreNegocio,
+    String titulo,
+    String fecha,
+    String hora,
+    String fechaDesde,
+    String fechaHasta,
+    pw.Font font,
+    pw.Font fontBold,
+  ) {
+    return pw.Container(
+      decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.black, width: 1)),
+      padding: const pw.EdgeInsets.all(12),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(nombreNegocio, style: pw.TextStyle(font: fontBold, fontSize: 18)),
+          pw.SizedBox(height: 4),
+          pw.Text(titulo, style: pw.TextStyle(font: fontBold, fontSize: 14)),
+          pw.SizedBox(height: 8),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('Generado: $fecha $hora', style: pw.TextStyle(font: font, fontSize: 10)),
+              pw.Text('Periodo: $fechaDesde a $fechaHasta', style: pw.TextStyle(font: font, fontSize: 10)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPiePagina(String nombreNegocio, pw.Font font) {
+    return pw.Center(
+      child: pw.Text(
+        'Este es un documento generado automaticamente por el sistema de gestion - $nombreNegocio',
+        style: pw.TextStyle(font: font, fontSize: 8),
+      ),
+    );
+  }
+
+  /// Informe de Rentabilidad por Producto y Cliente: productos mas rentables,
+  /// productos con mucha venta pero poco margen, y clientes que mas utilidad
+  /// generan (no solo mas venden).
+  Future<Uint8List> generarInformeRentabilidadPDF({
+    required Map<String, dynamic> resumen,
+  }) async {
+    final pdf = pw.Document();
+    final font = await _getFontRegular();
+    final fontBold = await _getFontBold();
+
+    final nombreNegocio = _toSafeString(resumen['nombreNegocio'], 'VERCY MOTOS');
+    final fecha = _toSafeString(resumen['fecha']);
+    final hora = _toSafeString(resumen['hora']);
+    final fechaDesde = _toSafeString(resumen['fechaDesde']);
+    final fechaHasta = _toSafeString(resumen['fechaHasta']);
+
+    final productos = resumen['productos'] as Map<String, dynamic>? ?? {};
+    final clientes = resumen['clientes'] as Map<String, dynamic>? ?? {};
+    final porUtilidad = (productos['porUtilidad'] as List?) ?? [];
+    final porCantidad = (productos['porCantidadVendida'] as List?) ?? [];
+    final clientesPorUtilidad = (clientes['porUtilidad'] as List?) ?? [];
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.letter,
+        margin: const pw.EdgeInsets.all(20),
+        build: (pw.Context context) => [
+          _buildEncabezadoInforme(nombreNegocio, 'Rentabilidad por Producto y Cliente', fecha, hora, fechaDesde,
+              fechaHasta, font, fontBold),
+          pw.SizedBox(height: 4),
+          _buildSeccionTitulo(
+              'PRODUCTOS MAS RENTABLES (margen promedio: '
+              '${((productos['margenPromedioPorcentaje'] ?? 0.0) as num).toStringAsFixed(1)}%)',
+              fontBold),
+          _buildTablaRanking(porUtilidad, 'productoNombre', ['Cantidad', 'Ventas', 'Costo', 'Utilidad', 'Margen %'],
+              (item) => [
+                    _formatearNumero(item['cantidadVendida']),
+                    _formatearMoneda(item['ventas']),
+                    _formatearMoneda(item['costo']),
+                    _formatearMoneda(item['utilidad']),
+                    '${((item['margenPorcentaje'] ?? 0.0) as num).toStringAsFixed(1)}%',
+                  ],
+              font, fontBold),
+          pw.SizedBox(height: 8),
+          _buildSeccionTitulo('PRODUCTOS MAS VENDIDOS (revisar margen bajo)', fontBold),
+          _buildTablaRanking(porCantidad, 'productoNombre', ['Cantidad', 'Ventas', 'Utilidad', 'Margen %'],
+              (item) => [
+                    _formatearNumero(item['cantidadVendida']),
+                    _formatearMoneda(item['ventas']),
+                    _formatearMoneda(item['utilidad']),
+                    '${((item['margenPorcentaje'] ?? 0.0) as num).toStringAsFixed(1)}%',
+                  ],
+              font, fontBold),
+          pw.SizedBox(height: 8),
+          _buildSeccionTitulo(
+              'CLIENTES QUE MAS UTILIDAD GENERAN (margen promedio: '
+              '${((clientes['margenPromedioPorcentaje'] ?? 0.0) as num).toStringAsFixed(1)}%)',
+              fontBold),
+          _buildTablaRanking(clientesPorUtilidad, 'cliente', ['Pedidos', 'Ventas', 'Utilidad', 'Margen %'],
+              (item) => [
+                    _formatearNumero(item['numeroPedidos']),
+                    _formatearMoneda(item['ventas']),
+                    _formatearMoneda(item['utilidad']),
+                    '${((item['margenPorcentaje'] ?? 0.0) as num).toStringAsFixed(1)}%',
+                  ],
+              font, fontBold),
+          pw.SizedBox(height: 12),
+          _buildPiePagina(nombreNegocio, font),
+        ],
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  /// Tabla generica de ranking: primera columna es el nombre (producto o
+  /// cliente), las siguientes columnas vienen dadas por [encabezados] y
+  /// [filaValores] (una funcion que arma los valores de cada fila a partir
+  /// del item). Reutilizable para productos y clientes sin duplicar la
+  /// construccion de la tabla completa.
+  pw.Widget _buildTablaRanking(
+    List<dynamic> items,
+    String nombreKey,
+    List<String> encabezados,
+    List<String> Function(Map<String, dynamic>) filaValores,
+    pw.Font font,
+    pw.Font fontBold,
+  ) {
+    if (items.isEmpty) {
+      return pw.Text('Sin datos en este periodo.', style: pw.TextStyle(font: font, fontSize: 9));
+    }
+
+    return pw.Table(
+      border: pw.TableBorder.all(color: PdfColors.black, width: 0.5),
+      columnWidths: {
+        0: const pw.FlexColumnWidth(2.2),
+        for (var i = 0; i < encabezados.length; i++) i + 1: const pw.FlexColumnWidth(1),
+      },
+      children: [
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFFF5F5F5)),
+          children: [
+            _buildTableHeader('NOMBRE', fontBold),
+            ...encabezados.map((e) => _buildTableHeader(e.toUpperCase(), fontBold)),
+          ],
+        ),
+        ...items.map((raw) {
+          final item = raw as Map<String, dynamic>;
+          return pw.TableRow(children: [
+            _buildTableCell(_toSafeString(item[nombreKey], '-'), font, align: pw.TextAlign.left),
+            ...filaValores(item).map((v) => _buildTableCell(v, font)),
+          ]);
+        }),
+      ],
+    );
+  }
+
+  Future<void> mostrarVistaPreviewInformeRentabilidad(Map<String, dynamic> resumen) async {
+    try {
+      final pdfBytes = await generarInformeRentabilidadPDF(resumen: resumen);
+
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdfBytes,
+        name: 'Informe_Rentabilidad_${DateTime.now().millisecondsSinceEpoch}',
+        format: PdfPageFormat.letter,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Informe de Comparación de Períodos: ventas, costo, utilidad y margenes
+  /// del período actual contra el período de comparación (mes anterior o
+  /// mismo rango del año anterior, segun lo que haya elegido el usuario).
+  Future<Uint8List> generarInformeComparativoPDF({
+    required Map<String, dynamic> resumen,
+  }) async {
+    final pdf = pw.Document();
+    final font = await _getFontRegular();
+    final fontBold = await _getFontBold();
+
+    final nombreNegocio = _toSafeString(resumen['nombreNegocio'], 'VERCY MOTOS');
+    final fecha = _toSafeString(resumen['fecha']);
+    final hora = _toSafeString(resumen['hora']);
+    final tipoComparacion = _toSafeString(resumen['tipoComparacion'], 'Comparacion de periodos');
+
+    final actual = resumen['periodoActual'] as Map<String, dynamic>? ?? {};
+    final anterior = resumen['periodoAnterior'] as Map<String, dynamic>? ?? {};
+
+    String variacionTexto(dynamic v) {
+      if (v == null) return 'N/A';
+      final val = (v as num).toDouble();
+      final signo = val > 0 ? '+' : '';
+      return '$signo${val.toStringAsFixed(1)}%';
+    }
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.letter,
+        margin: const pw.EdgeInsets.all(20),
+        build: (pw.Context context) => [
+          _buildEncabezadoInforme(nombreNegocio, 'Comparacion de Periodos ($tipoComparacion)', fecha, hora, '-', '-',
+              font, fontBold),
+          pw.SizedBox(height: 4),
+          _buildSeccionTitulo('RESULTADOS', fontBold),
+          pw.Table(
+            border: pw.TableBorder.all(color: PdfColors.black, width: 0.5),
+            columnWidths: const {
+              0: pw.FlexColumnWidth(2),
+              1: pw.FlexColumnWidth(1.3),
+              2: pw.FlexColumnWidth(1.3),
+              3: pw.FlexColumnWidth(1),
+            },
+            children: [
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFFF5F5F5)),
+                children: [
+                  _buildTableHeader('CONCEPTO', fontBold),
+                  _buildTableHeader('ACTUAL', fontBold),
+                  _buildTableHeader('ANTERIOR', fontBold),
+                  _buildTableHeader('VARIACION', fontBold),
+                ],
+              ),
+              pw.TableRow(children: [
+                _buildTableCell('Ventas', font, align: pw.TextAlign.left),
+                _buildTableCell(_formatearMoneda(actual['ventasPeriodo']), font),
+                _buildTableCell(_formatearMoneda(anterior['ventasPeriodo']), font),
+                _buildTableCell(variacionTexto(resumen['variacionVentasPorcentaje']), font),
+              ]),
+              pw.TableRow(children: [
+                _buildTableCell('Costo de Mercancia Vendida', font, align: pw.TextAlign.left),
+                _buildTableCell(_formatearMoneda(actual['costoMercanciaVendida']), font),
+                _buildTableCell(_formatearMoneda(anterior['costoMercanciaVendida']), font),
+                _buildTableCell('-', font),
+              ]),
+              pw.TableRow(children: [
+                _buildTableCell('Utilidad Bruta', font, align: pw.TextAlign.left),
+                _buildTableCell(_formatearMoneda(actual['utilidadBruta']), font),
+                _buildTableCell(_formatearMoneda(anterior['utilidadBruta']), font),
+                _buildTableCell(variacionTexto(resumen['variacionUtilidadBrutaPorcentaje']), font),
+              ]),
+              pw.TableRow(children: [
+                _buildTableCell('Utilidad Neta', font, align: pw.TextAlign.left),
+                _buildTableCell(_formatearMoneda(actual['utilidadNeta']), font),
+                _buildTableCell(_formatearMoneda(anterior['utilidadNeta']), font),
+                _buildTableCell(variacionTexto(resumen['variacionUtilidadNetaPorcentaje']), font),
+              ]),
+              pw.TableRow(children: [
+                _buildTableCell('Margen Bruto', font, align: pw.TextAlign.left),
+                _buildTableCell('${((actual['margenBrutoPorcentaje'] ?? 0.0) as num).toStringAsFixed(1)}%', font),
+                _buildTableCell('${((anterior['margenBrutoPorcentaje'] ?? 0.0) as num).toStringAsFixed(1)}%', font),
+                _buildTableCell('-', font),
+              ]),
+            ],
+          ),
+          pw.SizedBox(height: 12),
+          _buildPiePagina(nombreNegocio, font),
+        ],
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  Future<void> mostrarVistaPreviewInformeComparativo(Map<String, dynamic> resumen) async {
+    try {
+      final pdfBytes = await generarInformeComparativoPDF(resumen: resumen);
+
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdfBytes,
+        name: 'Informe_Comparativo_${DateTime.now().millisecondsSinceEpoch}',
+        format: PdfPageFormat.letter,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Lista de anomalias de un tipo: si esta vacia muestra "Sin anomalias
+  /// detectadas", si no cada item se imprime con su "mensaje" ya redactado
+  /// por el backend (evita duplicar el formateo del texto en el PDF).
+  pw.Widget _buildListaAnomalias(List<dynamic> items, pw.Font font) {
+    if (items.isEmpty) {
+      return pw.Padding(
+        padding: const pw.EdgeInsets.only(bottom: 4),
+        child: pw.Text('Sin anomalias detectadas en este periodo.',
+            style: pw.TextStyle(font: font, fontSize: 9, color: PdfColors.grey700)),
+      );
+    }
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: items.map((raw) {
+        final item = raw as Map<String, dynamic>;
+        final mensaje = _toSafeString(item['mensaje'], '-');
+        return pw.Padding(
+          padding: const pw.EdgeInsets.only(bottom: 4),
+          child: pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text('- ', style: pw.TextStyle(font: font, fontSize: 9)),
+              pw.Expanded(child: pw.Text(mensaje, style: pw.TextStyle(font: font, fontSize: 9))),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  /// Informe de Alertas y Anomalias: gastos anormales, caida de ventas,
+  /// clientes que compran menos, facturas inusuales, proveedores con
+  /// aumento de precio y meses con perdida, cada uno con su explicacion.
+  Future<Uint8List> generarInformeAnomaliasPDF({
+    required Map<String, dynamic> resumen,
+  }) async {
+    final pdf = pw.Document();
+    final font = await _getFontRegular();
+    final fontBold = await _getFontBold();
+
+    final nombreNegocio = _toSafeString(resumen['nombreNegocio'], 'VERCY MOTOS');
+    final fecha = _toSafeString(resumen['fecha']);
+    final hora = _toSafeString(resumen['hora']);
+    final fechaDesde = _toSafeString(resumen['fechaDesde']);
+    final fechaHasta = _toSafeString(resumen['fechaHasta']);
+
+    final gastosAnormales = (resumen['gastosAnormales'] as List?) ?? [];
+    final caidaVentas = resumen['caidaVentas'] as Map<String, dynamic>? ?? {};
+    final clientesComprandoMenos = (resumen['clientesComprandoMenos'] as List?) ?? [];
+    final facturasInusuales = (resumen['facturasInusuales'] as List?) ?? [];
+    final proveedoresConAumentoPrecio = (resumen['proveedoresConAumentoPrecio'] as List?) ?? [];
+    final mesesConPerdida = (resumen['mesesConPerdida'] as List?) ?? [];
+    final totalAnomalias = resumen['totalAnomalias'] ?? 0;
+
+    final caidaVentasEsAnomalia = caidaVentas['esAnomalia'] == true;
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.letter,
+        margin: const pw.EdgeInsets.all(20),
+        build: (pw.Context context) => [
+          _buildEncabezadoInforme(nombreNegocio, 'Alertas y Anomalias Contables', fecha, hora, fechaDesde,
+              fechaHasta, font, fontBold),
+          pw.SizedBox(height: 4),
+          pw.Text('Total de anomalias detectadas: $totalAnomalias',
+              style: pw.TextStyle(font: fontBold, fontSize: 10)),
+          pw.SizedBox(height: 8),
+          _buildSeccionTitulo('GASTOS ANORMALES POR CATEGORIA', fontBold),
+          _buildListaAnomalias(gastosAnormales, font),
+          pw.SizedBox(height: 8),
+          _buildSeccionTitulo('CAIDA DE VENTAS', fontBold),
+          _buildListaAnomalias(caidaVentasEsAnomalia ? [caidaVentas] : [], font),
+          pw.SizedBox(height: 8),
+          _buildSeccionTitulo('CLIENTES QUE COMPRAN MENOS', fontBold),
+          _buildListaAnomalias(clientesComprandoMenos, font),
+          pw.SizedBox(height: 8),
+          _buildSeccionTitulo('FACTURAS INUSUALMENTE ALTAS', fontBold),
+          _buildListaAnomalias(facturasInusuales, font),
+          pw.SizedBox(height: 8),
+          _buildSeccionTitulo('PROVEEDORES CON AUMENTO DE PRECIO', fontBold),
+          _buildListaAnomalias(proveedoresConAumentoPrecio, font),
+          pw.SizedBox(height: 8),
+          _buildSeccionTitulo('MESES CON PERDIDA', fontBold),
+          _buildListaAnomalias(mesesConPerdida, font),
+          pw.SizedBox(height: 12),
+          _buildPiePagina(nombreNegocio, font),
+        ],
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  Future<void> mostrarVistaPreviewInformeAnomalias(Map<String, dynamic> resumen) async {
+    try {
+      final pdfBytes = await generarInformeAnomaliasPDF(resumen: resumen);
+
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdfBytes,
+        name: 'Informe_Anomalias_${DateTime.now().millisecondsSinceEpoch}',
+        format: PdfPageFormat.letter,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

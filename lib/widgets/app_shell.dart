@@ -352,6 +352,10 @@ class _AppShellState extends State<AppShell> {
             subItems: const [
               _SubMenuItem(icon: Icons.analytics, label: 'Análisis Ventas', route: '/informes/productos'),
               _SubMenuItem(icon: Icons.menu_book, label: 'Libro Contable', route: '/libro-contable'),
+              _SubMenuItem(icon: Icons.calculate, label: 'Costeo y Utilidad Real', route: '/costeo-inventario'),
+              _SubMenuItem(icon: Icons.leaderboard, label: 'Rentabilidad Producto/Cliente', route: '/rentabilidad'),
+              _SubMenuItem(icon: Icons.compare_arrows, label: 'Comparación de Períodos', route: '/comparativo-periodos'),
+              _SubMenuItem(icon: Icons.warning_amber, label: 'Alertas y Anomalías', route: '/anomalias'),
             ],
           ),
         ],

@@ -7,6 +7,7 @@ import '../services/excel_export_service.dart';
 import '../providers/user_provider.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../widgets/reportes/rango_fechas_dialog.dart';
 
 class LibroContableScreen extends StatefulWidget {
   const LibroContableScreen({super.key});
@@ -226,7 +227,8 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
   }
 
   Future<void> _elegirRangoPreview() async {
-    final rango = await _seleccionarRangoFechas(
+    final rango = await mostrarSelectorRangoFechas(
+      context,
       titulo: 'Rango de Fechas a Consultar',
       valorInicial: _rangoPreviewSeleccionado,
     );
@@ -862,10 +864,58 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
               _buildTotalRow('Gastos', _utilidadBrutaResultado!['gastos']?['total'], Colors.red),
               const SizedBox(height: 6),
               _buildTotalRow(
-                'Utilidad Bruta',
+                'Utilidad Bruta (de caja)',
                 _utilidadBrutaResultado!['utilidadBruta'],
                 Theme.of(context).primaryColor,
               ),
+              const SizedBox(height: 16),
+              Text(
+                'Utilidad Real (con costo de mercancía vendida)',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+              ),
+              const SizedBox(height: 6),
+              _buildTotalRow(
+                'Costo de Mercancía Vendida',
+                _utilidadBrutaResultado!['costoMercanciaVendida'],
+                Colors.brown,
+              ),
+              const SizedBox(height: 6),
+              _buildTotalRow(
+                'Utilidad Bruta Real (${_formatearPorcentaje(_utilidadBrutaResultado!['margenBrutoPorcentaje'])})',
+                _utilidadBrutaResultado!['utilidadBrutaReal'],
+                Colors.teal,
+              ),
+              const SizedBox(height: 6),
+              _buildTotalRow(
+                'Utilidad Neta (${_formatearPorcentaje(_utilidadBrutaResultado!['margenNetoPorcentaje'])})',
+                _utilidadBrutaResultado!['utilidadNeta'],
+                Colors.indigo,
+              ),
+              if (_utilidadBrutaResultado!['huboEstimacion'] == true) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.info_outline, size: 16, color: Colors.amber),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Algunos costos son estimados (productos vendidos antes de '
+                          'esta actualización no tenían su costo guardado; se usó el '
+                          'costo actual del producto como aproximación).',
+                          style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ],
         ),
@@ -874,7 +924,8 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
   }
 
   Future<void> _seleccionarRangoYCalcularUtilidad() async {
-    final rango = await _seleccionarRangoFechas(
+    final rango = await mostrarSelectorRangoFechas(
+      context,
       titulo: 'Utilidad Bruta por Rango',
       valorInicial: _rangoUtilidadSeleccionado,
     );
@@ -908,96 +959,7 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
     }
   }
 
-  Future<DateTimeRange?> _seleccionarRangoFechas({
-    required String titulo,
-    DateTimeRange? valorInicial,
-  }) async {
-    DateTime desde = valorInicial?.start ?? DateTime.now().subtract(const Duration(days: 30));
-    DateTime hasta = valorInicial?.end ?? DateTime.now();
-
-    return showDialog<DateTimeRange>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (dialogContext, setDialogState) {
-            Future<void> seleccionar(bool esDesde) async {
-              final fecha = await showDatePicker(
-                context: dialogContext,
-                initialDate: esDesde ? desde : hasta,
-                firstDate: DateTime(2020),
-                lastDate: DateTime.now(),
-              );
-              if (fecha != null) {
-                setDialogState(() {
-                  if (esDesde) {
-                    desde = fecha;
-                  } else {
-                    hasta = fecha;
-                  }
-                });
-              }
-            }
-
-            return AlertDialog(
-              title: Text(titulo),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Selecciona el rango de fechas a calcular:',
-                    style: TextStyle(fontSize: 13, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 8),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Desde'),
-                    subtitle: Text(
-                      _formatearFechaCorta(desde),
-                      style: TextStyle(color: Theme.of(dialogContext).primaryColor, fontWeight: FontWeight.bold),
-                    ),
-                    trailing: const Icon(Icons.calendar_today),
-                    onTap: () => seleccionar(true),
-                  ),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Hasta'),
-                    subtitle: Text(
-                      _formatearFechaCorta(hasta),
-                      style: TextStyle(color: Theme.of(dialogContext).primaryColor, fontWeight: FontWeight.bold),
-                    ),
-                    trailing: const Icon(Icons.calendar_today),
-                    onTap: () => seleccionar(false),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancelar'),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    if (hasta.isBefore(desde)) {
-                      ScaffoldMessenger.of(dialogContext).showSnackBar(
-                        const SnackBar(content: Text('La fecha "Hasta" no puede ser anterior a "Desde"')),
-                      );
-                      return;
-                    }
-                    Navigator.of(dialogContext).pop(DateTimeRange(start: desde, end: hasta));
-                  },
-                  icon: const Icon(Icons.calculate),
-                  label: const Text('Calcular'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  String _formatearFechaCorta(DateTime fecha) => DateFormat('dd/MM/yyyy').format(fecha);
+  String _formatearFechaCorta(DateTime fecha) => formatearFechaCorta(fecha);
 
   String _formatearMonto(dynamic monto) {
     if (monto == null) return '0';
@@ -1006,6 +968,16 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
       return NumberFormat('#,##0', 'es_CO').format(valor);
     } catch (e) {
       return monto.toString();
+    }
+  }
+
+  String _formatearPorcentaje(dynamic porcentaje) {
+    if (porcentaje == null) return '0%';
+    try {
+      final valor = double.parse(porcentaje.toString());
+      return '${valor.toStringAsFixed(1)}%';
+    } catch (e) {
+      return '0%';
     }
   }
 }
