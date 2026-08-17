@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(flutter pub get)",
+      "Bash(curl -s --max-time 8 \"https://204-168-190-85.nip.io/api/public/security/login-no-auth\" -X POST -H \"Content-Type: application/json\" -d \"{}\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\bairo\\OneDrive\\Documentos\\ProyectoVercyMotos\\Vercy-motos-app\\src\\test\\java\\com\\prog3\\security\\services\\pedidos",
+      "C:\\Users\\bairo\\OneDrive\\Documentos\\ProyectoVercyMotos\\Vercy-motos-app\\src\\main\\java\\com\\prog3\\security\\services\\productos_inventario"
+    ]
+  }
+}
