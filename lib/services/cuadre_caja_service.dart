@@ -229,6 +229,29 @@ class CuadreCajaService {
     return abiertas.isNotEmpty ? abiertas.first : null;
   }
 
+  // Obtener la caja abierta de un tipo especifico ('LOCAL' o 'ENVIOS').
+  // Espejo de CuadreCajaService.obtenerCajaAbiertaPorTipo en el backend:
+  // con dos cajas abiertas a la vez, getCajaActiva() (que toma "la primera")
+  // ya no alcanza para saber a cual pertenece una operacion.
+  Future<CuadreCaja?> getCajaActivaPorTipo(String tipoCaja) async {
+    final tipoNormalizado = tipoCaja.trim().toUpperCase();
+    try {
+      final cajasAbiertas = await getCajasAbiertas();
+      return cajasAbiertas
+          .where((c) => c.tipoCaja == tipoNormalizado)
+          .firstOrNull;
+    } catch (_) {
+      // Este endpoint falló — probar el de respaldo antes de rendirse.
+    }
+
+    final todos = await getAllCuadres();
+    final abiertas = todos
+        .where((c) => !c.cerrada && c.tipoCaja == tipoNormalizado)
+        .toList();
+    abiertas.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));
+    return abiertas.isNotEmpty ? abiertas.first : null;
+  }
+
   // Validar si hay una caja abierta (método de conveniencia)
   Future<bool> hayCajaAbierta() async {
     try {
@@ -241,15 +264,14 @@ class CuadreCajaService {
   }
 
   // Obtener efectivo esperado con logging detallado
-  Future<Map<String, dynamic>> getEfectivoEsperado() async {
+  Future<Map<String, dynamic>> getEfectivoEsperado({String? tipoCaja}) async {
     try {
-        
+
       final headers = await _getHeaders();
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/cuadres-caja/reportes/efectivo-esperado'),
-        headers: headers,
-      );
+      final uri = Uri.parse('$baseUrl/api/cuadres-caja/reportes/efectivo-esperado')
+          .replace(queryParameters: tipoCaja != null ? {'tipoCaja': tipoCaja} : null);
+      final response = await http.get(uri, headers: headers);
 
         
         
@@ -432,6 +454,7 @@ class CuadreCajaService {
     required double efectivoEsperado,
     required double tolerancia,
     String? observaciones,
+    String? tipoCaja,
   }) async {
     try {
       final headers = await _getHeaders();
@@ -443,6 +466,7 @@ class CuadreCajaService {
         'efectivoEsperado': efectivoEsperado,
         'tolerancia': tolerancia,
         'observaciones': observaciones ?? '',
+        'tipoCaja': tipoCaja ?? 'LOCAL',
       };
 
       // 🔍 LOGGING: Debug para fondo inicial
@@ -624,13 +648,12 @@ class CuadreCajaService {
   }
 
   // Debug de pedidos - para verificar qué pedidos están registrados
-  Future<Map<String, dynamic>> debugPedidos() async {
+  Future<Map<String, dynamic>> debugPedidos({String? tipoCaja}) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/cuadres-caja/reportes/debug-pedidos'),
-        headers: headers,
-      );
+      final uri = Uri.parse('$baseUrl/api/cuadres-caja/reportes/debug-pedidos')
+          .replace(queryParameters: tipoCaja != null ? {'tipoCaja': tipoCaja} : null);
+      final response = await http.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -643,13 +666,12 @@ class CuadreCajaService {
     }
   }
 
-  Future<Map<String, dynamic>> getDetallesVentas() async {
+  Future<Map<String, dynamic>> getDetallesVentas({String? tipoCaja}) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/cuadres-caja/reportes/detalles-ventas'),
-        headers: headers,
-      );
+      final uri = Uri.parse('$baseUrl/api/cuadres-caja/reportes/detalles-ventas')
+          .replace(queryParameters: tipoCaja != null ? {'tipoCaja': tipoCaja} : null);
+      final response = await http.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -662,13 +684,12 @@ class CuadreCajaService {
     }
   }
 
-  Future<Map<String, dynamic>> getTodosPedidosHoy() async {
+  Future<Map<String, dynamic>> getTodosPedidosHoy({String? tipoCaja}) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/cuadres-caja/reportes/todos-pedidos-hoy'),
-        headers: headers,
-      );
+      final uri = Uri.parse('$baseUrl/api/cuadres-caja/reportes/todos-pedidos-hoy')
+          .replace(queryParameters: tipoCaja != null ? {'tipoCaja': tipoCaja} : null);
+      final response = await http.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -839,14 +860,13 @@ class CuadreCajaService {
   }
 
   // Obtener información completa del cuadre actual incluyendo contadores
-  Future<Map<String, dynamic>> getCuadreCompleto() async {
+  Future<Map<String, dynamic>> getCuadreCompleto({String? tipoCaja}) async {
     try {
-        
+
       final headers = await _getHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/cuadres-caja/reportes/cuadre-completo'),
-        headers: headers,
-      );
+      final uri = Uri.parse('$baseUrl/api/cuadres-caja/reportes/cuadre-completo')
+          .replace(queryParameters: tipoCaja != null ? {'tipoCaja': tipoCaja} : null);
+      final response = await http.get(uri, headers: headers);
 
         
 

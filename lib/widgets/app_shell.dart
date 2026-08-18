@@ -284,6 +284,7 @@ class _AppShellState extends State<AppShell> {
         ],
         if (!userProvider.isAsesor) ...[
           _MenuItem(icon: Icons.receipt, label: 'Facturar', route: '/facturar', currentRoute: _currentRoute),
+          _MenuItem(icon: Icons.local_shipping, label: 'Facturación Envíos', route: '/facturar-envios', currentRoute: _currentRoute),
           _MenuItem(icon: Icons.list_alt, label: 'Pedidos Asesores', route: '/admin-pedidos-asesor', currentRoute: _currentRoute),
           _ExpandableMenuItem(
             icon: Icons.assignment,

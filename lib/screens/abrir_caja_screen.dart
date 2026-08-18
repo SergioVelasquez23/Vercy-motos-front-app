@@ -7,6 +7,7 @@ import '../services/cuadre_caja_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/caja/caja_ya_abierta_widget.dart';
 import '../widgets/caja/formulario_abrir_caja_widget.dart';
+import '../widgets/caja/caja_ui_helpers.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 
@@ -29,8 +30,8 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
   // Variables de estado
   bool _isLoading = false;
   String? _selectedCaja = 'Caja Principal';
-  bool _hayCajaAbierta = false;
-  CuadreCaja? _cajaActual;
+  List<CuadreCaja> _cajasAbiertas = [];
+  String _tipoCajaSeleccionado = 'LOCAL';
 
   @override
   void initState() {
@@ -53,11 +54,19 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
 
     try {
       final cuadres = await _cuadreCajaService.getAllCuadres();
-      final cajaAbierta = cuadres.where((c) => !c.cerrada).toList();
+      final cajasAbiertas = cuadres.where((c) => !c.cerrada).toList();
 
       setState(() {
-        _hayCajaAbierta = cajaAbierta.isNotEmpty;
-        _cajaActual = cajaAbierta.isNotEmpty ? cajaAbierta.first : null;
+        _cajasAbiertas = cajasAbiertas;
+        // Por defecto se selecciona el tipo que todavía no está abierto (para
+        // invitar a abrirlo); si ambos o ninguno lo está, se deja LOCAL.
+        final localAbierta = cajasAbiertas.any((c) => c.tipoCaja == 'LOCAL');
+        final enviosAbierta = cajasAbiertas.any((c) => c.tipoCaja == 'ENVIOS');
+        if (localAbierta && !enviosAbierta) {
+          _tipoCajaSeleccionado = 'ENVIOS';
+        } else if (!localAbierta) {
+          _tipoCajaSeleccionado = 'LOCAL';
+        }
       });
     } catch (e) {
     } finally {
@@ -65,6 +74,13 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  CuadreCaja? get _cajaAbiertaDelTipoSeleccionado {
+    for (final c in _cajasAbiertas) {
+      if (c.tipoCaja == _tipoCajaSeleccionado) return c;
+    }
+    return null;
   }
 
   Future<void> _abrirCaja() async {
@@ -96,6 +112,7 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
         tolerancia: 5.0,
         observaciones:
             'Caja abierta - ${_observacionesController.text}. ID Máquina: ${_idMaquinaController.text}',
+        tipoCaja: _tipoCajaSeleccionado,
       );
 
       if (cuadre.id != null) {
@@ -108,9 +125,10 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
     } catch (e) {
       String mensajeError = errorMessage(e);
 
-      if (e.toString().contains('Ya existe una caja abierta')) {
+      if (e.toString().contains('Ya existe una caja')) {
+        final nombreTipo = _tipoCajaSeleccionado == 'ENVIOS' ? 'Envíos' : 'Local';
         mensajeError =
-            'Ya existe una caja abierta. Debe cerrar la caja actual antes de abrir una nueva.';
+            'Ya existe una caja $nombreTipo abierta. Debe cerrar esa caja antes de abrir otra del mismo tipo.';
         await _verificarEstadoCaja();
       }
 
@@ -188,10 +206,39 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
                   ),
                   SizedBox(height: 24),
 
+                  // Selector de tipo de caja (Local / Envíos)
+                  CajaUiHelpers.buildCard(
+                    context: context,
+                    icon: Icons.storefront,
+                    title: 'Tipo de Caja',
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _TipoCajaButton(
+                            label: 'Local',
+                            icon: Icons.storefront,
+                            seleccionado: _tipoCajaSeleccionado == 'LOCAL',
+                            onTap: () => setState(() => _tipoCajaSeleccionado = 'LOCAL'),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: _TipoCajaButton(
+                            label: 'Envíos',
+                            icon: Icons.local_shipping,
+                            seleccionado: _tipoCajaSeleccionado == 'ENVIOS',
+                            onTap: () => setState(() => _tipoCajaSeleccionado = 'ENVIOS'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 24),
+
                   // Verificación de estado de caja
-                  if (_hayCajaAbierta)
+                  if (_cajaAbiertaDelTipoSeleccionado != null)
                     CajaYaAbiertaWidget(
-                      cajaActual: _cajaActual,
+                      cajaActual: _cajaAbiertaDelTipoSeleccionado,
                       onIrCerrarCaja: _irACerrarCaja,
                     )
                   else
@@ -228,6 +275,57 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
                 ],
               ),
             ),
+    );
+  }
+}
+
+class _TipoCajaButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool seleccionado;
+  final VoidCallback onTap;
+
+  const _TipoCajaButton({
+    required this.label,
+    required this.icon,
+    required this.seleccionado,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          gradient: seleccionado ? AppTheme.primaryGradient : null,
+          color: seleccionado ? null : Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+          border: Border.all(
+            color: seleccionado
+                ? Colors.transparent
+                : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: seleccionado ? Colors.white : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            ),
+            SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: seleccionado ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

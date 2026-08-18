@@ -28,6 +28,7 @@ class CuadreCaja {
   final double totalTarjeta;
   final double totalSistecredito;
   final double totalDatafono;
+  final String tipoCaja; // 'LOCAL' o 'ENVIOS'
 
   CuadreCaja({
     this.id,
@@ -56,6 +57,7 @@ class CuadreCaja {
     this.totalTarjeta = 0.0,
     this.totalSistecredito = 0.0,
     this.totalDatafono = 0.0,
+    this.tipoCaja = 'LOCAL',
   });
 
   factory CuadreCaja.fromJson(Map<String, dynamic> json) {
@@ -95,6 +97,7 @@ class CuadreCaja {
       totalTarjeta: (json['totalTarjeta'] ?? 0).toDouble(),
       totalSistecredito: (json['totalSistecredito'] ?? 0).toDouble(),
       totalDatafono: (json['totalDatafono'] ?? 0).toDouble(),
+      tipoCaja: (json['tipoCaja'] ?? 'LOCAL').toString().toUpperCase(),
     );
   }
 
@@ -128,6 +131,7 @@ class CuadreCaja {
       'totalTarjeta': totalTarjeta,
       'totalSistecredito': totalSistecredito,
       'totalDatafono': totalDatafono,
+      'tipoCaja': tipoCaja,
     };
   }
 
@@ -158,6 +162,7 @@ class CuadreCaja {
     double? totalTarjeta,
     double? totalSistecredito,
     double? totalDatafono,
+    String? tipoCaja,
   }) {
     return CuadreCaja(
       id: id ?? this.id,
@@ -186,6 +191,7 @@ class CuadreCaja {
       totalTarjeta: totalTarjeta ?? this.totalTarjeta,
       totalSistecredito: totalSistecredito ?? this.totalSistecredito,
       totalDatafono: totalDatafono ?? this.totalDatafono,
+      tipoCaja: tipoCaja ?? this.tipoCaja,
     );
   }
 

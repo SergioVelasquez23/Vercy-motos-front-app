@@ -119,6 +119,24 @@ GoRouter buildAppRouter(UserProvider userProvider) => GoRouter(
             return FacturacionScreen(pedidoAsesor: extra as PedidoAsesor?);
           },
         ),
+        GoRoute(
+          path: '/facturar-envios',
+          builder: (c, s) {
+            final extra = s.extra;
+            if (extra is Map<String, dynamic>) {
+              return FacturacionScreen(
+                pedidoAsesor: extra['pedidoAsesor'] as PedidoAsesor?,
+                trasladoId: extra['trasladoId'] as String?,
+                cotizacion: extra['cotizacion'] as Cotizacion?,
+                tipoCaja: 'ENVIOS',
+              );
+            }
+            if (extra is Cotizacion) {
+              return FacturacionScreen(cotizacion: extra, tipoCaja: 'ENVIOS');
+            }
+            return FacturacionScreen(pedidoAsesor: extra as PedidoAsesor?, tipoCaja: 'ENVIOS');
+          },
+        ),
         GoRoute(path: '/asesor-pedidos', builder: (c, s) => const AsesorPedidosScreen()),
         GoRoute(path: '/admin-pedidos-asesor', builder: (c, s) => const AdminPedidosAsesorScreen()),
         GoRoute(path: '/clientes', builder: (c, s) => ClientesListScreen()),

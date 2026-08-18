@@ -47,6 +47,9 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
   bool _isLoading = false;
   bool _hayCajaAbierta = false;
   CuadreCaja? _cajaActual;
+  // Todas las cajas abiertas (puede haber una LOCAL y una ENVIOS a la vez).
+  // _cajaActual es "la que se está viendo/cerrando ahora mismo" de esta lista.
+  List<CuadreCaja> _cajasAbiertas = [];
   double _efectivoEsperado =
       0.0; // Este es el efectivo esperado tras descontar gastos
   double _ventasEfectivo = 0.0; // Este es el monto bruto de ventas en efectivo
@@ -88,7 +91,15 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
 
       setState(() {
         _hayCajaAbierta = cajaAbierta.isNotEmpty;
-        _cajaActual = cajaAbierta.isNotEmpty ? cajaAbierta.first : null;
+        _cajasAbiertas = cajaAbierta;
+        // Si la caja que se estaba viendo sigue abierta, mantenerla
+        // seleccionada (evita que un refresh salte de vuelta a otra caja);
+        // si no, elegir la primera disponible.
+        final actualSigueAbierta = _cajaActual != null &&
+            cajaAbierta.any((c) => c.id == _cajaActual!.id);
+        if (!actualSigueAbierta) {
+          _cajaActual = cajaAbierta.isNotEmpty ? cajaAbierta.first : null;
+        }
       });
 
       if (_cajaActual != null) {
@@ -103,13 +114,23 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
     }
   }
 
+  /// Cambia cuál de las cajas abiertas (LOCAL/ENVIOS) se está viendo/cerrando
+  /// y recarga sus datos — solo visible cuando hay más de una abierta.
+  Future<void> _seleccionarCaja(CuadreCaja caja) async {
+    if (_cajaActual?.id == caja.id) return;
+    setState(() => _cajaActual = caja);
+    await _cargarEfectivoEsperado();
+  }
+
   Future<void> _cargarEfectivoEsperado() async {
     setState(() => _isLoading = true);
 
     try {
       // Intentar obtener cuadre completo primero
       try {
-        final cuadreCompleto = await _cuadreCajaService.getCuadreCompleto();
+        final cuadreCompleto = await _cuadreCajaService.getCuadreCompleto(
+          tipoCaja: _cajaActual?.tipoCaja,
+        );
         appLog('');
         appLog('═══════════════════════════════════════════════════');
         appLog('📥 RESPUESTA DEL BACKEND - CUADRE COMPLETO:');
@@ -995,6 +1016,61 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                     ),
                   ),
                   SizedBox(height: 20),
+
+                  // Selector de cuál caja ver/cerrar — solo cuando hay más de una abierta
+                  if (_cajasAbiertas.length > 1) ...[
+                    Row(
+                      children: _cajasAbiertas.map((caja) {
+                        final seleccionada = caja.id == _cajaActual?.id;
+                        final esEnvios = caja.tipoCaja == 'ENVIOS';
+                        return Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              right: caja == _cajasAbiertas.last ? 0 : 8,
+                            ),
+                            child: InkWell(
+                              onTap: () => _seleccionarCaja(caja),
+                              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                              child: Container(
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  gradient: seleccionada ? AppTheme.primaryGradient : null,
+                                  color: seleccionada ? null : Theme.of(context).colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                                  border: Border.all(
+                                    color: seleccionada
+                                        ? Colors.transparent
+                                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      esEnvios ? Icons.local_shipping : Icons.storefront,
+                                      size: 18,
+                                      color: seleccionada
+                                          ? Colors.white
+                                          : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                    ),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      esEnvios ? 'Envíos' : 'Local',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: seleccionada ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    SizedBox(height: 20),
+                  ],
 
                   // Verificación de estado de caja
                   if (!_hayCajaAbierta) ...[

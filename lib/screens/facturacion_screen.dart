@@ -59,8 +59,19 @@ class FacturacionScreen extends StatefulWidget {
   final String? trasladoId;
   // Si viene de convertir una cotización a factura
   final Cotizacion? cotizacion;
+  // 'LOCAL' o 'ENVIOS' — a qué caja se asignan los pedidos creados en esta
+  // pantalla. No confundir con _tipoFactura (tipo de factura DIAN: POS/
+  // Electrónica), que es un campo completamente distinto y coincide en usar
+  // el string 'LOCAL' como uno de sus valores.
+  final String tipoCaja;
 
-  const FacturacionScreen({super.key, this.pedidoAsesor, this.trasladoId, this.cotizacion});
+  const FacturacionScreen({
+    super.key,
+    this.pedidoAsesor,
+    this.trasladoId,
+    this.cotizacion,
+    this.tipoCaja = 'LOCAL',
+  });
 
   @override
   _FacturacionScreenState createState() => _FacturacionScreenState();
@@ -310,7 +321,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   Future<void> _preCalentarBackend() async {
     try {
       // Esto pre-cachea el cuadreId en PedidoService (evita llamada extra al crear pedido)
-      _pedidoService.preCachearCuadreId();
+      _pedidoService.preCachearCuadreId(tipoCaja: widget.tipoCaja);
     } catch (_) {}
   }
 
@@ -831,6 +842,28 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                   onVerBorradoresLocales: _verBorradoresLocalesFallidos,
                   borradoresLocalesCount: _borradoresLocalesCount,
                 ),
+                if (widget.tipoCaja == 'ENVIOS')
+                  Container(
+                    width: double.infinity,
+                    color: AppTheme.secondary,
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.local_shipping, color: Colors.white, size: 16),
+                        SizedBox(width: 8),
+                        Text(
+                          'FACTURACIÓN ENVÍOS',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 Expanded(
                   child: SingleChildScrollView(
                     padding: EdgeInsets.all(padding),
@@ -3792,6 +3825,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         totalDescuentos: totalDescuentos,
         totalFinal: total,
         descuentoGeneral: dctoGeneral,
+        tipoCaja: widget.tipoCaja,
       );
 
       await _pedidoService.createPedido(pedido);
@@ -3989,6 +4023,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           totalFinal: total,
           notas:
               'DEUDA - Registrada el ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
+          tipoCaja: widget.tipoCaja,
         );
 
         await _pedidoService.createPedido(pedido);
@@ -4268,6 +4303,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             notas: observacionesCapturadas.isNotEmpty
                 ? observacionesCapturadas
                 : null,
+            tipoCaja: widget.tipoCaja,
           );
 
           final pedidoCreado = await _pedidoService.createPedido(pedido);
@@ -4297,6 +4333,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             montoNequi: montoNequi,
             montoDaviplata: montoDaviplata,
             montoBancolombia: montoBancolombia,
+            tipoCaja: pedidoCreado.tipoCaja ?? widget.tipoCaja,
           );
 
           // 🔧 CRÍTICO: Asegurar que los datos del cliente estén guardados

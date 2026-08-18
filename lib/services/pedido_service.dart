@@ -34,7 +34,7 @@ class PedidoService {
   // ✅ NUEVO: Cache para evitar correcciones de estado en bucle
   final Map<String, DateTime> _estadoCorregidoCache = {};
   
-  String? _cuadreIdActivo;
+  final Map<String, String?> _cuadreIdActivoPorTipo = {};
 
   final InventarioService _inventarioService = InventarioService();
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
@@ -171,20 +171,20 @@ class PedidoService {
   /// devolvía null igual, así que un simple error de conexión terminaba
   /// mostrando "Debe abrir caja" con la caja abierta y todo. Quien llama a
   /// este método decide cómo mostrar el error real si la consulta falla.
-  Future<String?> _getCuadreIdActivo() async {
-    final cajaActiva = await _cuadreCajaService.getCajaActiva();
-    appLog('[PedidoService] cajaActiva.id = ${cajaActiva?.id}');
-    _cuadreIdActivo = cajaActiva?.id;
-    return _cuadreIdActivo;
+  Future<String?> _getCuadreIdActivo(String tipoCaja) async {
+    final cajaActiva = await _cuadreCajaService.getCajaActivaPorTipo(tipoCaja);
+    appLog('[PedidoService] tipoCaja=$tipoCaja cajaActiva.id = ${cajaActiva?.id}');
+    _cuadreIdActivoPorTipo[tipoCaja] = cajaActiva?.id;
+    return cajaActiva?.id;
   }
 
-  /// Resuelve el cuadreId activo distinguiendo "no hay caja abierta"
-  /// (confirmado) de "no se pudo verificar" (error real) — ver
-  /// _getCuadreIdActivo. Lanza el mensaje correcto para cada caso.
-  Future<String> _requerirCuadreIdActivo() async {
+  /// Resuelve el cuadreId activo del tipo pedido distinguiendo "no hay caja
+  /// abierta de ese tipo" (confirmado) de "no se pudo verificar" (error
+  /// real) — ver _getCuadreIdActivo. Lanza el mensaje correcto para cada caso.
+  Future<String> _requerirCuadreIdActivo(String tipoCaja) async {
     String? cuadreIdActivo;
     try {
-      cuadreIdActivo = await _getCuadreIdActivo();
+      cuadreIdActivo = await _getCuadreIdActivo(tipoCaja);
     } catch (e) {
       throw Exception(
         'No se pudo verificar si hay caja abierta (revisa tu conexión e '
@@ -193,22 +193,23 @@ class PedidoService {
     }
 
     if (cuadreIdActivo == null) {
+      final nombreTipo = tipoCaja.toUpperCase() == 'ENVIOS' ? 'Envíos' : 'Local';
       throw Exception(
-        'Debe abrir caja para continuar. Para registrar pedidos primero debe abrir la caja del día.',
+        'Debe abrir la caja $nombreTipo para continuar. Para registrar pedidos primero debe abrir esa caja.',
       );
     }
     return cuadreIdActivo;
   }
 
   void limpiarCacheCuadreId() {
-    _cuadreIdActivo = null;
+    _cuadreIdActivoPorTipo.clear();
   }
 
   /// 🔥 Pre-calentar: obtener cuadreId activo anticipadamente para que
   /// createPedido no tenga que esperar al backend cuando el usuario facture.
   /// También sirve para despertar a Render del cold start.
-  void preCachearCuadreId() {
-    _getCuadreIdActivo()
+  void preCachearCuadreId({String tipoCaja = 'LOCAL'}) {
+    _getCuadreIdActivo(tipoCaja)
         .then((_) {
           appLog('🔥 Pre-warm: cuadreId cacheado exitosamente');
         })
@@ -654,7 +655,7 @@ class PedidoService {
   Future<Pedido> crearPedido(Pedido pedido) async {
     try {
       // Asignar cuadreId al pedido automáticamente
-      pedido.cuadreId = await _requerirCuadreIdActivo();
+      pedido.cuadreId = await _requerirCuadreIdActivo(pedido.tipoCaja ?? 'LOCAL');
          
       final headers = await _getHeaders();
       final response = await http.post(
@@ -678,7 +679,7 @@ class PedidoService {
   Future<Pedido> createPedido(Pedido pedido) async {
     try {
       // Asignar cuadreId al pedido automáticamente
-      pedido.cuadreId = await _requerirCuadreIdActivo();
+      pedido.cuadreId = await _requerirCuadreIdActivo(pedido.tipoCaja ?? 'LOCAL');
          
       // Validar que los items del pedido sean válidos
       if (pedido.items.isEmpty) {
@@ -1649,6 +1650,7 @@ class PedidoService {
     double montoBancolombia = 0.0, // Sub-línea de pago múltiple: Bancolombia (transferencia)
     String? medioPago, // Medio de pago para DIAN (efectivo, transferencia, etc.)
     String? detallePago, // Sub-categoría visual (nequi/daviplata/bancolombia/bold/...) para el libro contable
+    String? tipoCaja, // 'LOCAL' o 'ENVIOS' — fallback si el pedido no tiene cuadreCajaId asignado
   }) async {
     // Declarar tipoPago aquí para que sea accesible tanto en el try como en el catch
     String tipoPago = 'pagado';
@@ -1672,6 +1674,7 @@ class PedidoService {
         'descuento': descuento,
         if (medioPago != null && medioPago.isNotEmpty) 'medioPago': medioPago,
         if (detallePago != null && detallePago.isNotEmpty) 'detallePago': detallePago,
+        if (tipoCaja != null) 'tipoCaja': tipoCaja,
       };
 
       // Solo incluir campos específicos para pagos normales
@@ -2016,6 +2019,7 @@ class PedidoService {
     double montoEfectivo = 0.0,
     double montoTarjeta = 0.0,
     double montoTransferencia = 0.0,
+    String? tipoCaja, // 'LOCAL' o 'ENVIOS' — fallback si el pedido origen no tiene cuadreCajaId asignado
   }) async {
     try {
       final headers = await _getHeaders();
@@ -2050,6 +2054,7 @@ class PedidoService {
         'montoEfectivo': montoEfectivo,
         'montoTarjeta': montoTarjeta,
         'montoTransferencia': montoTransferencia,
+        if (tipoCaja != null) 'tipoCaja': tipoCaja,
       };
 
         

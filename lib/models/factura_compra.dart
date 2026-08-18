@@ -8,6 +8,7 @@ class FacturaCompra {
   final double total;
   final String estado;
   final bool pagadoDesdeCaja;
+  final String? tipoCaja; // 'LOCAL' o 'ENVIOS' — solo relevante si pagadoDesdeCaja es true
   final List<ItemFacturaCompra> items;
   final String? descripcion;
   final DateTime fechaCreacion;
@@ -42,6 +43,7 @@ class FacturaCompra {
     double? total,
     required this.estado,
     this.pagadoDesdeCaja = false,
+    this.tipoCaja,
     required this.items,
     this.descripcion,
     required this.fechaCreacion,
@@ -125,6 +127,7 @@ class FacturaCompra {
       total: finalTotal,
       estado: json['estado'] ?? estadoDerivado,
       pagadoDesdeCaja: json['pagadoDesdeCaja'] ?? false,
+      tipoCaja: json['tipoCaja']?.toString(),
       items: items,
       descripcion: json['descripcion'],
       fechaCreacion: json['fechaCreacion'] != null
@@ -206,6 +209,7 @@ class FacturaCompra {
       'proveedorNombre': proveedorNombre,
       'total': finalTotal, // Usar el total final calculado
       'pagadoDesdeCaja': pagadoDesdeCaja,
+      if (tipoCaja != null) 'tipoCaja': tipoCaja,
       'itemsIngredientes': itemsJsonList,
       // ✅ NO enviar 'items' duplicado - el backend procesa ambos arrays causando doble stock
       'items': [],

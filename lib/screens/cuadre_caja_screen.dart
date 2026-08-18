@@ -67,6 +67,9 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
   List<CuadreCaja> _cuadresCaja = [];
   List<String> _usuariosDisponibles = [];
   CuadreCaja? _cuadreActual;
+  // Todas las cajas abiertas ahora mismo (puede haber una LOCAL y una ENVIOS
+  // a la vez) — _cuadreActual es cuál de ellas se está mostrando/editando.
+  List<CuadreCaja> _cajasAbiertas = [];
 
   // Services
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
@@ -121,14 +124,21 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       setState(() {
         _cuadresCaja = cuadres;
 
+        _cajasAbiertas = cuadres
+            .where(
+              (cuadre) => (cuadre.estado == 'ABIERTA' || cuadre.estado == 'pendiente') && !cuadre.cerrada,
+            )
+            .toList();
+
         // 🔧 CORRECCIÓN: Asignar el cuadre actual (el que está abierto/pendiente)
-        _cuadreActual =
-            cuadres
-                .where(
-                  (cuadre) => (cuadre.estado == 'ABIERTA' || cuadre.estado == 'pendiente') && !cuadre.cerrada,
-                )
-                .firstOrNull ??
-            (cuadres.isNotEmpty ? cuadres.first : null);
+        // Si el cuadre que se estaba viendo sigue abierto, mantenerlo
+        // seleccionado en vez de saltar de vuelta al primero de la lista.
+        final actualSigueAbierto = _cuadreActual != null &&
+            _cajasAbiertas.any((c) => c.id == _cuadreActual!.id);
+        if (!actualSigueAbierto) {
+          _cuadreActual = _cajasAbiertas.firstOrNull ??
+              (cuadres.isNotEmpty ? cuadres.first : null);
+        }
 
         _isLoading = false;
       });
@@ -1063,6 +1073,51 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
               color: textDark,
             ),
           ),
+          if (_cajasAbiertas.length > 1) ...[
+            SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _cajasAbiertas.map((caja) {
+                final esActual = caja.id == _cuadreActual?.id;
+                final esEnvios = caja.tipoCaja == 'ENVIOS';
+                return InkWell(
+                  onTap: () => setState(() => _cuadreActual = caja),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: esActual ? AppTheme.primaryGradient : null,
+                      color: esActual ? null : cardBg,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: esActual ? Colors.transparent : textLight,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          esEnvios ? Icons.local_shipping : Icons.storefront,
+                          size: 14,
+                          color: esActual ? Colors.white : textDark,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          esEnvios ? 'Envíos' : 'Local',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: esActual ? Colors.white : textDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
           SizedBox(height: 20), // Información del responsable y caja
           Card(
             elevation: 4,
@@ -1794,7 +1849,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
 
                   // Información de efectivo esperado con logging mejorado
                   FutureBuilder<Map<String, dynamic>>(
-                    future: _cuadreCajaService.getEfectivoEsperado(),
+                    future: _cuadreCajaService.getEfectivoEsperado(tipoCaja: _cuadreActual?.tipoCaja),
                     builder: (context, snapshot) {
                       if (snapshot.hasData) {
                         final data = snapshot.data!;

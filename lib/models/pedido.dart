@@ -57,6 +57,7 @@ class Pedido {
   bool incluyePropina;
   double descuento;
   String? cuadreId; // ID del cuadre de caja al que pertenece este pedido
+  String? tipoCaja; // 'LOCAL' o 'ENVIOS' — a qué caja debe asignarse/pertenece este pedido
 
   // Campos adicionales para pagos según la guía de integración
   double totalPagado = 0.0;
@@ -138,6 +139,7 @@ class Pedido {
     this.incluyePropina = false,
     this.descuento = 0,
     this.cuadreId, // ID del cuadre de caja (opcional pero recomendado)
+    this.tipoCaja,
     this.totalPagado = 0.0,
     this.pagosParciales = const [],
     this.historialEdiciones = const [],
@@ -302,6 +304,7 @@ class Pedido {
     'descuento': descuento,
     if (cuadreId != null)
       'cuadreId': cuadreId, // Añadimos el cuadreId si existe
+    if (tipoCaja != null) 'tipoCaja': tipoCaja,
     'totalPagado': totalPagado,
     if (pagosParciales.isNotEmpty)
       'pagosParciales': pagosParciales.map((pago) => pago.toJson()).toList(),
@@ -387,6 +390,7 @@ class Pedido {
       descuento: (json['descuento'] ?? 0).toDouble(),
       cuadreId: json['cuadreId']
           ?.toString(), // Capturamos el ID del cuadre de caja
+      tipoCaja: json['tipoCaja']?.toString(),
       totalPagado: (json['totalPagado'] ?? 0).toDouble(),
       pagosParciales: pagosParciales,
       historialEdiciones: historial,

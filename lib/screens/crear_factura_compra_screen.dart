@@ -79,6 +79,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
   Proveedor? _proveedorSeleccionado;
   bool _isLoading = false;
   bool _pagadoDesdeCaja = false;
+  String _tipoCajaSeleccionado = 'LOCAL';
 
   // Variable para controlar el timeout del botón guardar factura
   bool _guardandoFactura = false;
@@ -134,7 +135,8 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
     _fechaVencimiento =
         factura.fechaVencimiento ?? DateTime.now().add(Duration(days: 30));
     _pagadoDesdeCaja = factura.pagadoDesdeCaja;
-    
+    _tipoCajaSeleccionado = factura.tipoCaja ?? 'LOCAL';
+
     // Cargar descripción y origen
     if (factura.descripcion != null) {
       if (factura.descripcion!.startsWith('Origen:')) {
@@ -984,6 +986,30 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
             ],
           ),
         ),
+        if (_pagadoDesdeCaja) ...[
+          SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _TipoCajaCompraButton(
+                  label: 'Local',
+                  icon: Icons.storefront,
+                  seleccionado: _tipoCajaSeleccionado == 'LOCAL',
+                  onTap: () => setState(() => _tipoCajaSeleccionado = 'LOCAL'),
+                ),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: _TipoCajaCompraButton(
+                  label: 'Envíos',
+                  icon: Icons.local_shipping,
+                  seleccionado: _tipoCajaSeleccionado == 'ENVIOS',
+                  onTap: () => setState(() => _tipoCajaSeleccionado = 'ENVIOS'),
+                ),
+              ),
+            ],
+          ),
+        ],
         SizedBox(height: 16),
         // Campo de Origen de Compra (solo se muestra cuando NO paga desde caja)
         if (!_pagadoDesdeCaja)
@@ -2598,6 +2624,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
         total: totalFinal,
         estado: _pagadoDesdeCaja ? 'PENDIENTE' : 'PROCESADA',
         pagadoDesdeCaja: _pagadoDesdeCaja,
+        tipoCaja: _pagadoDesdeCaja ? _tipoCajaSeleccionado : null,
         items: itemsVerificados,
         // Guardar el origen de la compra si no paga desde caja
         descripcion: !_pagadoDesdeCaja
@@ -2741,4 +2768,57 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
     }
   }
 
+}
+
+class _TipoCajaCompraButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool seleccionado;
+  final VoidCallback onTap;
+
+  const _TipoCajaCompraButton({
+    required this.label,
+    required this.icon,
+    required this.seleccionado,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          gradient: seleccionado ? AppTheme.primaryGradient : null,
+          color: seleccionado ? null : Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: seleccionado
+                ? Colors.transparent
+                : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: seleccionado ? Colors.white : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            ),
+            SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: seleccionado ? Colors.white : Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
