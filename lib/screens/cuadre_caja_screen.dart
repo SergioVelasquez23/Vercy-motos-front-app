@@ -650,7 +650,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
   }
 
   Widget _buildSearchAndResults() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1011,115 +1011,112 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                     ],
                   ),
                 )
-              : Expanded(
-                  child: Column(
-                    children: [
-                      // Encabezado
-                      Container(
+              : Column(
+                  children: [
+                    // Encabezado
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.08),
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(8),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          _cuadreColHeader('Fecha Inicio', flex: 2),
+                          _cuadreColHeader('Fecha Fin', flex: 2),
+                          _cuadreColHeader('Tipo', flex: 1),
+                          _cuadreColHeader('Nombre de Caja', flex: 2),
+                          _cuadreColHeader('Responsable', flex: 2),
+                          _cuadreColHeader('Total Inicial', flex: 2),
+                          _cuadreColHeader('Cerrada', flex: 1),
+                          SizedBox(width: 80),
+                        ],
+                      ),
+                    ),
+                    // Filas paginadas — la paginación ya acota la cantidad
+                    // (20/pág por defecto), así que se listan directo sin un
+                    // ListView propio: todo el panel scrollea junto, incluida
+                    // la franja de cajas abiertas y los filtros de arriba.
+                    ...paginarLista(_cuadresCaja).asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final cuadre = entry.value;
+                      return Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
-                          vertical: 14,
+                          vertical: 12,
                         ),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.08),
-                          borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(8),
+                          color: index.isEven
+                              ? Theme.of(context).colorScheme.surface
+                              : Theme.of(context).colorScheme.surface.withOpacity(0.6),
+                          border: Border(
+                            bottom: BorderSide(
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.06),
+                            ),
                           ),
                         ),
                         child: Row(
                           children: [
-                            _cuadreColHeader('Fecha Inicio', flex: 2),
-                            _cuadreColHeader('Fecha Fin', flex: 2),
-                            _cuadreColHeader('Tipo', flex: 1),
-                            _cuadreColHeader('Nombre de Caja', flex: 2),
-                            _cuadreColHeader('Responsable', flex: 2),
-                            _cuadreColHeader('Total Inicial', flex: 2),
-                            _cuadreColHeader('Cerrada', flex: 1),
-                            SizedBox(width: 80),
-                          ],
-                        ),
-                      ),
-                      // Filas paginadas
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: paginarLista(_cuadresCaja).length,
-                          itemBuilder: (context, index) {
-                            final cuadre = paginarLista(_cuadresCaja)[index];
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: index.isEven
-                                    ? Theme.of(context).colorScheme.surface
-                                    : Theme.of(context).colorScheme.surface.withOpacity(0.6),
-                                border: Border(
-                                  bottom: BorderSide(
-                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.06),
-                                  ),
+                            _cuadreCell(
+                              cuadre.fechaApertura.toString().split(' ')[0],
+                              flex: 2,
+                            ),
+                            _cuadreCell(
+                              cuadre.fechaCierre?.toString().split(' ')[0] ?? 'Abierta',
+                              flex: 2,
+                            ),
+                            Expanded(
+                              flex: 1,
+                              child: _TipoCajaBadge(tipoCaja: cuadre.tipoCaja),
+                            ),
+                            _cuadreCell(cuadre.nombre, flex: 2),
+                            _cuadreCell(cuadre.responsable, flex: 2),
+                            _cuadreCell(
+                              formatCurrency(cuadre.fondoInicial),
+                              flex: 2,
+                            ),
+                            Expanded(
+                              flex: 1,
+                              child: Text(
+                                cuadre.cerrada ? 'Sí' : 'No',
+                                style: TextStyle(
+                                  color: cuadre.cerrada ? Colors.green : primary,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              child: Row(
-                                children: [
-                                  _cuadreCell(
-                                    cuadre.fechaApertura.toString().split(' ')[0],
-                                    flex: 2,
+                            ),
+                            SizedBox(
+                              width: 80,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 8,
                                   ),
-                                  _cuadreCell(
-                                    cuadre.fechaCierre?.toString().split(' ')[0] ?? 'Abierta',
-                                    flex: 2,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
-                                  Expanded(
-                                    flex: 1,
-                                    child: _TipoCajaBadge(tipoCaja: cuadre.tipoCaja),
-                                  ),
-                                  _cuadreCell(cuadre.nombre, flex: 2),
-                                  _cuadreCell(cuadre.responsable, flex: 2),
-                                  _cuadreCell(
-                                    formatCurrency(cuadre.fondoInicial),
-                                    flex: 2,
-                                  ),
-                                  Expanded(
-                                    flex: 1,
-                                    child: Text(
-                                      cuadre.cerrada ? 'Sí' : 'No',
-                                      style: TextStyle(
-                                        color: cuadre.cerrada ? Colors.green : primary,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    width: 80,
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: primary,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 8,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                      ),
-                                      onPressed: () => _mostrarResumenDetallado(cuadre),
-                                      child: const Text('Ver'),
-                                    ),
-                                  ),
-                                ],
+                                ),
+                                onPressed: () => _mostrarResumenDetallado(cuadre),
+                                child: const Text('Ver'),
                               ),
-                            );
-                          },
+                            ),
+                          ],
                         ),
-                      ),
-                      buildPaginacion(
-                        totalItems: _cuadresCaja.length,
-                        accentColor: primary,
-                      ),
-                    ],
-                  ),
+                      );
+                    }),
+                    buildPaginacion(
+                      totalItems: _cuadresCaja.length,
+                      accentColor: primary,
+                    ),
+                  ],
                 ),
         ],
       ),
