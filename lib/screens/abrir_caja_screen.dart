@@ -29,7 +29,6 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
 
   // Variables de estado
   bool _isLoading = false;
-  String? _selectedCaja = 'Caja Principal';
   List<CuadreCaja> _cajasAbiertas = [];
   String _tipoCajaSeleccionado = 'LOCAL';
 
@@ -104,7 +103,7 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
       final responsable = userProvider.userName ?? 'Usuario Desconocido';
 
       final cuadre = await _cuadreCajaService.createCuadre(
-        nombre: _selectedCaja ?? 'Caja Principal',
+        nombre: _tipoCajaSeleccionado == 'ENVIOS' ? 'Caja Envíos' : 'Caja Local',
         responsable: responsable,
         fondoInicial: montoInicial,
         efectivoDeclarado: 0,
@@ -247,12 +246,6 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
                       montoInicialController: _montoInicialController,
                       idMaquinaController: _idMaquinaController,
                       observacionesController: _observacionesController,
-                      selectedCaja: _selectedCaja,
-                      onCajaChanged: (String? newValue) {
-                        setState(() {
-                          _selectedCaja = newValue;
-                        });
-                      },
                       onAbrirCaja: _abrirCaja,
                     ),
 

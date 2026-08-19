@@ -196,7 +196,7 @@ class ResumenCierreService {
       final resumenData = {
         'cuadreInfo': {
           'id': cuadreData['id'] ?? cuadreId,
-          'nombre': cuadreData['nombre'] ?? 'Caja Principal',
+          'nombre': cuadreData['nombre'] ?? 'Caja Local',
           'responsable': cuadreData['responsable'] ?? 'Sistema',
           'fechaApertura':
               cuadreData['fechaApertura'] ?? DateTime.now().toIso8601String(),

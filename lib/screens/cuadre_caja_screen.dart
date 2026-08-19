@@ -332,10 +332,9 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
           } catch (_) {}
         }
 
-        // Filtrar por nombre de caja
+        // Filtrar por tipo de caja (LOCAL/ENVIOS)
         if (_selectedCaja != null && _selectedCaja!.trim().isNotEmpty) {
-          if (c.nombre.toLowerCase() != _selectedCaja!.toLowerCase())
-            return false;
+          if (c.tipoCaja != _selectedCaja) return false;
         }
 
         // Filtrar por responsable
@@ -656,6 +655,98 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Cajas abiertas ahora mismo (puede haber una LOCAL y una ENVIOS a
+          // la vez) — acceso directo al resumen de cada una sin tener que
+          // buscarlas entre el historial.
+          if (_cajasAbiertas.isNotEmpty) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: _cajasAbiertas.map((caja) {
+                final esEnvios = caja.tipoCaja == 'ENVIOS';
+                final color = esEnvios ? AppTheme.secondary : AppTheme.primary;
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right: caja == _cajasAbiertas.last ? 0 : 12,
+                    ),
+                    child: Card(
+                      color: cardBg,
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        side: BorderSide(color: color.withOpacity(0.4)),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  esEnvios ? Icons.local_shipping : Icons.storefront,
+                                  color: color,
+                                  size: 18,
+                                ),
+                                SizedBox(width: 6),
+                                Text(
+                                  esEnvios ? 'Caja Envíos' : 'Caja Local',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: color,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Spacer(),
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'ABIERTA',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Responsable: ${caja.responsable}',
+                              style: TextStyle(color: textLight, fontSize: 12),
+                            ),
+                            Text(
+                              'Fondo inicial: ${formatCurrency(caja.fondoInicial)}',
+                              style: TextStyle(color: textLight, fontSize: 12),
+                            ),
+                            SizedBox(height: 8),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: color,
+                                  side: BorderSide(color: color),
+                                  padding: EdgeInsets.symmetric(vertical: 8),
+                                ),
+                                onPressed: () => _mostrarResumenDetallado(caja),
+                                child: Text('Ver resumen', style: TextStyle(fontSize: 13)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            SizedBox(height: 16),
+          ],
           // Filtros de búsqueda
           Card(
             color: cardBg,
@@ -771,7 +862,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                         child: DropdownButtonFormField<String>(
                           isExpanded: true,
                           decoration: InputDecoration(
-                            labelText: 'Caja',
+                            labelText: 'Tipo de Caja',
                             labelStyle: TextStyle(color: textLight),
                             border: OutlineInputBorder(),
                             focusedBorder: OutlineInputBorder(
@@ -781,17 +872,13 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                           style: TextStyle(color: textDark),
                           initialValue: _selectedCaja,
                           hint: Text(
-                            '-- Caja --',
+                            '-- Tipo --',
                             style: TextStyle(color: textLight),
                           ),
-                          items: <String>['Caja Principal', 'Caja Secundaria']
-                              .map<DropdownMenuItem<String>>((String value) {
-                                return DropdownMenuItem<String>(
-                                  value: value,
-                                  child: Text(value),
-                                );
-                              })
-                              .toList(),
+                          items: const [
+                            DropdownMenuItem(value: 'LOCAL', child: Text('Local')),
+                            DropdownMenuItem(value: 'ENVIOS', child: Text('Envíos')),
+                          ],
                           onChanged: (String? newValue) {
                             setState(() {
                               _selectedCaja = newValue;
@@ -943,6 +1030,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                           children: [
                             _cuadreColHeader('Fecha Inicio', flex: 2),
                             _cuadreColHeader('Fecha Fin', flex: 2),
+                            _cuadreColHeader('Tipo', flex: 1),
                             _cuadreColHeader('Nombre de Caja', flex: 2),
                             _cuadreColHeader('Responsable', flex: 2),
                             _cuadreColHeader('Total Inicial', flex: 2),
@@ -981,6 +1069,10 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                   _cuadreCell(
                                     cuadre.fechaCierre?.toString().split(' ')[0] ?? 'Abierta',
                                     flex: 2,
+                                  ),
+                                  Expanded(
+                                    flex: 1,
+                                    child: _TipoCajaBadge(tipoCaja: cuadre.tipoCaja),
                                   ),
                                   _cuadreCell(cuadre.nombre, flex: 2),
                                   _cuadreCell(cuadre.responsable, flex: 2),
@@ -2540,6 +2632,44 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
               fontWeight: FontWeight.bold,
               color: color,
               fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TipoCajaBadge extends StatelessWidget {
+  final String tipoCaja;
+
+  const _TipoCajaBadge({required this.tipoCaja});
+
+  @override
+  Widget build(BuildContext context) {
+    final esEnvios = tipoCaja == 'ENVIOS';
+    final color = esEnvios ? AppTheme.secondary : AppTheme.primary;
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            esEnvios ? Icons.local_shipping : Icons.storefront,
+            size: 12,
+            color: color,
+          ),
+          SizedBox(width: 3),
+          Flexible(
+            child: Text(
+              esEnvios ? 'Envíos' : 'Local',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
             ),
           ),
         ],

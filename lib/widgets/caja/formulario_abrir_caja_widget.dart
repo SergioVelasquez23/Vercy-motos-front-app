@@ -8,8 +8,6 @@ class FormularioAbrirCajaWidget extends StatelessWidget {
   final TextEditingController montoInicialController;
   final TextEditingController idMaquinaController;
   final TextEditingController observacionesController;
-  final String? selectedCaja;
-  final ValueChanged<String?> onCajaChanged;
   final VoidCallback onAbrirCaja;
 
   const FormularioAbrirCajaWidget({
@@ -18,8 +16,6 @@ class FormularioAbrirCajaWidget extends StatelessWidget {
     required this.montoInicialController,
     required this.idMaquinaController,
     required this.observacionesController,
-    required this.selectedCaja,
-    required this.onCajaChanged,
     required this.onAbrirCaja,
   }) : super(key: key);
 
@@ -49,44 +45,6 @@ class FormularioAbrirCajaWidget extends StatelessWidget {
                 Icons.schedule,
               ),
             ],
-          ),
-        ),
-        SizedBox(height: 16),
-
-        // Selección de caja
-        CajaUiHelpers.buildCard(
-          context: context,
-          icon: Icons.point_of_sale,
-          title: 'Seleccionar Caja',
-          child: DropdownButtonFormField<String>(
-            decoration: InputDecoration(
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                borderSide: BorderSide(color: AppTheme.primary, width: 2),
-              ),
-              filled: true,
-              fillColor: Theme.of(context).colorScheme.surface,
-              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
-            dropdownColor: Theme.of(context).colorScheme.surface,
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-            value: selectedCaja,
-            items: ['Caja Principal', 'Caja Secundaria']
-                .map<DropdownMenuItem<String>>((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text(value),
-              );
-            }).toList(),
-            onChanged: onCajaChanged,
           ),
         ),
         SizedBox(height: 16),
