@@ -1124,6 +1124,33 @@ class _ImportarFacturaCompraPdfScreenState
       }
     }
 
+    // El PDF a veces trae dos ítems distintos (mismo nombre, referencia
+    // distinta) con una descripción idéntica o casi idéntica una vez
+    // recortada/normalizada — si ambas filas quedan marcadas como "producto
+    // nuevo" con el mismo nombre, se crean dos productos con nombre
+    // duplicado y el backend puede rechazar la compra a mitad de camino,
+    // dejando productos huérfanos con stock en 0 (ya nos pasó). Se bloquea
+    // el guardado antes de que eso vuelva a ocurrir.
+    final nombresNuevos = <String, List<int>>{};
+    for (var i = 0; i < filasIncluidas.length; i++) {
+      final fila = filasIncluidas[i];
+      if (!fila.esNuevo) continue;
+      final nombreNormalizado = fila.descripcionCtrl.text.trim().toLowerCase();
+      nombresNuevos.putIfAbsent(nombreNormalizado, () => []).add(i + 1);
+    }
+    final duplicados = nombresNuevos.entries.where((e) => e.value.length > 1);
+    if (duplicados.isNotEmpty) {
+      final detalle = duplicados
+          .map((e) => '"${filasIncluidas[e.value.first - 1].descripcionCtrl.text.trim()}" (filas ${e.value.join(', ')})')
+          .join(' · ');
+      showErrorSnackBar(
+        context,
+        'Hay productos nuevos con el mismo nombre, van a chocar al crearse: $detalle. '
+        'Edita el nombre de cada uno para que quede distinto (por ejemplo agregando el código de referencia) antes de guardar.',
+      );
+      return;
+    }
+
     setState(() => _guardando = true);
     int creados = 0;
     int actualizados = 0;

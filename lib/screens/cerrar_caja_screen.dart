@@ -486,6 +486,32 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Recordatorio de cuál caja se está cerrando — este
+                    // diálogo es el último paso antes de confirmar el cierre.
+                    if (_cajaActual != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _cajaActual!.tipoCaja == 'ENVIOS'
+                                  ? Icons.local_shipping
+                                  : Icons.storefront,
+                              size: 18,
+                              color: AppTheme.primary,
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              'Vas a cerrar: CAJA ${_cajaActual!.tipoCaja == 'ENVIOS' ? 'ENVÍOS' : 'LOCAL'}',
+                              style: TextStyle(
+                                color: AppTheme.primary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     // Información del efectivo esperado
                     Container(
                       padding: EdgeInsets.all(12),
@@ -1003,14 +1029,50 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                           ),
                         ),
                         if (_cajaActual != null) ...[
-                          SizedBox(height: 4),
-                          Text(
-                            _cajaActual!.nombre ?? 'Caja Principal',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.white70,
+                          SizedBox(height: 8),
+                          // Siempre visible, sin importar si hay una sola caja
+                          // abierta o dos: cuál se está cerrando (LOCAL/ENVIOS)
+                          // no debe depender de que aparezca el selector.
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.white70),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _cajaActual!.tipoCaja == 'ENVIOS'
+                                      ? Icons.local_shipping
+                                      : Icons.storefront,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                                SizedBox(width: 6),
+                                Text(
+                                  _cajaActual!.tipoCaja == 'ENVIOS' ? 'CAJA ENVÍOS' : 'CAJA LOCAL',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+                          if (_cajaActual!.nombre.isNotEmpty && _cajaActual!.nombre != 'Caja Principal') ...[
+                            SizedBox(height: 4),
+                            Text(
+                              _cajaActual!.nombre,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ],
                         ],
                       ],
                     ),
