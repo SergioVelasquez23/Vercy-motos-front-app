@@ -123,7 +123,17 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
   }
 
   Future<void> _cargarEfectivoEsperado() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      // Limpiar valores de la caja anterior: sin este reset, si el usuario
+      // cambia de caja (Local/Envios) con _seleccionarCaja, "Efectivo
+      // Esperado" (y ventas/transferencias si el backend no trae los campos
+      // planos esperados) se queda pegado al valor de la caja que se estaba
+      // viendo antes, porque más abajo solo se sobreescriben cuando están en 0.
+      _efectivoEsperado = 0.0;
+      _ventasEfectivo = 0.0;
+      _transferenciasEsperadas = 0.0;
+    });
 
     try {
       // Intentar obtener cuadre completo primero
