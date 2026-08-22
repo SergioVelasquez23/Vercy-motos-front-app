@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/gasto.dart';
+import '../models/cuadre_caja.dart';
 import '../services/gasto_service.dart';
+import '../services/cuadre_caja_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../utils/pagination_mixin.dart';
@@ -18,6 +20,7 @@ class GastosListScreen extends StatefulWidget {
 
 class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixin<GastosListScreen> {
   final GastoService _gastoService = GastoService();
+  final CuadreCajaService _cuadreCajaService = CuadreCajaService();
 
   // Controladores de filtros
   final _filtroNumeroController = TextEditingController();
@@ -30,10 +33,16 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
   // Otros filtros
   bool _soloCuentasPorPagar = false;
   String _tipoGastoSeleccionado = 'TODOS';
+  // 'TODAS', 'LOCAL' o 'ENVIOS'
+  String _cajaSeleccionada = 'TODAS';
 
   List<Gasto> _gastos = [];
   List<Gasto> _gastosFiltrados = [];
   List<String> _tiposGastoFiltro = ['TODOS'];
+  // cuadreCajaId -> 'LOCAL'/'ENVIOS', para poder filtrar/mostrar a qué caja
+  // quedó cargado cada gasto. Se arma desde TODOS los cuadres (no solo los
+  // abiertos) porque un gasto puede pertenecer a un cuadre ya cerrado.
+  Map<String, String> _tipoCajaPorCuadreId = {};
   bool _isLoading = false;
 
   // Barra visible para el scroll vertical de toda la pantalla (filtros +
@@ -60,7 +69,13 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
   Future<void> _cargarDatos() async {
     setState(() => _isLoading = true);
     try {
-      final gastos = await _gastoService.getAllGastos();
+      final gastosFuture = _gastoService.getAllGastos();
+      // Todos los cuadres (no solo los abiertos): un gasto puede pertenecer
+      // a una caja ya cerrada y aun así hay que poder identificar si era
+      // Local o Envíos.
+      final cuadresFuture = _cuadreCajaService.getAllCuadres();
+      final gastos = await gastosFuture;
+      final cuadres = await cuadresFuture;
 
       // Extraer tipos de gasto únicos
       final tiposGastoSet = <String>{'TODOS'};
@@ -70,9 +85,17 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
         }
       }
 
+      final tipoCajaPorCuadreId = <String, String>{};
+      for (final cuadre in cuadres) {
+        if (cuadre.id != null) {
+          tipoCajaPorCuadreId[cuadre.id!] = cuadre.tipoCaja;
+        }
+      }
+
       setState(() {
         _gastos = gastos;
         _tiposGastoFiltro = tiposGastoSet.toList()..sort();
+        _tipoCajaPorCuadreId = tipoCajaPorCuadreId;
         _aplicarFiltros();
       });
     } catch (e) {
@@ -125,12 +148,18 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
             _tipoGastoSeleccionado == 'TODOS' ||
             gasto.tipoGastoNombre == _tipoGastoSeleccionado;
 
+        // Filtro por caja (Local/Envíos)
+        final matchCaja =
+            _cajaSeleccionada == 'TODAS' ||
+            _tipoCajaPorCuadreId[gasto.cuadreCajaId] == _cajaSeleccionada;
+
         return matchNumero &&
             matchProveedor &&
             matchFechaInicio &&
             matchFechaFin &&
             matchCuentasPorPagar &&
-            matchTipoGasto;
+            matchTipoGasto &&
+            matchCaja;
       }).toList();
 
       // Ordenar por fecha más reciente
@@ -370,6 +399,52 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
               ),
             ),
           ),
+          // Dropdown Caja (Local/Envíos)
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade700),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _cajaSeleccionada,
+                dropdownColor: Theme.of(context).colorScheme.surface,
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
+                icon: Icon(Icons.arrow_drop_down, color: Colors.grey),
+                items: [
+                  DropdownMenuItem(value: 'TODAS', child: Text('Todas las cajas')),
+                  DropdownMenuItem(
+                    value: 'LOCAL',
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.storefront, size: 16, color: AppTheme.primary),
+                        SizedBox(width: 6),
+                        Text('Local'),
+                      ],
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'ENVIOS',
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.local_shipping, size: 16, color: AppTheme.primary),
+                        SizedBox(width: 6),
+                        Text('Envíos'),
+                      ],
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() => _cajaSeleccionada = value ?? 'TODAS');
+                  _aplicarFiltros();
+                },
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -487,13 +562,13 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
     );
   }
 
-  // Ancho fijo por columna (Número, Proveedor, Expedición, Pago, Cuenta,
-  // Total, Pagado, Por Pagar, Tipo de Gasto, Acciones). Con 10 columnas de
-  // ancho flexible no cabían en un teléfono — cada encabezado se partía
+  // Ancho fijo por columna (Número, Caja, Proveedor, Expedición, Pago,
+  // Cuenta, Total, Pagado, Por Pagar, Tipo de Gasto, Acciones). Con columnas
+  // de ancho flexible no cabían en un teléfono — cada encabezado se partía
   // letra por letra al recibir solo ~30px de una columna Expanded. Ahora la
   // tabla completa (encabezado + filas) tiene ancho fijo y se scrollea
   // horizontal en pantallas angostas.
-  static const List<double> _anchosColumnas = [70, 140, 110, 130, 120, 110, 110, 110, 130, 80];
+  static const List<double> _anchosColumnas = [70, 90, 140, 110, 130, 120, 110, 110, 110, 130, 80];
   // Espacio entre columnas: sin esto, un encabezado alineado a la derecha
   // (Total/Pagado/Por Pagar) queda pegado contra el texto de la columna
   // siguiente (alineada a la izquierda), ilegible ("Por PagarTipo de Gasto").
@@ -534,27 +609,28 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildEncabezadoColumna('Número', width: _anchosColumnas[0]),
-                    _buildEncabezadoColumna('Proveedor', width: _anchosColumnas[1]),
-                    _buildEncabezadoColumna('Expedición', width: _anchosColumnas[2]),
-                    _buildEncabezadoColumna('Pago', width: _anchosColumnas[3]),
-                    _buildEncabezadoColumna('Cuenta', width: _anchosColumnas[4]),
+                    _buildEncabezadoColumna('Caja', width: _anchosColumnas[1]),
+                    _buildEncabezadoColumna('Proveedor', width: _anchosColumnas[2]),
+                    _buildEncabezadoColumna('Expedición', width: _anchosColumnas[3]),
+                    _buildEncabezadoColumna('Pago', width: _anchosColumnas[4]),
+                    _buildEncabezadoColumna('Cuenta', width: _anchosColumnas[5]),
                     _buildEncabezadoColumna(
                       'Total',
-                      width: _anchosColumnas[5],
-                      align: TextAlign.right,
-                    ),
-                    _buildEncabezadoColumna(
-                      'Pagado',
                       width: _anchosColumnas[6],
                       align: TextAlign.right,
                     ),
                     _buildEncabezadoColumna(
-                      'Por Pagar',
+                      'Pagado',
                       width: _anchosColumnas[7],
                       align: TextAlign.right,
                     ),
-                    _buildEncabezadoColumna('Tipo de Gasto', width: _anchosColumnas[8]),
-                    _buildEncabezadoColumna('', width: _anchosColumnas[9]), // Acciones
+                    _buildEncabezadoColumna(
+                      'Por Pagar',
+                      width: _anchosColumnas[8],
+                      align: TextAlign.right,
+                    ),
+                    _buildEncabezadoColumna('Tipo de Gasto', width: _anchosColumnas[9]),
+                    _buildEncabezadoColumna('', width: _anchosColumnas[10]), // Acciones
                   ],
                 ),
               ),
@@ -622,6 +698,40 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
     );
   }
 
+  /// Celda "Caja" de la tabla: resuelve gasto.cuadreCajaId contra
+  /// _tipoCajaPorCuadreId (armado desde TODOS los cuadres, abiertos y
+  /// cerrados) y muestra Local/Envíos con el mismo ícono que usa
+  /// CerrarCajaScreen. Si el cuadre no se pudo resolver (dato huérfano o aún
+  /// no cargó), muestra un guión en vez de fallar.
+  Widget _buildCajaCelda(Gasto gasto) {
+    final tipoCaja = _tipoCajaPorCuadreId[gasto.cuadreCajaId];
+    if (tipoCaja == null) {
+      return Text(
+        '—',
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4), fontSize: 13),
+      );
+    }
+    final esEnvios = tipoCaja == 'ENVIOS';
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          esEnvios ? Icons.local_shipping : Icons.storefront,
+          size: 14,
+          color: AppTheme.primary,
+        ),
+        SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            esEnvios ? 'Envíos' : 'Local',
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildFilaTabla(Gasto gasto, int index) {
     final isEven = index % 2 == 0;
     final backgroundColor = isEven ? Theme.of(context).colorScheme.surface : Theme.of(context).colorScheme.surface;
@@ -658,9 +768,16 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
           ),
           const SizedBox(width: _gapColumnas),
 
-          // Proveedor
+          // Caja (Local/Envíos)
           SizedBox(
             width: _anchosColumnas[1],
+            child: _buildCajaCelda(gasto),
+          ),
+          const SizedBox(width: _gapColumnas),
+
+          // Proveedor
+          SizedBox(
+            width: _anchosColumnas[2],
             child: Text(
               gasto.proveedor ?? 'N/A',
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
@@ -671,7 +788,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
 
           // Expedición
           SizedBox(
-            width: _anchosColumnas[2],
+            width: _anchosColumnas[3],
             child: Text(
               '${gasto.fechaGasto.year}-${gasto.fechaGasto.month.toString().padLeft(2, '0')}-${gasto.fechaGasto.day.toString().padLeft(2, '0')}',
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
@@ -681,7 +798,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
 
           // Pago (concepto)
           SizedBox(
-            width: _anchosColumnas[3],
+            width: _anchosColumnas[4],
             child: Text(
               gasto.concepto,
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
@@ -692,7 +809,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
 
           // Cuenta
           SizedBox(
-            width: _anchosColumnas[4],
+            width: _anchosColumnas[5],
             child: Text(
               gasto.formaPago ?? 'PRINCIPAL-CAJA',
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
@@ -703,7 +820,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
 
           // Total
           SizedBox(
-            width: _anchosColumnas[5],
+            width: _anchosColumnas[6],
             child: Text(
               '\$ ${formatNumberWithDots(gasto.monto)}',
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
@@ -714,7 +831,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
 
           // Pagado
           SizedBox(
-            width: _anchosColumnas[6],
+            width: _anchosColumnas[7],
             child: Text(
               '\$ ${formatNumberWithDots(pagado)}',
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
@@ -725,7 +842,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
 
           // Por pagar
           SizedBox(
-            width: _anchosColumnas[7],
+            width: _anchosColumnas[8],
             child: Text(
               '\$ ${formatNumberWithDots(porPagar)}',
               style: TextStyle(
@@ -739,7 +856,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
 
           // Tipo de Gasto
           SizedBox(
-            width: _anchosColumnas[8],
+            width: _anchosColumnas[9],
             child: Text(
               gasto.tipoGastoNombre,
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
@@ -750,7 +867,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
 
           // Acciones
           SizedBox(
-            width: _anchosColumnas[9],
+            width: _anchosColumnas[10],
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -822,6 +939,14 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildDetalleItem('Concepto', gasto.concepto),
+              _buildDetalleItem(
+                'Caja',
+                _tipoCajaPorCuadreId[gasto.cuadreCajaId] == 'ENVIOS'
+                    ? 'Envíos'
+                    : _tipoCajaPorCuadreId[gasto.cuadreCajaId] == 'LOCAL'
+                    ? 'Local'
+                    : 'N/A',
+              ),
               _buildDetalleItem('Proveedor', gasto.proveedor ?? 'N/A'),
               _buildDetalleItem('Tipo de Gasto', gasto.tipoGastoNombre),
               _buildDetalleItem(
