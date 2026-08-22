@@ -175,11 +175,34 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
       if (mounted) {
         setState(() {
           _cuadresDisponibles = allCuadres.where((c) => !c.cerrada).toList();
+          _asegurarCajaSeleccionadaValida();
         });
       }
     } catch (e) {
-        
+
     }
+  }
+
+  /// Si la caja seleccionada actualmente ya no está entre las abiertas (o
+  /// nunca se eligió una), preselecciona la caja LOCAL cuando exista, o si
+  /// no la primera disponible. Sin esto el desplegable de "Caja" del
+  /// formulario de crear gasto arrancaba sin selección y el usuario tenía
+  /// que elegirla a mano incluso cuando solo había una caja abierta.
+  void _asegurarCajaSeleccionadaValida() {
+    if (widget.cuadreCajaId != null) return;
+    final sigueAbierta =
+        _cuadresDisponibles.any((c) => c.id == _selectedCuadreId);
+    if (_selectedCuadreId != null && sigueAbierta) return;
+    if (_cuadresDisponibles.isEmpty) {
+      _selectedCuadreId = null;
+      return;
+    }
+    _selectedCuadreId = _cuadresDisponibles
+        .firstWhere(
+          (c) => c.tipoCaja == 'LOCAL',
+          orElse: () => _cuadresDisponibles.first,
+        )
+        .id;
   }
 
   Future<void> _loadProveedores() async {
@@ -968,36 +991,112 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header con título
-          Text(
-            'Crear Gastos',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                ),
+                child: Icon(Icons.receipt_long, color: AppTheme.primary, size: 22),
+              ),
+              SizedBox(width: 12),
+              Text(
+                _gastoEditando != null ? 'Editar Gasto' : 'Crear Gasto',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: 24),
+          SizedBox(height: 20),
 
-          // Fila superior: Proveedor, Fecha, Vencimiento, Tipo de Gasto, Documento Soporte
-          _buildHeaderRow(),
-          SizedBox(height: 24),
+          // Fila superior: Proveedor, Caja, Fecha, Vencimiento, Tipo de Gasto, Documento Soporte
+          _sectionCard(
+            title: 'Datos del gasto',
+            icon: Icons.assignment_outlined,
+            child: _buildHeaderRow(),
+          ),
+          SizedBox(height: 20),
 
           // Desglose Efectivo/Transferencia cuando la forma de pago es Mixto
           if (_selectedFormaPago == 'Mixto') ...[
             _buildCamposMixto(),
-            SizedBox(height: 24),
+            SizedBox(height: 20),
           ],
 
           // Tabla de conceptos
-          _buildConceptosTable(),
-          SizedBox(height: 32),
+          _sectionCard(
+            title: 'Conceptos',
+            icon: Icons.list_alt_outlined,
+            padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
+            child: _buildConceptosTable(),
+          ),
+          SizedBox(height: 20),
 
           // Sección inferior: Descripción, Retenciones, Resumen
-          _buildBottomSection(),
+          _sectionCard(
+            title: 'Detalles y resumen',
+            icon: Icons.summarize_outlined,
+            child: _buildBottomSection(),
+          ),
           SizedBox(height: 24),
 
           // Botón Pagar
           _buildPayButton(),
+        ],
+      ),
+    );
+  }
+
+  /// Envoltorio visual estándar para cada bloque del formulario: tarjeta con
+  /// esquinas redondeadas, sombra suave y un título con ícono, en vez de que
+  /// las filas de campos "floten" sueltas sobre el fondo de la pantalla.
+  Widget _sectionCard({
+    required String title,
+    required IconData icon,
+    required Widget child,
+    EdgeInsetsGeometry? padding,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: padding ?? EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.08),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: AppTheme.primary, size: 18),
+              SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          child,
         ],
       ),
     );
@@ -1103,17 +1202,100 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
   Widget _buildHeaderRow() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Si el ancho disponible es menor a 900px, scroll horizontal con anchos fijos
-        final needScroll = constraints.maxWidth < 900;
+        // Ancho mínimo para que quepan todas las columnas (incluida "Caja",
+        // que solo aparece cuando widget.cuadreCajaId es null); si no cabe,
+        // scroll horizontal con anchos fijos.
+        final anchoMinimo = widget.cuadreCajaId == null ? 1050.0 : 900.0;
+        final needScroll = constraints.maxWidth < anchoMinimo;
         return SingleChildScrollView(
           scrollDirection: needScroll ? Axis.horizontal : Axis.vertical,
           physics: needScroll ? null : const NeverScrollableScrollPhysics(),
           child: SizedBox(
-            width: needScroll ? 900 : constraints.maxWidth,
+            width: needScroll ? anchoMinimo : constraints.maxWidth,
             child: _buildHeaderRowContent(),
           ),
         );
       },
+    );
+  }
+
+  /// Selector de caja (Local/Envíos) para el formulario de crear/editar
+  /// gasto. Usa el mismo criterio visual (ícono + etiqueta) que el selector
+  /// de caja de CerrarCajaScreen para que "Local"/"Envíos" se reconozcan
+  /// igual en toda la app.
+  Widget _buildCajaField() {
+    final cajaIds = _cuadresDisponibles.map((c) => c.id).toSet();
+    final valorSeguro =
+        (_selectedCuadreId != null && cajaIds.contains(_selectedCuadreId))
+        ? _selectedCuadreId
+        : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Caja:',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        SizedBox(height: 8),
+        Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
+            ),
+          ),
+          child: DropdownButtonFormField<String>(
+            key: ValueKey('caja_form_$valorSeguro'),
+            value: valorSeguro,
+            isExpanded: true,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontSize: 15,
+            ),
+            decoration: InputDecoration(
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+              border: InputBorder.none,
+              hintText: 'Caja',
+              hintStyle: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                fontSize: 15,
+              ),
+            ),
+            dropdownColor: Theme.of(context).colorScheme.surface,
+            items: _cuadresDisponibles.map((cuadre) {
+              final esEnvios = cuadre.tipoCaja == 'ENVIOS';
+              return DropdownMenuItem<String>(
+                value: cuadre.id,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      esEnvios ? Icons.local_shipping : Icons.storefront,
+                      size: 18,
+                      color: AppTheme.primary,
+                    ),
+                    SizedBox(width: 8),
+                    Text(esEnvios ? 'Envíos' : 'Local'),
+                  ],
+                ),
+              );
+            }).toList(),
+            onChanged: (v) => setState(() => _selectedCuadreId = v),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1571,6 +1753,17 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
           ),
         ),
         SizedBox(width: 20),
+
+        // Caja (Local/Envios): a qué caja se carga este gasto. Solo se
+        // muestra cuando la pantalla no viene fijada a un cuadre puntual
+        // (widget.cuadreCajaId) y hay cuadres abiertos entre los que elegir
+        // — sin este selector el gasto se asignaba en silencio a la primera
+        // caja de la lista (ver _saveGastoNuevo), sin que el usuario pudiera
+        // elegir "Envíos" cuando ambas cajas estaban abiertas a la vez.
+        if (widget.cuadreCajaId == null) ...[
+          Expanded(flex: 1, child: _buildCajaField()),
+          SizedBox(width: 20),
+        ],
 
         // Forma de Pago
         Expanded(
@@ -2134,16 +2327,25 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
       ],
     );
 
-    final resumen = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildResumenRow('Subtotal', _subtotalGasto),
-        _buildResumenRow('Descuento', _descuentoGasto),
-        _buildResumenRow('Impuestos', _impuestosGasto),
-        SizedBox(height: 12),
-        Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3)),
-        _buildResumenRow('Total', _totalGasto, isTotal: true),
-      ],
+    final resumen = Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildResumenRow('Subtotal', _subtotalGasto),
+          _buildResumenRow('Descuento', _descuentoGasto),
+          _buildResumenRow('Impuestos', _impuestosGasto),
+          SizedBox(height: 8),
+          Divider(color: AppTheme.primary.withOpacity(0.2)),
+          SizedBox(height: 4),
+          _buildResumenRow('Total', _totalGasto, isTotal: true),
+        ],
+      ),
     );
 
     // 📱 Descripción + Retenciones + Resumen lado a lado (2 Expanded + un
@@ -2229,7 +2431,9 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
             width: 140,
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
+              color: isTotal
+                  ? AppTheme.primary.withOpacity(0.14)
+                  : Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
@@ -2252,20 +2456,32 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
       alignment: Alignment.centerRight,
       child: SizedBox(
         width: dialogWidth(context, 320),
-        child: ElevatedButton(
+        child: ElevatedButton.icon(
           onPressed: _guardandoGasto ? null : () => runGuarded(_saveGastoNuevo),
+          icon: _guardandoGasto
+              ? SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Icon(Icons.check_circle_outline, color: Colors.white),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppTheme.primary,
-            padding: EdgeInsets.symmetric(vertical: 20),
+            padding: EdgeInsets.symmetric(vertical: 18),
+            elevation: 2,
+            shadowColor: AppTheme.primary.withOpacity(0.4),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
             ),
           ),
-          child: Text(
+          label: Text(
             _guardandoGasto ? 'Guardando...' : 'Pagar',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 18,
+              fontSize: 17,
               fontWeight: FontWeight.bold,
             ),
           ),
