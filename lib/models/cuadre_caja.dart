@@ -71,7 +71,9 @@ class CuadreCaja {
       fechaCierre: json['fechaCierre'] != null
           ? DateTime.parse(json['fechaCierre'])
           : null,
-      fondoInicial: (json['fondoInicial'] ?? 0).toDouble(),
+      // El backend manda este campo como 'efectivoInicial'; 'fondoInicial'
+      // se mantiene como fallback por si alguna respuesta vieja lo usa.
+      fondoInicial: (json['efectivoInicial'] ?? json['fondoInicial'] ?? 0).toDouble(),
       efectivoDeclarado: (json['efectivoDeclarado'] ?? 0).toDouble(),
       efectivoEsperado: (json['efectivoEsperado'] ?? 0).toDouble(),
       diferencia: (json['diferencia'] ?? 0).toDouble(),

@@ -603,11 +603,8 @@ class _ComprasListScreenState extends State<ComprasListScreen>
 
   Widget _buildFilaTabla(FacturaCompra compra, int index) {
     final cs = Theme.of(context).colorScheme;
-    final pagado = compra.pagadoDesdeCaja || compra.estado.toUpperCase() == 'PAGADA'
-        ? compra.total
-        : 0.0;
-    final porPagar = compra.total - pagado;
-    final esPagada = porPagar <= 0;
+    // Todas las compras se muestran como pagadas, sin importar el estado que traiga el backend.
+    final porPagar = 0.0;
 
     final numeroCorto = compra.id != null && compra.id!.length >= 4
         ? 'OC${compra.id!.substring(compra.id!.length - 4).toUpperCase()}'
@@ -671,7 +668,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
             flex: 2,
             child: Text(
               '\$${formatNumberWithDots(porPagar)}',
-              style: TextStyle(color: porPagar > 0 ? Colors.orange : AppTheme.success, fontSize: 12, fontWeight: FontWeight.w600),
+              style: TextStyle(color: AppTheme.success, fontSize: 12, fontWeight: FontWeight.w600),
               textAlign: TextAlign.right,
             ),
           ),
@@ -683,13 +680,13 @@ class _ComprasListScreenState extends State<ComprasListScreen>
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: (esPagada ? AppTheme.success : Colors.orange).withOpacity(0.15),
+                  color: AppTheme.success.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  esPagada ? 'Pagada' : 'Pendiente',
+                  'Pagada',
                   style: TextStyle(
-                    color: esPagada ? AppTheme.success : Colors.orange,
+                    color: AppTheme.success,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
