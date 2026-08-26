@@ -106,7 +106,7 @@ spring.web.cors.allowedMethods=GET,POST,PUT,DELETE,OPTIONS
 // El cliente Flutter se conecta a este endpoint WebSocket:
 // ws://localhost:8081/topic/matias-webhooks
 // or
-// wss://vercy-motos-app.onrender.com/topic/matias-webhooks
+// wss://204-168-190-85.nip.io/topic/matias-webhooks
 
 // Formato esperado del mensaje:
 /*
@@ -138,7 +138,7 @@ spring.web.cors.allowedMethods=GET,POST,PUT,DELETE,OPTIONS
 // {
 //   "success": true,
 //   "webhook_id": "wh_xyz789",
-//   "url": "https://vercy-motos-app.onrender.com/api/webhooks/matias",
+//   "url": "https://204-168-190-85.nip.io/api/webhooks/matias",
 //   "events": ["document.created", "document.accepted", "document.rejected", ...]
 // }
 

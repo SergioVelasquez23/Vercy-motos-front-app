@@ -292,14 +292,26 @@ class ImageService {
       return cleanFilename;
     }
 
-    // VERIFICACIÓN: Lógica de migración de URLs antiguas (Railway -> Render)
-    // Si la URL contiene la antigua URL de Railway, migrarla a Render
+    // VERIFICACIÓN: Lógica de migración de URLs antiguas (Railway -> Render -> VPS)
+    // Si la URL contiene un dominio de backend viejo, reconstruirla con el
+    // backend actual en vez de devolverla tal cual — Render suspendió el
+    // servicio, así que una URL con ese dominio ya no carga nada.
 
     // Si ya es una URL completa, validarla
     if (cleanFilename.startsWith('http')) {
-      // Las URLs ya están en Render, solo validarlas
+      // Imagen guardada con el dominio viejo de Render: reescribir el mismo
+      // path sobre el backend actual (_apiConfig.baseUrl) en vez de devolver
+      // un link muerto.
       if (cleanFilename.contains('vercy-motos-app-048m.onrender.com')) {
-        return cleanFilename;
+        try {
+          final uriAntigua = Uri.parse(cleanFilename);
+          final baseUrl = _apiConfig.baseUrl.endsWith('/')
+              ? _apiConfig.baseUrl.substring(0, _apiConfig.baseUrl.length - 1)
+              : _apiConfig.baseUrl;
+          return '$baseUrl${uriAntigua.path}';
+        } catch (e) {
+          return '';
+        }
       }
 
       // Validar que no termine en rutas incompletas

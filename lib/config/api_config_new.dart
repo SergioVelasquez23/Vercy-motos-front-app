@@ -119,12 +119,15 @@ class ApiConfig {
   }
 
   /// Obtiene URL fallback basada en ambiente
+  ///
+  /// staging/production apuntan al VPS real (kBackendUrl, ver constants.dart)
+  /// — antes apuntaban a un servicio de Render que ya fue suspendido por su
+  /// dueño y dejaba estas dos claves del mapa devolviendo una URL muerta.
   String _getFallbackUrl([String? environmentName]) {
-    // URLs fallback por ambiente - localhost en desarrollo
     final fallbackUrls = {
-      'development': 'http://localhost:8081',
-      'staging': 'https://vercy-motos-app-048m.onrender.com',
-      'production': 'https://vercy-motos-app-048m.onrender.com',
+      'development': kLocalBackendUrl,
+      'staging': kBackendUrl,
+      'production': kBackendUrl,
     };
 
     return fallbackUrls[environmentName] ?? kDynamicBackendUrl;

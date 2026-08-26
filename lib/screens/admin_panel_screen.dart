@@ -75,38 +75,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     }
   }
 
-  Future<void> _clearAllData() async {
-    final confirmed = await _showConfirmDialog(
-      ' ELIMINAR TODOS LOS DATOS',
-      'Esto eliminará TODOS los pedidos, facturas, documentos, cuadres, gastos e ingresos.\n\n'
-          ' Esta operación NO se puede deshacer.\n\n'
-          '¿Estás completamente seguro?',
-    );
-
-    if (!confirmed) return;
-
-    setState(() => _isLoading = true);
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/admin/clear-data'),
-        headers: headers,
-      );
-
-      final data = json.decode(response.body);
-      if (data['success']) {
-        _showSuccess('Accion realizada');
-        setState(() => _lastResult = json.encode(data['deletedCounts']));
-        await _loadStats();
-      } else {
-        _showError('Error: ${data['message']}');
-      }
-    } catch (e) {
-      _showError('Error eliminando datos: ${errorMessage(e)}');
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
   Future<void> _resetMesas() async {
     final confirmed = await _showConfirmDialog(
       'RESETEAR MESAS',
@@ -936,15 +904,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               label: 'Eliminar Pedido Específico',
               onPressed: _isLoading ? null : _eliminarPedidoEspecifico,
               isSecondary: true,
-            ),
-
-            SizedBox(height: 10),
-
-            // Botón de eliminación total
-            _buildDangerButton(
-              icon: Icons.warning_rounded,
-              label: 'ELIMINAR TODOS LOS DATOS',
-              onPressed: _isLoading ? null : _clearAllData,
             ),
           ],
         ),

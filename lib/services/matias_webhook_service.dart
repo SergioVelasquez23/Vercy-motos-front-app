@@ -31,7 +31,7 @@ class MatiasWebhookService {
 
   /// Conecta al WebSocket del backend
   ///
-  /// [baseUrl]: URL base del backend (ej: "wss://vercy-motos-app.onrender.com" o "ws://localhost:8081")
+  /// [baseUrl]: URL base del backend (ej: "wss://204-168-190-85.nip.io" o "ws://localhost:8081")
   /// [onEvent]: Callback para procesar eventos recibidos
   /// [onConnectionStatusChanged]: Callback opcional para cambios de estado de conexión
   Future<void> connect({

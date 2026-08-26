@@ -64,11 +64,8 @@ const String backendUrl = 'ws://tuserver.com'; // o wss:// para HTTPS
 // Desarrollo local
 const String backendUrl = 'ws://localhost:8081';
 
-// Render.com (producción)
-const String backendUrl = 'wss://vercy-motos-app.onrender.com';
-
-// Railway
-const String backendUrl = 'wss://tu-app-railway.railway.app';
+// VPS Hetzner (producción)
+const String backendUrl = 'wss://204-168-190-85.nip.io';
 ```
 
 ### 3️⃣ Verificar endpoint en backend
