@@ -29,28 +29,21 @@ class _RentabilidadScreenState extends State<RentabilidadScreen> {
   bool _isExportando = false;
   Map<String, dynamic>? _resultadoProductos;
   Map<String, dynamic>? _resultadoClientes;
+  bool _excluirManoDeObra = false;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Rentabilidad por Producto y Cliente'),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildHeaderCard(),
-            const SizedBox(height: 16),
-            _buildFormularioCard(),
-            const SizedBox(height: 16),
-            if (_resultadoProductos != null && _resultadoClientes != null) ..._buildResultado(),
-          ],
-        ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeaderCard(),
+          const SizedBox(height: 16),
+          _buildFormularioCard(),
+          const SizedBox(height: 16),
+          if (_resultadoProductos != null && _resultadoClientes != null) ..._buildResultado(),
+        ],
       ),
     );
   }
@@ -123,7 +116,19 @@ class _RentabilidadScreenState extends State<RentabilidadScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              value: _excluirManoDeObra,
+              onChanged: (valor) => setState(() => _excluirManoDeObra = valor),
+              title: const Text('Excluir mano de obra', style: TextStyle(fontSize: 14)),
+              subtitle: const Text(
+                'Solo repuestos/productos en el ranking, sin servicios de reparación',
+                style: TextStyle(fontSize: 11),
+              ),
+            ),
+            const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -451,7 +456,11 @@ class _RentabilidadScreenState extends State<RentabilidadScreen> {
         59,
       );
       final resultados = await Future.wait([
-        _libroContableService.getRentabilidadProductos(_rangoSeleccionado!.start, hastaFinDia),
+        _libroContableService.getRentabilidadProductos(
+          _rangoSeleccionado!.start,
+          hastaFinDia,
+          filtroTipoItem: _excluirManoDeObra ? 'producto' : null,
+        ),
         _libroContableService.getRentabilidadClientes(_rangoSeleccionado!.start, hastaFinDia),
       ]);
       if (!mounted) return;

@@ -39,25 +39,17 @@ class _CosteoInventarioScreenState extends State<CosteoInventarioScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Costeo de Inventario y Utilidad Real'),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildHeaderCard(),
-            const SizedBox(height: 16),
-            _buildFormularioCard(),
-            const SizedBox(height: 16),
-            if (_resultado != null) ..._buildResultado(),
-          ],
-        ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeaderCard(),
+          const SizedBox(height: 16),
+          _buildFormularioCard(),
+          const SizedBox(height: 16),
+          if (_resultado != null) ..._buildResultado(),
+        ],
       ),
     );
   }

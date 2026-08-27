@@ -282,11 +282,15 @@ class LibroContableService {
     DateTime desde,
     DateTime hasta, {
     int limite = 10,
+    String? filtroTipoItem,
   }) {
-    final url =
+    var url =
         '$_baseUrl/api/reportes/rentabilidad-productos'
         '?fechaDesde=${desde.toIso8601String()}&fechaHasta=${hasta.toIso8601String()}'
         '&limite=$limite';
+    if (filtroTipoItem != null) {
+      url += '&filtroTipoItem=$filtroTipoItem';
+    }
     return _getJson(url);
   }
 
@@ -337,5 +341,71 @@ class LibroContableService {
         '?fechaDesde=${desde.toIso8601String()}&fechaHasta=${hasta.toIso8601String()}'
         '&cantidadPeriodosHistoricos=$cantidadPeriodosHistoricos&cantidadMesesPerdida=$cantidadMesesPerdida';
     return _getJson(url);
+  }
+
+  /// Recomendaciones en texto sobre la salud financiera del período: reglas
+  /// fijas (margen bajo, gastos fijos altos, compras altas, desbalance
+  /// repuestos/mano de obra, cartera vencida) más la comparación contra el
+  /// período anterior — cada una con un "mensaje" ya redactado por el backend,
+  /// igual criterio que [getAnomalias]. Devuelve la lista directamente (el
+  /// backend responde con una lista, no un mapa, a diferencia de los demás
+  /// métodos de este servicio).
+  Future<List<dynamic>> getRecomendaciones(DateTime desde, DateTime hasta) async {
+    final token = await _baseService.getToken();
+    if (token == null) {
+      throw Exception('No hay token de autenticación');
+    }
+
+    final url = Uri.parse(
+      '$_baseUrl/api/reportes/libro-contable/recomendaciones'
+      '?fechaDesde=${desde.toIso8601String()}&fechaHasta=${hasta.toIso8601String()}',
+    );
+
+    try {
+      final response = await http
+          .get(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(
+            const Duration(seconds: 120),
+            onTimeout: () {
+              throw Exception(
+                'El servidor tardó demasiado en responder. Intenta con un rango más corto.',
+              );
+            },
+          );
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        if (jsonData['success'] == true) {
+          return jsonData['data'] as List<dynamic>;
+        } else {
+          throw Exception(jsonData['message'] ?? 'Error desconocido');
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('No autorizado. Verifica tus credenciales.');
+      } else if (response.statusCode == 403) {
+        throw Exception('No tienes permisos para ver este reporte.');
+      } else {
+        final errorBody = response.body.isNotEmpty
+            ? response.body
+            : 'Sin detalles del error';
+        throw Exception(
+          'Error del servidor (${response.statusCode}): $errorBody',
+        );
+      }
+    } on SocketException {
+      throw Exception('Sin conexión a internet. Verifica tu conectividad.');
+    } on http.ClientException {
+      throw Exception('Error de conexión con el servidor.');
+    } on FormatException {
+      throw Exception('Error en el formato de respuesta del servidor.');
+    } catch (e) {
+      rethrow;
+    }
   }
 }

@@ -907,6 +907,12 @@ class ExcelExportService {
     required Map<String, dynamic> datosLibroContable,
     String? nombreUsuario,
     String? observaciones,
+    // Opcionales: solo disponibles cuando se exporta desde el tab "Resumen"
+    // (que ya carga rentabilidad por producto sin mano de obra y
+    // recomendaciones); si vienen null se omite esa hoja, sin romper el
+    // export más simple del tab "Ventas y Gastos".
+    Map<String, dynamic>? rentabilidadProductosSinManoDeObra,
+    List<dynamic>? recomendaciones,
   }) async {
     try {
       var excel = Excel.createExcel();
@@ -922,6 +928,9 @@ class ExcelExportService {
       excel.copy('Sheet1', 'Ventas Locales');
       excel.copy('Sheet1', 'Compras');
       excel.copy('Sheet1', 'Gastos');
+      if (rentabilidadProductosSinManoDeObra != null || recomendaciones != null) {
+        excel.copy('Sheet1', 'Resumen Narrativo');
+      }
 
       CellStyle headerStyle = CellStyle(
         fontFamily: getFontFamily(FontFamily.Calibri),
@@ -971,6 +980,16 @@ class ExcelExportService {
         titleStyle,
         headerStyle,
       );
+      if (rentabilidadProductosSinManoDeObra != null || recomendaciones != null) {
+        _llenarHojaResumenNarrativo(
+          excel['Resumen Narrativo'],
+          datosLibroContable,
+          rentabilidadProductosSinManoDeObra,
+          recomendaciones,
+          titleStyle,
+          headerStyle,
+        );
+      }
 
       String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
       String fileName =
@@ -1285,6 +1304,84 @@ class ExcelExportService {
         gasto['formaPago']?.toString() ?? '',
       );
       row++;
+    }
+  }
+
+  /// Hoja adicional del tab "Resumen": gastos por naturaleza (fijo/variable/
+  /// mixto, ya viene en [datosLibroContable]), compras como % de ventas,
+  /// ventas por producto sin mano de obra, y las recomendaciones en texto —
+  /// mismo contenido que se ve en pantalla, en formato exportable.
+  static void _llenarHojaResumenNarrativo(
+    Sheet sheet,
+    Map<String, dynamic> datosLibroContable,
+    Map<String, dynamic>? rentabilidadProductos,
+    List<dynamic>? recomendaciones,
+    CellStyle titleStyle,
+    CellStyle headerStyle,
+  ) {
+    sheet.cell(CellIndex.indexByString('A1')).value = TextCellValue('RESUMEN NARRATIVO');
+    sheet.cell(CellIndex.indexByString('A1')).cellStyle = titleStyle;
+    sheet.merge(CellIndex.indexByString('A1'), CellIndex.indexByString('D1'));
+
+    int row = 3;
+    final gastos = datosLibroContable['gastos'] as Map<String, dynamic>? ?? {};
+    row = _escribirDesglose(sheet, gastos, 'porNaturaleza', 'Gastos por naturaleza (fijo/variable/mixto)', row, headerStyle);
+
+    row++;
+    sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue('Compras como % de ventas:');
+    sheet.cell(CellIndex.indexByString('B$row')).value = DoubleCellValue(
+      double.tryParse(datosLibroContable['comprasComoPorcentajeVentas']?.toString() ?? '0') ?? 0,
+    );
+    row += 2;
+
+    if (rentabilidadProductos != null) {
+      sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue('VENTAS POR PRODUCTO (SIN MANO DE OBRA)');
+      sheet.cell(CellIndex.indexByString('A$row')).cellStyle = headerStyle;
+      sheet.merge(CellIndex.indexByString('A$row'), CellIndex.indexByString('C$row'));
+      row++;
+
+      final headers = ['Producto', 'Cantidad Vendida', 'Ventas'];
+      for (int i = 0; i < headers.length; i++) {
+        final cellAddress = String.fromCharCode(65 + i) + row.toString();
+        sheet.cell(CellIndex.indexByString(cellAddress)).value = TextCellValue(headers[i]);
+        sheet.cell(CellIndex.indexByString(cellAddress)).cellStyle = headerStyle;
+      }
+      row++;
+
+      final porCantidad = rentabilidadProductos['porCantidadVendida'] as List<dynamic>? ?? [];
+      for (var producto in porCantidad) {
+        final mapa = producto as Map<String, dynamic>;
+        sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+          mapa['productoNombre']?.toString() ?? '',
+        );
+        sheet.cell(CellIndex.indexByString('B$row')).value = DoubleCellValue(
+          double.tryParse(mapa['cantidadVendida']?.toString() ?? '0') ?? 0,
+        );
+        sheet.cell(CellIndex.indexByString('C$row')).value = DoubleCellValue(
+          double.tryParse(mapa['ventas']?.toString() ?? '0') ?? 0,
+        );
+        row++;
+      }
+      row++;
+    }
+
+    if (recomendaciones != null) {
+      sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue('RECOMENDACIONES');
+      sheet.cell(CellIndex.indexByString('A$row')).cellStyle = headerStyle;
+      sheet.merge(CellIndex.indexByString('A$row'), CellIndex.indexByString('D$row'));
+      row++;
+
+      for (var recomendacion in recomendaciones) {
+        final mapa = recomendacion as Map<String, dynamic>;
+        sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+          mapa['categoria']?.toString() ?? '',
+        );
+        sheet.cell(CellIndex.indexByString('B$row')).value = TextCellValue(
+          mapa['mensaje']?.toString() ?? '',
+        );
+        sheet.merge(CellIndex.indexByString('B$row'), CellIndex.indexByString('D$row'));
+        row++;
+      }
     }
   }
 

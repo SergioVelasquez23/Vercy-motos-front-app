@@ -52,10 +52,6 @@ import '../screens/documentos_pendientes_screen.dart';
 import '../screens/matias_test_screen.dart';
 import '../screens/configuracion_screen.dart';
 import '../screens/libro_contable_screen.dart';
-import '../screens/costeo_inventario_screen.dart';
-import '../screens/rentabilidad_screen.dart';
-import '../screens/comparativo_periodos_screen.dart';
-import '../screens/anomalias_screen.dart';
 import '../screens/legal_screen.dart';
 
 // Pantalla de edición de stock simplificada (ver editar_stock_simple_screen.dart):
@@ -202,11 +198,28 @@ GoRouter buildAppRouter(UserProvider userProvider) => GoRouter(
         GoRoute(path: '/reportes/pedidos', builder: (c, s) => const ReportesScreen(initialReportIndex: 3)),
         GoRoute(path: '/reportes/clientes', builder: (c, s) => const ReportesScreen(initialReportIndex: 4)),
         GoRoute(path: '/informes/productos', builder: (c, s) => const InformesProductosScreen()),
+        // Las 5 pantallas de reportes contables se fusionaron en una sola
+        // (LibroContableScreen con tabs) — las rutas viejas se conservan como
+        // deep-links directos al tab que corresponde, en el mismo orden que
+        // _LibroContableScreenState._tabs: 0 Resumen, 1 Ventas y Gastos,
+        // 2 Costeo, 3 Rentabilidad, 4 Comparación, 5 Anomalías.
         GoRoute(path: '/libro-contable', builder: (c, s) => const LibroContableScreen()),
-        GoRoute(path: '/costeo-inventario', builder: (c, s) => const CosteoInventarioScreen()),
-        GoRoute(path: '/rentabilidad', builder: (c, s) => const RentabilidadScreen()),
-        GoRoute(path: '/comparativo-periodos', builder: (c, s) => const ComparativoPeriodosScreen()),
-        GoRoute(path: '/anomalias', builder: (c, s) => const AnomaliasScreen()),
+        GoRoute(
+          path: '/costeo-inventario',
+          builder: (c, s) => const LibroContableScreen(initialTabIndex: 2),
+        ),
+        GoRoute(
+          path: '/rentabilidad',
+          builder: (c, s) => const LibroContableScreen(initialTabIndex: 3),
+        ),
+        GoRoute(
+          path: '/comparativo-periodos',
+          builder: (c, s) => const LibroContableScreen(initialTabIndex: 4),
+        ),
+        GoRoute(
+          path: '/anomalias',
+          builder: (c, s) => const LibroContableScreen(initialTabIndex: 5),
+        ),
         GoRoute(path: '/facturacion-electronica', builder: (c, s) => const FEDocumentosScreen()),
         GoRoute(path: '/documentos-pendientes', builder: (c, s) => const DocumentosPendientesScreen()),
         GoRoute(path: '/matias-test', builder: (c, s) => const MatiasTestScreen()),

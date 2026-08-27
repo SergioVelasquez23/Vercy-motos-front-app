@@ -8,15 +8,645 @@ import '../providers/user_provider.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/reportes/rango_fechas_dialog.dart';
+import 'costeo_inventario_screen.dart';
+import 'rentabilidad_screen.dart';
+import 'comparativo_periodos_screen.dart';
+import 'anomalias_screen.dart';
 
+/// Pantalla única que fusiona los 5 reportes contables que antes vivían
+/// separados en el submenú (Libro Contable, Costeo y Utilidad Real,
+/// Rentabilidad Producto/Cliente, Comparación de Períodos, Alertas y
+/// Anomalías) en una sola pantalla con tabs. [initialTabIndex] permite que
+/// las rutas antiguas (/costeo-inventario, /rentabilidad, etc.) sigan
+/// funcionando como deep-links, abriendo directamente el tab que corresponde.
 class LibroContableScreen extends StatefulWidget {
-  const LibroContableScreen({super.key});
+  final int initialTabIndex;
+
+  const LibroContableScreen({super.key, this.initialTabIndex = 0});
 
   @override
   State<LibroContableScreen> createState() => _LibroContableScreenState();
 }
 
-class _LibroContableScreenState extends State<LibroContableScreen> {
+class _LibroContableScreenState extends State<LibroContableScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  static const List<Tab> _tabs = [
+    Tab(icon: Icon(Icons.summarize), text: 'Resumen'),
+    Tab(icon: Icon(Icons.menu_book), text: 'Ventas y Gastos'),
+    Tab(icon: Icon(Icons.calculate), text: 'Costeo y Utilidad'),
+    Tab(icon: Icon(Icons.leaderboard), text: 'Rentabilidad'),
+    Tab(icon: Icon(Icons.compare_arrows), text: 'Comparación'),
+    Tab(icon: Icon(Icons.warning_amber), text: 'Anomalías'),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    initializeDateFormatting('es_ES', null);
+    _tabController = TabController(
+      length: _tabs.length,
+      vsync: this,
+      initialIndex: widget.initialTabIndex.clamp(0, _tabs.length - 1),
+    );
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Libro Contable'),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        elevation: 0,
+        bottom: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          tabs: _tabs,
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: const [
+          _ResumenTab(),
+          _VentasYGastosTab(),
+          CosteoInventarioScreen(),
+          RentabilidadScreen(),
+          ComparativoPeriodosScreen(),
+          AnomaliasScreen(),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// TAB "RESUMEN" — narrativa texto + datos, con desglose expandible por cifra.
+// ============================================================================
+
+class _ResumenTab extends StatefulWidget {
+  const _ResumenTab();
+
+  @override
+  State<_ResumenTab> createState() => _ResumenTabState();
+}
+
+class _ResumenTabState extends State<_ResumenTab> {
+  final LibroContableService _service = LibroContableService();
+
+  DateTimeRange? _rango;
+  bool _isLoading = false;
+
+  Map<String, dynamic>? _libroContable;
+  Map<String, dynamic>? _rentabilidadProductos;
+  List<dynamic>? _recomendaciones;
+  bool _isExporting = false;
+
+  Future<void> _elegirRangoYCargar() async {
+    final rango = await mostrarSelectorRangoFechas(
+      context,
+      titulo: 'Resumen del Período',
+      valorInicial: _rango,
+    );
+    if (rango == null) return;
+
+    setState(() {
+      _rango = rango;
+    });
+    await _cargar();
+  }
+
+  Future<void> _exportarAExcel() async {
+    if (_libroContable == null) return;
+    setState(() {
+      _isExporting = true;
+    });
+
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final filePath = await ExcelExportService.exportarLibroContable(
+        datosLibroContable: _libroContable!,
+        nombreUsuario: userProvider.userName,
+        rentabilidadProductosSinManoDeObra: _rentabilidadProductos,
+        recomendaciones: _recomendaciones,
+      );
+
+      if (!mounted) return;
+      if (filePath != null) {
+        final isWeb = filePath.startsWith('web_download:');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isWeb
+                  ? '¡Archivo descargado exitosamente! Verifica tu carpeta de descargas.'
+                  : 'Excel generado en: $filePath',
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+            action: (!isWeb)
+                ? SnackBarAction(
+                    label: 'Compartir',
+                    textColor: Colors.white,
+                    onPressed: () => ExcelExportService.compartirExcel(filePath),
+                  )
+                : null,
+          ),
+        );
+      } else {
+        showErrorDialog(context, 'Error al generar el archivo Excel');
+      }
+    } catch (e) {
+      if (mounted) {
+        showErrorDialog(context, errorMessage(e));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isExporting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _cargar() async {
+    if (_rango == null) return;
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final desde = _rango!.start;
+      final hasta = DateTime(
+        _rango!.end.year,
+        _rango!.end.month,
+        _rango!.end.day,
+        23,
+        59,
+        59,
+      );
+
+      final resultados = await Future.wait([
+        _service.getLibroContablePorRango(desde, hasta),
+        _service.getRentabilidadProductos(
+          desde,
+          hasta,
+          limite: 9999,
+          filtroTipoItem: 'producto',
+        ),
+        _service.getRecomendaciones(desde, hasta),
+      ]);
+
+      if (!mounted) return;
+      setState(() {
+        _libroContable = resultados[0] as Map<String, dynamic>;
+        _rentabilidadProductos = resultados[1] as Map<String, dynamic>;
+        _recomendaciones = resultados[2] as List<dynamic>;
+      });
+    } catch (e) {
+      if (mounted) {
+        showErrorDialog(context, errorMessage(e));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeaderCard(context),
+          const SizedBox(height: 16),
+          _buildSelectorCard(context),
+          if (_libroContable != null) ...[
+            const SizedBox(height: 16),
+            _buildVentasSection(),
+            const SizedBox(height: 12),
+            _buildProductosSection(),
+            const SizedBox(height: 12),
+            _buildGastosSection(),
+            const SizedBox(height: 12),
+            _buildComprasSection(),
+            const SizedBox(height: 12),
+            _buildUtilidadSection(),
+            const SizedBox(height: 12),
+            _buildRecomendacionesSection(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderCard(BuildContext context) {
+    return Card(
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.summarize, color: Theme.of(context).primaryColor, size: 28),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Resumen del período',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Un solo reporte que explica en texto y cifras cuánto vendiste, qué '
+              'vendiste (sin mezclar mano de obra), cuánto gastaste (fijo vs. '
+              'variable), cuánto compraste a proveedores y tu utilidad real. Cada '
+              'cifra se puede expandir para ver de dónde sale.',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectorCard(BuildContext context) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Período a analizar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _isLoading ? null : _elegirRangoYCargar,
+                icon: _isLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.date_range),
+                label: Text(
+                  _rango == null
+                      ? 'Elegir período y generar resumen'
+                      : '${formatearFechaCorta(_rango!.start)} - ${formatearFechaCorta(_rango!.end)}',
+                ),
+              ),
+            ),
+            if (_libroContable != null) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _isExporting ? null : _exportarAExcel,
+                  icon: _isExporting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.download),
+                  label: Text(_isExporting ? 'Generando Excel...' : 'Exportar resumen a Excel'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVentasSection() {
+    final feyPos = _libroContable!['ventasElectronicasFEyPOS'] as Map<String, dynamic>? ?? {};
+    final locales = _libroContable!['ventasLocales'] as Map<String, dynamic>? ?? {};
+    final totalVentas = _libroContable!['totalVentasPeriodo'];
+    final detalle = <dynamic>[
+      ...(feyPos['detalle'] as List<dynamic>? ?? []),
+      ...(locales['detalle'] as List<dynamic>? ?? []),
+    ];
+
+    return _seccionNarrativa(
+      icono: Icons.point_of_sale,
+      color: Colors.green,
+      titulo: 'Cuánto vendiste',
+      narrativa: 'En este período vendiste un total de \$${_formatearMonto(totalVentas)}, '
+          'sumando \$${_formatearMonto(feyPos['total'])} en facturación electrónica/POS '
+          'y \$${_formatearMonto(locales['total'])} en facturas locales, repartidos en '
+          '${detalle.length} transacciones.',
+      expandible: _buildListaExpandible(
+        titulo: 'Ver las ${detalle.length} transacciones',
+        items: detalle,
+        constructorFila: (item) {
+          final mapa = item as Map<String, dynamic>;
+          final numero = mapa['numero'] ?? mapa['id'] ?? mapa['_id'] ?? '-';
+          final cliente = mapa['clienteNombre'] ?? mapa['cliente'] ?? 'Consumidor Final';
+          final total = mapa['totalPagado'] ?? mapa['total'] ?? 0;
+          return _filaDetalle('$numero — $cliente', '\$${_formatearMonto(total)}');
+        },
+      ),
+    );
+  }
+
+  Widget _buildProductosSection() {
+    final porCantidad = _rentabilidadProductos?['porCantidadVendida'] as List<dynamic>? ?? [];
+    final cantidadAnalizados = _rentabilidadProductos?['cantidadProductosAnalizados'] ?? 0;
+    final totalUnidades = porCantidad.fold<double>(
+      0,
+      (acc, p) => acc + (((p as Map)['cantidadVendida'] as num?)?.toDouble() ?? 0),
+    );
+
+    return _seccionNarrativa(
+      icono: Icons.inventory_2,
+      color: Colors.blue,
+      titulo: 'Qué vendiste (sin mano de obra)',
+      narrativa: 'Vendiste $cantidadAnalizados repuestos/productos distintos, por un total de '
+          '${totalUnidades.toStringAsFixed(0)} unidades. Esto excluye la mano de obra de '
+          'reparación — solo cuenta lo que sale de tu inventario.',
+      expandible: _buildListaExpandible(
+        titulo: 'Ver los $cantidadAnalizados productos vendidos',
+        items: porCantidad,
+        constructorFila: (item) {
+          final mapa = item as Map<String, dynamic>;
+          final nombre = mapa['productoNombre'] ?? 'Sin nombre';
+          final cantidad = mapa['cantidadVendida'] ?? 0;
+          final ventas = mapa['ventas'] ?? 0;
+          return _filaDetalle('$nombre (x$cantidad)', '\$${_formatearMonto(ventas)}');
+        },
+      ),
+    );
+  }
+
+  Widget _buildGastosSection() {
+    final gastos = _libroContable!['gastos'] as Map<String, dynamic>? ?? {};
+    final porNaturaleza = gastos['porNaturaleza'] as Map<String, dynamic>? ?? {};
+    final detalle = gastos['detalle'] as List<dynamic>? ?? [];
+
+    double montoDe(String clave) =>
+        ((porNaturaleza[clave] as Map?)?['monto'] as num?)?.toDouble() ?? 0;
+
+    final fijo = montoDe('FIJO');
+    final variable = montoDe('VARIABLE');
+    final mixto = montoDe('MIXTO');
+
+    return _seccionNarrativa(
+      icono: Icons.money_off,
+      color: Colors.red,
+      titulo: 'Cuánto gastaste (fijo vs. variable)',
+      narrativa: 'Gastaste \$${_formatearMonto(gastos['total'])} en total: '
+          '\$${_formatearMonto(fijo)} en gastos fijos (arriendo, salarios, seguros — '
+          'siguen ahí vendas o no), \$${_formatearMonto(variable)} en variables '
+          '(combustible, impuestos — suben y bajan con tus ventas), y '
+          '\$${_formatearMonto(mixto)} en gastos mixtos (servicios, mantenimiento).',
+      expandible: _buildListaExpandible(
+        titulo: 'Ver los ${detalle.length} gastos registrados',
+        items: detalle,
+        constructorFila: (item) {
+          final mapa = item as Map<String, dynamic>;
+          final concepto = mapa['concepto'] ?? mapa['tipoGastoNombre'] ?? 'Gasto';
+          final monto = mapa['monto'] ?? 0;
+          return _filaDetalle(concepto.toString(), '\$${_formatearMonto(monto)}');
+        },
+      ),
+    );
+  }
+
+  Widget _buildComprasSection() {
+    final compras = _libroContable!['compras'] as Map<String, dynamic>? ?? {};
+    final detalle = compras['detalle'] as List<dynamic>? ?? [];
+    final porcentaje = _libroContable!['comprasComoPorcentajeVentas'];
+
+    return _seccionNarrativa(
+      icono: Icons.local_shipping,
+      color: Colors.purple,
+      titulo: 'Cuánto compraste a proveedores',
+      narrativa: 'Compraste \$${_formatearMonto(compras['total'])} a proveedores en este '
+          'período, equivalente al ${_formatearPorcentaje(porcentaje)} de tus ventas — '
+          'es lo que repones de inventario para poder seguir vendiendo.',
+      expandible: _buildListaExpandible(
+        titulo: 'Ver las ${detalle.length} compras',
+        items: detalle,
+        constructorFila: (item) {
+          final mapa = item as Map<String, dynamic>;
+          final proveedor = mapa['proveedorNombre'] ?? 'Sin proveedor';
+          final total = mapa['total'] ?? 0;
+          return _filaDetalle(proveedor.toString(), '\$${_formatearMonto(total)}');
+        },
+      ),
+    );
+  }
+
+  Widget _buildUtilidadSection() {
+    final costo = _libroContable!['costoMercanciaVendida'];
+    final utilidadReal = _libroContable!['utilidadBrutaReal'];
+    final margen = _libroContable!['margenBrutoPorcentaje'];
+    final utilidadNeta = _libroContable!['utilidadNeta'];
+    final margenNeto = _libroContable!['margenNetoPorcentaje'];
+    final ventas = _libroContable!['totalVentasPeriodo'];
+    final huboEstimacion = _libroContable!['huboEstimacion'] == true;
+
+    return _seccionNarrativa(
+      icono: Icons.trending_up,
+      color: Colors.teal,
+      titulo: 'Tu utilidad real',
+      narrativa: 'A tus \$${_formatearMonto(ventas)} en ventas se le resta el costo real '
+          'de cada producto vendido (\$${_formatearMonto(costo)}, tomado del costo '
+          'registrado en el inventario al momento de cada venta) — eso da una utilidad '
+          'bruta real de \$${_formatearMonto(utilidadReal)} (${_formatearPorcentaje(margen)}). '
+          'Después de restar también los gastos operativos, la utilidad neta del período '
+          'es \$${_formatearMonto(utilidadNeta)} (${_formatearPorcentaje(margenNeto)}).'
+          '${huboEstimacion ? " Algunos costos son estimados con el costo actual del producto porque la venta fue anterior a que el sistema guardara el costo real." : ""}',
+      expandible: null,
+    );
+  }
+
+  Widget _buildRecomendacionesSection() {
+    final recomendaciones = _recomendaciones ?? [];
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.lightbulb, color: Colors.amber),
+                const SizedBox(width: 8),
+                const Text('Recomendaciones', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (recomendaciones.isEmpty)
+              const Text(
+                'No hay recomendaciones puntuales para este período — no se detectaron '
+                'señales fuera de lo esperado.',
+                style: TextStyle(color: Colors.grey),
+              )
+            else
+              ...recomendaciones.map((r) {
+                final mapa = r as Map<String, dynamic>;
+                final severidad = mapa['severidad'] as String? ?? 'info';
+                final color = severidad == 'alerta'
+                    ? Colors.red
+                    : severidad == 'positivo'
+                        ? Colors.green
+                        : Colors.blueGrey;
+                final icono = severidad == 'alerta'
+                    ? Icons.warning_amber
+                    : severidad == 'positivo'
+                        ? Icons.check_circle
+                        : Icons.info;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(icono, color: color, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          mapa['mensaje'] as String? ?? '',
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Card estándar de este tab: ícono + título + narrativa en texto + un
+  /// ExpansionTile opcional con el detalle línea por línea de esa cifra.
+  Widget _seccionNarrativa({
+    required IconData icono,
+    required Color color,
+    required String titulo,
+    required String narrativa,
+    required Widget? expandible,
+  }) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icono, color: color),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(titulo, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(narrativa, style: const TextStyle(fontSize: 14, height: 1.4)),
+            if (expandible != null) ...[
+              const SizedBox(height: 8),
+              expandible,
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildListaExpandible({
+    required String titulo,
+    required List<dynamic> items,
+    required Widget Function(dynamic item) constructorFila,
+  }) {
+    if (items.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        title: Text(titulo, style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+        children: items.map(constructorFila).toList(),
+      ),
+    );
+  }
+
+  Widget _filaDetalle(String etiqueta, String valor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(etiqueta, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
+          ),
+          Text(valor, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
+  String _formatearMonto(dynamic monto) {
+    if (monto == null) return '0';
+    try {
+      final valor = double.parse(monto.toString());
+      return NumberFormat('#,##0', 'es_CO').format(valor);
+    } catch (e) {
+      return monto.toString();
+    }
+  }
+
+  String _formatearPorcentaje(dynamic porcentaje) {
+    if (porcentaje == null) return '0%';
+    try {
+      final valor = double.parse(porcentaje.toString());
+      return '${valor.toStringAsFixed(1)}%';
+    } catch (e) {
+      return '0%';
+    }
+  }
+}
+
+// ============================================================================
+// TAB "VENTAS Y GASTOS" — contenido original de Libro Contable (vista previa
+// por medio de pago/proveedor/concepto + utilidad bruta por rango).
+// ============================================================================
+
+class _VentasYGastosTab extends StatefulWidget {
+  const _VentasYGastosTab();
+
+  @override
+  State<_VentasYGastosTab> createState() => _VentasYGastosTabState();
+}
+
+class _VentasYGastosTabState extends State<_VentasYGastosTab> {
   final LibroContableService _libroContableService = LibroContableService();
 
   DateTime _fechaSeleccionada = DateTime.now();
@@ -24,11 +654,6 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
   bool _isExporting = false;
   Map<String, dynamic>? _datosPreview;
 
-  // La vista previa detallada (ventas FE/POS, ventas locales, compras y
-  // gastos desglosados) puede pedirse por mes calendario completo o por un
-  // rango de fechas arbitrario — ambos casos los resuelve el mismo endpoint
-  // de backend (getLibroContablePorRango), getLibroContableMensual es solo
-  // un atajo que calcula el rango de un mes.
   bool _modoRango = false;
   DateTimeRange? _rangoPreviewSeleccionado;
 
@@ -37,36 +662,22 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
   Map<String, dynamic>? _utilidadBrutaResultado;
 
   @override
-  void initState() {
-    super.initState();
-    initializeDateFormatting('es_ES', null);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Libro Contable Mensual'),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildHeaderCard(),
-            const SizedBox(height: 16),
-            _buildSelectorFecha(),
-            const SizedBox(height: 16),
-            _buildBotonesAccion(),
-            const SizedBox(height: 16),
-            _buildUtilidadBrutaCard(),
-            const SizedBox(height: 16),
-            if (_datosPreview != null) _buildPreviewCard(),
-          ],
-        ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeaderCard(),
+          const SizedBox(height: 16),
+          _buildSelectorFecha(),
+          const SizedBox(height: 16),
+          _buildBotonesAccion(),
+          const SizedBox(height: 16),
+          _buildUtilidadBrutaCard(),
+          const SizedBox(height: 16),
+          if (_datosPreview != null) _buildPreviewCard(),
+        ],
       ),
     );
   }
@@ -217,10 +828,6 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
       _modoRango = aRango;
       _datosPreview = null;
     });
-    // Al cambiar de modo, recargar de una vez si ya hay una selección válida
-    // para el nuevo modo — evita el mismo problema de "no se refresca" que
-    // tenía el selector de mes antes: cambiar de modo ya deja ver el período
-    // que corresponda sin un paso extra.
     if (!aRango || _rangoPreviewSeleccionado != null) {
       _cargarPreview();
     }
@@ -440,6 +1047,12 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
                 _buildTotalRow('Total', gastos['total'], Colors.red),
                 const SizedBox(height: 8),
                 Text(
+                  'Por naturaleza (fijo / variable / mixto)',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+                ),
+                ..._buildDesglose(gastos, 'porNaturaleza', 'Sin gastos en este período'),
+                const SizedBox(height: 12),
+                Text(
                   'Por medio de pago',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
                 ),
@@ -503,10 +1116,6 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
         return montoB.compareTo(montoA);
       });
 
-    // El total de "Mixto" se muestra como una sola fila (igual que antes) pero
-    // acá se le agrega, debajo, cuánto de ese monto vino de cada submétodo
-    // real (efectivo/transferencia/etc. dentro del mismo pago mixto) — antes
-    // solo se veía el total sin saber de qué estaba compuesto.
     final desgloseMixto = key == 'porMedioPago'
         ? (seccion['desgloseMixto'] as Map<String, dynamic>? ?? {})
         : <String, dynamic>{};
@@ -578,17 +1187,10 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
         _fechaSeleccionada = fechaSeleccionada;
         _datosPreview = null;
       });
-      // Igual que el selector de rango de Utilidad Bruta: elegir el mes ya
-      // dispara la carga, sin depender de que se recuerde apretar aparte
-      // "Cargar Vista Previa" (eso era lo que hacía parecer que el informe
-      // "no se refrescaba" al volver de un rango de fechas a un mes).
       _cargarPreview();
     }
   }
 
-  /// Selector de Mes/Año simplificado: solo muestra los 12 meses del año
-  /// elegido (con flechas para cambiar de año), en vez del calendario día a
-  /// día de showDatePicker forzado a solo aceptar el día 1.
   Future<DateTime?> _seleccionarMesAnio() async {
     int anio = _fechaSeleccionada.year;
     const mesesAbrev = [
@@ -699,8 +1301,6 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
       final Map<String, dynamic> datos;
       if (_modoRango) {
         final rango = _rangoPreviewSeleccionado!;
-        // 'hasta' incluye el día completo (23:59:59), igual que en Utilidad
-        // Bruta, para no cortar los movimientos del último día del rango.
         final hastaFinDia =
             DateTime(rango.end.year, rango.end.month, rango.end.day, 23, 59, 59);
         datos = await _libroContableService.getLibroContablePorRango(rango.start, hastaFinDia);
@@ -962,8 +1562,6 @@ class _LibroContableScreenState extends State<LibroContableScreen> {
     });
 
     try {
-      // 'hasta' incluye el día completo (23:59:59) para no cortar las ventas
-      // del último día del rango.
       final hastaFinDia = DateTime(rango.end.year, rango.end.month, rango.end.day, 23, 59, 59);
       final resultado = await _libroContableService.getLibroContablePorRango(rango.start, hastaFinDia);
       if (!mounted) return;

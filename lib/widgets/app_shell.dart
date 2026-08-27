@@ -352,11 +352,12 @@ class _AppShellState extends State<AppShell> {
             currentRoute: _currentRoute,
             subItems: const [
               _SubMenuItem(icon: Icons.analytics, label: 'Análisis Ventas', route: '/informes/productos'),
+              // Las 5 pantallas de reportes contables que antes vivían acá
+              // por separado (Libro Contable, Costeo y Utilidad Real,
+              // Rentabilidad Producto/Cliente, Comparación de Períodos,
+              // Alertas y Anomalías) se fusionaron en una sola pantalla con
+              // tabs — ver LibroContableScreen.
               _SubMenuItem(icon: Icons.menu_book, label: 'Libro Contable', route: '/libro-contable'),
-              _SubMenuItem(icon: Icons.calculate, label: 'Costeo y Utilidad Real', route: '/costeo-inventario'),
-              _SubMenuItem(icon: Icons.leaderboard, label: 'Rentabilidad Producto/Cliente', route: '/rentabilidad'),
-              _SubMenuItem(icon: Icons.compare_arrows, label: 'Comparación de Períodos', route: '/comparativo-periodos'),
-              _SubMenuItem(icon: Icons.warning_amber, label: 'Alertas y Anomalías', route: '/anomalias'),
             ],
           ),
         ],
