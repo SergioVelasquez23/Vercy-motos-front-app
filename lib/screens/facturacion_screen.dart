@@ -82,6 +82,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   // Borradores guardados solo en este dispositivo por un fallo al guardar y
   // pagar (ej. caja cerrada) — ver _guardarBorradorLocalPorFallo.
   int _borradoresLocalesCount = 0;
+  // ID del pedido-borrador (guardado en el backend vía "Guardar Borrador")
+  // que se cargó a esta pantalla con _cargarBorrador, si lo hay. Se usa para
+  // eliminarlo antes de cobrar/re-guardar: cargar un borrador y luego cobrar
+  // sin esto creaba un pedido nuevo dejando el borrador original huérfano en
+  // la base de datos con su descuento de inventario ya aplicado — la misma
+  // venta terminaba descontando el stock dos veces (bug reportado en
+  // producción: "MOFLE MF NKD CROMADO" descontado -5 dos veces seguidas).
+  String? _borradorOrigenId;
   final PedidoService _pedidoService = PedidoService();
   final ProductoService _productoService = ProductoService();
   final PedidoAsesorService _pedidoAsesorService = PedidoAsesorService();
@@ -3473,6 +3481,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       _fechaVencimiento =
           pedido.fechaVencimiento ?? DateTime.now().add(Duration(days: 30));
       _tipoFactura = pedido.tipoFactura ?? 'POS';
+      // Recordar de qué pedido-borrador vienen estos items, para poder
+      // eliminarlo (y así revertir su descuento de inventario) antes de
+      // cobrar o volver a guardar como borrador — ver comentario en el campo.
+      _borradorOrigenId = pedido.id;
     });
 
     // Mostrar el mismo diálogo de edición de IVA/descuento que se usa
@@ -3828,7 +3840,27 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         tipoCaja: widget.tipoCaja,
       );
 
-      await _pedidoService.createPedido(pedido);
+      // Si estos items ya vienen de un borrador cargado, eliminar el
+      // original antes de guardar el nuevo (restaura su inventario) — si no,
+      // "cargar borrador" + "guardar borrador" de nuevo dejaba el primero
+      // huérfano con su descuento aplicado, igual que el bug ya corregido
+      // al cobrar directamente.
+      if (_borradorOrigenId != null && _borradorOrigenId!.isNotEmpty) {
+        try {
+          await _pedidoService.eliminarPedido(
+            _borradorOrigenId!,
+            motivoEliminacion: 'Reemplazado al re-guardar borrador',
+          );
+        } catch (e) {
+          appLog(
+            '⚠️ No se pudo eliminar el borrador anterior $_borradorOrigenId al re-guardar: $e',
+            level: LogLevel.error,
+          );
+        }
+      }
+
+      final pedidoBorradorGuardado = await _pedidoService.createPedido(pedido);
+      _borradorOrigenId = pedidoBorradorGuardado.id;
 
       setState(() => _isLoading = false);
 
@@ -4200,6 +4232,12 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       // ✅ CAPTURAR CLIENTE SELECCIONADO ANTES DE LIMPIAR (para el PDF)
       Cliente? clienteCapturado = _clienteSeleccionado;
 
+      // Capturar el borrador de origen (si estos items vinieron de "Cargar
+      // borrador") antes de que _limpiarFormulario() lo resetee — se usa
+      // más abajo para eliminarlo antes de crear el pedido pagado, y así no
+      // descontar el inventario dos veces por la misma venta.
+      final String? borradorOrigenIdCapturado = _borradorOrigenId;
+
       // Si no hay cliente seleccionado pero hay texto en el campo, buscar al cliente
       if (clienteCapturado == null &&
           clienteTexto != 'CONSUMIDOR FINAL' &&
@@ -4256,6 +4294,28 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       // 🚀 TODO EN BACKGROUND - Crear pedido + pagar + inventario
       Future.microtask(() async {
         try {
+          // Si estos items vinieron de un borrador guardado, eliminarlo antes
+          // de crear el pedido pagado — eliminarPedido() restaura el
+          // inventario que ese borrador ya había descontado (mismo criterio
+          // que cancelar/eliminar cualquier pedido activo). Sin esto, el
+          // pedido nuevo de abajo descuenta el stock por segunda vez para
+          // los mismos productos (bug reportado: un producto quedaba
+          // descontado dos veces por una sola venta).
+          if (borradorOrigenIdCapturado != null &&
+              borradorOrigenIdCapturado.isNotEmpty) {
+            try {
+              await _pedidoService.eliminarPedido(
+                borradorOrigenIdCapturado,
+                motivoEliminacion: 'Convertido a factura pagada',
+              );
+            } catch (e) {
+              appLog(
+                '⚠️ No se pudo eliminar el borrador de origen $borradorOrigenIdCapturado antes de cobrar: $e',
+                level: LogLevel.error,
+              );
+            }
+          }
+
           // Preparar datos completos del cliente para guardar
           Map<String, dynamic>? datosAdicionales;
           if (clienteCapturado != null) {
@@ -5251,6 +5311,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       
       // ✅ Incrementar key para forzar reconstrucción de Autocompletes
       _autocompleteResetKey++;
+
+      // Ya se facturó (o se va a facturar) lo que traía este borrador —
+      // olvidar su ID para no volver a intentar eliminarlo después.
+      _borradorOrigenId = null;
     });
     
     // 🗑️ Limpiar borrador del provider
