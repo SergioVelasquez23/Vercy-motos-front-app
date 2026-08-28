@@ -8,6 +8,11 @@ class LibroContableService {
   final String _baseUrl = ApiConfig.instance.baseUrl;
   final BaseApiService _baseService = BaseApiService();
 
+  /// Tiempo máximo de espera para todos los reportes de este servicio. Los
+  /// cálculos por rango (resumen contable, costeo, rentabilidad) recorren
+  /// muchos pedidos/items y pueden tardar varios minutos en rangos amplios.
+  static const Duration _timeout = Duration(minutes: 10);
+
   /// Obtiene el libro contable de un mes: ventas de Facturación Electrónica + POS
   /// separadas de ventas Locales (desglosadas por medio de pago detallado), más
   /// totales de Compras y Gastos del mes.
@@ -31,7 +36,7 @@ class LibroContableService {
             },
           )
           .timeout(
-            const Duration(seconds: 120),
+            _timeout,
             onTimeout: () {
               throw Exception(
                 'El servidor tardó demasiado en responder. Intenta con un mes con menos datos.',
@@ -104,7 +109,7 @@ class LibroContableService {
             },
           )
           .timeout(
-            const Duration(seconds: 120),
+            _timeout,
             onTimeout: () {
               throw Exception(
                 'El servidor tardó demasiado en responder. Intenta con un rango más corto.',
@@ -178,7 +183,7 @@ class LibroContableService {
             },
           )
           .timeout(
-            const Duration(seconds: 120),
+            _timeout,
             onTimeout: () {
               throw Exception(
                 'El servidor tardó demasiado en responder. Intenta con un rango más corto.',
@@ -236,7 +241,7 @@ class LibroContableService {
             },
           )
           .timeout(
-            const Duration(seconds: 120),
+            _timeout,
             onTimeout: () {
               throw Exception(
                 'El servidor tardó demasiado en responder. Intenta con un rango más corto.',
@@ -371,7 +376,7 @@ class LibroContableService {
             },
           )
           .timeout(
-            const Duration(seconds: 120),
+            _timeout,
             onTimeout: () {
               throw Exception(
                 'El servidor tardó demasiado en responder. Intenta con un rango más corto.',
