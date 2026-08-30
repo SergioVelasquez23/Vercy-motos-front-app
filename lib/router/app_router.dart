@@ -45,7 +45,6 @@ import '../screens/cuentas_por_cobrar_screen.dart';
 import '../screens/cuentas_por_pagar_screen.dart';
 import '../screens/gastos_programados_screen.dart';
 import '../screens/alertas_screen.dart';
-import '../screens/autorizaciones_screen.dart';
 import '../screens/eliminar_pedidos_screen.dart';
 import '../screens/fe_documentos_screen.dart';
 import '../screens/documentos_pendientes_screen.dart';
@@ -176,7 +175,6 @@ GoRouter buildAppRouter(UserProvider userProvider) => GoRouter(
         GoRoute(path: '/cuentas-por-pagar', builder: (c, s) => const CuentasPorPagarScreen()),
         GoRoute(path: '/gastos-programados', builder: (c, s) => const GastosProgramadosScreen()),
         GoRoute(path: '/alertas', builder: (c, s) => const AlertasScreen()),
-        GoRoute(path: '/autorizaciones', builder: (c, s) => const AutorizacionesScreen()),
         GoRoute(path: '/ingresos-caja', builder: (c, s) => IngresosCajaScreen()),
         GoRoute(path: '/pedidos', builder: (c, s) => const PedidosScreenFusion()),
         GoRoute(path: '/pedidos_rt', builder: (c, s) => const PedidosScreenFusion()),
