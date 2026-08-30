@@ -102,7 +102,11 @@ class UserRoleService {
       if (response.statusCode == 201 || response.statusCode == 200) {
         final responseBody = response.body;
         if (responseBody.isNotEmpty && responseBody != 'null') {
-          return UserRole.fromJson(json.decode(responseBody));
+          final Map<String, dynamic> body = json.decode(responseBody);
+          final data = body['data'];
+          if (data != null) {
+            return UserRole.fromJson(data);
+          }
         }
       }
       return null;
@@ -181,7 +185,8 @@ class UserRoleService {
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
+        final Map<String, dynamic> body = json.decode(response.body);
+        final List<dynamic> data = body['data'] ?? [];
         return data.map((json) => UserRole.fromJson(json)).toList();
       } else {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar roles del usuario');

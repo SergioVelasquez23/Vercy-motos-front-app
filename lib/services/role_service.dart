@@ -45,7 +45,8 @@ class RoleService {
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
+        final Map<String, dynamic> body = json.decode(response.body);
+        final List<dynamic> data = body['data'] ?? [];
         return data.map((json) => Role.fromJson(json)).toList();
       } else {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar roles');
@@ -72,7 +73,8 @@ class RoleService {
       );
 
       if (response.statusCode == 200) {
-        return Role.fromJson(json.decode(response.body));
+        final Map<String, dynamic> body = json.decode(response.body);
+        return Role.fromJson(body['data']);
       } else if (response.statusCode == 404) {
         return null;
       } else {
@@ -101,7 +103,8 @@ class RoleService {
       );
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        return Role.fromJson(json.decode(response.body));
+        final Map<String, dynamic> body = json.decode(response.body);
+        return Role.fromJson(body['data']);
       } else {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al crear rol');
       }
@@ -128,7 +131,8 @@ class RoleService {
       );
 
       if (response.statusCode == 200) {
-        return Role.fromJson(json.decode(response.body));
+        final Map<String, dynamic> body = json.decode(response.body);
+        return Role.fromJson(body['data']);
       } else {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar rol');
       }

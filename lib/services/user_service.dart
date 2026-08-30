@@ -46,8 +46,9 @@ class UserService {
       ).timeout(_timeout);
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
-        if (decoded is List) {
-          return decoded.map((json) => Role.fromJson(json)).toList();
+        final data = decoded is Map ? decoded['data'] : decoded;
+        if (data is List) {
+          return data.map((json) => Role.fromJson(json)).toList();
         } else {
           throw Exception('Respuesta inesperada del backend: $decoded');
         }
@@ -75,8 +76,9 @@ class UserService {
       ).timeout(_timeout);
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
-        if (decoded is List) {
-          return decoded.map((json) => Role.fromJson(json)).toList();
+        final data = decoded is Map ? decoded['data'] : decoded;
+        if (data is List) {
+          return data.map((json) => Role.fromJson(json)).toList();
         } else {
           throw Exception('Respuesta inesperada del backend: $decoded');
         }
