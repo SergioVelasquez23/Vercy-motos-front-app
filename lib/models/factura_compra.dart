@@ -11,9 +11,36 @@ class FacturaCompra {
   final String? tipoCaja; // 'LOCAL' o 'ENVIOS' — solo relevante si pagadoDesdeCaja es true
   final List<ItemFacturaCompra> items;
   final String? descripcion;
+  // Origen de la compra: 'Contado', 'Transferencia', 'Crédito', 'Sistecrédito',
+  // 'Tarjeta'. Si es 'Crédito' el backend deja la compra pendiente y crea una
+  // cuenta por pagar en cartera con fecha [fechaVencimiento].
+  final String? origenCompra;
   final DateTime fechaCreacion;
   final DateTime fechaActualizacion;
-  
+
+  /// Origen de la compra con compatibilidad hacia atrás: las compras creadas
+  /// antes de que existiera el campo `origenCompra` guardaban el dato como
+  /// texto libre en `descripcion` ("Origen: Transferencia") y el backend
+  /// mandaba `formaPago` siempre hardcodeado a 'Contado' sin importar el
+  /// origen real — por eso NO se usa `formaPago` como fallback aquí, solo la
+  /// descripción.
+  String? get origenCompraEfectivo {
+    if (origenCompra != null && origenCompra!.isNotEmpty) return origenCompra;
+    final desc = descripcion;
+    if (desc != null && desc.startsWith('Origen:')) {
+      final v = desc.replaceFirst('Origen:', '').trim();
+      return v.isEmpty ? null : v;
+    }
+    return null;
+  }
+
+  /// Una compra a crédito no se considera pagada por este módulo — su saldo
+  /// real (abonos, si ya se pagó del todo) vive en la cuenta por pagar de
+  /// Cartera, no en la compra. Si además se pagó desde caja, ya no aplica
+  /// (una compra pagada desde caja nunca queda a crédito).
+  bool get esCreditoPendiente =>
+      !pagadoDesdeCaja && origenCompraEfectivo == 'Crédito';
+
   // 💰 Campos DIAN para impuestos y retenciones
   final double subtotal;
   final double totalDescuentos;
@@ -46,6 +73,7 @@ class FacturaCompra {
     this.tipoCaja,
     required this.items,
     this.descripcion,
+    this.origenCompra,
     required this.fechaCreacion,
     required this.fechaActualizacion,
     // Campos DIAN con valores por defecto
@@ -130,6 +158,11 @@ class FacturaCompra {
       tipoCaja: json['tipoCaja']?.toString(),
       items: items,
       descripcion: json['descripcion'],
+      // No caer a json['formaPago'] aquí: en compras viejas ese campo siempre
+      // llegaba hardcodeado a 'Contado' (ver comentario de origenCompraEfectivo
+      // más abajo), así que usarlo como fallback tapaba el origen real
+      // guardado en la descripción.
+      origenCompra: json['origenCompra'],
       fechaCreacion: json['fechaCreacion'] != null
           ? DateTime.parse(json['fechaCreacion'])
           : (fechaFacturaRaw != null
@@ -214,7 +247,10 @@ class FacturaCompra {
       // ✅ NO enviar 'items' duplicado - el backend procesa ambos arrays causando doble stock
       'items': [],
       'medioPago': 'Efectivo',
-      'formaPago': 'Contado',
+      // Origen de la compra (lo usa el backend para decidir si es a crédito y
+      // generar la cuenta por pagar). 'formaPago' se mantiene por compatibilidad.
+      'origenCompra': origenCompra,
+      'formaPago': origenCompra ?? 'Contado',
       'registradoPor': 'admin',
       'descripcion': descripcion ?? '',
       'observaciones': '',

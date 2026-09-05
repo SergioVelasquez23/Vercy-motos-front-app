@@ -8,8 +8,11 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
 
   const DetalleFacturaCompraScreen({super.key, required this.factura});
 
-  // Método auxiliar para determinar si una factura debe considerarse como pagada
+  // Método auxiliar para determinar si una factura debe considerarse como
+  // pagada. Una compra a crédito nunca se considera pagada desde acá — su
+  // saldo real vive en la cuenta por pagar de Cartera, no en la compra.
   bool _estaFacturaPagada(FacturaCompra factura) {
+    if (factura.esCreditoPendiente) return false;
     return factura.estado.toUpperCase() == 'PAGADA' || factura.pagadoDesdeCaja;
   }
 
@@ -81,6 +84,8 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
               'Fecha de Vencimiento:',
               _formatearFecha(factura.fechaVencimiento),
             ),
+            if (factura.origenCompraEfectivo != null)
+              _buildInfoRow(context, 'Origen de la compra:', factura.origenCompraEfectivo!),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [

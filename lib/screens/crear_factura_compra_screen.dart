@@ -63,9 +63,20 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
   final _cantidadAlmacenController = TextEditingController();
   final _cantidadBodegaController = TextEditingController();
   
-  // Campo para guardar desde donde salió la compra (transferencia, sistecredito, etc)
-  final _origenCompraController = TextEditingController();
-  
+  // Origen de la compra (de dónde salió el pago). Si es 'Crédito' el backend
+  // deja la compra pendiente y crea una cuenta por pagar en cartera con la
+  // fecha del campo "Vencimiento".
+  static const List<String> _opcionesOrigenCompra = [
+    'Contado',
+    'Transferencia',
+    'Crédito',
+    'Sistecrédito',
+    'Tarjeta',
+  ];
+  String _origenCompra = 'Contado';
+
+  bool get _esCredito => _origenCompra == 'Crédito';
+
   String _tipoImpuesto = 'IVA';
   String _tipoDescuento = '%';
   Producto? _productoSeleccionado;
@@ -137,17 +148,16 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
     _pagadoDesdeCaja = factura.pagadoDesdeCaja;
     _tipoCajaSeleccionado = factura.tipoCaja ?? 'LOCAL';
 
-    // Cargar descripción y origen
-    if (factura.descripcion != null) {
-      if (factura.descripcion!.startsWith('Origen:')) {
-        // Extraer el origen de la descripción
-        _origenCompraController.text = factura.descripcion!.replaceFirst(
-          'Origen: ',
-          '',
-        );
-      } else {
-        _descripcionController.text = factura.descripcion!;
-      }
+    // Cargar descripción y origen de la compra (origenCompraEfectivo ya
+    // resuelve la compatibilidad con compras viejas que lo guardaban como
+    // texto libre en la descripción — ver factura_compra.dart).
+    final origen = factura.origenCompraEfectivo;
+    if (origen != null && _opcionesOrigenCompra.contains(origen)) {
+      _origenCompra = origen;
+    }
+    if (factura.descripcion != null &&
+        !factura.descripcion!.startsWith('Origen:')) {
+      _descripcionController.text = factura.descripcion!;
     }
 
     // Cargar items
@@ -173,7 +183,6 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
     _valorUnitarioController.dispose();
     _porcentajeImpuestoController.dispose();
     _porcentajeDescuentoController.dispose();
-    _origenCompraController.dispose();
     _cantidadAlmacenController.dispose();
     _cantidadBodegaController.dispose();
     super.dispose();
@@ -976,6 +985,8 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                 onChanged: (value) {
                   setState(() {
                     _pagadoDesdeCaja = value;
+                    // Una compra pagada desde caja no puede ser a crédito.
+                    if (value && _esCredito) _origenCompra = 'Contado';
                   });
                 },
                 activeColor: Colors.green,
@@ -1011,14 +1022,21 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
           ),
         ],
         SizedBox(height: 16),
-        // Campo de Origen de Compra (solo se muestra cuando NO paga desde caja)
+        // Selector de Origen de la Compra (solo cuando NO paga desde caja)
         if (!_pagadoDesdeCaja)
           Container(
             padding: EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
+              color: _esCredito
+                  ? Colors.orange.withOpacity(0.12)
+                  : Colors.blue.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue.withOpacity(0.3), width: 1),
+              border: Border.all(
+                color: _esCredito
+                    ? Colors.orange.withOpacity(0.4)
+                    : Colors.blue.withOpacity(0.3),
+                width: 1,
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1026,22 +1044,23 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                 Text(
                   'Origen de la Compra',
                   style: TextStyle(
-                    color: Colors.blue.shade300,
+                    color: _esCredito
+                        ? Colors.orange.shade300
+                        : Colors.blue.shade300,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
                 ),
                 SizedBox(height: 8),
-                TextField(
-                  controller: _origenCompraController,
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                DropdownButtonFormField<String>(
+                  value: _origenCompra,
+                  isExpanded: true,
+                  dropdownColor: Theme.of(context).colorScheme.surface,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 14,
+                  ),
                   decoration: InputDecoration(
-                    hintText:
-                        'Ej: Transferencia, Sistecredito, Efectivo en mano, etc.',
-                    hintStyle: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                      fontSize: 13,
-                    ),
                     filled: true,
                     fillColor: Theme.of(context).colorScheme.surface,
                     border: OutlineInputBorder(
@@ -1053,7 +1072,53 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                       vertical: 10,
                     ),
                   ),
+                  items: _opcionesOrigenCompra
+                      .map(
+                        (o) => DropdownMenuItem(value: o, child: Text(o)),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _origenCompra = value);
+                  },
                 ),
+                if (_esCredito) ...[
+                  SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.event_available,
+                        color: Colors.orange.shade300,
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Se creará una cuenta por pagar en Cartera. '
+                          'Vence el ${_formatearFechaISO(_fechaVencimiento)} '
+                          '(edita el campo "Vencimiento" de arriba).',
+                          style: TextStyle(
+                            color: Colors.orange.shade200,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: () => _seleccionarFecha(context, false),
+                    icon: Icon(Icons.calendar_today, size: 16),
+                    label: Text(
+                      'Cambiar fecha de vencimiento',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.orange.shade200,
+                      side: BorderSide(color: Colors.orange.withOpacity(0.5)),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -2622,16 +2687,22 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
         fechaFactura: _fechaFactura,
         fechaVencimiento: _fechaVencimiento,
         total: totalFinal,
+        // Nota: este campo 'estado' no se envía al backend (FacturaCompra.toJson
+        // no lo incluye) — el estado real que se ve después de guardar viene de
+        // la respuesta del servidor, derivado de 'pagado'. Se deja aquí solo
+        // para que el objeto local sea coherente antes del round-trip.
         estado: _pagadoDesdeCaja ? 'PENDIENTE' : 'PROCESADA',
         pagadoDesdeCaja: _pagadoDesdeCaja,
         tipoCaja: _pagadoDesdeCaja ? _tipoCajaSeleccionado : null,
         items: itemsVerificados,
-        // Guardar el origen de la compra si no paga desde caja
+        // Origen de la compra (el backend decide con esto si es a crédito y
+        // genera la cuenta por pagar). No aplica si se paga desde caja.
+        origenCompra: _pagadoDesdeCaja ? null : _origenCompra,
         descripcion: !_pagadoDesdeCaja
-            ? 'Origen: ${_origenCompraController.text.isNotEmpty ? _origenCompraController.text : 'No especificado'}'
-            : _descripcionController.text.isNotEmpty
-            ? _descripcionController.text
-            : null,
+            ? 'Origen: $_origenCompra'
+            : (_descripcionController.text.isNotEmpty
+                  ? _descripcionController.text
+                  : null),
         fechaCreacion: DateTimeUtils.nowColombia(),
         fechaActualizacion: DateTimeUtils.nowColombia(),
         // Campos DIAN

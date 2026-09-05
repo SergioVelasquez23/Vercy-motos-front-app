@@ -113,9 +113,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
 
         // Filtro cuentas por pagar
         final matchCuentasPorPagar =
-            !_soloCuentasPorPagar ||
-            (compra.estado.toUpperCase() == 'PENDIENTE' &&
-                !compra.pagadoDesdeCaja);
+            !_soloCuentasPorPagar || compra.esCreditoPendiente;
 
         return matchNumeroCompra &&
             matchNumeroFactura &&
@@ -603,8 +601,14 @@ class _ComprasListScreenState extends State<ComprasListScreen>
 
   Widget _buildFilaTabla(FacturaCompra compra, int index) {
     final cs = Theme.of(context).colorScheme;
-    // Todas las compras se muestran como pagadas, sin importar el estado que traiga el backend.
-    final porPagar = 0.0;
+    // Antes esto mostraba siempre "Pagada" con $0 por pagar sin importar el
+    // estado real (ver commit "compras siempre pagadas en la lista") — eso
+    // ocultaba las compras a crédito, que sí quedan pendientes hasta que se
+    // abonan desde Cartera > Cuentas por Pagar. Se deriva de campos propios
+    // del frontend (pagadoDesdeCaja, origenCompra) en vez del 'estado'/'pagado'
+    // que manda el backend, que es el que motivó ese hardcode en su momento.
+    final pendiente = compra.esCreditoPendiente;
+    final porPagar = pendiente ? compra.total : 0.0;
 
     final numeroCorto = compra.id != null && compra.id!.length >= 4
         ? 'OC${compra.id!.substring(compra.id!.length - 4).toUpperCase()}'
@@ -680,13 +684,14 @@ class _ComprasListScreenState extends State<ComprasListScreen>
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppTheme.success.withOpacity(0.15),
+                  color: (pendiente ? AppTheme.warning : AppTheme.success)
+                      .withOpacity(0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  'Pagada',
+                  pendiente ? 'Pendiente' : 'Pagada',
                   style: TextStyle(
-                    color: AppTheme.success,
+                    color: pendiente ? AppTheme.warning : AppTheme.success,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
