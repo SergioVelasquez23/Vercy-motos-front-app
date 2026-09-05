@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../services/libro_contable_service.dart';
 import '../services/excel_export_service.dart';
 import '../providers/user_provider.dart';
+import '../providers/libro_contable_resumen_draft_provider.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/reportes/rango_fechas_dialog.dart';
@@ -108,6 +109,24 @@ class _ResumenTabState extends State<_ResumenTab> {
   Map<String, dynamic>? _rentabilidadProductos;
   List<dynamic>? _recomendaciones;
   bool _isExporting = false;
+  bool _draftRestaurado = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Restaura el último resumen generado (guardado en un provider que vive
+    // en la raíz de la app) para que sobreviva a salir de esta pantalla y
+    // volver — se comporta como un borrador hasta que se genere uno nuevo.
+    if (_draftRestaurado) return;
+    _draftRestaurado = true;
+    final draft = context.read<LibroContableResumenDraftProvider>();
+    if (draft.hasDraft) {
+      _rango = draft.rango;
+      _libroContable = draft.libroContable;
+      _rentabilidadProductos = draft.rentabilidadProductos;
+      _recomendaciones = draft.recomendaciones;
+    }
+  }
 
   Future<void> _elegirRangoYCargar() async {
     final rango = await mostrarSelectorRangoFechas(
@@ -204,11 +223,20 @@ class _ResumenTabState extends State<_ResumenTab> {
       ]);
 
       if (!mounted) return;
+      final libroContable = resultados[0] as Map<String, dynamic>;
+      final rentabilidadProductos = resultados[1] as Map<String, dynamic>;
+      final recomendaciones = resultados[2] as List<dynamic>;
       setState(() {
-        _libroContable = resultados[0] as Map<String, dynamic>;
-        _rentabilidadProductos = resultados[1] as Map<String, dynamic>;
-        _recomendaciones = resultados[2] as List<dynamic>;
+        _libroContable = libroContable;
+        _rentabilidadProductos = rentabilidadProductos;
+        _recomendaciones = recomendaciones;
       });
+      context.read<LibroContableResumenDraftProvider>().guardar(
+            rango: _rango!,
+            libroContable: libroContable,
+            rentabilidadProductos: rentabilidadProductos,
+            recomendaciones: recomendaciones,
+          );
     } catch (e) {
       if (mounted) {
         showErrorDialog(context, errorMessage(e));

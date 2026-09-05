@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'providers/user_provider.dart';
 import 'providers/datos_cache_provider.dart';
 import 'providers/facturacion_draft_provider.dart';
+import 'providers/libro_contable_resumen_draft_provider.dart';
 import 'providers/notificaciones_provider.dart';
 import 'providers/theme_provider.dart';
 import 'theme/app_theme.dart';
@@ -60,6 +61,7 @@ Future<void> _runApp() async {
         ChangeNotifierProvider.value(value: userProvider),
         ChangeNotifierProvider(create: (_) => DatosCacheProvider()),
         ChangeNotifierProvider(create: (_) => FacturacionDraftProvider()),
+        ChangeNotifierProvider(create: (_) => LibroContableResumenDraftProvider()),
         ChangeNotifierProvider(create: (_) => NotificacionesProvider()),
         ChangeNotifierProvider<ThemeProvider>.value(value: themeProvider),
       ],
