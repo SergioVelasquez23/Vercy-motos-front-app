@@ -188,6 +188,25 @@ class DeudaService {
     }
   }
 
+  // ─── Eliminar deuda (DELETE /api/deudas/{id}) ─────────────────────────────
+  // Eliminación física. El backend rechaza con 409 si la deuda ya tiene
+  // pagos registrados, y con 404 si no existe.
+
+  Future<Map<String, dynamic>> eliminarDeuda(String id) async {
+    try {
+      final uri = Uri.parse(_baseService.buildUrl('/deudas/$id'));
+      final response = await http.delete(uri, headers: await _baseService.getHeaders()).timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': 'Deuda eliminada exitosamente'};
+      }
+      final backendException = parseBackendException(response.body, response.statusCode, prefix: 'Error al eliminar deuda');
+      return {'success': false, 'message': backendException.displayMessage};
+    } catch (e) {
+      return {'success': false, 'message': errorMessage(e)};
+    }
+  }
+
   // ─── Crear deuda desde pedido (mantener compatibilidad) ───────────────────
 
   Future<Map<String, dynamic>> crearDeudaDesdePedido({

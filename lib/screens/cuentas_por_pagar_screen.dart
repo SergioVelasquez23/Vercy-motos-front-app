@@ -222,6 +222,41 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
     }
   }
 
+  Future<void> _eliminarCuenta(CuentaPorPagar cuenta) async {
+    final confirmar = await showConfirmDialog(
+      context,
+      title: 'Eliminar cuenta por pagar',
+      content:
+          '¿Eliminar la cuenta de "${cuenta.proveedorNombre}" '
+          '(${CurrencyUtils.format(cuenta.saldoPendiente)} pendiente)? '
+          'Esta acción no se puede deshacer.',
+      confirmText: 'Eliminar',
+      isDangerous: true,
+    );
+    if (!confirmar) return;
+
+    try {
+      final response = await _carteraService.eliminarCuentaPorPagar(cuenta.id!);
+      if (!mounted) return;
+      if (response.isSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cuenta por pagar eliminada'),
+            backgroundColor: AppTheme.primary,
+          ),
+        );
+        await _cargarCuentas();
+      } else {
+        // Si está vinculada a una compra a crédito o tiene abonos, el
+        // backend responde 409 con un mensaje explicando cuál — mostrarlo
+        // tal cual en vez de un genérico.
+        showErrorDialog(context, response.message);
+      }
+    } catch (e) {
+      if (mounted) showErrorDialog(context, errorMessage(e));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -575,6 +610,12 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                       ),
                     ],
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 20),
+                  color: AppTheme.error,
+                  tooltip: 'Eliminar',
+                  onPressed: () => _eliminarCuenta(cuenta),
                 ),
               ],
             ),

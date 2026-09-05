@@ -21,6 +21,26 @@ class CarteraService {
 
   static const String _baseEndpoint = '/cartera';
 
+  /// Combina 'message' con 'data' del body de error del backend cuando este
+  /// último es un string legible. En los DELETE de cuentas por cobrar/pagar
+  /// el detalle accionable (qué compra vincula una CxP, cuánto se abonó...)
+  /// viene en 'data', no en 'message' — parseBackendException() solo expone
+  /// 'message', así que sin esto el usuario ve el aviso genérico sin el dato
+  /// que le dice qué hacer.
+  String _mensajeConDetalle(String body, int statusCode) {
+    final base = parseBackendException(body, statusCode).displayMessage;
+    try {
+      final decoded = json.decode(body);
+      if (decoded is Map<String, dynamic>) {
+        final detalle = decoded['data'];
+        if (detalle is String && detalle.trim().isNotEmpty) {
+          return '$base. $detalle';
+        }
+      }
+    } catch (_) {}
+    return base;
+  }
+
   /// Obtiene todas las cuentas por cobrar
   Future<ApiResponse<List<CuentaPorCobrar>>> getCuentasPorCobrar() async {
     try {
@@ -182,6 +202,45 @@ class CarteraService {
         success: false,
         data: null,
         message: parseBackendException(response.body, response.statusCode).displayMessage,
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    } catch (e) {
+      return ApiResponse<String>(
+        success: false,
+        data: null,
+        message: errorMessage(e),
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    }
+  }
+
+  /// Elimina físicamente una cuenta por cobrar. El backend rechaza con 409
+  /// si la cuenta ya tiene abonos registrados (montoAbonado > 0), y con 404
+  /// si no existe.
+  Future<ApiResponse<String>> eliminarCuentaPorCobrar(String cuentaId) async {
+    try {
+      final String url = _baseApiService.buildUrl(
+        '$_baseEndpoint/cuentas-por-cobrar/$cuentaId',
+      );
+      final Map<String, String> headers = await _baseApiService.getHeaders();
+
+      final http.Response response = await _baseApiService.httpClient
+          .delete(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        return ApiResponse<String>(
+          success: true,
+          data: 'Cuenta por cobrar eliminada',
+          message: 'La cuenta por cobrar ha sido eliminada exitosamente',
+          timestamp: DateTime.now().toIso8601String(),
+        );
+      }
+
+      return ApiResponse<String>(
+        success: false,
+        data: null,
+        message: _mensajeConDetalle(response.body, response.statusCode),
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
@@ -564,6 +623,45 @@ class CarteraService {
     }
   }
 
+  /// Elimina físicamente un gasto programado. El backend responde 404 si no
+  /// existe. Para conservarlo pero dejar de recibir avisos, editarlo con
+  /// activo = false en vez de eliminarlo.
+  Future<ApiResponse<String>> eliminarGastoProgramado(String gastoId) async {
+    try {
+      final String url = _baseApiService.buildUrl(
+        '$_baseEndpoint/gastos-programados/$gastoId',
+      );
+      final Map<String, String> headers = await _baseApiService.getHeaders();
+
+      final http.Response response = await _baseApiService.httpClient
+          .delete(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        return ApiResponse<String>(
+          success: true,
+          data: 'Gasto programado eliminado',
+          message: 'El gasto programado ha sido eliminado exitosamente',
+          timestamp: DateTime.now().toIso8601String(),
+        );
+      }
+
+      return ApiResponse<String>(
+        success: false,
+        data: null,
+        message: parseBackendException(response.body, response.statusCode).displayMessage,
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    } catch (e) {
+      return ApiResponse<String>(
+        success: false,
+        data: null,
+        message: errorMessage(e),
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    }
+  }
+
   /// Obtiene el resumen general de la cartera
   Future<ApiResponse<ResumenCartera>> getResumenCartera() async {
     try {
@@ -743,6 +841,47 @@ class CarteraService {
       );
     } catch (e) {
       return ApiResponse<CuentaPorPagar>(
+        success: false,
+        data: null,
+        message: errorMessage(e),
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    }
+  }
+
+  /// Elimina físicamente una cuenta por pagar. El backend rechaza con 409 si
+  /// está vinculada a una compra a crédito (Compra.cuentaPorPagarId) — para
+  /// desvincularla hay que cambiar el origen de esa compra, lo que borra la
+  /// cuenta automáticamente — o si ya tiene abonos registrados. 404 si no
+  /// existe.
+  Future<ApiResponse<String>> eliminarCuentaPorPagar(String cuentaId) async {
+    try {
+      final String url = _baseApiService.buildUrl(
+        '$_baseEndpoint/cuentas-por-pagar/$cuentaId',
+      );
+      final Map<String, String> headers = await _baseApiService.getHeaders();
+
+      final http.Response response = await _baseApiService.httpClient
+          .delete(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        return ApiResponse<String>(
+          success: true,
+          data: 'Cuenta por pagar eliminada',
+          message: 'La cuenta por pagar ha sido eliminada exitosamente',
+          timestamp: DateTime.now().toIso8601String(),
+        );
+      }
+
+      return ApiResponse<String>(
+        success: false,
+        data: null,
+        message: _mensajeConDetalle(response.body, response.statusCode),
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    } catch (e) {
+      return ApiResponse<String>(
         success: false,
         data: null,
         message: errorMessage(e),

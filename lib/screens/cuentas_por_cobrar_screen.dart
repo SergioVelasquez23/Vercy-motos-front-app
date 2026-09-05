@@ -198,6 +198,38 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
     }
   }
 
+  Future<void> _eliminarCuenta(CuentaPorCobrar cuenta) async {
+    final confirmar = await showConfirmDialog(
+      context,
+      title: 'Eliminar cuenta por cobrar',
+      content:
+          '¿Eliminar la cuenta de "${cuenta.clienteNombre}" '
+          '(${CurrencyUtils.format(cuenta.saldoPendiente)} pendiente)? '
+          'Esta acción no se puede deshacer.',
+      confirmText: 'Eliminar',
+      isDangerous: true,
+    );
+    if (!confirmar) return;
+
+    try {
+      final response = await _carteraService.eliminarCuentaPorCobrar(cuenta.id!);
+      if (!mounted) return;
+      if (response.isSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cuenta por cobrar eliminada'),
+            backgroundColor: AppTheme.primary,
+          ),
+        );
+        await _cargarCuentas();
+      } else {
+        showErrorDialog(context, response.message);
+      }
+    } catch (e) {
+      if (mounted) showErrorDialog(context, errorMessage(e));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -563,6 +595,12 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                       ),
                     ],
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 20),
+                  color: AppTheme.error,
+                  tooltip: 'Eliminar',
+                  onPressed: () => _eliminarCuenta(cuenta),
                 ),
               ],
             ),

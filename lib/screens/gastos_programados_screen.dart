@@ -183,6 +183,48 @@ class _GastosProgramadosScreenState extends State<GastosProgramadosScreen> {
     }
   }
 
+  Future<void> _eliminarGasto(GastoProgramado gasto) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar gasto programado'),
+        content: Text(
+          '¿Seguro que quieres eliminar "${gasto.nombre}"? '
+          'Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    try {
+      final response = await _carteraService.eliminarGastoProgramado(gasto.id!);
+      if (response.isSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gasto programado eliminado'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        await _cargarGastos();
+      } else {
+        showErrorDialog(context, response.message);
+      }
+    } catch (e) {
+      showErrorDialog(context, errorMessage(e));
+    }
+  }
+
   Future<void> _procesarPago(GastoProgramado gasto, double montoReal) async {
     try {
       final response = await _carteraService.marcarGastoComoPagado(
@@ -719,11 +761,20 @@ class _GastosProgramadosScreenState extends State<GastosProgramadosScreen> {
             ],
 
             // Botones de acción
-            if (gasto.estado == EstadoGastoProgramado.activo) ...[
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  onPressed: () => _eliminarGasto(gasto),
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  label: const Text(
+                    'Eliminar',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+                if (gasto.estado == EstadoGastoProgramado.activo) ...[
+                  const SizedBox(width: 8),
                   ElevatedButton.icon(
                     onPressed: () => _marcarComoPagado(gasto),
                     icon: const Icon(Icons.payment),
@@ -734,8 +785,8 @@ class _GastosProgramadosScreenState extends State<GastosProgramadosScreen> {
                     ),
                   ),
                 ],
-              ),
-            ],
+              ],
+            ),
           ],
         ),
       ),

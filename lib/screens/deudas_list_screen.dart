@@ -198,8 +198,39 @@ class _DeudasListScreenState extends State<DeudasListScreen>
         deuda: deudas[i],
         onPagar: () => _mostrarModalPago(deudas[i]),
         onDetalle: () => _mostrarDetalle(deudas[i]),
+        onEliminar: () => _eliminarDeuda(deudas[i]),
       ),
     );
+  }
+
+  Future<void> _eliminarDeuda(Deuda deuda) async {
+    final confirmar = await showConfirmDialog(
+      context,
+      title: 'Eliminar deuda',
+      content:
+          '¿Eliminar la deuda de "${deuda.cliente}" '
+          '(${CurrencyUtils.format(deuda.montoDeuda)} pendiente)? '
+          'Esta acción no se puede deshacer.',
+      confirmText: 'Eliminar',
+      isDangerous: true,
+    );
+    if (!confirmar || deuda.id == null) return;
+
+    final result = await _service.eliminarDeuda(deuda.id!);
+    if (!mounted) return;
+    if (result['success'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Deuda eliminada'),
+          backgroundColor: AppTheme.success,
+        ),
+      );
+      _cargar();
+    } else {
+      // Si ya tiene pagos registrados, el backend responde 409 con un
+      // mensaje explicándolo — mostrarlo tal cual en vez de uno genérico.
+      showErrorDialog(context, result['message'] ?? 'Error al eliminar la deuda');
+    }
   }
 
   void _mostrarModalPago(Deuda deuda) {
@@ -249,8 +280,14 @@ class _DeudaCard extends StatelessWidget {
   final Deuda deuda;
   final VoidCallback onPagar;
   final VoidCallback onDetalle;
+  final VoidCallback onEliminar;
 
-  const _DeudaCard({required this.deuda, required this.onPagar, required this.onDetalle});
+  const _DeudaCard({
+    required this.deuda,
+    required this.onPagar,
+    required this.onDetalle,
+    required this.onEliminar,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -276,6 +313,7 @@ class _DeudaCard extends StatelessWidget {
                   Text('#${deuda.id}', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5), fontSize: 12)),
                 const Spacer(),
                 IconButton(icon: const Icon(Icons.info_outline, size: 20), onPressed: onDetalle, color: AppTheme.primary),
+                IconButton(icon: const Icon(Icons.delete_outline, size: 20), onPressed: onEliminar, color: AppTheme.error),
               ],
             ),
             const SizedBox(height: 8),
