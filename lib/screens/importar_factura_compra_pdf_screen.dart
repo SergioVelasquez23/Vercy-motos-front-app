@@ -862,6 +862,11 @@ class _ImportarFacturaCompraPdfScreenState
     final subtotal = cantidad * costo;
     final valorIva = subtotal * (ivaPct / 100);
     final totalConIva = subtotal + valorIva;
+    // Solo para mostrar/verificar contra la factura en papel (que a veces
+    // trae el valor unitario con IVA incluido) — el costo que de verdad se
+    // guarda como costo del producto sigue siendo el de fila.costoCtrl, sin
+    // IVA (ver comentario en _FilaImportPdf.costoCtrl).
+    final costoConIva = costo * (1 + ivaPct / 100);
 
     return Opacity(
       opacity: fila.incluir ? 1 : 0.5,
@@ -929,6 +934,13 @@ class _ImportarFacturaCompraPdfScreenState
                         helperMaxLines: 2,
                       ),
                       onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: InputDecorator(
+                      decoration: const InputDecoration(labelText: 'Costo unit. c/IVA'),
+                      child: Text(CurrencyUtils.format(costoConIva), style: TextStyle(color: cs.onSurface)),
                     ),
                   ),
                   const SizedBox(width: 8),
