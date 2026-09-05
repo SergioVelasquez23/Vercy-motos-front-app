@@ -18,7 +18,51 @@ import '../utils/logger.dart';
 import '../utils/api_error.dart';
 import '../utils/datetime_utils.dart';
 
-class PedidoService {
+/// Interfaz minima con los metodos que FacturacionScreen realmente usa de
+/// PedidoService. Existe solo para poder inyectar un fake en tests de
+/// widget sin depender del singleton real (PedidoService() siempre devuelve
+/// la misma instancia via factory constructor, asi que no se puede extender
+/// desde otro archivo) — ver test/facturacion_screen_secuencias_test.dart.
+abstract class IPedidoService {
+  void preCachearCuadreId({String tipoCaja});
+  Future<List<Pedido>> getPedidosActivosMesa(String mesa);
+  Future<Pedido> createPedido(Pedido pedido);
+  Future<Pedido> updatePedido(Pedido pedido);
+  Future<Pedido> setErrorFacturacionElectronica(String pedidoId, String? mensaje);
+  Future<void> eliminarPedido(String id, {String? motivoEliminacion});
+  Future<Pedido> pagarPedido(
+    String pedidoId, {
+    String formaPago,
+    double propina,
+    double totalPagado,
+    String procesadoPor,
+    String notas,
+    TipoPedido? tipoPedido,
+    bool esCortesia,
+    bool esConsumoInterno,
+    String? motivoCortesia,
+    String? tipoConsumoInterno,
+    double descuento,
+    List<Map<String, dynamic>>? pagosParciales,
+    bool pagoMultiple,
+    double montoEfectivo,
+    double montoTarjeta,
+    double montoTransferencia,
+    double montoSistecredito,
+    double montoDatafono,
+    double montoBold,
+    double montoAddi,
+    double montoCredilondon,
+    double montoNequi,
+    double montoDaviplata,
+    double montoBancolombia,
+    String? medioPago,
+    String? detallePago,
+    String? tipoCaja,
+  });
+}
+
+class PedidoService implements IPedidoService {
   static final PedidoService _instance = PedidoService._internal();
   factory PedidoService() => _instance;
 

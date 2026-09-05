@@ -10,22 +10,29 @@ import '../widgets/caja/formulario_abrir_caja_widget.dart';
 import '../widgets/caja/caja_ui_helpers.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/submit_guard.dart';
 
 class AbrirCajaScreen extends StatefulWidget {
-  const AbrirCajaScreen({super.key});
+  /// Inyectable solo para tests de secuencia (doble-tap, etc.) - en la app
+  /// real siempre se usa el CuadreCajaService real.
+  @visibleForTesting
+  final ICuadreCajaService? cuadreCajaService;
+
+  const AbrirCajaScreen({super.key, this.cuadreCajaService});
 
   @override
   _AbrirCajaScreenState createState() => _AbrirCajaScreenState();
 }
 
-class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
+class _AbrirCajaScreenState extends State<AbrirCajaScreen> with SubmitGuard {
   // Controllers
   final TextEditingController _montoInicialController = TextEditingController();
   final TextEditingController _observacionesController = TextEditingController();
   final TextEditingController _idMaquinaController = TextEditingController();
 
   // Services
-  final CuadreCajaService _cuadreCajaService = CuadreCajaService();
+  late final ICuadreCajaService _cuadreCajaService =
+      widget.cuadreCajaService ?? CuadreCajaService();
 
   // Variables de estado
   bool _isLoading = false;
@@ -246,7 +253,12 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
                       montoInicialController: _montoInicialController,
                       idMaquinaController: _idMaquinaController,
                       observacionesController: _observacionesController,
-                      onAbrirCaja: _abrirCaja,
+                      // runGuarded: el boton "ABRIR CAJA" no tenia ningun
+                      // guard, ni siquiera el de _isLoading (ver
+                      // FormularioAbrirCajaWidget.onPressed) - un doble-tap
+                      // real podia disparar dos createCuadre() concurrentes
+                      // antes de que el primer setState desactivara el form.
+                      onAbrirCaja: () => runGuarded(_abrirCaja),
                     ),
 
                   SizedBox(height: 24),

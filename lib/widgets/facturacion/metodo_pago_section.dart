@@ -11,6 +11,11 @@ class MetodoPagoSection extends StatelessWidget {
   final List<Map<String, dynamic>> metodosPago;
   final ValueChanged<String> onMetodoPagoChanged;
 
+  /// Total a pagar de la factura actual — se usa para el indicador en vivo
+  /// de "Pago Múltiple" (cuánto llevan sumado los montos repartidos frente
+  /// a lo que falta cobrar).
+  final double totalAPagar;
+
   /// Se dispara en cada tecla de cualquier campo de monto — la pantalla
   /// solo necesita un setState() vacío porque los totales se leen
   /// directamente de los controllers en el próximo build.
@@ -31,6 +36,7 @@ class MetodoPagoSection extends StatelessWidget {
     super.key,
     required this.metodoPago,
     required this.metodosPago,
+    required this.totalAPagar,
     required this.onMetodoPagoChanged,
     required this.onMontoChanged,
     required this.montoEfectivoController,
@@ -379,7 +385,72 @@ class MetodoPagoSection extends StatelessWidget {
                 Expanded(child: SizedBox()),
               ],
             ),
+            SizedBox(height: 16),
+            _buildIndicadorSumaMixta(context),
           ],
+        ],
+      ),
+    );
+  }
+
+  /// Suma de todos los campos de "Pago Múltiple" tal como están ahora mismo
+  /// en los controllers.
+  double get _sumaMontosMixtos =>
+      (double.tryParse(montoEfectivoController.text) ?? 0.0) +
+      (double.tryParse(montoTransferenciaController.text) ?? 0.0) +
+      (double.tryParse(montoTarjetaController.text) ?? 0.0) +
+      (double.tryParse(montoSistereditoController.text) ?? 0.0) +
+      (double.tryParse(montoBoldController.text) ?? 0.0) +
+      (double.tryParse(montoAddiController.text) ?? 0.0) +
+      (double.tryParse(montoCredilondonController.text) ?? 0.0) +
+      (double.tryParse(montoNequiController.text) ?? 0.0) +
+      (double.tryParse(montoDaviplataController.text) ?? 0.0) +
+      (double.tryParse(montoBancolombiaController.text) ?? 0.0);
+
+  /// Aviso en vivo de cuánto llevan sumado los montos repartidos frente al
+  /// total a pagar — mismo criterio (tolerancia $10) que la validación al
+  /// guardar en facturacion_screen.dart, para que el usuario vea el problema
+  /// antes de intentar cobrar.
+  Widget _buildIndicadorSumaMixta(BuildContext context) {
+    final suma = _sumaMontosMixtos;
+    final diferencia = suma - totalAPagar;
+    final cuadra = diferencia.abs() <= 10;
+
+    final color = cuadra ? Colors.green : Colors.red;
+
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Suma ingresada:',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '\$${suma.toStringAsFixed(0)} de \$${totalAPagar.toStringAsFixed(0)}',
+                style: TextStyle(color: color, fontWeight: FontWeight.bold),
+              ),
+              if (!cuadra)
+                Text(
+                  diferencia < 0
+                      ? 'Faltan \$${diferencia.abs().toStringAsFixed(0)}'
+                      : 'Sobran \$${diferencia.toStringAsFixed(0)}',
+                  style: TextStyle(color: color, fontSize: 12),
+                ),
+            ],
+          ),
         ],
       ),
     );

@@ -6,7 +6,41 @@ import '../utils/api_error.dart';
 import '../utils/logger.dart';
 import 'base_api_service.dart';
 
-class CuadreCajaService {
+/// Interfaz minima usada por las pantallas que necesitan inyectar un fake en
+/// tests (ver abrir_caja_screen.dart / cerrar_caja_screen.dart) - necesaria
+/// porque CuadreCajaService es un singleton (factory constructor) y por lo
+/// tanto no se puede `extends` desde una clase fake en otro archivo.
+abstract class ICuadreCajaService {
+  Future<List<CuadreCaja>> getAllCuadres();
+  Future<CuadreCaja> createCuadre({
+    required String nombre,
+    required String responsable,
+    required double fondoInicial,
+    required double efectivoDeclarado,
+    required double efectivoEsperado,
+    required double tolerancia,
+    String? observaciones,
+    String? tipoCaja,
+  });
+  Future<CuadreCaja> updateCuadre(
+    String id, {
+    String? nombre,
+    String? responsable,
+    double? fondoInicial,
+    double? efectivoDeclarado,
+    double? efectivoEsperado,
+    double? tolerancia,
+    String? observaciones,
+    bool? cerrarCaja,
+    String? estado,
+  });
+  Future<Map<String, dynamic>> getCuadreCompleto({String? tipoCaja});
+  Future<Map<String, dynamic>> getDetallesVentas({String? tipoCaja});
+  Future<Map<String, dynamic>> getVentasPorTipoPago();
+  Future<Map<String, dynamic>> getResumenVentasHoy();
+}
+
+class CuadreCajaService implements ICuadreCajaService {
   static final CuadreCajaService _instance = CuadreCajaService._internal();
   factory CuadreCajaService() => _instance;
   CuadreCajaService._internal();

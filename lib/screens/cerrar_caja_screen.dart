@@ -13,15 +13,21 @@ import '../theme/app_theme.dart';
 import '../utils/logger.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/submit_guard.dart';
 
 class CerrarCajaScreen extends StatefulWidget {
-  const CerrarCajaScreen({super.key});
+  /// Inyectable solo para tests de secuencia (doble-tap, etc.) - en la app
+  /// real siempre se usa el CuadreCajaService real.
+  @visibleForTesting
+  final ICuadreCajaService? cuadreCajaService;
+
+  const CerrarCajaScreen({super.key, this.cuadreCajaService});
 
   @override
   _CerrarCajaScreenState createState() => _CerrarCajaScreenState();
 }
 
-class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
+class _CerrarCajaScreenState extends State<CerrarCajaScreen> with SubmitGuard {
   // Store cuadre completo response
   Map<String, dynamic>? _cuadreCompletoData;
   // Store resumen completo data
@@ -36,7 +42,8 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
       TextEditingController();
 
   // Services
-  final CuadreCajaService _cuadreCajaService = CuadreCajaService();
+  late final ICuadreCajaService _cuadreCajaService =
+      widget.cuadreCajaService ?? CuadreCajaService();
   final BackupInventarioService _backupService = BackupInventarioService();
 
   // Estado de conciliación de inventario
@@ -1306,7 +1313,12 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                           ),
                           elevation: 4,
                         ),
-                        onPressed: _cerrarCaja,
+                        // runGuarded: "CERRAR CAJA" no tenia ningun guard
+                        // antes de abrir el dialogo de efectivo declarado -
+                        // un doble-tap real podia apilar dos dialogos y, si
+                        // ambos se confirmaban, disparar dos updateCuadre()
+                        // con cerrarCaja:true para la misma caja.
+                        onPressed: () => runGuarded(_cerrarCaja),
                       ),
                     ),
                   ],

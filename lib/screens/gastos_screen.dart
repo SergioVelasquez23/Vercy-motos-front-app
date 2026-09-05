@@ -20,11 +20,23 @@ class GastosScreen extends StatefulWidget {
   final bool mostrarFormulario;
   final VoidCallback? onGastoGuardado;
 
+  /// Inyectables solo para tests de secuencia (doble-tap, etc.) - en la app
+  /// real siempre se usan los servicios reales.
+  @visibleForTesting
+  final IGastoService? gastoService;
+  @visibleForTesting
+  final ICuadreCajaService? cuadreCajaService;
+  @visibleForTesting
+  final ProveedorService? proveedorService;
+
   const GastosScreen({
     super.key,
     this.cuadreCajaId,
     this.mostrarFormulario = false,
     this.onGastoGuardado,
+    this.gastoService,
+    this.cuadreCajaService,
+    this.proveedorService,
   });
 
   @override
@@ -33,9 +45,11 @@ class GastosScreen extends StatefulWidget {
 
 class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
   // Services
-  final GastoService _gastoService = GastoService();
-  final CuadreCajaService _cuadreCajaService = CuadreCajaService();
-  final ProveedorService _proveedorService = ProveedorService();
+  late final IGastoService _gastoService = widget.gastoService ?? GastoService();
+  late final ICuadreCajaService _cuadreCajaService =
+      widget.cuadreCajaService ?? CuadreCajaService();
+  late final ProveedorService _proveedorService =
+      widget.proveedorService ?? ProveedorService();
 
   // Controllers
   final TextEditingController _conceptoController = TextEditingController();
@@ -3070,7 +3084,12 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
                                 ),
                                 SizedBox(width: 8),
                                 ElevatedButton.icon(
-                                  onPressed: () => _deleteGasto(gasto),
+                                  // runGuarded: sin esto, un doble-tap (o
+                                  // doble-confirmacion en el dialogo) podia
+                                  // apilar dos dialogos y disparar dos
+                                  // deleteGasto() para el mismo gasto.
+                                  onPressed: () =>
+                                      runGuarded(() => _deleteGasto(gasto)),
                                   icon: Icon(
                                     Icons.delete,
                                     size: 16,

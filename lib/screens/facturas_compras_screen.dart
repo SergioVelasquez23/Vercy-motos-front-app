@@ -8,15 +8,22 @@ import '../utils/snackbar_helper.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/facturizacion/documento_soporte_dialog.dart';
 import '../utils/api_error.dart';
+import '../utils/submit_guard.dart';
 class FacturasComprasScreen extends StatefulWidget {
-  const FacturasComprasScreen({super.key});
+  /// Inyectable solo para tests de secuencia (doble-tap, etc.) - en la app
+  /// real siempre se usa el FacturaCompraService real.
+  @visibleForTesting
+  final FacturaCompraService? facturaCompraService;
+
+  const FacturasComprasScreen({super.key, this.facturaCompraService});
 
   @override
   _FacturasComprasScreenState createState() => _FacturasComprasScreenState();
 }
 
-class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
-  final FacturaCompraService _facturaCompraService = FacturaCompraService();
+class _FacturasComprasScreenState extends State<FacturasComprasScreen> with SubmitGuard {
+  late final FacturaCompraService _facturaCompraService =
+      widget.facturaCompraService ?? FacturaCompraService();
   final TextEditingController _searchController = TextEditingController();
 
   List<FacturaCompra> _facturas = [];
@@ -29,6 +36,15 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
   // Variable para controlar el timeout del botón guardar factura
   bool _guardandoFactura = false;
 
+  // Los Scrollbar de los filtros de Estado/Pago no traian su propio
+  // ScrollController: sin uno compartido con su SingleChildScrollView,
+  // intentaban usar el PrimaryScrollController (que no aplica a un scroll
+  // horizontal sin controller explicito), y el Scrollbar quedaba sin
+  // ScrollPosition a la que pintarse - un assert que flutter_test sí hace
+  // fallar en cada frame.
+  final ScrollController _filtroEstadoScrollController = ScrollController();
+  final ScrollController _filtroPagoScrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +54,8 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _filtroEstadoScrollController.dispose();
+    _filtroPagoScrollController.dispose();
     super.dispose();
   }
 
@@ -264,9 +282,11 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
               SizedBox(width: 8),
               Expanded(
                 child: Scrollbar(
+                  controller: _filtroEstadoScrollController,
                   scrollbarOrientation: ScrollbarOrientation.bottom,
                   thumbVisibility: true,
                   child: SingleChildScrollView(
+                    controller: _filtroEstadoScrollController,
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: ['TODOS', 'PENDIENTE', 'PAGADA', 'CANCELADA']
@@ -308,9 +328,11 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
               SizedBox(width: 8),
               Expanded(
                 child: Scrollbar(
+                  controller: _filtroPagoScrollController,
                   scrollbarOrientation: ScrollbarOrientation.bottom,
                   thumbVisibility: true,
                   child: SingleChildScrollView(
+                    controller: _filtroPagoScrollController,
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children:
@@ -541,7 +563,15 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
                   // Botón Eliminar
                   Expanded(
                     child: InkWell(
-                      onTap: () => _confirmarEliminarFactura(factura),
+                      // runGuarded evita que un doble-tap (o doble-confirmacion
+                      // en el dialogo) dispare dos veces revertirInventarioCompra
+                      // para la misma factura - sin esto, el stock se devolvia
+                      // dos veces aunque el segundo eliminarFacturaCompra fallara.
+                      onTap: _isLoading
+                          ? null
+                          : () => runGuarded(
+                              () => _confirmarEliminarFactura(factura),
+                            ),
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 8),
                         child: Row(

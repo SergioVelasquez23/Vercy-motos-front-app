@@ -8,7 +8,57 @@ import 'alertas_service.dart';
 import '../utils/logger.dart';
 import '../utils/token_storage.dart';
 
-class GastoService {
+/// Interfaz minima usada por GastosScreen para poder inyectar un fake en
+/// tests - necesaria porque GastoService es un singleton (factory
+/// constructor) y por lo tanto no se puede `extends` desde otro archivo.
+abstract class IGastoService {
+  Future<List<Gasto>> getAllGastos();
+  Future<List<Gasto>> getGastosByCuadre(String cuadreId);
+  Future<List<TipoGasto>> getAllTiposGasto();
+  Future<Gasto> createGasto({
+    required String cuadreCajaId,
+    required String tipoGastoId,
+    required String concepto,
+    required double monto,
+    required String responsable,
+    DateTime? fechaGasto,
+    String? numeroRecibo,
+    String? numeroFactura,
+    String? proveedor,
+    String? formaPago,
+    double? subtotal,
+    double? impuestos,
+    bool? pagadoDesdeCaja,
+    double? montoEfectivo,
+    double? montoTransferencia,
+  });
+  Future<Gasto> updateGasto(
+    String id, {
+    String? cuadreCajaId,
+    String? tipoGastoId,
+    String? concepto,
+    double? monto,
+    String? responsable,
+    DateTime? fechaGasto,
+    String? numeroRecibo,
+    String? numeroFactura,
+    String? proveedor,
+    String? formaPago,
+    double? subtotal,
+    double? impuestos,
+    bool? pagadoDesdeCaja,
+    double? montoEfectivo,
+    double? montoTransferencia,
+  });
+  Future<Map<String, dynamic>> deleteGasto(String id);
+  Future<TipoGasto> createTipoGasto({
+    required String nombre,
+    String? descripcion,
+    bool activo = true,
+  });
+}
+
+class GastoService implements IGastoService {
   static final GastoService _instance = GastoService._internal();
   factory GastoService() => _instance;
   GastoService._internal();

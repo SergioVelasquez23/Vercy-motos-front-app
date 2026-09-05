@@ -65,12 +65,28 @@ class FacturacionScreen extends StatefulWidget {
   // el string 'LOCAL' como uno de sus valores.
   final String tipoCaja;
 
+  // ==================== SOLO PARA TESTS ====================
+  // Los siguientes 3 campos son ganchos de testeo (@visibleForTesting): en
+  // uso normal de la app siempre quedan null y no cambian nada. Permiten a
+  // los widget tests (ver test/facturacion_screen_secuencias_test.dart)
+  // inyectar un PedidoService falso y precargar items/borrador sin tener que
+  // simular todo el flujo de búsqueda de productos por la UI.
+  @visibleForTesting
+  final IPedidoService? pedidoService;
+  @visibleForTesting
+  final List<ItemPedido>? initialItemsForTesting;
+  @visibleForTesting
+  final String? initialBorradorOrigenIdForTesting;
+
   const FacturacionScreen({
     super.key,
     this.pedidoAsesor,
     this.trasladoId,
     this.cotizacion,
     this.tipoCaja = 'LOCAL',
+    this.pedidoService,
+    this.initialItemsForTesting,
+    this.initialBorradorOrigenIdForTesting,
   });
 
   @override
@@ -90,7 +106,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   // venta terminaba descontando el stock dos veces (bug reportado en
   // producción: "MOFLE MF NKD CROMADO" descontado -5 dos veces seguidas).
   String? _borradorOrigenId;
-  final PedidoService _pedidoService = PedidoService();
+  late final IPedidoService _pedidoService;
   final ProductoService _productoService = ProductoService();
   final PedidoAsesorService _pedidoAsesorService = PedidoAsesorService();
   final CotizacionService _cotizacionService = CotizacionService();
@@ -254,6 +270,17 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   @override
   void initState() {
     super.initState();
+    _pedidoService = widget.pedidoService ?? PedidoService();
+
+    // Ganchos solo para tests (ver comentario en el widget) — en la app real
+    // ambos parametros siempre son null y este bloque no hace nada.
+    if (widget.initialItemsForTesting != null) {
+      _items = List<ItemPedido>.from(widget.initialItemsForTesting!);
+    }
+    if (widget.initialBorradorOrigenIdForTesting != null) {
+      _borradorOrigenId = widget.initialBorradorOrigenIdForTesting;
+    }
+
     _cargarProductos();
     _actualizarContadorBorradoresLocales();
 
@@ -897,6 +924,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         MetodoPagoSection(
                           metodoPago: _metodoPago,
                           metodosPago: _metodosPago,
+                          totalAPagar: _calcularTotalParaIndicadorMixto(),
                           onMetodoPagoChanged: (value) {
                             setState(() {
                               _metodoPago = value;
@@ -4118,6 +4146,31 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     );
   }
 
+  /// Total a pagar de la factura actual, de solo lectura — misma fórmula que
+  /// usa _guardarYPagar (y, por separado, TotalesSection para mostrarlo en
+  /// pantalla). Se usa para el indicador en vivo de "Pago Múltiple": cuánto
+  /// llevan sumado los montos repartidos frente a lo que falta cobrar.
+  double _calcularTotalParaIndicadorMixto() {
+    final subtotal = _items.fold(0.0, (sum, item) => sum + item.subtotal);
+    final retencionPct = double.tryParse(_retencionController.text) ?? 0;
+    final reteIVAPct = double.tryParse(_reteIVAController.text) ?? 0;
+    final reteICAPct = double.tryParse(_reteICAController.text) ?? 0;
+    final aiuPct = double.tryParse(_aiuController.text) ?? 0;
+    final dctoGeneral = double.tryParse(_dctoGeneralController.text) ?? 0;
+
+    final retencionValor = subtotal * (retencionPct / 100);
+    final reteIVAValor = subtotal * (reteIVAPct / 100);
+    final reteICAValor = subtotal * (reteICAPct / 100);
+    final aiuValor = subtotal * (aiuPct / 100);
+
+    final totalImpuestos = _items.fold(0.0, (sum, item) => sum + item.valorImpuesto);
+    final totalDctoProductos = _items.fold(0.0, (sum, item) => sum + item.valorDescuento);
+    final totalDescuentos = dctoGeneral + totalDctoProductos;
+    final totalRetenciones = retencionValor + reteIVAValor + reteICAValor;
+
+    return subtotal + totalImpuestos + aiuValor - totalDescuentos - totalRetenciones;
+  }
+
   // Guardar y pagar - abre el diálogo de pago
   Future<void> _guardarYPagar() async {
     if (_items.isEmpty) {
@@ -4155,7 +4208,40 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           aiuValor -
           totalDescuentos -
           totalRetenciones;
-      
+
+      // ✅ Pago mixto (ej. transferencia + efectivo): la suma de los montos
+      // distribuidos no debe superar (ni quedar corta de) el total a pagar.
+      // Tolerancia de $10 por redondeos, igual criterio que en DialogoPago.
+      if (_metodoPago == 'multiple') {
+        final sumaMontosMixtos =
+            (double.tryParse(_montoEfectivoController.text) ?? 0.0) +
+            (double.tryParse(_montoTransferenciaController.text) ?? 0.0) +
+            (double.tryParse(_montoTarjetaController.text) ?? 0.0) +
+            (double.tryParse(_montoSistereditoController.text) ?? 0.0) +
+            (double.tryParse(_montoBoldController.text) ?? 0.0) +
+            (double.tryParse(_montoAddiController.text) ?? 0.0) +
+            (double.tryParse(_montoCredilondonController.text) ?? 0.0) +
+            (double.tryParse(_montoNequiController.text) ?? 0.0) +
+            (double.tryParse(_montoDaviplataController.text) ?? 0.0) +
+            (double.tryParse(_montoBancolombiaController.text) ?? 0.0);
+        final diferenciaMontosMixtos = sumaMontosMixtos - total;
+
+        if (diferenciaMontosMixtos.abs() > 10) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                diferenciaMontosMixtos < 0
+                    ? 'El pago mixto no alcanza el total a pagar. Faltan ${CurrencyUtils.format(diferenciaMontosMixtos.abs())}.'
+                    : 'El pago mixto supera el total a pagar. Sobran ${CurrencyUtils.format(diferenciaMontosMixtos)}.',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+
       final userName =
           Provider.of<UserProvider>(context, listen: false).userName ??
           'Sistema';
