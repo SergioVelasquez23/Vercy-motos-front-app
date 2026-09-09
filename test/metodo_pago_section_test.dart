@@ -12,6 +12,7 @@ Widget _wrap({
   required String metodoPago,
   required ValueChanged<String> onMetodoPagoChanged,
   VoidCallback? onMontoChanged,
+  double totalAPagar = 100000,
 }) {
   return MaterialApp(
     home: Scaffold(
@@ -22,6 +23,7 @@ Widget _wrap({
         child: MetodoPagoSection(
           metodoPago: metodoPago,
           metodosPago: _metodosPago,
+          totalAPagar: totalAPagar,
           onMetodoPagoChanged: onMetodoPagoChanged,
           onMontoChanged: onMontoChanged ?? () {},
           montoEfectivoController: TextEditingController(),
