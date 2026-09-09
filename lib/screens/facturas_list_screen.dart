@@ -10,12 +10,12 @@ import '../models/negocio_info.dart';
 import '../providers/datos_cache_provider.dart';
 import '../services/cliente_service.dart';
 import '../services/excel_export_service.dart';
-import '../services/factura_service.dart';
 import '../services/pedido_service.dart';
 import '../services/pdf_service.dart';
 import '../services/negocio_info_service.dart';
 import '../services/matias_service.dart';
 import '../services/documento_service.dart';
+import '../services/documentos_cache.dart';
 import '../providers/user_provider.dart';
 import '../widgets/facturizacion/confirmacion_dian_dialog.dart';
 import '../theme/app_theme.dart';
@@ -35,7 +35,6 @@ class FacturasListScreen extends StatefulWidget {
 }
 
 class _FacturasListScreenState extends State<FacturasListScreen> with PaginacionMixin<FacturasListScreen> {
-  final FacturaService _facturaService = FacturaService();
   final PedidoService _pedidoService = PedidoService();
   final PDFService _pdfService = PDFService();
   final NegocioInfoService _negocioInfoService = NegocioInfoService();
@@ -106,44 +105,24 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
     super.dispose();
   }
 
-  Future<void> _cargarDocumentos() async {
-    setState(() => _isLoading = true);
+  /// Carga la lista desde [DocumentosCache]. Si la caché está fresca la
+  /// pantalla aparece al instante; [forzar] la salta y vuelve a la red
+  /// (botón "Actualizar" y después de cobrar/emitir un documento).
+  Future<void> _cargarDocumentos({bool forzar = false}) async {
+    final hayCache = DocumentosCache.instance.tieneDatosFrescos && !forzar;
+    // Solo mostrar el spinner de pantalla completa si no hay nada que pintar
+    // todavía; si ya hay caché, la transición es instantánea.
+    if (!hayCache) setState(() => _isLoading = true);
     try {
-      // Cargar facturas tradicionales
-      final facturas = await _facturaService.getFacturas();
+      await DocumentosCache.instance.cargar(forzar: forzar);
+
+      final facturas = DocumentosCache.instance.facturas;
+      // Copia local: la ordenamos sin mutar la lista cacheada.
+      final pedidosFacturacion =
+          List<Pedido>.from(DocumentosCache.instance.pedidosPagados);
+
       appLog('📄 Facturas cargadas: ${facturas.length}');
-      
-      // ⚡ Obtener TODOS los pedidos pagados (sin filtrar por fecha)
-      List<Pedido> pedidosPagados = [];
-
-      try {
-        // Intentar primero con el endpoint más completo
-        pedidosPagados = await _pedidoService.getTodosDocumentosPagados();
-        appLog(
-          '📋 Documentos pagados (endpoint completo): ${pedidosPagados.length}',
-        );
-      } catch (e) {
-        appLog('⚠️ Error con getTodosDocumentosPagados, usando fallback: $e');
-        // Fallback: obtener por estado (no filtra por fecha)
-        pedidosPagados = await _pedidoService.getPedidosByEstado(
-          EstadoPedido.pagado,
-        );
-        appLog(
-          '💳 Pedidos pagados (fallback por estado): ${pedidosPagados.length}',
-        );
-      }
-
-      // 🔥 Mostrar TODOS los pedidos pagados, sin filtrar por tipoFactura ni mesa ni fecha
-      final pedidosFacturacion = pedidosPagados;
-
       appLog('🎯 Pedidos pagados para tabla: ${pedidosFacturacion.length}');
-
-      // Debug: mostrar algunos IDs de pedidos para verificar
-      if (pedidosFacturacion.isNotEmpty) {
-        appLog(
-          '📝 Primeros 5 IDs: ${pedidosFacturacion.take(5).map((p) => p.id).join(", ")}',
-        );
-      }
 
       // Ordenar por fecha descendente
       pedidosFacturacion.sort((a, b) {
@@ -151,7 +130,8 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
         final fechaB = b.fechaPago ?? b.fecha;
         return fechaB.compareTo(fechaA);
       });
-      
+
+      if (!mounted) return;
       setState(() {
         _facturas = facturas;
         _pedidosPagados = pedidosFacturacion;
@@ -159,11 +139,12 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
       });
     } catch (e) {
       appLog('❌ Error cargando documentos: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error al cargar documentos: ${errorMessage(e)}')));
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -320,7 +301,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
           label: 'Actualizar',
           mobileLabel: 'Actualizar',
           onPressed: () async {
-            await _cargarDocumentos();
+            await _cargarDocumentos(forzar: true);
             await _cargarCantidadMatias();
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
@@ -1477,7 +1458,8 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
           // (evita que quede mostrando POS si algo queda desincronizado).
           pedido.tipoFactura = 'FACTURA';
           _aplicarFiltros();
-          unawaited(_cargarDocumentos());
+          DocumentosCache.instance.invalidar();
+          unawaited(_cargarDocumentos(forzar: true));
           showDialog(
             context: context,
             builder: (_) => ConfirmacionDianDialog(

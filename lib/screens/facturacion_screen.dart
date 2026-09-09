@@ -18,6 +18,7 @@ import '../services/negocio_info_service.dart';
 import '../services/cliente_service.dart';
 import '../services/matias_service.dart';
 import '../services/traslado_service.dart';
+import '../services/documentos_cache.dart';
 import '../models/cliente.dart';
 import '../models/negocio_info.dart';
 import '../theme/app_theme.dart';
@@ -5001,6 +5002,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
   // 🔄 Refrescar cache en segundo plano
   void _refrescarCacheEnBackground() {
+    // La venta recién cobrada debe aparecer de inmediato en "Lista documentos"
+    // la próxima vez que se abra, sin esperar el TTL de la caché.
+    DocumentosCache.instance.invalidar();
     Future.microtask(() async {
       try {
         final cacheProvider = Provider.of<DatosCacheProvider>(
