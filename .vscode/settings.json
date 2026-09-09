@@ -1,4 +1,16 @@
 {
   "cmake.sourceDirectory": "${workspaceFolder}/windows",
-  "java.configuration.updateBuildConfiguration": "interactive"
+  "java.configuration.updateBuildConfiguration": "interactive",
+  "java.import.gradle.enabled": false,
+  "java.import.gradle.wrapper.enabled": false,
+  "java.import.gradle.version": "8.14",
+  "java.import.exclusions": [
+    "**/node_modules/**",
+    "**/.metadata/**",
+    "**/archetype-resources/**",
+    "**/META-INF/maven/**",
+    "**/android/**",
+    "**/build/**"
+  ],
+  "gradle.nestedProjects": false
 }
