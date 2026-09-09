@@ -94,7 +94,13 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> with SubmitGuard {
 
     try {
       final cuadres = await _cuadreCajaService.getAllCuadres();
-      final cajaAbierta = cuadres.where((c) => !c.cerrada).toList();
+      final cajaAbierta = cuadres.where((c) => !c.cerrada).toList()
+        // "Local" primero: tanto en el selector como en la caja que se ve
+        // (y cuyo resumen se muestra) por defecto al entrar a Cerrar Caja.
+        ..sort((a, b) {
+          if (a.tipoCaja == b.tipoCaja) return 0;
+          return a.tipoCaja == 'ENVIOS' ? 1 : -1;
+        });
 
       setState(() {
         _hayCajaAbierta = cajaAbierta.isNotEmpty;
