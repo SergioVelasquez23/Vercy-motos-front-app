@@ -581,7 +581,7 @@ class ProductoService {
     try {
       final response = await http
           .get(Uri.parse(url), headers: headers)
-          .timeout(Duration(seconds: 300));
+          .timeout(Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -631,7 +631,7 @@ class ProductoService {
       final response = await http
           .get(Uri.parse(url), headers: headers)
           .timeout(
-            Duration(seconds: 300),
+            Duration(seconds: 30),
           ); // Timeout generoso para carga inicial
 
         
@@ -770,7 +770,7 @@ class ProductoService {
 
     final response = await http
         .get(Uri.parse(url), headers: headers)
-        .timeout(Duration(seconds: 300));
+        .timeout(Duration(seconds: 30));
 
       
 
@@ -797,7 +797,7 @@ class ProductoService {
       final headers = await _getHeaders();
       final response = await http
           .get(Uri.parse('$baseUrl/api/categorias'), headers: headers)
-          .timeout(Duration(seconds: 300)); // Timeout aumentado para Render
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Render
 
       // Response status: ${response.statusCode}
       // Response body: ${response.body}
@@ -860,7 +860,7 @@ class ProductoService {
             headers: headers,
             body: json.encode(productoJson),
           )
-          .timeout(Duration(seconds: 300)); // Timeout aumentado para Render
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Render
 
       if (response.statusCode == 201) {
         // 🔍 DEBUG: Ver la respuesta completa del backend
@@ -927,7 +927,7 @@ class ProductoService {
             headers: headers,
             body: json.encode(productoData),
           )
-          .timeout(Duration(seconds: 300)); // Timeout aumentado para Render
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Render
 
                  
 
@@ -1259,7 +1259,7 @@ class ProductoService {
             headers: headers,
             body: json.encode(productoJson),
           )
-          .timeout(Duration(seconds: 300)); // Timeout aumentado para Render
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Render
 
       // 🔍 LOG: Ver respuesta del backend
       appLog('');
@@ -1363,7 +1363,7 @@ class ProductoService {
             Uri.parse('$baseUrl/api/productos/$productoId'),
             headers: headers,
           )
-          .timeout(Duration(seconds: 300));
+          .timeout(Duration(seconds: 30));
 
       if (getResponse.statusCode != 200) {
         appLog(
@@ -1392,7 +1392,7 @@ class ProductoService {
             headers: headers,
             body: json.encode(productoJson),
           )
-          .timeout(Duration(seconds: 300));
+          .timeout(Duration(seconds: 30));
 
       if (response.statusCode != 200 && response.statusCode != 204) {
         appLog('⚠️ Error al actualizar costo: ${response.statusCode}');
@@ -1434,7 +1434,7 @@ class ProductoService {
       final headers = await _getHeaders();
       final response = await http
           .delete(Uri.parse('$baseUrl/api/productos/$id'), headers: headers)
-          .timeout(Duration(seconds: 300)); // Timeout aumentado para Render
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Render
 
       if (response.statusCode == 200 || response.statusCode == 204) {
           
@@ -1479,7 +1479,7 @@ class ProductoService {
             headers: headers,
             body: json.encode(categoria.toJson()),
           )
-          .timeout(Duration(seconds: 300)); // Timeout aumentado para Render
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Render
 
       if (response.statusCode == 201) {
           
@@ -1517,7 +1517,7 @@ class ProductoService {
             headers: headers,
             body: json.encode(categoria.toJson()),
           )
-          .timeout(Duration(seconds: 300)); // Timeout aumentado para Render
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Render
 
       if (response.statusCode == 200) {
           
@@ -1538,7 +1538,7 @@ class ProductoService {
       final headers = await _getHeaders();
       final response = await http
           .delete(Uri.parse('$baseUrl/api/categorias/$id'), headers: headers)
-          .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
       if (response.statusCode == 200) {
           
@@ -1567,7 +1567,7 @@ class ProductoService {
       ).replace(queryParameters: queryParams);
       final response = await http
           .get(uri, headers: headers)
-          .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
       if (response.statusCode == 200) {
         // Extraer los datos del campo 'data' de la respuesta ApiResponse
@@ -1642,7 +1642,7 @@ class ProductoService {
             ),
             headers: headers,
           )
-          .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
       if (response.statusCode == 200) {
         // Extraer los datos del campo 'data' de la respuesta ApiResponse
@@ -1700,7 +1700,7 @@ class ProductoService {
               'storage': 'database', // Especificar que se guarde en BD
             }),
           )
-          .timeout(Duration(seconds: 300));
+          .timeout(Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         // Parsear la respuesta para verificar que se guardó correctamente
@@ -1818,7 +1818,7 @@ class ProductoService {
       final headers = await _getHeaders();
       final response = await http
           .get(Uri.parse('$baseUrl/api/productos/$id/nombre'), headers: headers)
-          .timeout(Duration(seconds: 300));
+          .timeout(Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -1897,7 +1897,7 @@ class ProductoService {
 
       final response = await http
           .get(Uri.parse(url), headers: headers)
-          .timeout(Duration(seconds: 300));
+          .timeout(Duration(seconds: 30));
 
         
       if (response.statusCode == 200) {
@@ -1951,7 +1951,7 @@ class ProductoService {
 
       final response = await http
           .get(Uri.parse(url), headers: headers)
-          .timeout(Duration(seconds: 300));
+          .timeout(Duration(seconds: 30));
 
         
       if (response.statusCode == 200) {
@@ -2298,7 +2298,7 @@ class ProductoService {
             ),
             headers: headers,
           )
-          .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
                  
         
@@ -2368,7 +2368,7 @@ class ProductoService {
             Uri.parse('$baseUrl/api/productos/$productoId'),
             headers: headers,
           )
-          .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
                  
         
@@ -2430,7 +2430,7 @@ class ProductoService {
             ),
             headers: headers,
           )
-          .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
                  
         
@@ -2500,7 +2500,7 @@ class ProductoService {
             Uri.parse('$baseUrl/api/productos/$productoId'),
             headers: headers,
           )
-          .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
                  
         
@@ -2557,7 +2557,7 @@ class ProductoService {
             Uri.parse('$baseUrl/api/productos/$productoId/es-combo'),
             headers: headers,
           )
-          .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
         
         
@@ -2653,7 +2653,7 @@ class ProductoService {
                 headers: headers,
               )
               .timeout(
-                Duration(seconds: 300),
+                Duration(seconds: 30),
               ); // Timeout aumentado para Railway
 
           if (response.statusCode == 200) {

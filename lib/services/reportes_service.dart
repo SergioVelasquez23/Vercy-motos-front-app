@@ -1,7 +1,5 @@
 import 'base_api_service.dart';
 import '../models/dashboard_data.dart';
-import '../services/pedido_service.dart'; // Para acceder a pedidos directamente
-import '../utils/dashboard_helper.dart'; // Utilidad para cálculos de ventas correctos
 
 class ReportesService {
   static final ReportesService _instance = ReportesService._internal();
@@ -9,7 +7,6 @@ class ReportesService {
   ReportesService._internal();
 
   final BaseApiService _apiService = BaseApiService();
-  final PedidoService _pedidoService = PedidoService();
 
   // Obtener dashboard
   // soloElectronicos=true → backend excluye pedidos LOCAL (solo POS + FACTURA)
@@ -33,39 +30,14 @@ class ReportesService {
         
 
       if (response.isSuccess && response.data != null) {
-        final dashboardData = DashboardData.fromJson(response.data!);
-
-        // CORRECIÓN: Obtener pedidos de hoy para verificar datos
-        final pedidosHoy = await _pedidoService.getPedidosHoy();
-
-        // Calcular total real de ventas usando nuestra lógica mejorada
-        final totalVentasCorrectas = DashboardHelper.calcularTotalVentas(
-          pedidosHoy,
-        );
-
-        // Contar pedidos realmente pagados
-        int pedidosRealmentePagados = 0;
-        for (var pedido in pedidosHoy) {
-          if (pedido.estaPagado) {
-            pedidosRealmentePagados++;
-          }
-        }
-
-          
-          
-          
-          
-                                
-
-        // ✅ DESACTIVADO: Ya no se corrigen los valores del servidor
-        if ((totalVentasCorrectas - dashboardData.ventasHoy.total).abs() > 0) {
-                     }
-
-        // ✅ SIEMPRE usar los datos originales del servidor
-          
-        return dashboardData;
+        // Se usan siempre los valores del servidor tal cual. Antes aquí se
+        // hacía además un getPedidosHoy() (que en su fallback baja TODOS los
+        // pedidos) solo para recalcular totales que luego se descartaban —
+        // era una segunda llamada pesada y encadenada en el camino crítico
+        // del dashboard, sin efecto en el resultado.
+        return DashboardData.fromJson(response.data!);
       } else {
-                   return null;
+        return null;
       }
     } catch (e) {
         
