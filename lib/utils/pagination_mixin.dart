@@ -19,29 +19,35 @@ const int _kEllipsis = -1;
 ///    ancho de la ventana — responde a colapsar/expandir el menú lateral.
 mixin PaginacionMixin<T extends StatefulWidget> on State<T> {
   int _paginaActual = 0;
-  int _itemsPorPagina = 20;
+  // null = usar [itemsPorPaginaPorDefecto]; se fija al elegir en el dropdown.
+  int? _itemsPorPaginaSel;
   Timer? _navDebounce;
 
+  /// Tamaño de página inicial. Sobrescribir en la pantalla para arrancar con
+  /// más filas por página (p. ej. 50 en listas donde "caben muchas").
+  @protected
+  int get itemsPorPaginaPorDefecto => 20;
+
   int get paginaActual => _paginaActual;
-  int get itemsPorPagina => _itemsPorPagina;
+  int get itemsPorPagina => _itemsPorPaginaSel ?? itemsPorPaginaPorDefecto;
 
   /// Devuelve el subconjunto de [lista] para la página actual (cliente-side).
   List<E> paginarLista<E>(List<E> lista) {
     if (lista.isEmpty) return [];
-    final inicio = _paginaActual * _itemsPorPagina;
+    final inicio = _paginaActual * itemsPorPagina;
     if (inicio >= lista.length) {
       // La página actual ya no existe (un filtro redujo los resultados): al 0.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _paginaActual != 0) setState(() => _paginaActual = 0);
       });
-      return lista.take(_itemsPorPagina).toList();
+      return lista.take(itemsPorPagina).toList();
     }
-    final fin = (inicio + _itemsPorPagina).clamp(0, lista.length);
+    final fin = (inicio + itemsPorPagina).clamp(0, lista.length);
     return lista.sublist(inicio, fin);
   }
 
   int totalPaginas(int totalItems) =>
-      (totalItems / _itemsPorPagina).ceil().clamp(1, 99999);
+      (totalItems / itemsPorPagina).ceil().clamp(1, 99999);
 
   /// Se invoca (con debounce) al cambiar de página o de tamaño de página.
   /// Cliente-side no necesita hacer nada; las pantallas que paginan contra el
@@ -118,8 +124,8 @@ mixin PaginacionMixin<T extends StatefulWidget> on State<T> {
     }
 
     final pagina = _paginaActual.clamp(0, total - 1);
-    final inicio = pagina * _itemsPorPagina + 1;
-    final fin = ((pagina + 1) * _itemsPorPagina).clamp(0, totalItems);
+    final inicio = pagina * itemsPorPagina + 1;
+    final fin = ((pagina + 1) * itemsPorPagina).clamp(0, totalItems);
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
     return Container(
@@ -153,18 +159,20 @@ mixin PaginacionMixin<T extends StatefulWidget> on State<T> {
 
           final children = <Widget>[
             DropdownButton<int>(
-              value: _itemsPorPagina,
+              value: itemsPorPagina,
               dropdownColor: Theme.of(context).colorScheme.surface,
               style: TextStyle(color: onSurface, fontSize: 13),
               underline: const SizedBox.shrink(),
               isDense: true,
-              items: const [10, 20, 50, 100]
+              // Incluye el valor actual aunque no sea una de las opciones fijas
+              // (una pantalla puede arrancar en 50 vía itemsPorPaginaPorDefecto).
+              items: (<int>{10, 20, 50, 100, itemsPorPagina}.toList()..sort())
                   .map((v) => DropdownMenuItem(value: v, child: Text('$v / pág')))
                   .toList(),
               onChanged: (v) {
-                if (v == null || v == _itemsPorPagina) return;
+                if (v == null || v == itemsPorPagina) return;
                 setState(() {
-                  _itemsPorPagina = v;
+                  _itemsPorPaginaSel = v;
                   _paginaActual = 0;
                 });
                 _agendarCambioPagina();

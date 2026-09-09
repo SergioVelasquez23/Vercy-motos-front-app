@@ -43,6 +43,8 @@ class DocumentosCache {
   int? _sizeCargado;
   DateTime? _paginaCargadaEn;
 
+  bool _incluirLocalesCargado = false;
+
   Future<void>? _cargaEnCurso;
   String? _cargaEnCursoClave;
 
@@ -56,9 +58,10 @@ class DocumentosCache {
   /// `true` si el backend respetó `page`/`size` en la última carga.
   bool get esPaginado => _esPaginado;
 
-  bool _paginaFresca(int page, int size) =>
+  bool _paginaFresca(int page, int size, bool incluirLocales) =>
       _paginaCargada == page &&
       _sizeCargado == size &&
+      _incluirLocalesCargado == incluirLocales &&
       _paginaCargadaEn != null &&
       DateTime.now().difference(_paginaCargadaEn!) < _ttl;
 
@@ -75,6 +78,7 @@ class DocumentosCache {
     _totalPedidos = 0;
     _paginaCargada = null;
     _sizeCargado = null;
+    _incluirLocalesCargado = false;
     _paginaCargadaEn = null;
     appLog('🗑️ DocumentosCache invalidada');
   }
@@ -86,18 +90,26 @@ class DocumentosCache {
   Future<void> cargar({
     required int page,
     required int size,
+    DateTime? desde,
+    bool incluirLocales = false,
     bool forzar = false,
   }) {
-    final clave = '$page/$size';
+    final clave = '$page/$size/$incluirLocales';
     if (!forzar &&
-        _paginaFresca(page, size) &&
+        _paginaFresca(page, size, incluirLocales) &&
         (_facturasFrescas || page != 0)) {
       return Future.value();
     }
     if (_cargaEnCursoClave == clave && _cargaEnCurso != null) {
       return _cargaEnCurso!;
     }
-    final future = _cargarDesdeRed(page: page, size: size, forzar: forzar);
+    final future = _cargarDesdeRed(
+      page: page,
+      size: size,
+      desde: desde,
+      incluirLocales: incluirLocales,
+      forzar: forzar,
+    );
     _cargaEnCurso = future;
     _cargaEnCursoClave = clave;
     return future.whenComplete(() {
@@ -111,6 +123,8 @@ class DocumentosCache {
   Future<void> _cargarDesdeRed({
     required int page,
     required int size,
+    required DateTime? desde,
+    required bool incluirLocales,
     required bool forzar,
   }) async {
     // Las facturas solo importan en la primera página. Se traen si no están
@@ -122,7 +136,12 @@ class DocumentosCache {
         : Future.value(_facturas ?? const []);
 
     final pedidosFuture = _pedidoService
-        .getTodosDocumentosPagadosPagina(page: page, size: size)
+        .getTodosDocumentosPagadosPagina(
+          page: page,
+          size: size,
+          desde: desde,
+          incluirLocales: incluirLocales,
+        )
         .catchError((Object e) {
       appLog('⚠️ DocumentosCache: fallo al cargar pedidos pagados: $e');
       return const PaginaDocumentos([], 0, false);
@@ -141,6 +160,7 @@ class DocumentosCache {
     _esPaginado = pagina.esPaginado;
     _paginaCargada = page;
     _sizeCargado = size;
+    _incluirLocalesCargado = incluirLocales;
     _paginaCargadaEn = DateTime.now();
 
     appLog(

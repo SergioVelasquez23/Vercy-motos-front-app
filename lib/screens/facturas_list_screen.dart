@@ -35,6 +35,11 @@ class FacturasListScreen extends StatefulWidget {
 }
 
 class _FacturasListScreenState extends State<FacturasListScreen> with PaginacionMixin<FacturasListScreen> {
+  // Estos documentos son de una sola línea: caben muchos por página y el
+  // backend ya filtra a solo documentos DIAN, así que cada página va llena.
+  @override
+  int get itemsPorPaginaPorDefecto => 50;
+
   final PedidoService _pedidoService = PedidoService();
   final PDFService _pdfService = PDFService();
   final NegocioInfoService _negocioInfoService = NegocioInfoService();
@@ -137,7 +142,15 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
       setState(() => _isLoading = true);
     }
     try {
-      await cache.cargar(page: page, size: size, forzar: forzar);
+      await cache.cargar(
+        page: page,
+        size: size,
+        // El backend devuelve solo documentos DIAN (POS + FE) desde esta fecha
+        // — lo que esta pantalla muestra — salvo que se pidan también locales.
+        desde: _fechaCorteDian,
+        incluirLocales: _mostrarLocales,
+        forzar: forzar,
+      );
 
       // Las facturas tradicionales solo se muestran en la primera página.
       final facturas = page == 0 ? cache.facturas : const <Factura>[];
@@ -178,6 +191,17 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
   @override
   void onCambioPagina() {
     if (_esPaginado) _cargarDocumentos();
+  }
+
+  /// Muestra u oculta las ventas locales de mostrador. Cambia lo que pide el
+  /// backend (`incluirLocales`), así que hay que invalidar el caché, volver a
+  /// la página 0 y recargar.
+  void _alternarMostrarLocales(bool mostrar) {
+    if (_mostrarLocales == mostrar) return;
+    setState(() => _mostrarLocales = mostrar);
+    DocumentosCache.instance.invalidar();
+    resetPagina();
+    _cargarDocumentos(forzar: true);
   }
 
   /// El backend solo empezó a integrar realmente con la DIAN a partir de
@@ -334,18 +358,14 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
           icon: _mostrarLocales ? Icons.visibility_off : Icons.visibility,
           tooltip: _mostrarLocales ? 'Ocultar locales' : 'Mostrar locales',
           color: AppTheme.secondary,
-          onPressed: () {
-            setState(() {
-              _mostrarLocales = !_mostrarLocales;
-              _aplicarFiltros();
-            });
-          },
+          onPressed: () => _alternarMostrarLocales(!_mostrarLocales),
         ),
         ScreenHeaderAction.warning(
           icon: Icons.clear,
           label: 'Limpiar filtros',
           mobileLabel: 'Limpiar',
           onPressed: () {
+            final teniaLocales = _mostrarLocales;
             setState(() {
               _filtroTipo = '';
               _filtroNumero = '';
@@ -353,6 +373,13 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
               _mostrarLocales = false;
               _aplicarFiltros();
             });
+            // Si estaban visibles los locales, el backend traía otro conjunto:
+            // hay que recargar sin ellos.
+            if (teniaLocales) {
+              DocumentosCache.instance.invalidar();
+              resetPagina();
+              _cargarDocumentos(forzar: true);
+            }
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Filtros limpiados'),

@@ -665,6 +665,8 @@ class PedidoService implements IPedidoService {
   Future<PaginaDocumentos> getTodosDocumentosPagadosPagina({
     required int page,
     required int size,
+    DateTime? desde,
+    bool incluirLocales = false,
   }) async {
     try {
       final headers = await _getHeaders();
@@ -673,6 +675,14 @@ class PedidoService implements IPedidoService {
           'page': page.toString(),
           'size': size.toString(),
           'sort': 'fechaPago,desc',
+          // Por defecto el backend devuelve solo documentos DIAN (POS + FE)
+          // desde esta fecha — justo lo que "Lista documentos" muestra — para
+          // que cada página vaya llena y el total cuadre con lo visible.
+          if (desde != null)
+            'desde': '${desde.year.toString().padLeft(4, '0')}-'
+                '${desde.month.toString().padLeft(2, '0')}-'
+                '${desde.day.toString().padLeft(2, '0')}',
+          if (incluirLocales) 'incluirLocales': 'true',
         },
       );
       final response =
