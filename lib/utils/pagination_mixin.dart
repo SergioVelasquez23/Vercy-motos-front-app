@@ -1,24 +1,38 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
-/// Mixin de paginación cliente-side.
-/// Agrega a cualquier State: _paginaActual, _itemsPorPagina,
-/// paginarLista() y los controles de navegación.
+/// Sentinel que representa un "…" dentro de la lista de slots de paginación.
+const int _kEllipsis = -1;
+
+/// Mixin de paginación reutilizable.
+///
+/// Aporta a cualquier State: [paginaActual], [itemsPorPagina], [paginarLista]
+/// (para paginación cliente-side) y [buildPaginacion] (la barra de controles).
+///
+/// La barra de controles:
+///  - Tiene **ancho estable**: para un mismo `sibling` el número de slots NO
+///    cambia al navegar, así no "salta" ni se desplaza entre página y página.
+///  - Nunca desborda: los controles van dentro de un scroll horizontal, así
+///    que si no caben se scrollean en vez de recortarse.
+///  - Es responsive al **ancho real disponible** (vía LayoutBuilder), no al
+///    ancho de la ventana — responde a colapsar/expandir el menú lateral.
 mixin PaginacionMixin<T extends StatefulWidget> on State<T> {
   int _paginaActual = 0;
   int _itemsPorPagina = 20;
+  Timer? _navDebounce;
 
   int get paginaActual => _paginaActual;
   int get itemsPorPagina => _itemsPorPagina;
 
-  /// Devuelve el subconjunto de [lista] para la página actual.
+  /// Devuelve el subconjunto de [lista] para la página actual (cliente-side).
   List<E> paginarLista<E>(List<E> lista) {
     if (lista.isEmpty) return [];
     final inicio = _paginaActual * _itemsPorPagina;
     if (inicio >= lista.length) {
-      // Si la página actual ya no existe (filtro redujo resultados), ir a la 0
+      // La página actual ya no existe (un filtro redujo los resultados): al 0.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _paginaActual = 0);
+        if (mounted && _paginaActual != 0) setState(() => _paginaActual = 0);
       });
       return lista.take(_itemsPorPagina).toList();
     }
@@ -29,151 +43,247 @@ mixin PaginacionMixin<T extends StatefulWidget> on State<T> {
   int totalPaginas(int totalItems) =>
       (totalItems / _itemsPorPagina).ceil().clamp(1, 99999);
 
-  /// Se invoca cada vez que cambia la página actual o el tamaño de página.
-  /// Las pantallas con paginación cliente-side no necesitan hacer nada (la
-  /// lista completa ya está en memoria); las que paginan contra el servidor
-  /// lo sobrescriben para volver a pedir la página correspondiente.
+  /// Se invoca (con debounce) al cambiar de página o de tamaño de página.
+  /// Cliente-side no necesita hacer nada; las pantallas que paginan contra el
+  /// servidor lo sobrescriben para volver a pedir la página.
   void onCambioPagina() {}
 
+  /// Cambia la página resaltada de inmediato pero agenda [onCambioPagina] una
+  /// sola vez ~280 ms después del último cambio. Así varios clics rápidos en
+  /// "siguiente" = una única recarga (la de la página final), sin carreras
+  /// entre respuestas de páginas intermedias.
+  void _agendarCambioPagina() {
+    _navDebounce?.cancel();
+    _navDebounce = Timer(const Duration(milliseconds: 280), () {
+      if (mounted) onCambioPagina();
+    });
+  }
+
   void irPagina(int pagina) {
-    if (pagina == _paginaActual) return;
+    if (pagina == _paginaActual || pagina < 0) return;
     setState(() => _paginaActual = pagina);
-    onCambioPagina();
+    _agendarCambioPagina();
   }
-  void paginaSiguiente(int total) {
-    if (_paginaActual < totalPaginas(total) - 1) {
-      setState(() => _paginaActual++);
-      onCambioPagina();
-    }
+
+  void paginaSiguiente(int totalItems) {
+    final ultima = totalPaginas(totalItems) - 1;
+    if (_paginaActual >= ultima) return;
+    setState(() => _paginaActual++);
+    _agendarCambioPagina();
   }
+
   void paginaAnterior() {
-    if (_paginaActual > 0) {
-      setState(() => _paginaActual--);
-      onCambioPagina();
-    }
+    if (_paginaActual <= 0) return;
+    setState(() => _paginaActual--);
+    _agendarCambioPagina();
   }
+
   void resetPagina() {
     if (_paginaActual == 0) return;
     setState(() => _paginaActual = 0);
-    onCambioPagina();
+    _agendarCambioPagina();
   }
 
-  /// Widget de controles de paginación listo para usar.
+  @override
+  void dispose() {
+    _navDebounce?.cancel();
+    super.dispose();
+  }
+
+  // ─────────────────────────── UI ───────────────────────────
+
+  /// Barra de paginación lista para usar.
   ///
-  /// En desktop la info ("Mostrando X–Y de Z") y los controles van en la
-  /// misma fila (`spaceBetween`); en mobile no caben — dropdown + flecha +
-  /// hasta 5 botones de página + flecha se salen del ancho de un teléfono —
-  /// así que se apilan en una columna y los controles quedan en su propio
-  /// scroll horizontal como respaldo si aun así no caben todos.
+  /// [totalItems] es el total de registros (del servidor si la pantalla pagina
+  /// contra el servidor, o `lista.length` si es cliente-side).
   Widget buildPaginacion({
     required int totalItems,
     Color? accentColor,
   }) {
-    if (totalItems == 0) return const SizedBox.shrink();
-    final total = totalPaginas(totalItems);
-    final inicio = _paginaActual * _itemsPorPagina + 1;
-    final fin = ((_paginaActual + 1) * _itemsPorPagina).clamp(0, totalItems);
+    if (totalItems <= 0) return const SizedBox.shrink();
+
     final color = accentColor ?? AppTheme.primary;
-    final isMobile = context.isMobile;
+    final total = totalPaginas(totalItems);
 
-    final info = Text(
-      'Mostrando $inicio–$fin de $totalItems',
-      style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 13),
-    );
+    // Si la página quedó fuera de rango (un refresh redujo el total), corregir
+    // tras el frame en vez de pintar "Mostrando 401–3 de 3".
+    if (_paginaActual >= total) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final t = totalPaginas(totalItems);
+        if (mounted && _paginaActual >= t) {
+          setState(() => _paginaActual = t - 1);
+          _agendarCambioPagina();
+        }
+      });
+    }
 
-    final controles = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Items por página
-        DropdownButton<int>(
-          value: _itemsPorPagina,
-          dropdownColor: Theme.of(context).colorScheme.surface,
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
-          underline: const SizedBox.shrink(),
-          items: [10, 20, 50, 100].map((v) => DropdownMenuItem(
-            value: v,
-            child: Text('$v / pág'),
-          )).toList(),
-          onChanged: (v) {
-            if (v == null || v == _itemsPorPagina) return;
-            setState(() { _itemsPorPagina = v; _paginaActual = 0; });
-            onCambioPagina();
-          },
-        ),
-        const SizedBox(width: 16),
-        // Anterior
-        IconButton(
-          icon: Icon(Icons.chevron_left,
-              color: _paginaActual > 0 ? color : Colors.grey),
-          onPressed: _paginaActual > 0 ? paginaAnterior : null,
-          tooltip: 'Página anterior',
-        ),
-        // Páginas numéricas
-        ..._buildPaginasNumericas(total, color, maxBotones: isMobile ? 3 : 5),
-        // Siguiente
-        IconButton(
-          icon: Icon(Icons.chevron_right,
-              color: _paginaActual < total - 1 ? color : Colors.grey),
-          onPressed:
-              _paginaActual < total - 1 ? () => paginaSiguiente(totalItems) : null,
-          tooltip: 'Página siguiente',
-        ),
-      ],
-    );
+    final pagina = _paginaActual.clamp(0, total - 1);
+    final inicio = pagina * _itemsPorPagina + 1;
+    final fin = ((pagina + 1) * _itemsPorPagina).clamp(0, totalItems);
+    final onSurface = Theme.of(context).colorScheme.onSurface;
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        border: Border(top: BorderSide(color: Colors.white12)),
+        border: const Border(top: BorderSide(color: Colors.white12)),
       ),
-      child: isMobile
-          ? Column(
-              children: [
-                info,
-                const SizedBox(height: 8),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: controles,
-                ),
-              ],
-            )
-          : Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [info, controles],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth;
+          // Páginas a cada lado de la actual, según el ANCHO REAL disponible.
+          // Cada slot ~34px; se reservan ~200px para dropdown + flechas.
+          final double stripAncho = w - 200;
+          final int sibling = stripAncho >= 340
+              ? 3
+              : stripAncho >= 270
+                  ? 2
+                  : stripAncho >= 200
+                      ? 1
+                      : 0;
+
+          final info = Text(
+            'Mostrando $inicio–$fin de $totalItems',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: onSurface.withValues(alpha: 0.7),
+              fontSize: 13,
             ),
+          );
+
+          final children = <Widget>[
+            DropdownButton<int>(
+              value: _itemsPorPagina,
+              dropdownColor: Theme.of(context).colorScheme.surface,
+              style: TextStyle(color: onSurface, fontSize: 13),
+              underline: const SizedBox.shrink(),
+              isDense: true,
+              items: const [10, 20, 50, 100]
+                  .map((v) => DropdownMenuItem(value: v, child: Text('$v / pág')))
+                  .toList(),
+              onChanged: (v) {
+                if (v == null || v == _itemsPorPagina) return;
+                setState(() {
+                  _itemsPorPagina = v;
+                  _paginaActual = 0;
+                });
+                _agendarCambioPagina();
+              },
+            ),
+            const SizedBox(width: 8),
+            _navBtn(Icons.chevron_left, pagina > 0 ? paginaAnterior : null,
+                color, 'Página anterior'),
+            for (final slot in slotsPaginacion(total, sibling))
+              slot == _kEllipsis ? _ellipsis(onSurface) : _pageBtn(slot - 1, color),
+            _navBtn(
+                Icons.chevron_right,
+                pagina < total - 1 ? () => paginaSiguiente(totalItems) : null,
+                color,
+                'Página siguiente'),
+          ];
+
+          // Controles SIEMPRE dentro de un scroll horizontal: si caben quedan
+          // centrados; si no, se scrollean — nunca se recortan ni desbordan.
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              info,
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    // Si los controles caben, ocupan todo el ancho y quedan
+                    // centrados; si no, el Row crece y el scroll se activa.
+                    constraints: BoxConstraints(minWidth: w.isFinite ? w : 0),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: children,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
-  List<Widget> _buildPaginasNumericas(int total, Color color, {int maxBotones = 5}) {
-    if (total <= 1) return [];
-    final widgets = <Widget>[];
-    // Mostrar máx [maxBotones] botones centrados en la página actual
-    final radio = (maxBotones / 2).floor();
-    int start = (_paginaActual - radio).clamp(0, (total - maxBotones).clamp(0, total));
-    int end = (start + maxBotones).clamp(0, total);
+  /// Lista **estable** de slots a pintar: números de página (1-indexed) e
+  /// [_kEllipsis]. Reglas fijas:
+  ///  - Siempre se muestran la primera y la última página.
+  ///  - Siempre se muestran la actual y [sibling] páginas a cada lado.
+  ///  - Se usa "…" solo cuando entre dos números mostrados hay un salto > 1.
+  ///  - Si un "…" taparía **una sola** página, se pinta esa página en su
+  ///    lugar → el número de slots no cambia al navegar (ancho estable).
+  ///
+  /// `-1` (== [_kEllipsis]) representa un "…".
+  @visibleForTesting
+  List<int> slotsPaginacion(int total, int sibling) {
+    if (total <= 1) return const [];
+    final current = (_paginaActual + 1).clamp(1, total);
+    const boundary = 1; // páginas fijas al principio y al final
 
-    if (start > 0) {
-      widgets.add(_pageBtn(0, color));
-      if (start > 1) widgets.add(Text(' … ', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))));
+    // ¿Caben todas sin ningún "…"? (first + hueco + ventana + hueco + last)
+    final maxSinElipsis = boundary * 2 + sibling * 2 + 3;
+    if (total <= maxSinElipsis) {
+      return [for (var i = 1; i <= total; i++) i];
     }
-    for (int i = start; i < end; i++) {
-      widgets.add(_pageBtn(i, color));
-    }
-    if (end < total) {
-      if (end < total - 1) widgets.add(Text(' … ', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))));
-      widgets.add(_pageBtn(total - 1, color));
-    }
-    return widgets;
+
+    // Ventana de (2*sibling + 1) páginas centrada en la actual, sin pisar los
+    // bordes ni dejar huecos de tamaño 1 contra ellos.
+    final int siblingsStart = (current - sibling)
+        .clamp(boundary + 2, total - boundary - sibling * 2 - 1);
+    final int siblingsEnd = (current + sibling)
+        .clamp(boundary + sibling * 2 + 2, total - boundary - 1);
+
+    return [
+      for (var i = 1; i <= boundary; i++) i,
+      if (siblingsStart > boundary + 2)
+        _kEllipsis
+      else if (boundary + 1 < total - boundary)
+        boundary + 1,
+      for (var i = siblingsStart; i <= siblingsEnd; i++) i,
+      if (siblingsEnd < total - boundary - 1)
+        _kEllipsis
+      else if (total - boundary > boundary)
+        total - boundary,
+      for (var i = total - boundary + 1; i <= total; i++) i,
+    ];
+  }
+
+  Widget _navBtn(IconData icon, VoidCallback? onTap, Color color, String tip) {
+    return IconButton(
+      icon: Icon(icon, size: 22, color: onTap != null ? color : Colors.grey),
+      onPressed: onTap,
+      tooltip: tip,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+    );
+  }
+
+  Widget _ellipsis(Color onSurface) {
+    return Container(
+      width: 26,
+      height: 32,
+      alignment: Alignment.center,
+      child: Text('…',
+          style: TextStyle(color: onSurface.withValues(alpha: 0.5), fontSize: 15)),
+    );
   }
 
   Widget _pageBtn(int page, Color color) {
     final isActive = page == _paginaActual;
     return GestureDetector(
-      onTap: () => irPagina(page),
+      onTap: isActive ? null : () => irPagina(page),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 2),
-        width: 32, height: 32,
+        width: 32,
+        height: 32,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: isActive ? color : Colors.transparent,
@@ -183,7 +293,9 @@ mixin PaginacionMixin<T extends StatefulWidget> on State<T> {
         child: Text(
           '${page + 1}',
           style: TextStyle(
-            color: isActive ? Colors.white : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            color: isActive
+                ? Colors.white
+                : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
             fontSize: 13,
             fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
           ),
