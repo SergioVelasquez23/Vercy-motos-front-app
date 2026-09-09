@@ -209,30 +209,15 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
   void _aplicarFiltros() {
     List<dynamic> documentos = [];
 
-    // Agregar facturas filtradas
-    for (var factura in _facturas) {
-      if (_filtroTipo.isNotEmpty && factura.numero != null) {
-        if (!factura.numero!.toUpperCase().startsWith(_filtroTipo)) {
-          continue;
-        }
-      }
-      if (_filtroNumero.isNotEmpty && factura.numero != null) {
-        if (!factura.numero!.toLowerCase().contains(
-          _filtroNumero.toLowerCase(),
-        )) {
-          continue;
-        }
-      }
-      if (_filtroCliente.isNotEmpty) {
-        if (!factura.clienteNombre.toLowerCase().contains(
-          _filtroCliente.toLowerCase(),
-        )) {
-          continue;
-        }
-      }
-      documentos.add(factura);
-    }
-    
+    // Las Factura tradicionales (GET /api/facturas) NO se muestran como filas
+    // propias: toda venta FE ya aparece aquí como su Pedido (categoría FE,
+    // "PAGADO"), y la Factura gemela que crea crearFacturaDesdeAutoIncrement no
+    // trae 'estadoPago' ni 'fechaCreacion' en el payload, así que el front la
+    // pintaba siempre como PENDIENTE / Abono $0 / Saldo=Total / Expedición N/A
+    // — una copia duplicada y engañosa de una venta ya cobrada.
+    // _facturas se sigue cargando: _exportarExcel lo usa como lookup por
+    // pedidoId para resolver el número real de FE.
+
     appLog(
       '🔍 Filtros actuales - Tipo: "$_filtroTipo", Número: "$_filtroNumero", Cliente: "$_filtroCliente"',
     );
