@@ -1,6 +1,9 @@
 # Miscellaneous
 *.class
 *.log
+
+# Claude Code agent worktrees (transitorios, no deben versionarse)
+.claude/worktrees/
 *.pyc
 *.swp
 .DS_Store
