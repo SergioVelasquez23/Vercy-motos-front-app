@@ -49,6 +49,25 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
   List<dynamic> _documentosFiltrados = []; // Puede ser Factura o Pedido
   bool _isLoading = false;
 
+  // Paginación de servidor: true cuando el backend respetó page/size en
+  // GET /api/documentos/todos/pagados. Si es false se pagina en cliente
+  // sobre la lista completa (comportamiento anterior).
+  bool _esPaginado = false;
+  int _serverTotal = 0;
+
+  // Modo "traer todo en una página": se activa al abrir con un filtro
+  // directo desde Informes (widget.filtroInicial), para que la búsqueda
+  // recorra todo el histórico y no solo la página visible.
+  late final bool _modoCompleto =
+      widget.filtroInicial != null && widget.filtroInicial!.isNotEmpty;
+  static const int _sizeCompleto = 100000;
+
+  bool get _hayFiltroActivo =>
+      _filtroNumero.isNotEmpty ||
+      _filtroCliente.isNotEmpty ||
+      _filtroTipo.isNotEmpty ||
+      _mostrarLocales;
+
   // IDs de pedidos con una emisión de factura electrónica en curso: evita
   // doble clic / doble envío a la DIAN mientras la petición está en vuelo.
   final Set<String> _emitiendoFE = {};
@@ -105,36 +124,40 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
     super.dispose();
   }
 
-  /// Carga la lista desde [DocumentosCache]. Si la caché está fresca la
-  /// pantalla aparece al instante; [forzar] la salta y vuelve a la red
-  /// (botón "Actualizar" y después de cobrar/emitir un documento).
+  /// Carga la página actual desde [DocumentosCache]. Si esa página ya está
+  /// cacheada y fresca, la pantalla aparece al instante; [forzar] la salta y
+  /// vuelve a la red (botón "Actualizar" y tras cobrar/emitir un documento).
   Future<void> _cargarDocumentos({bool forzar = false}) async {
-    final hayCache = DocumentosCache.instance.tieneDatosFrescos && !forzar;
-    // Solo mostrar el spinner de pantalla completa si no hay nada que pintar
-    // todavía; si ya hay caché, la transición es instantánea.
-    if (!hayCache) setState(() => _isLoading = true);
+    final cache = DocumentosCache.instance;
+    final size = _modoCompleto ? _sizeCompleto : itemsPorPagina;
+    final page = _modoCompleto ? 0 : paginaActual;
+
+    // Spinner de pantalla completa solo si no hay nada pintado todavía.
+    if (_documentosFiltrados.isEmpty || forzar) {
+      setState(() => _isLoading = true);
+    }
     try {
-      await DocumentosCache.instance.cargar(forzar: forzar);
+      await cache.cargar(page: page, size: size, forzar: forzar);
 
-      final facturas = DocumentosCache.instance.facturas;
-      // Copia local: la ordenamos sin mutar la lista cacheada.
-      final pedidosFacturacion =
-          List<Pedido>.from(DocumentosCache.instance.pedidosPagados);
+      // Las facturas tradicionales solo se muestran en la primera página.
+      final facturas = page == 0 ? cache.facturas : const <Factura>[];
+      final pedidos = List<Pedido>.from(cache.pedidosPagados)
+        ..sort((a, b) {
+          final fa = a.fechaPago ?? a.fecha;
+          final fb = b.fechaPago ?? b.fecha;
+          return fb.compareTo(fa);
+        });
 
-      appLog('📄 Facturas cargadas: ${facturas.length}');
-      appLog('🎯 Pedidos pagados para tabla: ${pedidosFacturacion.length}');
-
-      // Ordenar por fecha descendente
-      pedidosFacturacion.sort((a, b) {
-        final fechaA = a.fechaPago ?? a.fecha;
-        final fechaB = b.fechaPago ?? b.fecha;
-        return fechaB.compareTo(fechaA);
-      });
+      appLog('📄 Facturas: ${facturas.length} · 🎯 pedidos página: ${pedidos.length}');
 
       if (!mounted) return;
       setState(() {
         _facturas = facturas;
-        _pedidosPagados = pedidosFacturacion;
+        _pedidosPagados = pedidos;
+        // En modo completo se pagina en cliente aunque el backend haya
+        // paginado (pedimos todo en una sola página a propósito).
+        _esPaginado = cache.esPaginado && !_modoCompleto;
+        _serverTotal = cache.totalPedidos;
         _aplicarFiltros();
       });
     } catch (e) {
@@ -146,6 +169,15 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  /// La [PaginacionMixin] llama esto al cambiar de página o de tamaño. Con
+  /// paginación de servidor hay que volver a pedir la página; con paginación
+  /// cliente-side la lista completa ya está en memoria y no hay nada que hacer
+  /// (el setState del mixin redibuja y `paginarLista` corta).
+  @override
+  void onCambioPagina() {
+    if (_esPaginado) _cargarDocumentos();
   }
 
   /// El backend solo empezó a integrar realmente con la DIAN a partir de
@@ -561,6 +593,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
 
   Widget _buildTable() {
     if (_documentosFiltrados.isEmpty) {
+      final filtrandoPagina = _esPaginado && _hayFiltroActivo;
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -568,9 +601,28 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
             Icon(Icons.description_outlined, size: 64, color: Colors.grey),
             SizedBox(height: 16),
             Text(
-              'No hay documentos para mostrar',
+              filtrandoPagina
+                  ? 'Sin resultados en esta página'
+                  : 'No hay documentos para mostrar',
               style: TextStyle(color: Colors.grey, fontSize: 18),
             ),
+            if (filtrandoPagina) ...[
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  'El filtro solo mira la página cargada. Cambia de página, '
+                  'aumenta el tamaño de página o quita el filtro.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                ),
+              ),
+              const SizedBox(height: 12),
+              buildPaginacion(
+                totalItems: _serverTotal,
+                accentColor: AppTheme.primary,
+              ),
+            ],
           ],
         ),
       );
@@ -736,34 +788,74 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                     ],
                   ),
                 )
-              : Column(
-                  children: [
-                    // shrinkWrap + NeverScrollableScrollPhysics: esta lista
-                    // ya no es la que scrollea (ahora lo hace el
-                    // SingleChildScrollView exterior que también incluye
-                    // los buscadores), solo se dimensiona a su contenido.
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: paginarLista(_documentosFiltrados).length,
-                      itemBuilder: (context, index) {
-                        final documento = paginarLista(_documentosFiltrados)[index];
-                        try {
-                          return _buildTableRow(documento, index);
-                        } catch (e) {
-                          appLog('❌ Error renderizando fila $index: $e');
-                          return Container();
-                        }
-                      },
-                    ),
-                    buildPaginacion(
-                      totalItems: _documentosFiltrados.length,
-                      accentColor: AppTheme.primary,
-                    ),
-                  ],
-                ),
+              : Builder(builder: (context) {
+                  // Con paginación de servidor, _documentosFiltrados YA es la
+                  // página actual: se renderiza tal cual y el total para los
+                  // controles viene del servidor. Con paginación cliente-side
+                  // se corta la lista completa con paginarLista().
+                  final visibles = _esPaginado
+                      ? _documentosFiltrados
+                      : paginarLista(_documentosFiltrados);
+                  final totalControles =
+                      _esPaginado ? _serverTotal : _documentosFiltrados.length;
+                  return Column(
+                    children: [
+                      if (_esPaginado && _hayFiltroActivo)
+                        _buildAvisoFiltroPagina(),
+                      // shrinkWrap + NeverScrollableScrollPhysics: esta lista
+                      // ya no es la que scrollea (ahora lo hace el
+                      // SingleChildScrollView exterior que también incluye
+                      // los buscadores), solo se dimensiona a su contenido.
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: visibles.length,
+                        itemBuilder: (context, index) {
+                          final documento = visibles[index];
+                          try {
+                            return _buildTableRow(documento, index);
+                          } catch (e) {
+                            appLog('❌ Error renderizando fila $index: $e');
+                            return Container();
+                          }
+                        },
+                      ),
+                      buildPaginacion(
+                        totalItems: totalControles,
+                        accentColor: AppTheme.primary,
+                      ),
+                    ],
+                  );
+                }),
         ],
       );
+  }
+
+  /// Con paginación de servidor los filtros solo miran la página cargada.
+  /// Este aviso evita que el usuario crea que "no hay resultados" cuando en
+  /// realidad el documento buscado está en otra página.
+  Widget _buildAvisoFiltroPagina() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      color: AppTheme.warning.withValues(alpha: 0.12),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, size: 16, color: AppTheme.warning),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'El filtro solo aplica a esta página. Para buscar en todo el '
+              'histórico, usa un tamaño de página mayor o quita el filtro.',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildTableRow(dynamic documento, int index) {

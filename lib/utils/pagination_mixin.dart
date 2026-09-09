@@ -29,16 +29,34 @@ mixin PaginacionMixin<T extends StatefulWidget> on State<T> {
   int totalPaginas(int totalItems) =>
       (totalItems / _itemsPorPagina).ceil().clamp(1, 99999);
 
-  void irPagina(int pagina) => setState(() => _paginaActual = pagina);
+  /// Se invoca cada vez que cambia la página actual o el tamaño de página.
+  /// Las pantallas con paginación cliente-side no necesitan hacer nada (la
+  /// lista completa ya está en memoria); las que paginan contra el servidor
+  /// lo sobrescriben para volver a pedir la página correspondiente.
+  void onCambioPagina() {}
+
+  void irPagina(int pagina) {
+    if (pagina == _paginaActual) return;
+    setState(() => _paginaActual = pagina);
+    onCambioPagina();
+  }
   void paginaSiguiente(int total) {
     if (_paginaActual < totalPaginas(total) - 1) {
       setState(() => _paginaActual++);
+      onCambioPagina();
     }
   }
   void paginaAnterior() {
-    if (_paginaActual > 0) setState(() => _paginaActual--);
+    if (_paginaActual > 0) {
+      setState(() => _paginaActual--);
+      onCambioPagina();
+    }
   }
-  void resetPagina() => setState(() => _paginaActual = 0);
+  void resetPagina() {
+    if (_paginaActual == 0) return;
+    setState(() => _paginaActual = 0);
+    onCambioPagina();
+  }
 
   /// Widget de controles de paginación listo para usar.
   ///
@@ -77,7 +95,9 @@ mixin PaginacionMixin<T extends StatefulWidget> on State<T> {
             child: Text('$v / pág'),
           )).toList(),
           onChanged: (v) {
-            if (v != null) setState(() { _itemsPorPagina = v; _paginaActual = 0; });
+            if (v == null || v == _itemsPorPagina) return;
+            setState(() { _itemsPorPagina = v; _paginaActual = 0; });
+            onCambioPagina();
           },
         ),
         const SizedBox(width: 16),

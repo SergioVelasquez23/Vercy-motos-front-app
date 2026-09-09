@@ -8,82 +8,145 @@ import 'pedido_service.dart';
 
 /// Caché en memoria para la pantalla "Lista documentos" (FacturasListScreen).
 ///
-/// El problema: cada vez que se abría la pantalla se descargaban TODAS las
-/// facturas + TODOS los pedidos pagados y se parseaban de golpe, tardando
-/// varios segundos. La paginación de esa pantalla es solo visual (corta la
-/// lista que ya está en memoria), no reduce la descarga.
+/// Historia: abrir la pantalla descargaba TODAS las facturas + TODOS los
+/// pedidos pagados y los parseaba de golpe, tardando varios segundos.
 ///
-/// Esta caché guarda el resultado y lo reutiliza mientras esté fresco:
-///  - Se invalida explícitamente ([invalidar]) al cobrar / emitir un
-///    documento, para que la lista muestre lo nuevo de inmediato.
-///  - Tiene un TTL de respaldo ([_ttl]) para reflejar cambios hechos desde
-///    otro dispositivo aunque nadie invalide.
-///  - El botón "Actualizar" de la pantalla fuerza la recarga ([forzar]).
+/// Ahora:
+///  - Los pedidos pagados se piden **por página** al backend
+///    (`GET /api/documentos/todos/pagados?page=&size=`). Si el backend aún no
+///    pagina, [esPaginado] queda en `false` y la pantalla sigue paginando en
+///    cliente sobre la lista completa (comportamiento anterior).
+///  - Las facturas tradicionales (`GET /api/facturas`) se traen una sola vez
+///    y se reutilizan; solo se muestran en la primera página.
+///  - La última página cargada queda cacheada: volver a entrar a la pantalla
+///    la muestra al instante.
+///  - Se invalida ([invalidar]) al cobrar o emitir un documento, y tiene un
+///    TTL de respaldo por si algo cambia desde otro dispositivo.
 class DocumentosCache {
   DocumentosCache._();
   static final DocumentosCache instance = DocumentosCache._();
 
-  /// Máximo tiempo que se considera válida la caché sin volver a la red.
   static const Duration _ttl = Duration(minutes: 5);
 
   final FacturaService _facturaService = FacturaService();
   final PedidoService _pedidoService = PedidoService();
 
+  // --- Facturas tradicionales (lista completa, se trae una vez) ---
   List<Factura>? _facturas;
-  List<Pedido>? _pedidosPagados;
-  DateTime? _cargadoEn;
-  Future<void>? _cargaEnCurso;
+  DateTime? _facturasCargadasEn;
 
-  bool get tieneDatosFrescos =>
-      _facturas != null &&
-      _pedidosPagados != null &&
-      _cargadoEn != null &&
-      DateTime.now().difference(_cargadoEn!) < _ttl;
+  // --- Página actual de pedidos pagados ---
+  List<Pedido> _pedidosPagados = const [];
+  int _totalPedidos = 0;
+  bool _esPaginado = false;
+  int? _paginaCargada;
+  int? _sizeCargado;
+  DateTime? _paginaCargadaEn;
+
+  Future<void>? _cargaEnCurso;
+  String? _cargaEnCursoClave;
 
   List<Factura> get facturas => _facturas ?? const [];
-  List<Pedido> get pedidosPagados => _pedidosPagados ?? const [];
+  List<Pedido> get pedidosPagados => _pedidosPagados;
 
-  /// Marca la caché como obsoleta: la próxima [cargar] irá a la red.
+  /// Total de pedidos pagados en el servidor (para los controles de
+  /// paginación). Solo es fiable cuando [esPaginado] es `true`.
+  int get totalPedidos => _totalPedidos;
+
+  /// `true` si el backend respetó `page`/`size` en la última carga.
+  bool get esPaginado => _esPaginado;
+
+  bool _paginaFresca(int page, int size) =>
+      _paginaCargada == page &&
+      _sizeCargado == size &&
+      _paginaCargadaEn != null &&
+      DateTime.now().difference(_paginaCargadaEn!) < _ttl;
+
+  bool get _facturasFrescas =>
+      _facturas != null &&
+      _facturasCargadasEn != null &&
+      DateTime.now().difference(_facturasCargadasEn!) < _ttl;
+
+  /// Marca todo como obsoleto: la próxima [cargar] vuelve a la red.
   void invalidar() {
     _facturas = null;
-    _pedidosPagados = null;
-    _cargadoEn = null;
+    _facturasCargadasEn = null;
+    _pedidosPagados = const [];
+    _totalPedidos = 0;
+    _paginaCargada = null;
+    _sizeCargado = null;
+    _paginaCargadaEn = null;
     appLog('🗑️ DocumentosCache invalidada');
   }
 
-  /// Asegura que [facturas] y [pedidosPagados] estén disponibles.
-  ///
-  /// Devuelve de inmediato si la caché está fresca y [forzar] es false.
-  /// Deduplica llamadas concurrentes (si ya hay una carga en curso, la
-  /// reutiliza en vez de disparar otra).
-  Future<void> cargar({bool forzar = false}) {
-    if (!forzar && tieneDatosFrescos) return Future.value();
-    final enCurso = _cargaEnCurso;
-    if (enCurso != null) return enCurso;
-    final future = _cargarDesdeRed();
+  /// Asegura que [facturas] y [pedidosPagados] correspondan a la página
+  /// [page] (tamaño [size]). Devuelve de inmediato si ya está en caché y
+  /// fresca, salvo [forzar]. Deduplica llamadas concurrentes a la misma
+  /// página.
+  Future<void> cargar({
+    required int page,
+    required int size,
+    bool forzar = false,
+  }) {
+    final clave = '$page/$size';
+    if (!forzar &&
+        _paginaFresca(page, size) &&
+        (_facturasFrescas || page != 0)) {
+      return Future.value();
+    }
+    if (_cargaEnCursoClave == clave && _cargaEnCurso != null) {
+      return _cargaEnCurso!;
+    }
+    final future = _cargarDesdeRed(page: page, size: size, forzar: forzar);
     _cargaEnCurso = future;
-    return future.whenComplete(() => _cargaEnCurso = null);
+    _cargaEnCursoClave = clave;
+    return future.whenComplete(() {
+      if (_cargaEnCursoClave == clave) {
+        _cargaEnCurso = null;
+        _cargaEnCursoClave = null;
+      }
+    });
   }
 
-  Future<void> _cargarDesdeRed() async {
-    // Las dos llamadas en paralelo (antes eran secuenciales) y cada una
-    // tolerante a su propio fallo: si los pedidos pagados fallan, al menos
-    // se muestran las facturas, y viceversa.
-    final facturasFuture = _facturaService.getFacturas();
+  Future<void> _cargarDesdeRed({
+    required int page,
+    required int size,
+    required bool forzar,
+  }) async {
+    // Las facturas solo importan en la primera página. Se traen si no están
+    // frescas o si el usuario forzó la recarga ("Actualizar"). Fuera de la
+    // página 0 se conserva lo que ya hubiera en caché.
+    final necesitaFacturas = page == 0 && (forzar || !_facturasFrescas);
+    final Future<List<Factura>> facturasFuture = necesitaFacturas
+        ? _facturaService.getFacturas()
+        : Future.value(_facturas ?? const []);
+
     final pedidosFuture = _pedidoService
-        .getTodosDocumentosPagados()
+        .getTodosDocumentosPagadosPagina(page: page, size: size)
         .catchError((Object e) {
       appLog('⚠️ DocumentosCache: fallo al cargar pedidos pagados: $e');
-      return <Pedido>[];
+      return const PaginaDocumentos([], 0, false);
     });
 
     final resultados = await Future.wait([facturasFuture, pedidosFuture]);
-    _facturas = resultados[0] as List<Factura>;
-    _pedidosPagados = resultados[1] as List<Pedido>;
-    _cargadoEn = DateTime.now();
+
+    if (necesitaFacturas) {
+      _facturas = resultados[0] as List<Factura>;
+      _facturasCargadasEn = DateTime.now();
+    }
+
+    final pagina = resultados[1] as PaginaDocumentos;
+    _pedidosPagados = pagina.items;
+    _totalPedidos = pagina.total;
+    _esPaginado = pagina.esPaginado;
+    _paginaCargada = page;
+    _sizeCargado = size;
+    _paginaCargadaEn = DateTime.now();
+
     appLog(
-      '📦 DocumentosCache actualizada: ${_facturas!.length} facturas, '
-      '${_pedidosPagados!.length} pedidos pagados',
+      '📦 DocumentosCache: página $page ($size) → ${_pedidosPagados.length} pedidos'
+      '${_esPaginado ? " de $_totalPedidos" : " (sin paginar)"}, '
+      '${facturas.length} facturas',
     );
   }
 }

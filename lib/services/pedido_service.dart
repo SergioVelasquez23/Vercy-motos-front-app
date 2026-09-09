@@ -62,6 +62,19 @@ abstract class IPedidoService {
   });
 }
 
+/// Resultado de una página de documentos pagados.
+///
+/// [esPaginado] indica si el backend respetó los parámetros `page`/`size`
+/// (respuesta tipo `Page` de Spring con `content` + `totalElements`). Si es
+/// `false`, el backend devolvió la lista completa sin paginar y [total] es
+/// simplemente `items.length` — la pantalla debe seguir paginando en cliente.
+class PaginaDocumentos {
+  final List<Pedido> items;
+  final int total;
+  final bool esPaginado;
+  const PaginaDocumentos(this.items, this.total, this.esPaginado);
+}
+
 class PedidoService implements IPedidoService {
   static final PedidoService _instance = PedidoService._internal();
   factory PedidoService() => _instance;
@@ -635,6 +648,67 @@ class PedidoService implements IPedidoService {
       try {
         return await getPedidosByEstado(EstadoPedido.pagado);
       } catch (fallbackError) {
+        wrapOrThrow(e, context: 'Error al obtener documentos pagados');
+      }
+    }
+  }
+
+  /// Igual que [getTodosDocumentosPagados] pero pidiendo una sola página.
+  ///
+  /// GET /api/documentos/todos/pagados?page=&size=
+  ///
+  /// Si el backend aún no soporta paginación devuelve la lista completa; en
+  /// ese caso [PaginaDocumentos.esPaginado] es `false` y la pantalla debe
+  /// seguir paginando en cliente. Cuando el backend responde con formato
+  /// `Page` de Spring (`{ content: [...], totalElements: N }`, opcionalmente
+  /// envuelto en `data`), se devuelve solo esa página con el total real.
+  Future<PaginaDocumentos> getTodosDocumentosPagadosPagina({
+    required int page,
+    required int size,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final uri = Uri.parse('$baseUrl/api/documentos/todos/pagados').replace(
+        queryParameters: {
+          'page': page.toString(),
+          'size': size.toString(),
+          'sort': 'fechaPago,desc',
+        },
+      );
+      final response =
+          await http.get(uri, headers: headers).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 404) {
+        final todos = await getPedidosByEstado(EstadoPedido.pagado);
+        return PaginaDocumentos(todos, todos.length, false);
+      }
+      if (response.statusCode != 200) {
+        throwBackendError(response.body, response.statusCode,
+            prefix: 'Error al obtener documentos pagados');
+      }
+
+      final body = json.decode(response.body);
+      // Puede venir el Page directo o envuelto en { data: {...} }.
+      final dynamic pageData =
+          (body is Map && body['data'] is Map) ? body['data'] : body;
+
+      if (pageData is Map && pageData['content'] is List) {
+        final items = _parseListResponse(pageData['content']);
+        final total = (pageData['totalElements'] as num?)?.toInt() ??
+            (pageData['total'] as num?)?.toInt() ??
+            items.length;
+        return PaginaDocumentos(items, total, true);
+      }
+
+      // El backend ignoró page/size y devolvió todo (array plano o wrapper).
+      final items = _parseListResponse(body);
+      return PaginaDocumentos(items, items.length, false);
+    } catch (e) {
+      appLog('⚠️ Error en getTodosDocumentosPagadosPagina: $e');
+      try {
+        final todos = await getPedidosByEstado(EstadoPedido.pagado);
+        return PaginaDocumentos(todos, todos.length, false);
+      } catch (_) {
         wrapOrThrow(e, context: 'Error al obtener documentos pagados');
       }
     }
