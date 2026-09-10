@@ -37,6 +37,8 @@ class FacturasListScreen extends StatefulWidget {
 class _FacturasListScreenState extends State<FacturasListScreen> with PaginacionMixin<FacturasListScreen> {
   // Estos documentos son de una sola línea: caben muchos por página y el
   // backend ya filtra a solo documentos DIAN, así que cada página va llena.
+  // Arranca en 50/pág para que la primera carga sea más rápida; el dropdown
+  // ofrece hasta 200 (tope del backend) para revisar tandas grandes.
   @override
   int get itemsPorPaginaPorDefecto => 50;
 

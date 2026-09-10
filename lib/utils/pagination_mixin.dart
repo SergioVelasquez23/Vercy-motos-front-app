@@ -166,7 +166,10 @@ mixin PaginacionMixin<T extends StatefulWidget> on State<T> {
               isDense: true,
               // Incluye el valor actual aunque no sea una de las opciones fijas
               // (una pantalla puede arrancar en 50 vía itemsPorPaginaPorDefecto).
-              items: (<int>{10, 20, 50, 100, itemsPorPagina}.toList()..sort())
+              // 200 es el tope: el backend limita `size` a 200 en
+              // /documentos/todos/pagados (Math.min(size, 200)), así que pedir
+              // más descuadraría la paginación (traería 200 pero contaría 500).
+              items: (<int>{10, 20, 50, 100, 200, itemsPorPagina}.toList()..sort())
                   .map((v) => DropdownMenuItem(value: v, child: Text('$v / pág')))
                   .toList(),
               onChanged: (v) {
