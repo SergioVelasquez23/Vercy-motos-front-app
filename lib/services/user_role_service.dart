@@ -158,7 +158,11 @@ class UserRoleService {
         },
       );
 
-      return response.statusCode == 204 || response.statusCode == 200;
+      // 404 = la relación ya no existe (p. ej. otro admin la borró antes): el
+      // objetivo del borrado ya está cumplido, no es un error.
+      return response.statusCode == 204 ||
+          response.statusCode == 200 ||
+          response.statusCode == 404;
     } catch (e) {
       wrapOrThrow(e, context: 'Error al eliminar relación');
     }

@@ -157,7 +157,14 @@ class RoleService {
         },
       );
 
-      return response.statusCode == 204 || response.statusCode == 200;
+      // 404 = el rol ya no existe (p. ej. la lista local estaba desactualizada):
+      // el objetivo del borrado ya está cumplido, no es un error.
+      if (response.statusCode == 200 ||
+          response.statusCode == 204 ||
+          response.statusCode == 404) {
+        return true;
+      }
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al eliminar rol');
     } catch (e) {
       wrapOrThrow(e, context: 'Error al eliminar rol');
     }
