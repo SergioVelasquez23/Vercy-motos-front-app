@@ -164,7 +164,9 @@ class RoleService {
           response.statusCode == 404) {
         return true;
       }
-      throwBackendError(response.body, response.statusCode, prefix: 'Error al eliminar rol');
+      // Sin prefix: roles_screen ya antepone "Error al eliminar rol:" al mensaje
+      // (p. ej. el 409 "tiene N usuario(s) asignado(s)" del backend).
+      throwBackendError(response.body, response.statusCode);
     } catch (e) {
       wrapOrThrow(e, context: 'Error al eliminar rol');
     }

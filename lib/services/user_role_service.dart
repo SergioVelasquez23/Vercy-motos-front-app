@@ -28,61 +28,6 @@ class UserRoleService {
     }
   }
 
-  // Obtener todas las relaciones usuario-rol
-  Future<List<UserRole>> getUserRoles() async {
-    try {
-      final token = await _getToken();
-      if (token == null) {
-        throw Exception('Token no encontrado');
-      }
-
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/usersroles'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => UserRole.fromJson(json)).toList();
-      } else {
-        throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar relaciones usuario-rol');
-      }
-    } catch (e) {
-      wrapOrThrow(e, context: 'Error al cargar relaciones usuario-rol');
-    }
-  }
-
-  // Obtener relación por ID
-  Future<UserRole?> getUserRoleById(String id) async {
-    try {
-      final token = await _getToken();
-      if (token == null) {
-        throw Exception('Token no encontrado');
-      }
-
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/usersroles/$id'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        return UserRole.fromJson(json.decode(response.body));
-      } else if (response.statusCode == 404) {
-        return null;
-      } else {
-        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener relación');
-      }
-    } catch (e) {
-      wrapOrThrow(e, context: 'Error al obtener relación');
-    }
-  }
-
   // Asignar rol a usuario
   Future<UserRole?> assignRoleToUser(String userId, String roleId) async {
     try {
@@ -108,37 +53,13 @@ class UserRoleService {
             return UserRole.fromJson(data);
           }
         }
+        return null;
       }
-      return null;
+      // 404 (usuario o rol inexistente), 409 (rol ya asignado), 5xx...: antes se
+      // devolvía null en silencio y la pantalla mostraba el cambio como exitoso.
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al asignar rol');
     } catch (e) {
       wrapOrThrow(e, context: 'Error al asignar rol');
-    }
-  }
-
-  // Actualizar relación usuario-rol
-  Future<UserRole> updateUserRole(UserRole userRole) async {
-    try {
-      final token = await _getToken();
-      if (token == null) {
-        throw Exception('Token no encontrado');
-      }
-
-      final response = await http.put(
-        Uri.parse('$baseUrl/api/usersroles/${userRole.id}'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode(userRole.toJsonCreate()),
-      );
-
-      if (response.statusCode == 200) {
-        return UserRole.fromJson(json.decode(response.body));
-      } else {
-        throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar relación');
-      }
-    } catch (e) {
-      wrapOrThrow(e, context: 'Error al actualizar relación');
     }
   }
 

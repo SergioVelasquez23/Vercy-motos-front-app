@@ -48,8 +48,4 @@ class UserRole {
       'roleName': roleName,
     };
   }
-
-  Map<String, dynamic> toJsonCreate() {
-    return {'userId': userId, 'roleId': roleId, 'activo': activo};
-  }
 }

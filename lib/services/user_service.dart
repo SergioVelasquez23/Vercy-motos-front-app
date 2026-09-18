@@ -30,36 +30,6 @@ class UserService {
     }
   }
 
-  // Obtener roles de un usuario por su ID usando endpoint V2
-  Future<List<Role>> getRolesByUserIdV2(String userId) async {
-    try {
-      final token = await _getToken();
-      if (token == null) {
-        throw Exception('Token no encontrado');
-      }
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/usersroles/user/$userId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(_timeout);
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        final data = decoded is Map ? decoded['data'] : decoded;
-        if (data is List) {
-          return data.map((json) => Role.fromJson(json)).toList();
-        } else {
-          throw Exception('Respuesta inesperada del backend: $decoded');
-        }
-      } else {
-        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener roles V2');
-      }
-    } catch (e) {
-      wrapOrThrow(e, context: 'Error de conexión');
-    }
-  }
-
   // Obtener roles de un usuario por su ID
   Future<List<Role>> getRolesByUserId(String userId) async {
     try {
