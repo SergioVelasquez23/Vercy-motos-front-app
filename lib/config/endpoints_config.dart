@@ -32,12 +32,9 @@ class EndpointsConfig {
   /// Devuelve la URL base actual (personalizada o predeterminada)
   String get currentBaseUrl => _customBaseUrl ?? EndpointsConfig.baseUrl;
 
-  /// Endpoints de autenticación y usuarios (único endpoints usado)
+  /// Endpoints de autenticación y usuarios
   AuthEndpoints get auth => AuthEndpoints(currentBaseUrl);
 
-  /// Endpoints para documentos de mesa
-  DocumentoMesaEndpoints get documentosMesa =>
-      DocumentoMesaEndpoints(currentBaseUrl);
 
   /// Endpoints para facturas
   FacturaEndpoints get facturas => FacturaEndpoints(currentBaseUrl);
@@ -77,71 +74,6 @@ class AuthEndpoints {
   /// Endpoint para validar un código de autenticación
   String validateCode(String code) =>
       '$baseUrl/api/public/security/login/validate/$code';
-}
-
-/// Endpoints relacionados con documentos de mesa
-class DocumentoMesaEndpoints {
-  final String baseUrl;
-
-  DocumentoMesaEndpoints(this.baseUrl);
-
-  /// Endpoint base para documentos de mesa
-  String get base => '$baseUrl/api/documentos-mesa';
-
-  /// Crear un nuevo documento
-  String get crear => base;
-
-  /// Listar todos los documentos (endpoint simplificado)
-  String get listaCompleta => base;
-
-  /// Obtener documentos por mesa
-  String mesa(String mesaNombre) => '$base/mesa/$mesaNombre';
-
-  /// Obtener documento por ID
-  String documento(String id) => '$base/$id';
-
-  /// Agregar pedido a documento
-  String agregarPedido(String documentoId) =>
-      '$base/$documentoId/agregar-pedido';
-
-  /// Pagar un documento
-  String pagar(String documentoId) => '$base/$documentoId/pagar';
-
-  /// Eliminar un documento
-  String eliminar(String documentoId) => '$base/$documentoId';
-
-  /// Anular un documento
-  String anular(String documentoId) => '$base/$documentoId/anular';
-
-  /// Obtener documentos pendientes de una mesa
-  String pendientes(String mesaNombre) => '$base/mesa/$mesaNombre/pendientes';
-
-  /// Obtener documentos pagados de una mesa
-  String pagados(String mesaNombre) => '$base/mesa/$mesaNombre/pagados';
-
-  /// Obtener resumen de una mesa
-  String resumen(String mesaNombre) => '$base/mesa/$mesaNombre/resumen';
-
-  /// Listar todos los documentos (con filtros opcionales)
-  String lista({String? tipo, String? mesa}) {
-    final params = <String, String>{};
-    if (tipo != null) params['tipo'] = tipo;
-    if (mesa != null) params['mesa'] = mesa;
-
-    final query = params.isEmpty
-        ? ''
-        : '?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}';
-
-    return '$base$query';
-  }
-
-  /// Verificar si una mesa es especial
-  String verificarMesaEspecial(String mesaNombre) =>
-      '$base/verificar-mesa-especial/$mesaNombre';
-
-  /// Obtener documentos con pedidos completos
-  String documentosCompletos(String mesaNombre) =>
-      '$base/mesa/$mesaNombre/completos';
 }
 
 /// Endpoints para Facturas
@@ -307,77 +239,6 @@ class NegocioEndpoints {
 
   /// Eliminar negocio
   String delete(String id) => '$base/$id';
-}
-
-/// Endpoints para cartera
-class CarteraEndpoints {
-  final String baseUrl;
-  CarteraEndpoints(this.baseUrl);
-
-  String get base => '$baseUrl/api/cartera';
-  String get cuentasPorCobrar => '$base/cuentas-por-cobrar';
-  String cuentasPorCobrarEstado(String estado) => '$base/cuentas-por-cobrar/estado/$estado';
-  String cuentasProximasVencer(int dias) => '$base/cuentas-por-cobrar/proximas-vencer/$dias';
-  String abonoCuenta(String id) => '$base/cuentas-por-cobrar/$id/abono';
-  String get cuentasPorPagar => '$base/cuentas-por-pagar';
-  String pagoCuenta(String id) => '$base/cuentas-por-pagar/$id/pago';
-  String get gastosProgramados => '$base/gastos-programados';
-  String marcarGastoPagado(String id) => '$base/gastos-programados/$id/marcar-pagado';
-  String get resumen => '$base/resumen';
-  String get verificarAlertas => '$base/verificar-alertas';
-}
-
-/// Endpoints para categorías
-class CategoriaEndpoints {
-  final String baseUrl;
-  CategoriaEndpoints(this.baseUrl);
-
-  String get base => '$baseUrl/api/categorias';
-  String categoria(String id) => '$base/$id';
-}
-
-/// Endpoints para clientes
-class ClienteEndpoints {
-  final String baseUrl;
-  ClienteEndpoints(this.baseUrl);
-
-  String get base => '$baseUrl/api/clientes';
-  String cliente(String id) => '$base/$id';
-  String get buscar => '$base/buscar';
-}
-
-/// Endpoints para reportes y dashboard
-class ReportesEndpoints {
-  final String baseUrl;
-  ReportesEndpoints(this.baseUrl);
-
-  String get base => '$baseUrl/api/reportes';
-  String get dashboard => '$base/dashboard';
-  String get cuadreCaja => '$base/cuadre-caja';
-  String get topClientes => '$base/top-clientes';
-  String get ventasAgrupadoProductos => '$base/productos/ventas-agrupado';
-  String get ventasDetalladoProductos => '$base/productos/ventas-detallado';
-}
-
-/// Endpoints para roles y permisos
-class RolesEndpoints {
-  final String baseUrl;
-  RolesEndpoints(this.baseUrl);
-
-  String get base => '$baseUrl/api/roles';
-  String rol(String id) => '$base/$id';
-  String get userRoles => '$baseUrl/api/usersroles';
-  String userRolByUser(String userId) => '$baseUrl/api/usersroles/user/$userId';
-  String assignRole(String userId, String roleId) => '$baseUrl/api/usersroles/user/$userId/role/$roleId';
-}
-
-/// Endpoints para pedidos del asesor
-class PedidosAsesorEndpoints {
-  final String baseUrl;
-  PedidosAsesorEndpoints(this.baseUrl);
-
-  String get base => '$baseUrl/api/pedidos-asesor';
-  String pedido(String id) => '$base/$id';
 }
 
 /// Endpoints para facturación electrónica DIAN (Matias API)
