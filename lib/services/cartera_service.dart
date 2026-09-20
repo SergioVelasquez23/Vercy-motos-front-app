@@ -126,47 +126,6 @@ class CarteraService {
     }
   }
 
-  /// Obtiene cuentas por cobrar vencidas
-  Future<ApiResponse<List<CuentaPorCobrar>>> getCuentasVencidas() async {
-    try {
-      final String url = _baseApiService.buildUrl(
-        '$_baseEndpoint/cuentas-por-cobrar/vencidas',
-      );
-      final Map<String, String> headers = await _baseApiService.getHeaders();
-
-      final http.Response response = await _baseApiService.httpClient
-          .get(Uri.parse(url), headers: headers)
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        final List<CuentaPorCobrar> cuentas = data
-            .map((json) => CuentaPorCobrar.fromJson(json))
-            .toList();
-        return ApiResponse<List<CuentaPorCobrar>>(
-          success: true,
-          data: cuentas,
-          message: 'Cuentas vencidas obtenidas exitosamente',
-          timestamp: DateTime.now().toIso8601String(),
-        );
-      }
-
-      return ApiResponse<List<CuentaPorCobrar>>(
-        success: false,
-        data: null,
-        message: parseBackendException(response.body, response.statusCode).displayMessage,
-        timestamp: DateTime.now().toIso8601String(),
-      );
-    } catch (e) {
-      return ApiResponse<List<CuentaPorCobrar>>(
-        success: false,
-        data: null,
-        message: errorMessage(e),
-        timestamp: DateTime.now().toIso8601String(),
-      );
-    }
-  }
-
   /// Registra un abono a una cuenta por cobrar
   Future<ApiResponse<String>> registrarAbonoCuentaPorCobrar({
     required String cuentaId,
@@ -803,52 +762,6 @@ class CarteraService {
     }
   }
 
-  /// Actualiza una cuenta por pagar existente
-  Future<ApiResponse<CuentaPorPagar>> actualizarCuentaPorPagar(
-    String cuentaId,
-    CuentaPorPagar cuenta,
-  ) async {
-    try {
-      final String url = _baseApiService.buildUrl(
-        '$_baseEndpoint/cuentas-por-pagar/$cuentaId',
-      );
-      final Map<String, String> headers = await _baseApiService.getHeaders();
-
-      final http.Response response = await _baseApiService.httpClient
-          .put(
-            Uri.parse(url),
-            headers: headers,
-            body: json.encode(cuenta.toJson()),
-          )
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        final CuentaPorPagar cuentaActualizada = CuentaPorPagar.fromJson(data);
-        return ApiResponse<CuentaPorPagar>(
-          success: true,
-          data: cuentaActualizada,
-          message: 'Cuenta por pagar actualizada exitosamente',
-          timestamp: DateTime.now().toIso8601String(),
-        );
-      }
-
-      return ApiResponse<CuentaPorPagar>(
-        success: false,
-        data: null,
-        message: parseBackendException(response.body, response.statusCode).displayMessage,
-        timestamp: DateTime.now().toIso8601String(),
-      );
-    } catch (e) {
-      return ApiResponse<CuentaPorPagar>(
-        success: false,
-        data: null,
-        message: errorMessage(e),
-        timestamp: DateTime.now().toIso8601String(),
-      );
-    }
-  }
-
   /// Elimina físicamente una cuenta por pagar. El backend rechaza con 409 si
   /// está vinculada a una compra a crédito (Compra.cuentaPorPagarId) — para
   /// desvincularla hay que cambiar el origen de esa compra, lo que borra la
@@ -878,43 +791,6 @@ class CarteraService {
         success: false,
         data: null,
         message: _mensajeConDetalle(response.body, response.statusCode),
-        timestamp: DateTime.now().toIso8601String(),
-      );
-    } catch (e) {
-      return ApiResponse<String>(
-        success: false,
-        data: null,
-        message: errorMessage(e),
-        timestamp: DateTime.now().toIso8601String(),
-      );
-    }
-  }
-
-  /// Desactiva una cuenta recurrente (no la elimina)
-  Future<ApiResponse<String>> desactivarCuentaPorPagar(String cuentaId) async {
-    try {
-      final String url = _baseApiService.buildUrl(
-        '$_baseEndpoint/cuentas-por-pagar/$cuentaId/desactivar',
-      );
-      final Map<String, String> headers = await _baseApiService.getHeaders();
-
-      final http.Response response = await _baseApiService.httpClient
-          .put(Uri.parse(url), headers: headers)
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        return ApiResponse<String>(
-          success: true,
-          data: 'Cuenta desactivada',
-          message: 'La cuenta ha sido desactivada (no eliminada)',
-          timestamp: DateTime.now().toIso8601String(),
-        );
-      }
-
-      return ApiResponse<String>(
-        success: false,
-        data: null,
-        message: parseBackendException(response.body, response.statusCode).displayMessage,
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {

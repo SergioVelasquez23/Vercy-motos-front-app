@@ -224,28 +224,6 @@ class GastoService implements IGastoService {
     }
   }
 
-  /// Envía alerta de gasto por Telegram en segundo plano
-  void _enviarAlertaGastoTelegram(Gasto gasto) {
-    // Ejecutar en segundo plano sin bloquear la aplicación
-    Future.delayed(Duration.zero, () async {
-      try {
-        await _alertasService.enviarAlertaGasto(
-          tipoGasto: gasto.tipoGastoNombre,
-          concepto: gasto.concepto,
-          monto: gasto.monto,
-          responsable: gasto.responsable,
-          formaPago: gasto.formaPago,
-          numeroRecibo: gasto.numeroRecibo,
-          numeroFactura: gasto.numeroFactura,
-          proveedor: gasto.proveedor,
-        );
-      } catch (e) {
-        // Ignorar error de alerta para no afectar la creación del gasto
-        appLog('Error al enviar alerta de gasto por Telegram: $e');
-      }
-    });
-  }
-
   // Actualizar gasto
   Future<Gasto> updateGasto(
     String id, {

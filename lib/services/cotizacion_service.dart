@@ -302,52 +302,6 @@ class CotizacionService {
 
   // Búsqueda
 
-  /// Buscar cotizaciones
-  Future<List<Cotizacion>> buscarCotizaciones(String q) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/buscar?q=${Uri.encodeComponent(q)}'),
-        headers: await _headers,
-      ).timeout(_timeout);
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => Cotizacion.fromJson(json)).toList();
-      }
-
-      return [];
-    } catch (e) {
-        
-      return [];
-    }
-  }
-
-  /// Obtener cotizaciones por rango de fechas
-  Future<List<Cotizacion>> obtenerPorRangoFechas(
-    DateTime inicio,
-    DateTime fin,
-  ) async {
-    try {
-      final inicioStr = inicio.toIso8601String().split('T')[0];
-      final finStr = fin.toIso8601String().split('T')[0];
-
-      final response = await http.get(
-        Uri.parse('$baseUrl/rango-fechas?inicio=$inicioStr&fin=$finStr'),
-        headers: await _headers,
-      ).timeout(_timeout);
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => Cotizacion.fromJson(json)).toList();
-      }
-
-      return [];
-    } catch (e) {
-        
-      return [];
-    }
-  }
-
   /// Generar PDF de cotización
   Future<Map<String, dynamic>> generarPDF(String id) async {
     try {

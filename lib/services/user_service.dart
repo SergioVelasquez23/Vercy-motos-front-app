@@ -196,28 +196,4 @@ class UserService {
     }
   }
 
-  // Obtener información del usuario autenticado
-  Future<User?> getCurrentUserInfo() async {
-    try {
-      final token = await _getToken();
-      if (token == null) {
-        throw Exception('Token no encontrado');
-      }
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/public/security/user-info'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(_timeout);
-      if (response.statusCode == 200) {
-        return User.fromJson(json.decode(response.body));
-      } else {
-        return null;
-      }
-    } catch (e) {
-        
-      return null;
-    }
-  }
 }

@@ -187,61 +187,6 @@ class TrasladoService {
     }
   }
 
-  // 🆕 Obtener stock de un producto específico
-  Future<Map<String, dynamic>> obtenerStockProducto(String productoId) async {
-    try {
-      final headers = await _getHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/producto/$productoId/stock'),
-        headers: headers,
-      ).timeout(_timeout);
-
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        return decoded is Map<String, dynamic> ? decoded : {};
-      } else {
-        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener stock');
-      }
-    } catch (e) {
-        
-      return {'cantidadBodega': 0, 'cantidadAlmacen': 0, 'cantidadTotal': 0};
-    }
-  }
-
-  // 🆕 Traslado rápido (sin aprobación)
-  Future<Map<String, dynamic>> trasladoRapido({
-    required String productoId,
-    required String origen, // "BODEGA" o "ALMACEN"
-    required String destino, // "BODEGA" o "ALMACEN"
-    required double cantidad,
-  }) async {
-    try {
-      final headers = await _getHeaders();
-      final body = json.encode({
-        'productoId': productoId,
-        'origen': origen,
-        'destino': destino,
-        'cantidad': cantidad,
-      });
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/traslado-rapido'),
-        headers: headers,
-        body: body,
-      ).timeout(_timeout);
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final decoded = json.decode(response.body);
-        return decoded is Map<String, dynamic> ? decoded : {};
-      } else {
-        throwBackendError(response.body, response.statusCode, prefix: 'Error en traslado rápido');
-      }
-    } catch (e) {
-
-      rethrow;
-    }
-  }
-
   // 🆕 Completar traslado (marca como completado sin validar stock)
   Future<void> completarTraslado({
     required String trasladoId,
@@ -266,48 +211,6 @@ class TrasladoService {
   }
 
   // ─── Nuevos endpoints por producto (/api/productos/{id}/traslado) ──────────
-
-  /// POST /api/productos/{productoId}/traslado
-  /// Body: { cantidad, origen, destino, usuario, observaciones }
-  /// Respuesta: { productoNombre, cantidad, origen, destino, stockResultante: { bodega, almacen } }
-  Future<Map<String, dynamic>> trasladarProducto({
-    required String productoId,
-    required double cantidad,
-    required String origen, // "bodega" o "almacen"
-    required String destino, // "bodega" o "almacen"
-    required String usuario,
-    String? observaciones,
-  }) async {
-    try {
-      final headers = await _getHeaders();
-      final body = json.encode({
-        'cantidad': cantidad,
-        'origen': origen,
-        'destino': destino,
-        'usuario': usuario,
-        if (observaciones != null && observaciones.isNotEmpty)
-          'observaciones': observaciones,
-      });
-
-      final response = await http.post(
-        Uri.parse('${_apiConfig.baseUrl}/api/productos/$productoId/traslado'),
-        headers: headers,
-        body: body,
-      ).timeout(_timeout);
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final decoded = json.decode(response.body);
-        final data = decoded is Map && decoded['data'] != null
-            ? decoded['data']
-            : decoded;
-        return data is Map<String, dynamic> ? data : {};
-      } else {
-        throwBackendError(response.body, response.statusCode, prefix: 'Error al trasladar producto');
-      }
-    } catch (e) {
-      rethrow;
-    }
-  }
 
   /// Después de una venta exitosa, elimina de los traslados activos los items
   /// cuyos productos ya fueron facturados. Si todos los items de un traslado
@@ -372,35 +275,4 @@ class TrasladoService {
     }
   }
 
-  /// GET /api/productos/traslados?usuario=&productoId=&limit=
-  Future<List<Map<String, dynamic>>> listarTrasladosProducto({
-    String? usuario,
-    String? productoId,
-    int limit = 50,
-  }) async {
-    try {
-      final headers = await _getHeaders();
-      final params = <String, String>{'limit': '$limit'};
-      if (usuario != null && usuario.isNotEmpty) params['usuario'] = usuario;
-      if (productoId != null && productoId.isNotEmpty) params['productoId'] = productoId;
-
-      final uri = Uri.parse('${_apiConfig.baseUrl}/api/productos/traslados')
-          .replace(queryParameters: params);
-
-      final response = await http.get(uri, headers: headers).timeout(_timeout);
-
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        final data = decoded is Map && decoded['data'] != null
-            ? decoded['data']
-            : decoded;
-        if (data is List) {
-          return data.cast<Map<String, dynamic>>();
-        }
-      }
-      return [];
-    } catch (e) {
-      return [];
-    }
-  }
 }

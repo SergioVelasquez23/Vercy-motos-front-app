@@ -85,64 +85,6 @@ class InventarioService {
     return registrarMovimiento(movimiento);
   }
 
-  // Actualizar un movimiento de inventario
-  Future<MovimientoInventario> updateMovimiento(
-    String id,
-    MovimientoInventario movimiento,
-  ) async {
-    try {
-      if (kDebugMode) {}
-
-      final response = await http
-          .put(
-            Uri.parse(_buildUrl(path: "movimientos/$id")),
-            headers: _apiConfig.getSecureHeaders(),
-            body: json.encode(movimiento.toJson()),
-          )
-          .timeout(_timeout);
-
-      if (kDebugMode) {}
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          _inventarioActualizadoController.add(true);
-          return MovimientoInventario.fromJson(data['data']);
-        }
-        throw Exception('Formato de respuesta inválido');
-      }
-
-      throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar movimiento');
-    } catch (e) {
-      wrapOrThrow(e, context: 'Error al actualizar movimiento');
-    }
-  }
-
-  // Eliminar un movimiento de inventario
-  Future<bool> deleteMovimiento(String id) async {
-    try {
-      if (kDebugMode) {}
-
-      final response = await http
-          .delete(
-            Uri.parse(_buildUrl(path: "movimientos/$id")),
-            headers: _apiConfig.getSecureHeaders(),
-          )
-          .timeout(_timeout);
-
-      if (kDebugMode) {}
-
-      if (response.statusCode == 200) {
-        _inventarioActualizadoController.add(true);
-        return true;
-      }
-
-      throwBackendError(response.body, response.statusCode, prefix: 'Error al eliminar movimiento');
-    } catch (e) {
-      wrapOrThrow(e, context: 'Error al eliminar movimiento');
-    }
-  }
-
   // Obtener inventario
   Future<List<Inventario>> getInventario() async {
     if (kDebugMode) {}
