@@ -67,25 +67,6 @@ class FacturaService {
     return [];
   }
 
-  /// Procesa la respuesta HTTP y extrae los datos de los pedidos
-  List<Pedido> _processPedidosResponse(http.Response response) {
-    if (response.statusCode == 200) {
-      final responseData = json.decode(response.body);
-      // Ver el comentario de _processFacturasResponse: indexar una List con
-      // ['data'] lanza, no devuelve null, así que hay que chequear el tipo.
-      final List<dynamic> jsonList = responseData is List
-          ? responseData
-          : (responseData['data'] ?? []);
-      final pedidos = jsonList.map((json) => Pedido.fromJson(json)).toList();
-
-      // Ordenar pedidos por fecha descendente (más recientes primero)
-      pedidos.sort((a, b) => b.fecha.compareTo(a.fecha));
-
-      return pedidos;
-    }
-    return [];
-  }
-
   /// Obtiene todas las facturas
   Future<List<Factura>> getFacturas() async {
     try {

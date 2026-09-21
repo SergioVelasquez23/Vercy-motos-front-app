@@ -74,83 +74,6 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
     _irADocumento(item);
   }
 
-  // ⚠️ DEPRECATED: bloque antiguo conservado sólo para referencia
-  Future<void> _abrirPDFFacturaLegacy(Map<String, dynamic> item) async {
-    try {
-      if (!mounted) return;
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => Center(
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(color: AppTheme.primary),
-                const SizedBox(height: 16),
-                Text(
-                  'Generando PDF...',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-
-      // Crear resumen básico con los datos disponibles del item
-      final resumen = {
-        'pedidoId': item['pedidoId'] ?? item['numeroFactura'],
-        'numero': item['numeroFactura'] ?? 'SIN-NUMERO',
-        'fecha': item['fecha'] ?? DateTime.now().toIso8601String(),
-        'cliente': {
-          'nombreCompleto': item['cliente'] ?? 'Cliente General',
-          'numeroIdentificacion': item['clienteId'] ?? '0000000000',
-        },
-        'items': [
-          {
-            'nombreProducto': item['nombreProducto'] ?? 'Producto',
-            'codigoProducto': item['codigoProducto'] ?? '',
-            'cantidad': item['cantidad'] ?? 1,
-            'precioUnitario': item['precioUnitario'] ?? 0,
-            'subtotal': item['subtotal'] ?? 0,
-            'descuento': item['descuento'] ?? 0,
-            'impuesto': item['impuesto'] ?? 0,
-            'total': item['total'] ?? 0,
-          },
-        ],
-        'subtotal': item['subtotal'] ?? 0,
-        'descuento': item['descuento'] ?? 0,
-        'impuesto': item['impuesto'] ?? 0,
-        'total': item['total'] ?? 0,
-        'tipo': item['tipo'] ?? 'POS',
-        'metodoPago': 'No especificado',
-      };
-
-      // Cerrar diálogo de carga
-      if (mounted) Navigator.of(context).pop();
-
-      // Mostrar PDF
-      await _pdfService.mostrarDialogoImpresion(
-        resumen: resumen,
-        esFactura: true,
-      );
-    } catch (e) {
-      // Cerrar diálogo de carga si está abierto
-      if (mounted) Navigator.of(context).pop();
-
-      // Mostrar error
-      if (mounted) {
-        showErrorDialog(context, 'Error al abrir PDF: ${errorMessage(e)}');
-      }
-    }
-  }
-
   @override
   void initState() {
     super.initState();
@@ -625,52 +548,6 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
             ],
           ),
         ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDateField(String label, DateTime fecha, VoidCallback onTap) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 8),
-        InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(6),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: AppTheme.metal.withOpacity(0.2),
-                width: 1,
-              ),
-              borderRadius: BorderRadius.circular(6),
-              color: Theme.of(context).colorScheme.surface,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  _dateFormat.format(fecha),
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
-                ),
-                Icon(
-                  Icons.calendar_today,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                  size: 18,
-                ),
-              ],
-            ),
           ),
         ),
       ],

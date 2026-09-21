@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:http/http.dart' as http;
@@ -10,7 +10,6 @@ import '../models/api_response.dart';
 import '../config/api_config.dart';
 import '../utils/api_error.dart';
 import '../utils/retry_strategy.dart';
-import 'alertas_service.dart';
 import '../providers/datos_cache_provider.dart';
 import '../utils/logger.dart';
 import '../utils/token_storage.dart';
@@ -97,20 +96,6 @@ class ProductoService {
           }
     
     return headers;
-  }
-
-  /// Obtiene el timeout apropiado basado en el entorno (Render es más lento)
-  Duration _getTimeoutForEnvironment() {
-    if (baseUrl.contains('render.com')) {
-      // ⚡ OPTIMIZADO: Reducido de 5 min a 45 seg para evitar esperas largas
-      return Duration(seconds: 45);
-    } else if (baseUrl.contains('localhost') || baseUrl.contains('127.0.0.1')) {
-      // Desarrollo local debería ser rápido
-      return Duration(seconds: 20);
-    } else {
-      // Otros servidores en producción
-      return Duration(seconds: 40);
-    }
   }
 
   /// Timeout más corto para intentos iniciales rápidos
@@ -617,60 +602,6 @@ class ProductoService {
     }
   }
 
-  // NUEVO: Endpoint paginado ultra-optimizado con cache del backend
-  Future<List<Producto>> _getProductosPaginados() async {
-    final headers = await _getHeaders();
-    final url = '$baseUrl/api/productos/paginados?page=0&size=1000';
-
-      
-      
-      
-    int startTime = DateTime.now().millisecondsSinceEpoch;
-
-    try {
-      final response = await http
-          .get(Uri.parse(url), headers: headers)
-          .timeout(
-            Duration(seconds: 30),
-          ); // Timeout generoso para carga inicial
-
-        
-        
-
-      if (response.statusCode == 200) {
-          
-        final responseData = json.decode(response.body);
-
-          
-
-        if (responseData['success'] == true) {
-          final data = responseData['data'];
-            
-            
-
-          final productos = (data['content'] as List)
-              .map((json) => Producto.fromJsonLigero(json))
-              .toList();
-
-          int endTime = DateTime.now().millisecondsSinceEpoch;
-
-          // Actualizar caché
-          for (var producto in productos) {
-            _productosCache[producto.id] = producto;
-          }
-
-          return productos;
-        } else {
-          throwBackendError(response.body, response.statusCode, prefix: 'Error en respuesta del servidor');
-        }
-      } else {
-        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener productos paginados');
-      }
-    } catch (e) {
-      rethrow;
-    }
-  }
-
   // ⚡ NUEVO: Endpoint ligero optimizado como primera opción
   /// Obtiene solo id y nombre de productos - ULTRA LIGERO para desplegables
   Future<List<Producto>> getProductosLigeroParaDesplegables() async {
@@ -755,36 +686,6 @@ class ProductoService {
       }
 
         
-      return productos;
-    } else {
-      throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
-    }
-  }
-
-  // Endpoint optimizado con nombres de ingredientes resueltos
-  Future<List<Producto>> _getProductosConNombresIngredientes() async {
-    final headers = await _getHeaders();
-    final url = '$baseUrl/api/productos/con-nombres-ingredientes';
-
-      
-
-    final response = await http
-        .get(Uri.parse(url), headers: headers)
-        .timeout(Duration(seconds: 30));
-
-      
-
-    if (response.statusCode == 200) {
-      final responseData = json.decode(response.body);
-        
-
-      final productos = _parseListResponse(responseData);
-
-      // Guardar en caché
-      for (var producto in productos) {
-        _productosCache[producto.id] = producto;
-      }
-
       return productos;
     } else {
       throwBackendError(response.body, response.statusCode, prefix: 'Error del servidor');
@@ -1986,76 +1887,6 @@ class ProductoService {
         
       return null;
     }
-  }
-
-  // Método auxiliar para parsear respuestas de lista de productos
-  List<Producto> _parseListResponse(dynamic responseData) {
-      
-
-    if (responseData is Map<String, dynamic>) {
-        
-
-      // Buscar posibles propiedades que contengan la lista de productos
-      if (responseData.containsKey('productos')) {
-        final productos = responseData['productos'];
-        if (productos is List) {
-          return productos
-              .map<Producto>((json) => Producto.fromJson(json))
-              .toList();
-        }
-      }
-
-      if (responseData.containsKey('data')) {
-        final data = responseData['data'];
-                   if (data is List) {
-          return data.map<Producto>((json) => Producto.fromJson(json)).toList();
-        }
-        
-        // ⚡ NUEVO: Si data es un Map, buscar lista dentro (paginación)
-        if (data is Map<String, dynamic>) {
-          // Buscar en "content" (formato paginado)
-          if (data.containsKey('content') && data['content'] is List) {
-            return (data['content'] as List)
-                .map<Producto>((json) => Producto.fromJson(json))
-                .toList();
-          }
-          // Buscar en "productos"
-          if (data.containsKey('productos') && data['productos'] is List) {
-            return (data['productos'] as List)
-                .map<Producto>((json) => Producto.fromJson(json))
-                .toList();
-          }
-          // Buscar en "items"
-          if (data.containsKey('items') && data['items'] is List) {
-            return (data['items'] as List)
-                .map<Producto>((json) => Producto.fromJson(json))
-                .toList();
-          }
-        }
-      }
-
-      if (responseData.containsKey('results')) {
-        final results = responseData['results'];
-        if (results is List) {
-          return results
-              .map<Producto>((json) => Producto.fromJson(json))
-              .toList();
-        }
-      }
-
-        
-        
-      throw Exception('No se encontró una lista de productos en la respuesta');
-    } else if (responseData is List) {
-      return responseData
-          .map<Producto>((json) => Producto.fromJson(json))
-          .toList();
-    }
-
-      
-    throw Exception(
-      'Formato de respuesta no válido: esperado Map o List, recibido ${responseData.runtimeType}',
-    );
   }
 
   // ⚡ NUEVO: Método auxiliar para parsear productos LIGEROS (sin imágenes)

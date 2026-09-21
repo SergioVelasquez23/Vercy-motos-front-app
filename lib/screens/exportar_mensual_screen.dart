@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import '../services/estadisticas_mensuales_service.dart';
 import '../services/excel_export_service.dart';
 import '../providers/user_provider.dart';
-import '../models/pedido.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 

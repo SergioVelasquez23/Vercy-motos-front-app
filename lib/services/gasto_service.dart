@@ -1,11 +1,10 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/gasto.dart';
 import '../models/tipo_gasto.dart';
 import '../config/api_config.dart';
 import '../utils/api_error.dart';
 import 'alertas_service.dart';
-import '../utils/logger.dart';
 import '../utils/token_storage.dart';
 
 /// Interfaz minima usada por GastosScreen para poder inyectar un fake en

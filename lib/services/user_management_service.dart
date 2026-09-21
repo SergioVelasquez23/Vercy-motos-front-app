@@ -1,8 +1,7 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../utils/api_error.dart';
-import '../models/user.dart';
 import 'base_api_service.dart';
 
 class UserManagementService {

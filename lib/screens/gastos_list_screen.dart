@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/gasto.dart';
-import '../models/cuadre_caja.dart';
 import '../services/gasto_service.dart';
 import '../services/cuadre_caja_service.dart';
 import '../theme/app_theme.dart';

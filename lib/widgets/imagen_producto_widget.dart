@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'dart:convert';
-import '../services/image_service.dart';
 
 /// Widget que maneja imágenes de productos con fallback local
 class ImagenProductoWidget extends StatelessWidget {
@@ -87,110 +85,6 @@ class ImagenProductoWidget extends StatelessWidget {
     */
   }
 
-  Widget _buildImagenBase64(String imagenUrl) {
-    try {
-      final base64Str = imagenUrl.split(',').last;
-      final bytes = base64Decode(base64Str);
-      // ✅ Key única usando hash del contenido para evitar reutilización
-      final contentHash = base64Str.length > 50 
-        ? base64Str.substring(0, 50).hashCode 
-        : base64Str.hashCode;
-      
-      return Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          color: Color(0xFF3A3A3A),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.memory(
-            bytes,
-            key: ValueKey('img-mem-${productoId ?? nombreProducto ?? ""}-$contentHash'),
-            width: width,
-            height: height,
-            fit: fit,
-            gaplessPlayback: false,
-            errorBuilder: (context, error, stackTrace) => _buildIconoError(),
-          ),
-        ),
-      );
-    } catch (e) {
-      return _buildIconoError();
-    }
-  }
-
-  Widget _buildImagenNetwork(String url) {
-    // ✅ SOLUCIÓN DEFINITIVA: Incluir ID del producto en URL para vincular imagen
-    final separator = url.contains('?') ? '&' : '?';
-    final productIdentifier = productoId ?? nombreProducto ?? 'unknown';
-    final uniqueUrl = '$url${separator}pid=$productIdentifier&_t=${DateTime.now().microsecondsSinceEpoch}';
-    
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: Color(0xFF3A3A3A),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          uniqueUrl,
-          key: ValueKey('img-net-$productIdentifier-${url.hashCode}'), // Key con ID de producto
-          width: width,
-          height: height,
-          fit: fit,
-          gaplessPlayback: false, // Deshabilitar transición suave
-          headers: {
-            'Accept': '*/*',
-            'User-Agent': 'Mozilla/5.0 (Mobile; Flutter)',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-          },
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Container(
-              width: width,
-              height: height,
-              color: Color(0xFF3A3A3A),
-              child: Center(
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF6B00)),
-                  value: loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded /
-                            loadingProgress.expectedTotalBytes!
-                      : null,
-                ),
-              ),
-            );
-          },
-          errorBuilder: (context, error, stackTrace) {
-            // Log más específico para debug
-            final errorStr = error.toString();
-              
-
-            // Si es un error del servidor (500, 404, etc.) mostrar ícono por defecto
-            if (errorStr.contains('500') ||
-                errorStr.contains('404') ||
-                errorStr.contains('EncodingError') ||
-                errorStr.contains('cannot be decoded') ||
-                errorStr.contains('HttpException')) {
-                
-              return _buildIconoDefault();
-            }
-
-            return _buildIconoError();
-          },
-        ),
-      ),
-    );
-  }
-
-  /// Widget de respaldo cuando no hay imagen o URL vacía
   Widget _buildIconoDefault() {
     return Container(
       width: width,

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/resumen_cartera.dart';
-import '../models/cuenta_por_cobrar.dart';
-import '../models/cuenta_por_pagar.dart';
 import '../models/gasto_programado.dart';
 import '../services/cartera_service.dart';
 import '../theme/app_theme.dart';

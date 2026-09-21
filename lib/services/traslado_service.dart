@@ -148,68 +148,6 @@ class TrasladoService {
     }
   }
 
-  // Procesar traslado (aceptar o rechazar)
-  Future<Traslado> procesarTraslado({
-    required String trasladoId,
-    required String accion, // ACEPTAR o RECHAZAR
-    required String aprobador,
-    String? observaciones,
-  }) async {
-    try {
-      final headers = await _getHeaders();
-      final body = json.encode({
-        'trasladoId': trasladoId,
-        'accion': accion,
-        'aprobador': aprobador,
-        if (observaciones != null && observaciones.isNotEmpty)
-          'observaciones': observaciones,
-      });
-
-      final response = await http.put(
-        Uri.parse('$baseUrl/procesar'),
-        headers: headers,
-        body: body,
-      ).timeout(_timeout);
-
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        // Manejar respuesta envuelta
-        final data = decoded is Map && decoded['data'] != null
-            ? decoded['data']
-            : decoded;
-        return Traslado.fromJson(data);
-      } else {
-        throwBackendError(response.body, response.statusCode, prefix: 'Error al procesar traslado');
-      }
-    } catch (e) {
-
-      rethrow;
-    }
-  }
-
-  // 🆕 Completar traslado (marca como completado sin validar stock)
-  Future<void> completarTraslado({
-    required String trasladoId,
-    required String aprobador,
-  }) async {
-    try {
-      final headers = await _getHeaders();
-      final body = json.encode({'aprobador': aprobador});
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/$trasladoId/completar'),
-        headers: headers,
-        body: body,
-      ).timeout(_timeout);
-
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throwBackendError(response.body, response.statusCode, prefix: 'Error al completar traslado');
-      }
-    } catch (e) {
-      rethrow;
-    }
-  }
-
   // ─── Nuevos endpoints por producto (/api/productos/{id}/traslado) ──────────
 
   /// Después de una venta exitosa, elimina de los traslados activos los items

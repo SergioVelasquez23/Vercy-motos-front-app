@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:async'; // Importar para usar StreamController
@@ -11,7 +10,7 @@ import '../services/producto_service.dart';
 import '../services/inventario_service.dart'; // Para manejar descuento de ingredientes
 import '../models/producto.dart';
 import '../models/item_pedido.dart';
-import '../models/cancelar_producto_request.dart'; // Para cancelaciones selectivas
+// Para cancelaciones selectivas
 import '../config/api_config.dart';
 import '../services/cuadre_caja_service.dart'; // Para validar caja abierta
 import '../utils/logger.dart';
