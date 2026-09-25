@@ -124,6 +124,50 @@ Future<void> showErrorDialog(
   );
 }
 
+/// Pregunta si una factura es "LOCAL" o "ENVIOS" antes de facturar un
+/// pedido (ver PedidoAsesorService.facturarPedido en el backend, que ahora
+/// exige este dato). Retorna 'LOCAL', 'ENVIOS', o `null` si el usuario
+/// cerró el diálogo sin elegir (en ese caso no se debe continuar).
+Future<String?> showTipoCajaDialog(BuildContext context) async {
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      title: Text(
+        '¿Cómo se factura este pedido?',
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold),
+      ),
+      content: Text(
+        'Indica si es una factura local o de envíos antes de continuar.',
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, null),
+          child: Text('Cancelar',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
+        ),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.pop(ctx, 'LOCAL'),
+          icon: Icon(Icons.storefront, size: 18),
+          label: const Text('Factura local'),
+        ),
+        ElevatedButton.icon(
+          onPressed: () => Navigator.pop(ctx, 'ENVIOS'),
+          icon: Icon(Icons.local_shipping, size: 18, color: Colors.white),
+          label: const Text('Facturación de envíos'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.primary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 /// Muestra un diálogo de información simple (solo botón "Aceptar").
 Future<void> showInfoDialog(
   BuildContext context, {

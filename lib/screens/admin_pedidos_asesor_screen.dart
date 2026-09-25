@@ -72,7 +72,13 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
   }
 
   void _seleccionarPedido(PedidoAsesor pedido) async {
-    await context.push('/facturar', extra: pedido);
+    // Preguntar si la factura es local o de envíos antes de facturar
+    // (el backend ahora exige este dato en PUT /pedidos-asesor/:id/facturar).
+    final tipoCaja = await showTipoCajaDialog(context);
+    if (tipoCaja == null || !mounted) return; // Canceló el diálogo
+
+    final ruta = tipoCaja == 'ENVIOS' ? '/facturar-envios' : '/facturar';
+    await context.push(ruta, extra: pedido);
     // Recargar lista al regresar
     _cargarPedidos();
   }

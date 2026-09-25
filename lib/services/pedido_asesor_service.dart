@@ -242,14 +242,21 @@ class PedidoAsesorService {
   }
 
   // Marcar como facturado
+  // tipoCaja: 'LOCAL' o 'ENVIOS' — el backend lo exige (ver
+  // PedidoAsesorController.facturarPedido) para saber si la factura es
+  // local o de envíos.
   Future<PedidoAsesor> marcarComoFacturado(
     String id,
     String facturadoPor, {
     String? facturaId,
+    String tipoCaja = 'LOCAL',
   }) async {
     try {
       final headers = await _getHeaders();
-      final body = <String, dynamic>{'facturadoPor': facturadoPor};
+      final body = <String, dynamic>{
+        'facturadoPor': facturadoPor,
+        'tipoCaja': tipoCaja,
+      };
       if (facturaId != null && facturaId.isNotEmpty) {
         body['facturaId'] = facturaId;
       }

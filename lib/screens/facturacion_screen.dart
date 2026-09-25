@@ -4509,12 +4509,17 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             _emitirDocumentoEnDIAN(pedidoPagado, tipoFacturaCapturado);
           }
 
-          // Si viene de pedido asesor, marcarlo como facturado
+          // Si viene de pedido asesor, marcarlo como facturado. tipoCaja
+          // viene de qué opción eligió el usuario en el diálogo mostrado
+          // antes de entrar a esta pantalla (ver showTipoCajaDialog en
+          // admin_pedidos_asesor_screen.dart) — widget.tipoCaja ya trae
+          // ese valor ('LOCAL' por defecto si no vino de ahí).
           if (pedidoAsesorId != null) {
             await _pedidoAsesorService.marcarComoFacturado(
               pedidoAsesorId,
               userName,
               facturaId: pedidoPagado.id,
+              tipoCaja: widget.tipoCaja,
             );
           }
 
