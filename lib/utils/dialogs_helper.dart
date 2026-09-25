@@ -55,6 +55,63 @@ Future<bool> showConfirmDialog(
   return result ?? false;
 }
 
+/// Pregunta con qué caja se va a facturar un pedido de asesor: LOCAL o
+/// ENVIOS. Retorna `'LOCAL'` / `'ENVIOS'`, o `null` si el usuario canceló.
+Future<String?> showEleccionCajaDialog(BuildContext context) {
+  final onSurface = Theme.of(context).colorScheme.onSurface;
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      title: Text('¿Con qué caja se factura?',
+          style: TextStyle(color: onSurface, fontWeight: FontWeight.bold)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Elige dónde va a quedar registrado el cobro de este pedido.',
+            style: TextStyle(color: onSurface.withOpacity(0.7), fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.pop(ctx, 'LOCAL'),
+              icon: const Icon(Icons.storefront_outlined),
+              label: const Text('Caja local'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                alignment: Alignment.centerLeft,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.pop(ctx, 'ENVIOS'),
+              icon: const Icon(Icons.local_shipping_outlined),
+              label: const Text('Caja de envíos'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                alignment: Alignment.centerLeft,
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: Text('Cancelar', style: TextStyle(color: onSurface.withOpacity(0.7))),
+        ),
+      ],
+    ),
+  );
+}
+
 /// Muestra un error en un widget compacto centrado en la pantalla,
 /// en vez del SnackBar tradicional (más difícil de notar y de leer
 /// completo). Se cierra tocando fuera o con el botón "Cerrar".
