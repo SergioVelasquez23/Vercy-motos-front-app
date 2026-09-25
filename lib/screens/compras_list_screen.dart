@@ -26,9 +26,8 @@ class _ComprasListScreenState extends State<ComprasListScreen>
   final ProveedorService _proveedorService = ProveedorService();
 
   // Controladores de filtros
-  final _filtroNumeroCompraController = TextEditingController();
-  final _filtroNumeroFacturaController = TextEditingController();
   final _filtroProveedorController = TextEditingController();
+  final _filtroProductoController = TextEditingController();
 
   // Fechas
   DateTime? _fechaInicio;
@@ -52,9 +51,8 @@ class _ComprasListScreenState extends State<ComprasListScreen>
 
   @override
   void dispose() {
-    _filtroNumeroCompraController.dispose();
-    _filtroNumeroFacturaController.dispose();
     _filtroProveedorController.dispose();
+    _filtroProductoController.dispose();
     super.dispose();
   }
 
@@ -78,27 +76,19 @@ class _ComprasListScreenState extends State<ComprasListScreen>
   void _aplicarFiltros() {
     setState(() {
       _comprasFiltradas = _compras.where((compra) {
-        // Filtro por número de compra
-        final matchNumeroCompra =
-            _filtroNumeroCompraController.text.isEmpty ||
-            (compra.id?.toLowerCase().contains(
-                  _filtroNumeroCompraController.text.toLowerCase(),
-                ) ??
-                false);
-
-        // Filtro por número de factura
-        final matchNumeroFactura =
-            _filtroNumeroFacturaController.text.isEmpty ||
-            compra.numeroFactura.toLowerCase().contains(
-              _filtroNumeroFacturaController.text.toLowerCase(),
-            );
-
         // Filtro por proveedor
         final matchProveedor =
             _filtroProveedorController.text.isEmpty ||
             compra.proveedorNombre.toLowerCase().contains(
               _filtroProveedorController.text.toLowerCase(),
             );
+
+        // Filtro por producto comprado (busca en el nombre de cada item de la compra)
+        final matchProducto =
+            _filtroProductoController.text.isEmpty ||
+            compra.items.any((item) => item.ingredienteNombre
+                .toLowerCase()
+                .contains(_filtroProductoController.text.toLowerCase()));
 
         // Filtro por fecha inicio
         final matchFechaInicio =
@@ -115,9 +105,8 @@ class _ComprasListScreenState extends State<ComprasListScreen>
         final matchCuentasPorPagar =
             !_soloCuentasPorPagar || compra.esCreditoPendiente;
 
-        return matchNumeroCompra &&
-            matchNumeroFactura &&
-            matchProveedor &&
+        return matchProveedor &&
+            matchProducto &&
             matchFechaInicio &&
             matchFechaFin &&
             matchCuentasPorPagar;
@@ -192,7 +181,6 @@ class _ComprasListScreenState extends State<ComprasListScreen>
 
   Widget _buildPrimeraFilaFiltros() {
     final isMobile = context.isMobile;
-    final campoAncho = isMobile ? double.infinity : 200.0;
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -205,30 +193,21 @@ class _ComprasListScreenState extends State<ComprasListScreen>
         runSpacing: 12,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          // Número Compra
-          SizedBox(
-            width: campoAncho,
-            child: _buildCampoFiltro(
-              controller: _filtroNumeroCompraController,
-              hint: 'Número Compra',
-              onChanged: (_) => _aplicarFiltros(),
-            ),
-          ),
-          // Número Factura
-          SizedBox(
-            width: campoAncho,
-            child: _buildCampoFiltro(
-              controller: _filtroNumeroFacturaController,
-              hint: 'Número Factura',
-              onChanged: (_) => _aplicarFiltros(),
-            ),
-          ),
           // Nombre Proveedor
           SizedBox(
             width: isMobile ? double.infinity : 260,
             child: _buildCampoFiltro(
               controller: _filtroProveedorController,
               hint: 'Nombre Proveedor',
+              onChanged: (_) => _aplicarFiltros(),
+            ),
+          ),
+          // Producto comprado
+          SizedBox(
+            width: isMobile ? double.infinity : 260,
+            child: _buildCampoFiltro(
+              controller: _filtroProductoController,
+              hint: 'Producto',
               onChanged: (_) => _aplicarFiltros(),
             ),
           ),
