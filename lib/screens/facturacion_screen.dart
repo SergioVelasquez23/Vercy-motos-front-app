@@ -4380,6 +4380,20 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
       // 🚀 TODO EN BACKGROUND - Crear pedido + pagar + inventario
       Future.microtask(() async {
+        // Una vez que pagarPedido() asigna esta variable (más abajo), la venta
+        // YA está cobrada y registrada en caja (sumarPagoACuadre ya corrió en
+        // el backend) y el Documento ya se generó. Un error DESPUÉS de eso
+        // nunca debe tratarse como "no se guardó nada" — por eso el cobro va
+        // en su propio try/catch, separado del post-proceso (ver más abajo).
+        // Antes ambos vivían en el mismo try/catch: un fallo en el post-proceso
+        // (p. ej. marcar el pedido de asesor como facturado) hacía que la app
+        // guardara un "borrador local" y sugiriera reintentar el cobro, cuando
+        // la venta ya estaba pagada — reenviarla duplicaba el ingreso en caja.
+        late Pedido pedidoPagado;
+        // También se usa en el post-proceso (Step B) para completar los datos
+        // del cliente si el backend no los devolvió — hoisteada por la misma
+        // razón que pedidoPagado.
+        Map<String, dynamic>? datosAdicionales;
         try {
           // Si estos items vinieron de un borrador guardado, eliminarlo antes
           // de crear el pedido pagado — eliminarPedido() restaura el
@@ -4404,7 +4418,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           }
 
           // Preparar datos completos del cliente para guardar
-          Map<String, dynamic>? datosAdicionales;
           if (clienteCapturado != null) {
             datosAdicionales = {
               'clienteNombreCompleto': clienteCapturado.nombreCompleto,
@@ -4456,7 +4469,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           final pedidoCreado = await _pedidoService.createPedido(pedido);
 
           // Procesar pago
-          final pedidoPagado = await _pedidoService.pagarPedido(
+          pedidoPagado = await _pedidoService.pagarPedido(
             pedidoCreado.id,
             formaPago: metodoPagoUsado,
             propina: 0.0,
@@ -4482,7 +4495,60 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             montoBancolombia: montoBancolombia,
             tipoCaja: pedidoCreado.tipoCaja ?? widget.tipoCaja,
           );
+        } catch (e) {
+          // Todavía no se pudo crear o cobrar el pedido (ej. caja cerrada,
+          // sin conexión): nada quedó guardado en el backend, así que acá sí
+          // es correcto guardarlo localmente para no perder lo que ya se
+          // había armado.
+          appLog('⚠️ Error creando/cobrando el pedido: $e');
+          final motivo = errorMessage(e);
+          await _guardarBorradorLocalPorFallo(
+            items: itemsOriginales,
+            cliente: clienteTexto,
+            clienteId: clienteCapturado?.id,
+            tipoFactura: tipoFacturaCapturado,
+            fechaFactura: fechaFacturaCapturada,
+            fechaVencimiento: fechaVencimientoCapturada,
+            metodoPago: metodoPagoOriginal,
+            montosPago: {
+              'efectivo': montoEfectivo,
+              'transferencia': montoTransferencia,
+              'tarjeta': montoTarjeta,
+              'sistecredito': montoSistecredito,
+              'datafono': montoDatafono,
+              'bold': montoBold,
+              'addi': montoAddi,
+              'credilondon': montoCredilondon,
+              'nequi': montoNequi,
+              'daviplata': montoDaviplata,
+              'bancolombia': montoBancolombia,
+            },
+            dctoGeneral: dctoGeneral,
+            retencionPct: retencionPct,
+            reteIVAPct: reteIVAPct,
+            reteICAPct: reteICAPct,
+            aiuPct: aiuPct,
+            observaciones: observacionesCapturadas,
+            motivo: motivo,
+          );
+          await _actualizarContadorBorradoresLocales();
+          if (mounted) {
+            showErrorDialog(
+              context,
+              '$motivo\n\nEl pedido se guardó como borrador local en este dispositivo — tocá el ícono de borradores para recuperarlo.',
+            );
+          }
+          return;
+        }
 
+        // ─── Post-proceso tras cobrar: la venta ya quedó registrada ──────────
+        // Todo lo de acá para abajo (guardar datos del cliente, marcar el
+        // pedido de asesor como facturado, convertir la cotización, refrescar
+        // caché, mostrar el diálogo de factura con PDF/impresión) puede
+        // fallar sin que eso signifique que la venta no se guardó. Por eso va
+        // en su propio try/catch, que NO vuelve a guardar un borrador local
+        // ni sugiere reintentar el cobro (ver el catch de abajo).
+        try {
           // 🔧 CRÍTICO: Asegurar que los datos del cliente estén guardados
           // Si el backend no devolvió los datosAdicionales, actualizamos el pedido
           if (datosAdicionales != null &&
@@ -4806,45 +4872,25 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             );
           }
         } catch (e) {
-          appLog('⚠️ Error en procesamiento background: $e');
-          final motivo = errorMessage(e);
-          // No se pudo crear/pagar el pedido (ej. caja cerrada): nada quedó
-          // guardado en el backend, así que se guarda localmente para no
-          // perder lo que ya se había armado.
-          await _guardarBorradorLocalPorFallo(
-            items: itemsOriginales,
-            cliente: clienteTexto,
-            clienteId: clienteCapturado?.id,
-            tipoFactura: tipoFacturaCapturado,
-            fechaFactura: fechaFacturaCapturada,
-            fechaVencimiento: fechaVencimientoCapturada,
-            metodoPago: metodoPagoOriginal,
-            montosPago: {
-              'efectivo': montoEfectivo,
-              'transferencia': montoTransferencia,
-              'tarjeta': montoTarjeta,
-              'sistecredito': montoSistecredito,
-              'datafono': montoDatafono,
-              'bold': montoBold,
-              'addi': montoAddi,
-              'credilondon': montoCredilondon,
-              'nequi': montoNequi,
-              'daviplata': montoDaviplata,
-              'bancolombia': montoBancolombia,
-            },
-            dctoGeneral: dctoGeneral,
-            retencionPct: retencionPct,
-            reteIVAPct: reteIVAPct,
-            reteICAPct: reteICAPct,
-            aiuPct: aiuPct,
-            observaciones: observacionesCapturadas,
-            motivo: motivo,
+          // La venta YA se cobró (llegamos hasta acá porque el try de arriba
+          // terminó sin error): esto es una falla del post-proceso, no de la
+          // venta en sí. A propósito NO se guarda un "borrador local" acá —
+          // hacerlo invitaría a reenviar y cobrar dos veces una venta que ya
+          // está en caja.
+          appLog(
+            '⚠️ Error en post-proceso tras cobrar (venta ya registrada, pedido ${pedidoPagado.id}): $e',
+            level: LogLevel.error,
           );
-          await _actualizarContadorBorradoresLocales();
           if (mounted) {
             showErrorDialog(
               context,
-              '$motivo\n\nEl pedido se guardó como borrador local en este dispositivo — tocá el ícono de borradores para recuperarlo.',
+              'La venta se cobró correctamente y ya quedó registrada en caja '
+              '(pedido ${pedidoPagado.id}).\n\n'
+              'Pero ocurrió un error después de cobrar: ${errorMessage(e)}\n\n'
+              'No la vuelvas a facturar. Revisá el pedido manualmente para completar '
+              'lo que haya quedado pendiente (por ejemplo, marcarlo como facturado si '
+              'es un pedido de asesor, o reintentar la emisión electrónica desde '
+              'Facturas Electrónicas).',
             );
           }
         }
