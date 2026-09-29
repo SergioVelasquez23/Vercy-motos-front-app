@@ -4394,79 +4394,91 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         // del cliente si el backend no los devolvió — hoisteada por la misma
         // razón que pedidoPagado.
         Map<String, dynamic>? datosAdicionales;
+        // Si el pedido llega a crearse pero falla el cobro, esto queda con su
+        // id: le dice al catch que el pedido YA existe en el backend como
+        // borrador real (con su inventario ya descontado, igual que "Guardar
+        // como borrador") y que no hay que crear nada de nuevo — solo avisar
+        // dónde encontrarlo.
+        String? pedidoCreadoId;
+
+        // Si estos items vinieron de un borrador guardado, eliminarlo antes
+        // de crear el pedido pagado — eliminarPedido() restaura el
+        // inventario que ese borrador ya había descontado (mismo criterio
+        // que cancelar/eliminar cualquier pedido activo). Sin esto, el
+        // pedido nuevo de abajo descuenta el stock por segunda vez para
+        // los mismos productos (bug reportado: un producto quedaba
+        // descontado dos veces por una sola venta). Tiene su propio
+        // try/catch desde siempre — un fallo acá no debe frenar el cobro.
+        if (borradorOrigenIdCapturado != null &&
+            borradorOrigenIdCapturado.isNotEmpty) {
+          try {
+            await _pedidoService.eliminarPedido(
+              borradorOrigenIdCapturado,
+              motivoEliminacion: 'Convertido a factura pagada',
+            );
+          } catch (e) {
+            appLog(
+              '⚠️ No se pudo eliminar el borrador de origen $borradorOrigenIdCapturado antes de cobrar: $e',
+              level: LogLevel.error,
+            );
+          }
+        }
+
+        // Preparar datos completos del cliente para guardar
+        if (clienteCapturado != null) {
+          datosAdicionales = {
+            'clienteNombreCompleto': clienteCapturado.nombreCompleto,
+            'clienteNit':
+                '${clienteCapturado.tipoIdentificacion} ${clienteCapturado.numeroIdentificacion}${clienteCapturado.digitoVerificacion != null ? "-${clienteCapturado.digitoVerificacion}" : ""}',
+            'clienteDireccion': clienteCapturado.direccion,
+            'clienteTelefono': clienteCapturado.telefono,
+            'clienteCorreo': clienteCapturado.correo,
+            'clienteDepartamento': clienteCapturado.departamento,
+            'clienteCiudad': clienteCapturado.ciudad,
+            'clienteTipoId': clienteCapturado.tipoIdentificacion,
+          };
+        }
+
+        // Pedido a crear y cobrar. Se construye una sola vez acá afuera del
+        // try porque, si falla el cobro más abajo, este mismo objeto sirve
+        // para guardarlo como borrador en el servidor sin tener que
+        // rearmarlo.
+        final pedido = Pedido(
+          id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
+          fecha: fechaFacturaCapturada,
+          tipo: TipoPedido.normal,
+          mesa: 'FACTURACION',
+          cliente: clienteTexto,
+          mesero: userName,
+          items: itemsOriginales,
+          total: total,
+          estado: EstadoPedido.activo,
+          tipoFactura: tipoFacturaCapturado,
+          fechaVencimiento: fechaVencimientoCapturada,
+          subtotal: subtotal,
+          totalImpuestos: totalImpuestos,
+          totalDescuentos: totalDescuentos,
+          totalFinal: total,
+          datosAdicionales: datosAdicionales,
+          // ✅ Agregar campos de retenciones y descuentos
+          retencion: retencionPct,
+          valorRetencion: retencionValor,
+          reteIVA: reteIVAPct,
+          valorReteIVA: reteIVAValor,
+          reteICA: reteICAPct,
+          valorReteICA: reteICAValor,
+          descuentoGeneral: dctoGeneral,
+          aiu: {'porcentaje': aiuPct, 'valor': aiuValor},
+          // ✅ Agregar observaciones capturadas
+          notas: observacionesCapturadas.isNotEmpty
+              ? observacionesCapturadas
+              : null,
+          tipoCaja: widget.tipoCaja,
+        );
+
         try {
-          // Si estos items vinieron de un borrador guardado, eliminarlo antes
-          // de crear el pedido pagado — eliminarPedido() restaura el
-          // inventario que ese borrador ya había descontado (mismo criterio
-          // que cancelar/eliminar cualquier pedido activo). Sin esto, el
-          // pedido nuevo de abajo descuenta el stock por segunda vez para
-          // los mismos productos (bug reportado: un producto quedaba
-          // descontado dos veces por una sola venta).
-          if (borradorOrigenIdCapturado != null &&
-              borradorOrigenIdCapturado.isNotEmpty) {
-            try {
-              await _pedidoService.eliminarPedido(
-                borradorOrigenIdCapturado,
-                motivoEliminacion: 'Convertido a factura pagada',
-              );
-            } catch (e) {
-              appLog(
-                '⚠️ No se pudo eliminar el borrador de origen $borradorOrigenIdCapturado antes de cobrar: $e',
-                level: LogLevel.error,
-              );
-            }
-          }
-
-          // Preparar datos completos del cliente para guardar
-          if (clienteCapturado != null) {
-            datosAdicionales = {
-              'clienteNombreCompleto': clienteCapturado.nombreCompleto,
-              'clienteNit':
-                  '${clienteCapturado.tipoIdentificacion} ${clienteCapturado.numeroIdentificacion}${clienteCapturado.digitoVerificacion != null ? "-${clienteCapturado.digitoVerificacion}" : ""}',
-              'clienteDireccion': clienteCapturado.direccion,
-              'clienteTelefono': clienteCapturado.telefono,
-              'clienteCorreo': clienteCapturado.correo,
-              'clienteDepartamento': clienteCapturado.departamento,
-              'clienteCiudad': clienteCapturado.ciudad,
-              'clienteTipoId': clienteCapturado.tipoIdentificacion,
-            };
-          }
-
-          // Crear el pedido
-          final pedido = Pedido(
-            id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
-            fecha: fechaFacturaCapturada,
-            tipo: TipoPedido.normal,
-            mesa: 'FACTURACION',
-            cliente: clienteTexto,
-            mesero: userName,
-            items: itemsOriginales,
-            total: total,
-            estado: EstadoPedido.activo,
-            tipoFactura: tipoFacturaCapturado,
-            fechaVencimiento: fechaVencimientoCapturada,
-            subtotal: subtotal,
-            totalImpuestos: totalImpuestos,
-            totalDescuentos: totalDescuentos,
-            totalFinal: total,
-            datosAdicionales: datosAdicionales,
-            // ✅ Agregar campos de retenciones y descuentos
-            retencion: retencionPct,
-            valorRetencion: retencionValor,
-            reteIVA: reteIVAPct,
-            valorReteIVA: reteIVAValor,
-            reteICA: reteICAPct,
-            valorReteICA: reteICAValor,
-            descuentoGeneral: dctoGeneral,
-            aiu: {'porcentaje': aiuPct, 'valor': aiuValor},
-            // ✅ Agregar observaciones capturadas
-            notas: observacionesCapturadas.isNotEmpty
-                ? observacionesCapturadas
-                : null,
-            tipoCaja: widget.tipoCaja,
-          );
-
           final pedidoCreado = await _pedidoService.createPedido(pedido);
+          pedidoCreadoId = pedidoCreado.id;
 
           // Procesar pago
           pedidoPagado = await _pedidoService.pagarPedido(
@@ -4496,47 +4508,87 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             tipoCaja: pedidoCreado.tipoCaja ?? widget.tipoCaja,
           );
         } catch (e) {
-          // Todavía no se pudo crear o cobrar el pedido (ej. caja cerrada,
-          // sin conexión): nada quedó guardado en el backend, así que acá sí
-          // es correcto guardarlo localmente para no perder lo que ya se
-          // había armado.
-          appLog('⚠️ Error creando/cobrando el pedido: $e');
           final motivo = errorMessage(e);
-          await _guardarBorradorLocalPorFallo(
-            items: itemsOriginales,
-            cliente: clienteTexto,
-            clienteId: clienteCapturado?.id,
-            tipoFactura: tipoFacturaCapturado,
-            fechaFactura: fechaFacturaCapturada,
-            fechaVencimiento: fechaVencimientoCapturada,
-            metodoPago: metodoPagoOriginal,
-            montosPago: {
-              'efectivo': montoEfectivo,
-              'transferencia': montoTransferencia,
-              'tarjeta': montoTarjeta,
-              'sistecredito': montoSistecredito,
-              'datafono': montoDatafono,
-              'bold': montoBold,
-              'addi': montoAddi,
-              'credilondon': montoCredilondon,
-              'nequi': montoNequi,
-              'daviplata': montoDaviplata,
-              'bancolombia': montoBancolombia,
-            },
-            dctoGeneral: dctoGeneral,
-            retencionPct: retencionPct,
-            reteIVAPct: reteIVAPct,
-            reteICAPct: reteICAPct,
-            aiuPct: aiuPct,
-            observaciones: observacionesCapturadas,
-            motivo: motivo,
-          );
-          await _actualizarContadorBorradoresLocales();
-          if (mounted) {
-            showErrorDialog(
-              context,
-              '$motivo\n\nEl pedido se guardó como borrador local en este dispositivo — tocá el ícono de borradores para recuperarlo.',
+
+          if (pedidoCreadoId != null) {
+            // El pedido SÍ se alcanzó a crear (con su inventario ya
+            // descontado) y solo falló el cobro (ej. caja cerrada): ya es un
+            // borrador real en el servidor, igual que "Guardar como
+            // borrador" — no hay que crear nada más ni guardar nada local,
+            // solo avisar dónde encontrarlo para no tener que rearmarlo.
+            appLog(
+              '⚠️ El pedido $pedidoCreadoId se creó pero no se pudo cobrar: $e',
+              level: LogLevel.error,
             );
+            if (mounted) {
+              showErrorDialog(
+                context,
+                '$motivo\n\nEl pedido ya quedó guardado como borrador en el servidor '
+                '(no se pudo cobrar). Buscalo en "Ver Borradores" cuando el problema '
+                'esté resuelto — no hace falta volver a armarlo.',
+              );
+            }
+            return;
+          }
+
+          // Ni siquiera se alcanzó a crear el pedido: reintentar guardándolo
+          // como borrador en el servidor (lo mismo que hace "Guardar como
+          // borrador"), para que quede recuperable desde cualquier
+          // dispositivo sin tener que rearmarlo a mano. Solo si esto también
+          // falla (ej. sin conexión) se guarda localmente en este
+          // dispositivo, como último recurso.
+          appLog('⚠️ No se pudo crear el pedido: $e');
+          try {
+            await _pedidoService.createPedido(pedido);
+            if (mounted) {
+              showErrorDialog(
+                context,
+                '$motivo\n\nNo se pudo cobrar, pero el pedido se guardó como borrador — '
+                'buscalo en "Ver Borradores" cuando el problema esté resuelto, no hace '
+                'falta volver a armarlo.',
+              );
+            }
+          } catch (e2) {
+            appLog(
+              '⚠️ Tampoco se pudo guardar como borrador en el servidor: $e2',
+              level: LogLevel.error,
+            );
+            await _guardarBorradorLocalPorFallo(
+              items: itemsOriginales,
+              cliente: clienteTexto,
+              clienteId: clienteCapturado?.id,
+              tipoFactura: tipoFacturaCapturado,
+              fechaFactura: fechaFacturaCapturada,
+              fechaVencimiento: fechaVencimientoCapturada,
+              metodoPago: metodoPagoOriginal,
+              montosPago: {
+                'efectivo': montoEfectivo,
+                'transferencia': montoTransferencia,
+                'tarjeta': montoTarjeta,
+                'sistecredito': montoSistecredito,
+                'datafono': montoDatafono,
+                'bold': montoBold,
+                'addi': montoAddi,
+                'credilondon': montoCredilondon,
+                'nequi': montoNequi,
+                'daviplata': montoDaviplata,
+                'bancolombia': montoBancolombia,
+              },
+              dctoGeneral: dctoGeneral,
+              retencionPct: retencionPct,
+              reteIVAPct: reteIVAPct,
+              reteICAPct: reteICAPct,
+              aiuPct: aiuPct,
+              observaciones: observacionesCapturadas,
+              motivo: motivo,
+            );
+            await _actualizarContadorBorradoresLocales();
+            if (mounted) {
+              showErrorDialog(
+                context,
+                '$motivo\n\nEl pedido se guardó como borrador local en este dispositivo — tocá el ícono de borradores para recuperarlo.',
+              );
+            }
           }
           return;
         }
