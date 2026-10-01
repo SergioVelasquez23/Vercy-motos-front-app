@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import 'package:flutter/material.dart';
@@ -107,6 +108,15 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   // venta terminaba descontando el stock dos veces (bug reportado en
   // producción: "MOFLE MF NKD CROMADO" descontado -5 dos veces seguidas).
   String? _borradorOrigenId;
+  // Autoguardado silencioso del borrador en el backend: se reprograma en cada
+  // cambio relevante (agregar/editar/quitar item, elegir cliente) y guarda
+  // ~4s después del último cambio, para que el pedido en construcción quede
+  // recuperable desde "Ver Borradores" aunque nadie llegue a tocar "Guardar
+  // Borrador" ni ocurra un error al cobrar (crash, cierre accidental de la
+  // pestaña, se le olvida, etc.) — ver _programarAutoguardadoBorrador.
+  Timer? _autoguardadoBorradorTimer;
+  bool _autoguardandoBorrador = false;
+  bool _autoguardadoBorradorPendiente = false;
   late final IPedidoService _pedidoService;
   final ProductoService _productoService = ProductoService();
   final PedidoAsesorService _pedidoAsesorService = PedidoAsesorService();
@@ -644,7 +654,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     // ⏸️ Detener sincronización automática
     // NO limpiar el borrador aquí - se mantiene para cuando regresen
     _draftProvider?.stopSync();
-    
+    _autoguardadoBorradorTimer?.cancel();
+
     _clienteController.dispose();
     _codigoBarrasController.dispose();
     _codigoController.dispose();
@@ -1120,6 +1131,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               });
               // 💾 Guardar estado completo al cambiar cliente
               _guardarEstadoCompleto();
+              _programarAutoguardadoBorrador();
             },
             fieldViewBuilder:
                 (
@@ -3134,7 +3146,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
     // 📋 Guardar estado completo en provider
     _guardarEstadoCompleto();
-    
+    _programarAutoguardadoBorrador();
+
     // ✅ Mensaje de confirmación
     showSuccessSnackBar(context, '✅ Producto agregado desde $_origenSeleccionado');
   }
@@ -3146,6 +3159,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
     // � Guardar estado completo en provider
     _guardarEstadoCompleto();
+    _programarAutoguardadoBorrador();
   }
 
   /// Reconstruye el ítem a partir de un nuevo valor TOTAL editado manualmente.
@@ -3229,6 +3243,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     });
 
     _guardarEstadoCompleto();
+    _programarAutoguardadoBorrador();
   }
 
   void _limpiarFormularioProducto() {
@@ -3828,7 +3843,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     showSuccessSnackBar(context, 'Borrador local cargado — revisá los datos antes de guardar');
   }
 
-  // Guardar como borrador (pedido activo sin pagar)
+  // Guardar como borrador (pedido activo sin pagar), con feedback visible:
+  // usado por el botón "Guardar Borrador" — deja la pantalla lista para
+  // empezar una factura nueva.
   Future<void> _guardarComoBorrador() async {
     if (_items.isEmpty) {
       ScaffoldMessenger.of(
@@ -3838,61 +3855,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     }
 
     setState(() => _isLoading = true);
-
     try {
-      final subtotal = _items.fold(0.0, (sum, item) => sum + item.subtotal);
-      final totalImpuestosBorrador = _items.fold(0.0, (sum, item) => sum + item.valorImpuesto);
-      final totalDctoProductos = _items.fold(0.0, (sum, item) => sum + item.valorDescuento);
-      final dctoGeneral = double.tryParse(_dctoGeneralController.text) ?? 0;
-      final totalDescuentos = totalDctoProductos + dctoGeneral;
-      final total = subtotal + totalImpuestosBorrador - totalDescuentos;
-
-      final pedido = Pedido(
-        id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
-        fecha: _fechaFactura,
-        tipo: TipoPedido.normal,
-        mesa: 'FACTURACION',
-        cliente: _clienteController.text,
-        mesero:
-            Provider.of<UserProvider>(context, listen: false).userName ??
-            'Sistema',
-        items: _items,
-        total: total,
-        estado: EstadoPedido.activo,
-        tipoFactura: _tipoFactura,
-        fechaVencimiento: _fechaVencimiento,
-        subtotal: subtotal,
-        totalImpuestos: totalImpuestosBorrador,
-        totalDescuentos: totalDescuentos,
-        totalFinal: total,
-        descuentoGeneral: dctoGeneral,
-        tipoCaja: widget.tipoCaja,
+      final guardado = await _guardarBorradorEnServidor(
+        motivoReemplazo: 'Reemplazado al re-guardar borrador',
       );
-
-      // Si estos items ya vienen de un borrador cargado, eliminar el
-      // original antes de guardar el nuevo (restaura su inventario) — si no,
-      // "cargar borrador" + "guardar borrador" de nuevo dejaba el primero
-      // huérfano con su descuento aplicado, igual que el bug ya corregido
-      // al cobrar directamente.
-      if (_borradorOrigenId != null && _borradorOrigenId!.isNotEmpty) {
-        try {
-          await _pedidoService.eliminarPedido(
-            _borradorOrigenId!,
-            motivoEliminacion: 'Reemplazado al re-guardar borrador',
-          );
-        } catch (e) {
-          appLog(
-            '⚠️ No se pudo eliminar el borrador anterior $_borradorOrigenId al re-guardar: $e',
-            level: LogLevel.error,
-          );
-        }
-      }
-
-      final pedidoBorradorGuardado = await _pedidoService.createPedido(pedido);
-      _borradorOrigenId = pedidoBorradorGuardado.id;
+      if (guardado == null) return; // _items vacío entre el check y acá (raro)
 
       setState(() => _isLoading = false);
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -3905,11 +3874,129 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           backgroundColor: Colors.orange,
         ),
       );
-
       _limpiarFormulario();
     } catch (e) {
       setState(() => _isLoading = false);
       showErrorSnackBar(context, 'Error al guardar: ${errorMessage(e)}');
+    }
+  }
+
+  /// Lógica compartida entre "Guardar Borrador" (botón) y el autoguardado
+  /// silencioso: arma el Pedido-borrador con el estado actual del formulario,
+  /// borra el borrador anterior si estos items vinieron de uno (ver el
+  /// comentario dentro del método) y crea el nuevo en el backend.
+  /// No toca `_isLoading` ni muestra SnackBars — eso es responsabilidad de
+  /// quien la llama. Devuelve `null` solo si no hay items que guardar.
+  Future<Pedido?> _guardarBorradorEnServidor({required String motivoReemplazo}) async {
+    if (_items.isEmpty) return null;
+
+    final subtotal = _items.fold(0.0, (sum, item) => sum + item.subtotal);
+    final totalImpuestosBorrador = _items.fold(0.0, (sum, item) => sum + item.valorImpuesto);
+    final totalDctoProductos = _items.fold(0.0, (sum, item) => sum + item.valorDescuento);
+    final dctoGeneral = double.tryParse(_dctoGeneralController.text) ?? 0;
+    final totalDescuentos = totalDctoProductos + dctoGeneral;
+    final total = subtotal + totalImpuestosBorrador - totalDescuentos;
+
+    final pedido = Pedido(
+      id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
+      fecha: _fechaFactura,
+      tipo: TipoPedido.normal,
+      mesa: 'FACTURACION',
+      cliente: _clienteController.text,
+      mesero:
+          Provider.of<UserProvider>(context, listen: false).userName ??
+          'Sistema',
+      items: List<ItemPedido>.from(_items),
+      total: total,
+      estado: EstadoPedido.activo,
+      tipoFactura: _tipoFactura,
+      fechaVencimiento: _fechaVencimiento,
+      subtotal: subtotal,
+      totalImpuestos: totalImpuestosBorrador,
+      totalDescuentos: totalDescuentos,
+      totalFinal: total,
+      descuentoGeneral: dctoGeneral,
+      tipoCaja: widget.tipoCaja,
+    );
+
+    // Si estos items ya vienen de un borrador cargado (o del autoguardado
+    // anterior), eliminar el original antes de guardar el nuevo (restaura su
+    // inventario) — si no, re-guardar dejaba el anterior huérfano con su
+    // descuento aplicado, igual que el bug ya corregido al cobrar
+    // directamente: la misma venta terminaba descontando el stock dos veces.
+    if (_borradorOrigenId != null && _borradorOrigenId!.isNotEmpty) {
+      try {
+        await _pedidoService.eliminarPedido(
+          _borradorOrigenId!,
+          motivoEliminacion: motivoReemplazo,
+        );
+      } catch (e) {
+        appLog(
+          '⚠️ No se pudo eliminar el borrador anterior $_borradorOrigenId al re-guardar: $e',
+          level: LogLevel.error,
+        );
+      }
+    }
+
+    final pedidoBorradorGuardado = await _pedidoService.createPedido(pedido);
+    _borradorOrigenId = pedidoBorradorGuardado.id;
+    return pedidoBorradorGuardado;
+  }
+
+  /// Reprograma el autoguardado silencioso del borrador ~4s después del
+  /// último cambio relevante (agregar/editar/quitar item, elegir cliente).
+  /// Llamar en cada uno de esos puntos — ver el comentario del campo
+  /// [_autoguardadoBorradorTimer] para el porqué.
+  void _programarAutoguardadoBorrador() {
+    _autoguardadoBorradorTimer?.cancel();
+
+    if (_items.isEmpty) {
+      // Se quedó sin items (se borraron todos): no hay nada que autoguardar
+      // y, si había un borrador autoguardado de una edición previa, ya no
+      // corresponde — eliminarlo para no dejarlo huérfano en "Ver Borradores".
+      final origenHuerfano = _borradorOrigenId;
+      if (origenHuerfano != null && origenHuerfano.isNotEmpty) {
+        _borradorOrigenId = null;
+        _pedidoService
+            .eliminarPedido(origenHuerfano, motivoEliminacion: 'Borrador vaciado por el usuario')
+            .catchError((e) {
+          appLog('⚠️ No se pudo eliminar el borrador vaciado $origenHuerfano: $e', level: LogLevel.error);
+        });
+      }
+      return;
+    }
+
+    _autoguardadoBorradorTimer = Timer(const Duration(seconds: 4), _autoguardarBorradorSilencioso);
+  }
+
+  /// Autoguardado en segundo plano: sin loading, sin SnackBars. Si falla, se
+  /// reintenta solo (el próximo cambio vuelve a reprogramar el timer); si
+  /// llega un cambio mientras hay uno en vuelo, se reintenta apenas termine
+  /// en vez de perderse.
+  Future<void> _autoguardarBorradorSilencioso() async {
+    if (_autoguardandoBorrador) {
+      _autoguardadoBorradorPendiente = true;
+      return;
+    }
+    _autoguardandoBorrador = true;
+    try {
+      final guardado = await _guardarBorradorEnServidor(
+        motivoReemplazo: 'Reemplazado por autoguardado',
+      );
+      if (guardado != null) {
+        appLog('💾 Autoguardado: borrador ${guardado.id} (${_items.length} items)');
+      }
+    } catch (e) {
+      appLog(
+        '⚠️ Autoguardado de borrador falló (se reintenta con el próximo cambio): $e',
+        level: LogLevel.error,
+      );
+    } finally {
+      _autoguardandoBorrador = false;
+      if (_autoguardadoBorradorPendiente) {
+        _autoguardadoBorradorPendiente = false;
+        _programarAutoguardadoBorrador();
+      }
     }
   }
 
@@ -4037,6 +4124,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     final tipoFacturaCapturado = _tipoFactura;
     final fechaFacturaCapturada = _fechaFactura;
     final fechaVencimientoCapturada = _fechaVencimiento;
+    // Capturar el borrador de origen (guardado a mano o por el autoguardado)
+    // antes de que _limpiarFormulario() lo resetee — mismo motivo que en
+    // _guardarYPagar: si no se elimina, queda huérfano con su descuento de
+    // inventario ya aplicado y la deuda de abajo lo vuelve a descontar.
+    final String? borradorOrigenIdCapturado = _borradorOrigenId;
 
     // ✅ LIMPIAR FORMULARIO Y LIBERAR UI INMEDIATAMENTE
     _limpiarFormulario();
@@ -4065,6 +4157,23 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
     // 🚀 ENVIAR AL BACKEND EN BACKGROUND - NO BLOQUEAR UI
     Future.microtask(() async {
+      // Si estos items vinieron de un borrador (guardado a mano o por el
+      // autoguardado), eliminarlo antes de crear la deuda — restaura el
+      // inventario que ya tenía descontado, para no descontarlo dos veces.
+      if (borradorOrigenIdCapturado != null && borradorOrigenIdCapturado.isNotEmpty) {
+        try {
+          await _pedidoService.eliminarPedido(
+            borradorOrigenIdCapturado,
+            motivoEliminacion: 'Convertido a deuda',
+          );
+        } catch (e) {
+          appLog(
+            '⚠️ No se pudo eliminar el borrador de origen $borradorOrigenIdCapturado antes de registrar la deuda: $e',
+            level: LogLevel.error,
+          );
+        }
+      }
+
       try {
         final pedido = Pedido(
           id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
@@ -5429,6 +5538,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   // Limpiar formulario después de guardar
   void _limpiarFormulario() {
     _productoMongoIds.clear();
+    // Cancelar cualquier autoguardado pendiente: ya no hay nada que guardar
+    // (si uno ya estaba en vuelo, su propio _guardarBorradorEnServidor no
+    // hace nada porque _items quedará vacío).
+    _autoguardadoBorradorTimer?.cancel();
     setState(() {
       // Limpiar items y cliente
       _items.clear();
