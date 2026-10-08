@@ -195,7 +195,10 @@ GoRouter buildAppRouter(UserProvider userProvider) => GoRouter(
         GoRoute(path: '/reportes/productos', builder: (c, s) => const ReportesScreen(initialReportIndex: 2)),
         GoRoute(path: '/reportes/pedidos', builder: (c, s) => const ReportesScreen(initialReportIndex: 3)),
         GoRoute(path: '/reportes/clientes', builder: (c, s) => const ReportesScreen(initialReportIndex: 4)),
-        GoRoute(path: '/informes/productos', builder: (c, s) => const InformesProductosScreen()),
+        GoRoute(
+          path: '/informes/productos',
+          builder: (c, s) => InformesProductosScreen(initialTipoCaja: s.extra as String?),
+        ),
         // Las 5 pantallas de reportes contables se fusionaron en una sola
         // (LibroContableScreen con tabs) — las rutas viejas se conservan como
         // deep-links directos al tab que corresponde, en el mismo orden que

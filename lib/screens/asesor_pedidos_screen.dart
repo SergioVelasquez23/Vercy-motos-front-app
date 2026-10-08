@@ -562,14 +562,17 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
 
-      // Crear traslado para los items que vienen de BODEGA
-      List<ItemPedido> carritoFinal = List.from(_carrito);
+      // Crear traslado para los items que vienen de BODEGA y que todavía no
+      // tengan uno — si "Guardar Pedido" falla DESPUÉS de crear el traslado
+      // (p. ej. crearPedido() da timeout) y el usuario reintenta, _carrito ya
+      // quedó actualizado abajo con el trasladoId puesto, así que este filtro
+      // evita crear un segundo traslado duplicado para los mismos items.
       appLog('🔍 [Traslado] Total items en carrito: ${_carrito.length}');
       for (final item in _carrito) {
-        appLog('🔍 [Traslado]   - ${item.productoNombre} | origen="${item.origen}" | id=${item.productoId}');
+        appLog('🔍 [Traslado]   - ${item.productoNombre} | origen="${item.origen}" | id=${item.productoId} | trasladoId=${item.trasladoId}');
       }
-      final bodegaItems = _carrito.where((item) => item.origen == 'BODEGA').toList();
-      appLog('🔍 [Traslado] Items de BODEGA encontrados: ${bodegaItems.length}');
+      final bodegaItems = _carrito.where((item) => item.origen == 'BODEGA' && item.trasladoId == null).toList();
+      appLog('🔍 [Traslado] Items de BODEGA sin traslado: ${bodegaItems.length}');
       final esUsuarioBodega = _esUsuarioBodega(userProvider);
 
       if (bodegaItems.isNotEmpty && esUsuarioBodega) {
@@ -589,23 +592,28 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
           );
           appLog('✅ [Traslado] Creado con id: ${traslado.id}');
           final trasladoId = traslado.id;
-          if (trasladoId != null) {
-            carritoFinal = _carrito.map((item) {
-              if (item.origen == 'BODEGA') {
-                return ItemPedido(
-                  productoId: item.productoId,
-                  productoNombre: item.productoNombre,
-                  cantidad: item.cantidad,
-                  precioUnitario: item.precioUnitario,
-                  notas: item.notas,
-                  porcentajeImpuesto: item.porcentajeImpuesto,
-                  valorImpuesto: item.valorImpuesto,
-                  origen: item.origen,
-                  trasladoId: trasladoId,
-                );
-              }
-              return item;
-            }).toList();
+          if (trasladoId != null && mounted) {
+            // Actualizar _carrito (no solo una copia local): si crearPedido()
+            // falla más abajo, este traslado ya aplicado queda reflejado en
+            // el estado real de la pantalla para el próximo intento.
+            setState(() {
+              _carrito = _carrito.map((item) {
+                if (item.origen == 'BODEGA' && item.trasladoId == null) {
+                  return ItemPedido(
+                    productoId: item.productoId,
+                    productoNombre: item.productoNombre,
+                    cantidad: item.cantidad,
+                    precioUnitario: item.precioUnitario,
+                    notas: item.notas,
+                    porcentajeImpuesto: item.porcentajeImpuesto,
+                    valorImpuesto: item.valorImpuesto,
+                    origen: item.origen,
+                    trasladoId: trasladoId,
+                  );
+                }
+                return item;
+              }).toList();
+            });
           }
         } catch (e) {
           appLog('❌ [Traslado] Error al crear traslado: $e');
@@ -614,8 +622,10 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
           return;
         }
       } else {
-        appLog('ℹ️ [Traslado] Sin items de BODEGA → no se crea traslado');
+        appLog('ℹ️ [Traslado] Sin items de BODEGA pendientes → no se crea traslado');
       }
+
+      final carritoFinal = List<ItemPedido>.from(_carrito);
 
       final pedido = PedidoAsesor(
         clienteNombre:
@@ -3156,14 +3166,16 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
 
-      // Crear traslado para los items que vienen de BODEGA
-      List<ItemPedido> carritoFinal = List.from(_carrito);
+      // Crear traslado para los items que vienen de BODEGA y que todavía no
+      // tengan uno — ver el comentario equivalente en _guardarPedido: evita
+      // duplicar el traslado si crearPedido() falla (p. ej. timeout) y el
+      // usuario reintenta desde el modal.
       appLog('🔍 [Traslado/Modal] Total items: ${_carrito.length}');
       for (final item in _carrito) {
-        appLog('🔍 [Traslado/Modal]   - ${item.productoNombre} | origen="${item.origen}" | id=${item.productoId}');
+        appLog('🔍 [Traslado/Modal]   - ${item.productoNombre} | origen="${item.origen}" | id=${item.productoId} | trasladoId=${item.trasladoId}');
       }
-      final bodegaItems = _carrito.where((item) => item.origen == 'BODEGA').toList();
-      appLog('🔍 [Traslado/Modal] Items de BODEGA: ${bodegaItems.length}');
+      final bodegaItems = _carrito.where((item) => item.origen == 'BODEGA' && item.trasladoId == null).toList();
+      appLog('🔍 [Traslado/Modal] Items de BODEGA sin traslado: ${bodegaItems.length}');
       final esUsuarioBodega = _esUsuarioBodega(userProvider);
 
       if (bodegaItems.isNotEmpty && esUsuarioBodega) {
@@ -3183,23 +3195,25 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
           );
           appLog('✅ [Traslado/Modal] Traslado creado: ${traslado.id}');
           final trasladoId = traslado.id;
-          if (trasladoId != null) {
-            carritoFinal = _carrito.map((item) {
-              if (item.origen == 'BODEGA') {
-                return ItemPedido(
-                  productoId: item.productoId,
-                  productoNombre: item.productoNombre,
-                  cantidad: item.cantidad,
-                  precioUnitario: item.precioUnitario,
-                  notas: item.notas,
-                  porcentajeImpuesto: item.porcentajeImpuesto,
-                  valorImpuesto: item.valorImpuesto,
-                  origen: item.origen,
-                  trasladoId: trasladoId,
-                );
-              }
-              return item;
-            }).toList();
+          if (trasladoId != null && mounted) {
+            setState(() {
+              _carrito = _carrito.map((item) {
+                if (item.origen == 'BODEGA' && item.trasladoId == null) {
+                  return ItemPedido(
+                    productoId: item.productoId,
+                    productoNombre: item.productoNombre,
+                    cantidad: item.cantidad,
+                    precioUnitario: item.precioUnitario,
+                    notas: item.notas,
+                    porcentajeImpuesto: item.porcentajeImpuesto,
+                    valorImpuesto: item.valorImpuesto,
+                    origen: item.origen,
+                    trasladoId: trasladoId,
+                  );
+                }
+                return item;
+              }).toList();
+            });
           }
         } catch (e) {
           appLog('❌ [Traslado/Modal] Error: $e');
@@ -3209,8 +3223,10 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
           return;
         }
       } else {
-        appLog('ℹ️ [Traslado/Modal] Sin items de BODEGA → no se crea traslado');
+        appLog('ℹ️ [Traslado/Modal] Sin items de BODEGA pendientes → no se crea traslado');
       }
+
+      final carritoFinal = List<ItemPedido>.from(_carrito);
 
       final pedido = PedidoAsesor(
         clienteNombre:

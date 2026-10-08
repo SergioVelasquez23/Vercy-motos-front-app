@@ -1,4 +1,5 @@
-﻿import 'dart:convert';
+﻿import 'dart:async';
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../utils/api_error.dart';
@@ -85,8 +86,20 @@ class PedidoAsesorService {
       } else {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al crear pedido');
       }
+    } on TimeoutException {
+      // El cliente dejó de esperar la respuesta, pero el POST sí pudo haber
+      // llegado al backend y guardarse (un write en Mongo es rápido; lo lento
+      // suele ser la red entre el navegador y el servidor, no el backend en
+      // sí) — no hay forma de saber desde acá si se guardó o no. Avisar
+      // explícitamente en vez de dejar pasar el TimeoutException crudo, para
+      // que no se reintente a ciegas y se termine duplicando el pedido (y el
+      // traslado de bodega, si lo hubo).
+      throw Exception(
+        'El servidor tardó demasiado en responder. El pedido puede haberse '
+        'guardado igual — revisá "Mis Pedidos" antes de volver a intentarlo '
+        'para no duplicarlo.',
+      );
     } catch (e) {
-
       rethrow;
     }
   }
