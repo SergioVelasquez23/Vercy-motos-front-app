@@ -55,6 +55,149 @@ Future<bool> showConfirmDialog(
   return result ?? false;
 }
 
+/// Pregunta con qué caja se va a facturar un pedido de asesor: LOCAL o
+/// ENVIOS. Retorna `'LOCAL'` / `'ENVIOS'`, o `null` si el usuario canceló.
+Future<String?> showEleccionCajaDialog(BuildContext context) {
+  final onSurface = Theme.of(context).colorScheme.onSurface;
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => Dialog(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 22, 20, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '¿Con qué caja se factura?',
+                style: TextStyle(
+                  color: onSurface,
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Elige dónde va a quedar registrado el cobro de este pedido.',
+                style: TextStyle(color: onSurface.withOpacity(0.6), fontSize: 13),
+              ),
+              const SizedBox(height: 18),
+              _OpcionCaja(
+                // Íconos NO "outlined": son los que ya se usan como literales
+                // en el resto de la app (cerrar_caja_screen, cuadre_caja_screen,
+                // etc.) para Local/Envíos. Al pasarlos por parámetro aquí, un
+                // ícono que no aparezca también como literal en algún otro
+                // lado se lo come el tree-shaking de íconos en el build de
+                // producción y queda en blanco (le pasó a storefront_outlined).
+                icon: Icons.storefront,
+                label: 'Caja local',
+                subtitle: 'Venta de mostrador',
+                color: AppTheme.primary,
+                onTap: () => Navigator.pop(ctx, 'LOCAL'),
+              ),
+              const SizedBox(height: 10),
+              _OpcionCaja(
+                icon: Icons.local_shipping,
+                label: 'Caja de envíos',
+                subtitle: 'Pedido para despachar',
+                color: AppTheme.secondary,
+                onTap: () => Navigator.pop(ctx, 'ENVIOS'),
+              ),
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text('Cancelar',
+                      style: TextStyle(color: onSurface.withOpacity(0.6))),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class _OpcionCaja extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _OpcionCaja({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    return Material(
+      color: color.withOpacity(0.08),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: onSurface,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: onSurface.withOpacity(0.55),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: color.withOpacity(0.7), size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Muestra un error en un widget compacto centrado en la pantalla,
 /// en vez del SnackBar tradicional (más difícil de notar y de leer
 /// completo). Se cierra tocando fuera o con el botón "Cerrar".
