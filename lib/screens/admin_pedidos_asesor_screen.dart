@@ -73,7 +73,8 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
 
   void _seleccionarPedido(PedidoAsesor pedido) async {
     // Antes iba siempre a caja LOCAL. Se pregunta con qué caja se factura
-    // (local o envíos) para que quede registrado en la caja correcta.
+    // (local o envíos) para que quede registrado en la caja correcta — el
+    // backend también exige este dato en PUT /pedidos-asesor/:id/facturar.
     final tipoCaja = await showEleccionCajaDialog(context);
     if (tipoCaja == null || !mounted) return; // El usuario canceló
 
