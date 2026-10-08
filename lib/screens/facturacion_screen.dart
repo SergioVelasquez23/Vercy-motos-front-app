@@ -19,8 +19,10 @@ import '../services/cliente_service.dart';
 import '../services/matias_service.dart';
 import '../services/traslado_service.dart';
 import '../services/documentos_cache.dart';
+import '../services/user_service.dart';
 import '../models/cliente.dart';
 import '../models/negocio_info.dart';
+import '../models/user.dart';
 import '../theme/app_theme.dart';
 import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
@@ -108,6 +110,16 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   // producción: "MOFLE MF NKD CROMADO" descontado -5 dos veces seguidas).
   String? _borradorOrigenId;
   late final IPedidoService _pedidoService;
+
+  // Facturador (solo caja ENVIOS): la persona que factura no siempre es la
+  // que tiene la sesión abierta en esta pantalla — varios asesores de envíos
+  // facturan a través de la misma caja/operador. Se guarda igual que antes
+  // en Pedido.mesero (lo que ya leen los reportes "por vendedor"), pero ahora
+  // elegible de una lista en vez de tomar siempre el usuario logueado.
+  final UserService _userService = UserService();
+  List<User> _facturadoresEnvios = [];
+  String? _facturadorSeleccionado;
+  bool _cargandoFacturadores = false;
   final ProductoService _productoService = ProductoService();
   final PedidoAsesorService _pedidoAsesorService = PedidoAsesorService();
   final CotizacionService _cotizacionService = CotizacionService();
@@ -327,7 +339,48 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       // 📝 Restaurar borrador existente (si no es pedido asesor)
       Future.microtask(() => _restaurarBorrador());
     }
+
+    if (widget.tipoCaja == 'ENVIOS') {
+      _cargarFacturadoresEnvios();
+    }
   }
+
+  /// Carga la lista de usuarios activos para el selector de "Facturador"
+  /// (solo caja ENVIOS) — ver el comentario del campo [_facturadorSeleccionado].
+  Future<void> _cargarFacturadoresEnvios() async {
+    if (!mounted) return;
+    setState(() => _cargandoFacturadores = true);
+    try {
+      final usuarios = await _userService.getUsers();
+      final activos =
+          usuarios.where((u) => u.activo && (u.nombre?.trim().isNotEmpty ?? false)).toList()
+            ..sort((a, b) => a.nombre!.toLowerCase().compareTo(b.nombre!.toLowerCase()));
+      if (!mounted) return;
+      setState(() => _facturadoresEnvios = activos);
+    } catch (e) {
+      appLog('⚠️ No se pudo cargar la lista de facturadores: $e', level: LogLevel.error);
+    } finally {
+      if (mounted) setState(() => _cargandoFacturadores = false);
+    }
+  }
+
+  /// Nombre a guardar como "mesero" (lo que leen los reportes "por
+  /// vendedor"): en caja ENVIOS, el facturador elegido en el dropdown; en
+  /// cualquier otro caso, [nombreLogueado] — igual que antes de que
+  /// existiera el selector.
+  String _nombreFacturador(String nombreLogueado) {
+    if (widget.tipoCaja == 'ENVIOS' &&
+        (_facturadorSeleccionado?.trim().isNotEmpty ?? false)) {
+      return _facturadorSeleccionado!;
+    }
+    return nombreLogueado;
+  }
+
+  /// `true` si falta elegir facturador en caja ENVIOS — bloquea cobrar/dejar
+  /// como deuda (no "Guardar Borrador", que no es una venta todavía).
+  bool get _faltaElegirFacturador =>
+      widget.tipoCaja == 'ENVIOS' &&
+      (_facturadorSeleccionado?.trim().isEmpty ?? true);
 
   @override
   void didChangeDependencies() {
@@ -879,25 +932,41 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                   borradoresLocalesCount: _borradoresLocalesCount,
                 ),
                 if (widget.tipoCaja == 'ENVIOS')
-                  Container(
-                    width: double.infinity,
+                  Material(
                     color: AppTheme.secondary,
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.local_shipping, color: Colors.white, size: 16),
-                        SizedBox(width: 8),
-                        Text(
-                          'FACTURACIÓN ENVÍOS',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            letterSpacing: 0.8,
-                          ),
+                    child: InkWell(
+                      // Traza de quién factura qué: ranking por facturador
+                      // de "Análisis Ventas", con Envíos ya preseleccionado.
+                      onTap: () => context.push('/informes/productos', extra: 'ENVIOS'),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                        child: Wrap(
+                          alignment: WrapAlignment.center,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          children: [
+                            Icon(Icons.local_shipping, color: Colors.white, size: 16),
+                            Text(
+                              'FACTURACIÓN ENVÍOS',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            Icon(Icons.bar_chart, color: Colors.white70, size: 14),
+                            Text(
+                              'Ver facturación por asesor',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 Expanded(
@@ -1036,6 +1105,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                 ),
                 SizedBox(height: 12),
                 FormFieldLabel(label: 'Cliente', field: _buildClienteField()),
+                if (widget.tipoCaja == 'ENVIOS') ...[
+                  SizedBox(height: 12),
+                  FormFieldLabel(label: 'Facturador', field: _buildFacturadorField()),
+                ],
               ] else ...[
                 // Diseño desktop - original
                 Row(
@@ -1080,6 +1153,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                 ),
                 SizedBox(height: 16),
                 FormFieldLabel(label: 'Cliente', field: _buildClienteField()),
+                if (widget.tipoCaja == 'ENVIOS') ...[
+                  SizedBox(height: 16),
+                  SizedBox(
+                    width: 320,
+                    child: FormFieldLabel(label: 'Facturador', field: _buildFacturadorField()),
+                  ),
+                ],
               ],
             ],
           ),
@@ -1088,6 +1168,33 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     );
   }
 
+  /// Selector de "Facturador" (solo caja ENVIOS) — ver el comentario del
+  /// campo [_facturadorSeleccionado]. Lista de usuarios activos cargada en
+  /// initState; mientras carga o si queda vacía, el dropdown queda
+  /// deshabilitado en vez de romper el formulario.
+  Widget _buildFacturadorField() {
+    final hint = _cargandoFacturadores
+        ? 'Cargando...'
+        : (_facturadoresEnvios.isEmpty ? 'No hay usuarios disponibles' : 'Selecciona quién factura');
+    return DropdownButtonFormField<String>(
+      value: _facturadorSeleccionado,
+      isExpanded: true,
+      decoration: InputDecoration(
+        hintText: hint,
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        filled: true,
+        fillColor: Theme.of(context).colorScheme.surface,
+      ),
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
+      items: _facturadoresEnvios
+          .map((u) => DropdownMenuItem(value: u.nombre, child: Text(u.nombre!)))
+          .toList(),
+      onChanged: _facturadoresEnvios.isEmpty
+          ? null
+          : (value) => setState(() => _facturadorSeleccionado = value),
+    );
+  }
 
   Widget _buildClienteField() {
     return Row(
@@ -3853,9 +3960,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         tipo: TipoPedido.normal,
         mesa: 'FACTURACION',
         cliente: _clienteController.text,
-        mesero:
-            Provider.of<UserProvider>(context, listen: false).userName ??
-            'Sistema',
+        mesero: _nombreFacturador(
+          Provider.of<UserProvider>(context, listen: false).userName ?? 'Sistema',
+        ),
         items: _items,
         total: total,
         estado: EstadoPedido.activo,
@@ -3939,6 +4046,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           backgroundColor: Colors.orange,
           duration: Duration(seconds: 4),
         ),
+      );
+      return;
+    }
+
+    if (_faltaElegirFacturador) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Selecciona quién factura antes de continuar')),
       );
       return;
     }
@@ -4032,6 +4146,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     final total = subtotal + totalImpuestosDeuda - totalDctoDeuda;
     final userName =
         Provider.of<UserProvider>(context, listen: false).userName ?? 'Sistema';
+    final nombreFacturador = _nombreFacturador(userName);
     final itemsOriginales = List<ItemPedido>.from(_items);
     final clienteTexto = _clienteController.text;
     final tipoFacturaCapturado = _tipoFactura;
@@ -4072,7 +4187,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           tipo: TipoPedido.normal,
           mesa: 'DEUDA',
           cliente: clienteTexto,
-          mesero: userName,
+          mesero: nombreFacturador,
           items: itemsOriginales,
           total: total,
           estado: EstadoPedido.activo,
@@ -4181,6 +4296,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       return;
     }
 
+    if (_faltaElegirFacturador) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Selecciona quién factura antes de continuar')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -4246,6 +4368,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       final userName =
           Provider.of<UserProvider>(context, listen: false).userName ??
           'Sistema';
+      final nombreFacturador = _nombreFacturador(userName);
       final itemsOriginales = List<ItemPedido>.from(
         _items,
       ); // ✅ Copia antes de limpiar
@@ -4426,7 +4549,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             tipo: TipoPedido.normal,
             mesa: 'FACTURACION',
             cliente: clienteTexto,
-            mesero: userName,
+            mesero: nombreFacturador,
             items: itemsOriginales,
             total: total,
             estado: EstadoPedido.activo,
@@ -4461,7 +4584,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             formaPago: metodoPagoUsado,
             propina: 0.0,
             totalPagado: total,
-            procesadoPor: userName,
+            procesadoPor: nombreFacturador,
             notas: esPedidoAsesor
                 ? 'Pago de pedido asesor'
                 : 'Pago desde facturación',
@@ -4498,7 +4621,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           }
 
           // El inventario ya se descontó en el backend al crear el pedido
-          // (InventarioService.procesarPedidoParaInventario, disparado desde
+          // (InventarioService.descontarStockPedido, disparado desde
           // PedidosController.create()) — ver por qué se quitó la llamada a
           // _registrarMovimientosInventarioVentaEnBackground que estaba acá:
           // volvía a restar la misma cantidad sobre el stock que el backend
@@ -5097,7 +5220,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         fecha: _fechaFactura,
         tipo: TipoPedido.normal,
         mesa: 'FACTURACION',
-        mesero: userName,
+        mesero: _nombreFacturador(userName),
         items: _items,
         total: total,
         estado: EstadoPedido.activo,
@@ -5335,7 +5458,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       // Limpiar items y cliente
       _items.clear();
       _clienteController.text = 'CONSUMIDOR FINAL';
-      
+      // No arrastrar el facturador a la siguiente factura: forzar elegirlo
+      // de nuevo evita atribuir por descuido una venta al facturador
+      // anterior.
+      _facturadorSeleccionado = null;
+
       // Limpiar fechas
       _fechaFactura = DateTime.now();
       _fechaVencimiento = DateTime.now().add(Duration(days: 30));

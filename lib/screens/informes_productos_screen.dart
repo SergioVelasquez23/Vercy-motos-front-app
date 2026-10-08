@@ -14,7 +14,12 @@ import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 
 class InformesProductosScreen extends StatefulWidget {
-  const InformesProductosScreen({super.key});
+  /// Caja con la que arranca el filtro ('TODAS'/'LOCAL'/'ENVIOS') — lo usa el
+  /// botón "Ver facturación por asesor" de Facturación Envíos para llegar acá
+  /// con Envíos ya preseleccionado.
+  final String? initialTipoCaja;
+
+  const InformesProductosScreen({super.key, this.initialTipoCaja});
 
   @override
   State<InformesProductosScreen> createState() =>
@@ -43,15 +48,24 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
   List<Cliente> _clientes = [];
   List<Producto> _productos = [];
 
+  // Caja: 'TODAS' / 'LOCAL' / 'ENVIOS'. Las Facturas (/api/facturas) no
+  // tienen tipoCaja, así que un filtro activo las excluye de los informes.
+  late String _tipoCaja = widget.initialTipoCaja ?? 'TODAS';
+
   // Estados
   bool _isLoading = false;
-  String? _tipoInformeActual; // 'detallado' o 'agrupado'
+  String? _tipoInformeActual; // 'detallado', 'agrupado' o 'facturadores'
   List<Map<String, dynamic>> _resultados = [];
   double _totalSubtotal = 0;
   double _totalDescuento = 0;
   double _totalImpuesto = 0;
   double _totalVentas = 0;
   int _totalCantidad = 0;
+
+  // Ranking "Ventas por Facturador" — mismo rango de fechas + caja de los
+  // filtros de arriba; ver _generarRankingFacturadores.
+  bool _cargandoFacturadores = false;
+  List<Map<String, dynamic>> _ranking = [];
 
   // 🔗 Navegar al documento real en la pantalla de Documentos
   void _irADocumento(Map<String, dynamic> item) {
@@ -157,6 +171,12 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
     _cargarDatosIniciales();
     _fechaDesdeController.text = _dateFormat.format(_fechaDesde);
     _fechaHastaController.text = _dateFormat.format(_fechaHasta);
+    // Si llegamos con una caja preseleccionada (botón "Ver facturación por
+    // asesor" de Facturación Envíos), mostrar directamente el ranking de esa
+    // caja en vez de la pantalla vacía.
+    if (widget.initialTipoCaja != null) {
+      _generarRankingFacturadores();
+    }
   }
 
   bool _filtrarPorCaja = true;
@@ -278,6 +298,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
               ? _codigoController.text
               : null,
           cuadreId: _filtrarPorCaja ? cuadreId : null,
+          tipoCaja: _tipoCaja,
         );
       } else {
         datos = await _reportesService.getProductosVentasAgrupado(
@@ -296,6 +317,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
               ? _codigoController.text
               : null,
           cuadreId: _filtrarPorCaja ? cuadreId : null,
+          tipoCaja: _tipoCaja,
         );
       }
       // Filtrar en frontend por cuadreId o por rango de apertura/cierre de la caja activa
@@ -375,6 +397,65 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
     if (value == null) return '\$0';
     final formatter = NumberFormat('#,##0', 'es_CO');
     return '\$${formatter.format(value)}';
+  }
+
+  /// Ranking "Ventas por Facturador": quién facturó cuánto, en el rango de
+  /// fechas + caja elegidos — lo que rastrea de un vistazo quién factura qué
+  /// en Facturación Envíos (varios asesores pueden facturar por la misma
+  /// caja, así que el ranking es por persona, no por caja).
+  Future<void> _generarRankingFacturadores() async {
+    setState(() {
+      _isLoading = true;
+      _cargandoFacturadores = true;
+      _tipoInformeActual = 'facturadores';
+      _ranking = [];
+    });
+
+    try {
+      _fechaDesde = DateFormat('yyyy-MM-dd').parse(_fechaDesdeController.text);
+      _fechaHasta = DateFormat('yyyy-MM-dd').parse(_fechaHastaController.text);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _cargandoFacturadores = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Formato de fecha inválido. Use yyyy-MM-dd.')),
+        );
+      }
+      return;
+    }
+
+    try {
+      final ranking = await _reportesService.getVentasPorFacturador(
+        desde: _fechaDesde,
+        hasta: _fechaHasta,
+        tipoCaja: _tipoCaja,
+      );
+      if (!mounted) return;
+      setState(() {
+        _ranking = ranking;
+        _isLoading = false;
+        _cargandoFacturadores = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _cargandoFacturadores = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al generar el ranking: ${errorMessage(e)}')),
+      );
+    }
+  }
+
+  /// Al tocar un facturador del ranking: filtra el informe detallado a sus
+  /// pedidos — "qué pedidos son de ese facturador" en el rango actual.
+  void _verPedidosDeFacturador(String nombre) {
+    _vendedorController.text = nombre;
+    _generarInforme('detallado');
   }
 
   @override
@@ -544,6 +625,16 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
+                    // Fila 2b: Caja (LOCAL/ENVIOS) — distinto de "Filtrar por
+                    // caja activa" de arriba (esa es la sesión de cuadre
+                    // abierta ahora mismo; esta es el tipo de caja de cada
+                    // venta, para poder aislar p. ej. solo Envíos).
+                    Row(
+                      children: [
+                        SizedBox(width: 220, child: _buildCajaDropdown()),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
                     // Fila 3: Código y Producto
                     Row(
                       children: [
@@ -581,6 +672,28 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                             ),
                           ),
                         ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _isLoading ? null : _generarRankingFacturadores,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.secondary,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: AppTheme.secondary
+                                  .withOpacity(0.5),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              elevation: 0,
+                            ),
+                            icon: const Icon(Icons.leaderboard),
+                            label: const Text(
+                              'Ranking por facturador',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -588,7 +701,34 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
               ),
               const SizedBox(height: 24),
               // TABLA DE RESULTADOS
-              if (_tipoInformeActual != null) ...[
+              if (_tipoInformeActual == 'facturadores') ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.secondary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppTheme.secondary.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.touch_app, size: 16, color: AppTheme.secondary),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Toca un facturador para ver sus pedidos',
+                        style: TextStyle(
+                          color: AppTheme.secondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _buildTablaFacturadores(),
+              ] else if (_tipoInformeActual != null) ...[
                 // 💡 Indicación visual para interacción
                 Container(
                   width: double.infinity,
@@ -994,6 +1134,112 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
           },
         ),
       ],
+    );
+  }
+
+  /// Dropdown "Caja" (Todas/Local/Envíos) — filtra tanto los informes de
+  /// productos como el ranking por facturador.
+  Widget _buildCajaDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Caja',
+          style: TextStyle(
+            fontSize: 13,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _tipoCaja,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            filled: true,
+            fillColor: Theme.of(context).colorScheme.surface,
+          ),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
+          items: const [
+            DropdownMenuItem(value: 'TODAS', child: Text('Todas')),
+            DropdownMenuItem(value: 'LOCAL', child: Text('Local')),
+            DropdownMenuItem(value: 'ENVIOS', child: Text('Envíos')),
+          ],
+          onChanged: (value) => setState(() => _tipoCaja = value ?? 'TODAS'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTablaFacturadores() {
+    if (_cargandoFacturadores) {
+      return Container(
+        padding: const EdgeInsets.all(40),
+        alignment: Alignment.center,
+        child: CircularProgressIndicator(color: AppTheme.secondary),
+      );
+    }
+
+    if (_ranking.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(40),
+        alignment: Alignment.center,
+        child: Text(
+          'No hay ventas de ningún facturador en ese rango de fechas',
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 16),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.metal.withOpacity(0.2), width: 1),
+        borderRadius: BorderRadius.circular(8),
+        color: Theme.of(context).colorScheme.surface,
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          headingRowColor: WidgetStateProperty.all(
+            Theme.of(context).scaffoldBackgroundColor.withOpacity(0.3),
+          ),
+          dataRowColor: WidgetStateProperty.resolveWith<Color>((states) {
+            if (states.contains(WidgetState.hovered)) {
+              return AppTheme.secondary.withOpacity(0.1);
+            }
+            return Theme.of(context).colorScheme.surface;
+          }),
+          columns: [
+            DataColumn(label: _buildColumnHeader('#')),
+            DataColumn(label: _buildColumnHeader('FACTURADOR')),
+            DataColumn(numeric: true, label: _buildColumnHeader('PEDIDOS')),
+            DataColumn(numeric: true, label: _buildColumnHeader('PROMEDIO')),
+            DataColumn(numeric: true, label: _buildColumnHeader('TOTAL VENTAS')),
+          ],
+          rows: _ranking.map((item) {
+            final nombre = (item['nombre'] ?? 'N/A').toString();
+            final cantidad = (item['cantidadPedidos'] ?? 0) as num;
+            final promedio = (item['promedioVenta'] ?? 0).toDouble();
+            final total = (item['totalVentas'] ?? 0).toDouble();
+            final puesto = (item['puesto'] ?? 0).toString();
+
+            return DataRow(
+              onSelectChanged: (_) => _verPedidosDeFacturador(nombre),
+              cells: [
+                DataCell(Text(puesto, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12))),
+                DataCell(Text(nombre, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13, fontWeight: FontWeight.w600))),
+                DataCell(Text('$cantidad', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12))),
+                DataCell(Text(_formatCurrency(promedio), style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12))),
+                DataCell(Text(
+                  _formatCurrency(total),
+                  style: TextStyle(color: AppTheme.secondary, fontSize: 13, fontWeight: FontWeight.bold),
+                )),
+              ],
+            );
+          }).toList(),
+        ),
+      ),
     );
   }
 

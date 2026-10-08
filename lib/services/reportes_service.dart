@@ -166,6 +166,10 @@ class ReportesService {
     String? vendedor,
     String? codigo,
     String? cuadreId,
+    // 'LOCAL' / 'ENVIOS'; null o 'TODAS' = sin filtrar. Las Facturas no
+    // tienen caja, así que un filtro activo las excluye del resultado —
+    // ver el mismo criterio en el backend (ReporteService).
+    String? tipoCaja,
   }) async {
     String endpoint =
         '/api/reportes/productos/ventas-detallado?fechaDesde=${desde.toIso8601String()}&fechaHasta=${hasta.toIso8601String()}';
@@ -184,6 +188,9 @@ class ReportesService {
     }
     if (cuadreId != null && cuadreId.isNotEmpty) {
       endpoint += '&cuadreId=$cuadreId';
+    }
+    if (tipoCaja != null && tipoCaja.isNotEmpty && tipoCaja != 'TODAS') {
+      endpoint += '&tipoCaja=$tipoCaja';
     }
 
     try {
@@ -211,6 +218,7 @@ class ReportesService {
     String? vendedor,
     String? codigo,
     String? cuadreId,
+    String? tipoCaja,
   }) async {
     String endpoint =
         '/api/reportes/productos/ventas-agrupado?fechaDesde=${desde.toIso8601String()}&fechaHasta=${hasta.toIso8601String()}';
@@ -229,6 +237,9 @@ class ReportesService {
     }
     if (cuadreId != null && cuadreId.isNotEmpty) {
       endpoint += '&cuadreId=$cuadreId';
+    }
+    if (tipoCaja != null && tipoCaja.isNotEmpty && tipoCaja != 'TODAS') {
+      endpoint += '&tipoCaja=$tipoCaja';
     }
 
     try {
@@ -411,6 +422,33 @@ class ReportesService {
       }
     } catch (e) {
         
+      return [];
+    }
+  }
+
+  /// Ranking de ventas por facturador (Pedido.mesero) en un rango de fechas
+  /// libre, opcionalmente filtrado por caja (LOCAL/ENVIOS). A diferencia de
+  /// [getVendedoresDelMes] (ventana fija de días, sin filtro de caja), este
+  /// soporta el rango + caja que necesita "Análisis de Ventas" para rastrear
+  /// quién factura qué en Facturación Envíos.
+  Future<List<Map<String, dynamic>>> getVentasPorFacturador({
+    required DateTime desde,
+    required DateTime hasta,
+    String? tipoCaja,
+  }) async {
+    String endpoint =
+        '/api/reportes/ventas-por-facturador?fechaDesde=${desde.toIso8601String()}&fechaHasta=${hasta.toIso8601String()}';
+    if (tipoCaja != null && tipoCaja.isNotEmpty && tipoCaja != 'TODAS') {
+      endpoint += '&tipoCaja=$tipoCaja';
+    }
+
+    try {
+      final response = await _apiService.get<List<Map<String, dynamic>>>(
+        endpoint,
+        (json) => List<Map<String, dynamic>>.from(json),
+      );
+      return response.isSuccess ? (response.data ?? []) : [];
+    } catch (e) {
       return [];
     }
   }
