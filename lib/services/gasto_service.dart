@@ -1,11 +1,10 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/gasto.dart';
 import '../models/tipo_gasto.dart';
 import '../config/api_config.dart';
 import '../utils/api_error.dart';
 import 'alertas_service.dart';
-import '../utils/logger.dart';
 import '../utils/token_storage.dart';
 
 /// Interfaz minima usada por GastosScreen para poder inyectar un fake en
@@ -222,28 +221,6 @@ class GastoService implements IGastoService {
     } catch (e) {
       wrapOrThrow(e, context: 'Error al crear gasto');
     }
-  }
-
-  /// Envía alerta de gasto por Telegram en segundo plano
-  void _enviarAlertaGastoTelegram(Gasto gasto) {
-    // Ejecutar en segundo plano sin bloquear la aplicación
-    Future.delayed(Duration.zero, () async {
-      try {
-        await _alertasService.enviarAlertaGasto(
-          tipoGasto: gasto.tipoGastoNombre,
-          concepto: gasto.concepto,
-          monto: gasto.monto,
-          responsable: gasto.responsable,
-          formaPago: gasto.formaPago,
-          numeroRecibo: gasto.numeroRecibo,
-          numeroFactura: gasto.numeroFactura,
-          proveedor: gasto.proveedor,
-        );
-      } catch (e) {
-        // Ignorar error de alerta para no afectar la creación del gasto
-        appLog('Error al enviar alerta de gasto por Telegram: $e');
-      }
-    });
   }
 
   // Actualizar gasto

@@ -120,68 +120,6 @@ class _AparienciaTab extends StatelessWidget {
   }
 }
 
-
-class _Section extends StatelessWidget {
-  final String title;
-  final List<Widget> children;
-  const _Section({required this.title, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(title, style: AppTheme.headlineSmall),
-      const SizedBox(height: AppTheme.spacingSmall),
-      Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          border: Border.all(
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
-          ),
-        ),
-        child: Column(children: children),
-      ),
-    ]);
-  }
-}
-
-class _Field extends StatelessWidget {
-  final String label;
-  final TextEditingController controller;
-  final bool required;
-  final String? hint;
-  final TextInputType keyboardType;
-
-  const _Field(
-    this.label,
-    this.controller, {
-    this.required = false,
-    this.hint,
-    this.keyboardType = TextInputType.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-          horizontal: AppTheme.spacingMedium, vertical: AppTheme.spacingSmall),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          border: const OutlineInputBorder(),
-          isDense: true,
-        ),
-        validator: required
-            ? (v) => (v == null || v.trim().isEmpty) ? 'Campo requerido' : null
-            : null,
-      ),
-    );
-  }
-}
-
 class _ThemeOption extends StatelessWidget {
   final IconData icon;
   final String title;

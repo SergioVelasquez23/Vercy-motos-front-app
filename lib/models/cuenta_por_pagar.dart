@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'cuenta_por_cobrar.dart';
 
 /// Frecuencia de recurrencia para cuentas por pagar
 enum FrecuenciaCuentaPagar {

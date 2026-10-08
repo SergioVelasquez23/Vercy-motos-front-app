@@ -64,14 +64,6 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> with Subm
     return factura.estado.toUpperCase() == 'PAGADA' || factura.pagadoDesdeCaja;
   }
 
-  // Método para obtener el estado real a mostrar para una factura
-  String _obtenerEstadoVisual(FacturaCompra factura) {
-    if (_estaFacturaPagada(factura)) {
-      return 'PAGADA';
-    }
-    return factura.estado.toUpperCase();
-  }
-
   Future<void> _cargarFacturas() async {
     setState(() => _isLoading = true);
     try {
@@ -655,21 +647,6 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> with Subm
 
   void _mostrarDetalleFactura(FacturaCompra factura) {
     context.push('/facturas-compras/detalle', extra: factura).then((_) => _cargarFacturas());
-  }
-
-  // Método para editar una factura
-  void _editarFactura(FacturaCompra factura) {
-    // Edición no implementada aún
-    showInfoSnackBar(context, 'La edición de facturas no está disponible aún');
-    /* 
-    Para implementar cuando se agregue el parámetro facturaParaEditar en CrearFacturaCompraScreen
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CrearFacturaCompraScreen(),
-      ),
-    ).then((_) => _cargarFacturas());
-    */
   }
 
   // Método para confirmar la eliminación de una factura

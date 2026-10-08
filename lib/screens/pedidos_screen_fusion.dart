@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/pedido.dart';
-import '../models/producto.dart';
 import '../models/cuadre_caja.dart';
 import '../models/inventario.dart';
 import '../models/movimiento_inventario.dart';
@@ -26,15 +25,6 @@ class PedidosScreenFusion extends StatefulWidget {
 
 class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     with TickerProviderStateMixin {
-  String _getProductoNombre(dynamic producto) {
-    if (producto == null) return "Producto desconocido";
-    if (producto is Producto) return producto.nombre;
-    if (producto is Map<String, dynamic>) {
-      return Producto.fromJson(producto).nombre;
-    }
-    return "Producto desconocido";
-  }
-
   /// Total del pedido a mostrar.
   ///
   /// `pedido.total` ya viene NETO de descuento — se calcula así en
@@ -349,40 +339,6 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     }
   }
 
-  Color _getTipoColor(TipoPedido tipo) {
-    switch (tipo) {
-      case TipoPedido.normal:
-        return AppTheme.info;
-      case TipoPedido.cortesia:
-        return AppTheme.success;
-      case TipoPedido.interno:
-        return AppTheme.accent;
-      case TipoPedido.rt:
-        return AppTheme.warning;
-      case TipoPedido.cancelado:
-        return AppTheme.error;
-      case TipoPedido.domicilio:
-        return AppTheme.primary;
-    }
-  }
-
-  String _getTipoTexto(TipoPedido tipo) {
-    switch (tipo) {
-      case TipoPedido.normal:
-        return 'Normal';
-      case TipoPedido.cortesia:
-        return 'Cortesía';
-      case TipoPedido.interno:
-        return 'Consumo Interno';
-      case TipoPedido.rt:
-        return 'RT';
-      case TipoPedido.cancelado:
-        return 'Cancelado';
-      case TipoPedido.domicilio:
-        return 'Domicilio';
-    }
-  }
-
   void _aplicarFiltros() {
     if (!mounted) return;
 
@@ -500,72 +456,6 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     setState(() {
       _pedidosFiltrados = pedidosFiltrados;
     });
-  }
-
-  Future<void> _cancelarPedido(Pedido pedido) async {
-    // Mostrar confirmación
-    final bool? confirmar = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          title: Text('Cancelar Pedido', style: AppTheme.headlineMedium),
-          content: Text(
-            '¿Estás seguro de que quieres cancelar el pedido de la mesa ${pedido.mesa}?',
-            style: AppTheme.bodyMedium,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(
-                'No',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: Text('Sí, Cancelar'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmar == true) {
-      try {
-        setState(() {
-          _isLoading = true;
-        });
-
-        // Cancelar el pedido usando el nuevo método con DTO
-        final userProvider = Provider.of<UserProvider>(context, listen: false);
-        final usuarioCancelacion =
-            userProvider.userName ?? 'Usuario Desconocido';
-
-        await _pedidoService.cancelarPedidoConDTO(
-          pedido.id,
-          procesadoPor: usuarioCancelacion,
-          notas: 'Pedido cancelado desde la pantalla de pedidos',
-        );
-
-        // Recargar la lista de pedidos
-        await _cargarPedidos();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Pedido cancelado exitosamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
-
-        showErrorDialog(context, 'Error al cancelar pedido: ${errorMessage(e)}');
-      }
-    }
   }
 
   Future<void> _mostrarDialogoEliminarPedidos() async {

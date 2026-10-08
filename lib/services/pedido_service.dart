@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:async'; // Importar para usar StreamController
@@ -11,7 +10,7 @@ import '../services/producto_service.dart';
 import '../services/inventario_service.dart'; // Para manejar descuento de ingredientes
 import '../models/producto.dart';
 import '../models/item_pedido.dart';
-import '../models/cancelar_producto_request.dart'; // Para cancelaciones selectivas
+// Para cancelaciones selectivas
 import '../config/api_config.dart';
 import '../services/cuadre_caja_service.dart'; // Para validar caja abierta
 import '../utils/logger.dart';
@@ -1111,57 +1110,6 @@ class PedidoService implements IPedidoService {
     }
   }
 
-  // Filtrar pedidos por múltiples criterios
-  Future<List<Pedido>> filtrarPedidos({
-    TipoPedido? tipo,
-    EstadoPedido? estado,
-    String? mesa,
-    String? cliente,
-    String? mesero,
-    String? plataforma,
-    DateTime? fechaInicio,
-    DateTime? fechaFin,
-    String? busqueda,
-  }) async {
-    try {
-      final headers = await _getHeaders();
-
-      // Construir query parameters
-      Map<String, String> queryParams = {};
-      if (tipo != null) queryParams['tipo'] = tipo.toString().split('.').last;
-      if (estado != null) {
-        queryParams['estado'] = estado.toString().split('.').last;
-      }
-      if (mesa != null) queryParams['mesa'] = mesa;
-      if (cliente != null) queryParams['cliente'] = cliente;
-      if (mesero != null) queryParams['mesero'] = mesero;
-      if (plataforma != null) queryParams['plataforma'] = plataforma;
-      if (fechaInicio != null) {
-        queryParams['fechaInicio'] = fechaInicio.toIso8601String();
-      }
-      if (fechaFin != null) {
-        queryParams['fechaFin'] = fechaFin.toIso8601String();
-      }
-      if (busqueda != null && busqueda.isNotEmpty) {
-        queryParams['busqueda'] = busqueda;
-      }
-
-      final uri = Uri.parse(
-        '$baseUrl/api/pedidos/filtrar',
-      ).replace(queryParameters: queryParams);
-      final response = await http.get(uri, headers: headers);
-
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        return _parseListResponse(responseData);
-      } else {
-        throwBackendError(response.body, response.statusCode, prefix: 'Error al filtrar pedidos');
-      }
-    } catch (e) {
-      wrapOrThrow(e, context: 'Error al filtrar pedidos');
-    }
-  }
-
   // Obtener pedidos por mesero (para el módulo de meseros)
   Future<List<Pedido>> obtenerPedidosPorMesero(String nombreMesero) async {
     try {
@@ -1179,105 +1127,6 @@ class PedidoService implements IPedidoService {
       }
     } catch (e) {
       wrapOrThrow(e, context: 'Error al obtener pedidos del mesero');
-    }
-  }
-
-  // Obtener estadísticas
-  Future<Map<String, int>> getEstadisticas() async {
-    try {
-      final headers = await _getHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/pedidos/estadisticas'),
-        headers: headers,
-      );
-
-      if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
-        // Backend envuelve en ApiResponse: {success, data: {...}, message}
-        final raw = jsonData is Map && jsonData['success'] == true
-            ? (jsonData['data'] ?? jsonData)
-            : jsonData;
-        if (raw is Map) {
-          return Map<String, int>.from(
-            raw.map((k, v) => MapEntry(k.toString(), (v as num?)?.toInt() ?? 0)),
-          );
-        }
-        return {};
-      } else {
-        throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener estadísticas');
-      }
-    } catch (e) {
-      wrapOrThrow(e, context: 'Error al obtener estadísticas');
-    }
-  }
-
-  // Obtener total de ventas por período
-  Future<double> getTotalVentas({
-    DateTime? fechaInicio,
-    DateTime? fechaFin,
-  }) async {
-    try {
-      final headers = await _getHeaders();
-
-      Map<String, String> queryParams = {};
-      if (fechaInicio != null) {
-        queryParams['fechaInicio'] = fechaInicio.toIso8601String();
-      }
-      if (fechaFin != null) {
-        queryParams['fechaFin'] = fechaFin.toIso8601String();
-      }
-
-      final uri = Uri.parse(
-        '$baseUrl/api/pedidos/total-ventas',
-      ).replace(queryParameters: queryParams);
-
-                 
-
-      final response = await http.get(uri, headers: headers);
-
-        
-        
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonData = json.decode(response.body);
-          
-
-        if (jsonData['success'] == true) {
-          if (jsonData['data'] == null) {
-              
-            return 0.0;
-          }
-
-          if (jsonData['data'] is! Map) {
-                           return 0.0;
-          }
-
-          final total = jsonData['data']['total'];
-            
-
-          if (total == null) {
-              
-            return 0.0;
-          }
-
-          if (total is! num) {
-                           return 0.0;
-          }
-
-            
-          return total.toDouble();
-        } else {
-            
-          return 0.0;
-        }
-      } else {
-        return 0.0;
-      }
-    } catch (e, stackTrace) {
-        
-        
-      // En caso de error, retornamos 0 en lugar de propagar la excepción
-      return 0.0;
     }
   }
 
@@ -1612,31 +1461,6 @@ class PedidoService implements IPedidoService {
     } catch (e) {
         
     }
-  }
-
-  // Método legacy para cancelar pedidos (mantener por compatibilidad)
-  Future<void> cancelarPedido(String pedidoId, String motivo) async {
-    final url = '$baseUrl/api/pedidos/cancelar';
-    final token = await _getToken();
-
-    if (token == null) {
-      throw Exception('No se encontró el token de autenticación');
-    }
-
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({'pedidoId': pedidoId, 'motivo': motivo}),
-    );
-
-    if (response.statusCode != 200) {
-      throwBackendError(response.body, response.statusCode, prefix: 'Error al cancelar pedido');
-    }
-
-    _pedidoCompletadoController.add(true);
   }
 
   // Nuevo método para cancelar pedidos usando el DTO PagarPedidoRequest

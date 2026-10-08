@@ -236,64 +236,6 @@ class AlertasService {
     }
   }
 
-  /// Envía alerta de gasto realizado
-  Future<ApiResponse<Map<String, dynamic>>> enviarAlertaGasto({
-    required String tipoGasto,
-    required String concepto,
-    required double monto,
-    required String responsable,
-    String? formaPago,
-    String? numeroRecibo,
-    String? numeroFactura,
-    String? proveedor,
-  }) async {
-    try {
-      final String url = _baseApiService.buildUrl(
-        '/api/telegram-gastos/alerta',
-      );
-      final Map<String, String> headers = await _baseApiService.getHeaders();
-
-      final Map<String, dynamic> alertData = {
-        'tipoGasto': tipoGasto,
-        'concepto': concepto,
-        'monto': monto,
-        'responsable': responsable,
-        if (formaPago != null) 'formaPago': formaPago,
-        if (numeroRecibo != null) 'numeroRecibo': numeroRecibo,
-        if (numeroFactura != null) 'numeroFactura': numeroFactura,
-        if (proveedor != null) 'proveedor': proveedor,
-      };
-
-      final http.Response response = await _baseApiService.httpClient
-          .post(Uri.parse(url), headers: headers, body: json.encode(alertData))
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        return ApiResponse<Map<String, dynamic>>(
-          success: true,
-          data: data,
-          message: 'Alerta de gasto enviada exitosamente',
-          timestamp: DateTime.now().toIso8601String(),
-        );
-      }
-
-      return ApiResponse<Map<String, dynamic>>(
-        success: false,
-        data: null,
-        message: parseBackendException(response.body, response.statusCode).displayMessage,
-        timestamp: DateTime.now().toIso8601String(),
-      );
-    } catch (e) {
-      return ApiResponse<Map<String, dynamic>>(
-        success: false,
-        data: null,
-        message: errorMessage(e),
-        timestamp: DateTime.now().toIso8601String(),
-      );
-    }
-  }
-
   // === VERIFICACIÓN DE CONECTIVIDAD ===
 
   /// Verifica la conectividad con el microservicio de alertas

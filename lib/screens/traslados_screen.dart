@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../models/traslado.dart';
 import '../models/producto.dart';
 import '../models/bodega.dart';
@@ -13,8 +11,6 @@ import '../services/bodega_service.dart';
 import '../providers/user_provider.dart';
 import '../providers/notificaciones_provider.dart';
 import '../theme/app_theme.dart';
-import '../config/api_config.dart';
-import '../utils/token_storage.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 
@@ -119,28 +115,6 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
     } finally {
       setState(() => _isLoading = false);
     }
-  }
-
-  /// Calcula el stock por bodega bajo demanda (lazy loading)
-  Future<int> _obtenerStockBodega(String nombreBodega) async {
-    if (_stockPorBodega.containsKey(nombreBodega)) {
-      return _stockPorBodega[nombreBodega] ?? 0;
-    }
-
-    int totalStock = 0;
-    for (final producto in _productos) {
-      if (nombreBodega.toUpperCase() == 'ALMACEN') {
-        totalStock += producto.almacen ?? 0;
-      } else if (nombreBodega.toUpperCase() == 'BODEGA') {
-        totalStock += producto.bodega ?? 0;
-      }
-    }
-
-    setState(() {
-      _stockPorBodega[nombreBodega] = totalStock;
-    });
-
-    return totalStock;
   }
 
   void _filtrarTraslados() {
@@ -648,19 +622,6 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
     }
   }
 
-  DataColumn _buildColumn(String label) {
-    return DataColumn(
-      label: Text(
-        label,
-        style: TextStyle(
-          color: AppTheme.primary,
-          fontWeight: FontWeight.bold,
-          fontSize: 14,
-        ),
-      ),
-    );
-  }
-
   Widget _buildBodegaChip(String nombre) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -679,52 +640,6 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
     );
   }
 
-
-  Widget _buildAcciones(Traslado traslado) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _buildAccionBoton(
-          icon: Icons.picture_as_pdf,
-          color: AppTheme.error,
-          tooltip: 'Generar PDF',
-          onPressed: () => _mostrarMensaje('Generando PDF...'),
-        ),
-        SizedBox(width: 8),
-        _buildAccionBoton(
-          icon: Icons.info,
-          color: AppTheme.primary,
-          tooltip: 'Ver detalles',
-          onPressed: () => _verDetalles(traslado),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAccionBoton({
-    required IconData icon,
-    required Color color,
-    required String tooltip,
-    required VoidCallback onPressed,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: Container(
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding: EdgeInsets.all(8),
-            child: Icon(icon, color: Colors.white, size: 18),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildEmptyState() {
     return Center(
@@ -776,224 +691,6 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
         ],
       ),
     );
-  }
-
-  void _mostrarDialogoProcesar(Traslado traslado) {
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final aprobador = userProvider.userName ?? 'Usuario';
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: AppTheme.primaryGradient,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.swap_horiz, color: Colors.white, size: 20),
-            ),
-            SizedBox(width: 12),
-            Text(
-              'Procesar Traslado',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: dialogWidth(context, 400),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    _buildInfoRow('Número:', traslado.numero ?? '-'),
-                    Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.2)),
-                    _buildInfoRow('Producto:', traslado.productoNombre ?? '-'),
-                    Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.2)),
-                    _buildInfoRow('Cantidad:', '${traslado.cantidad}'),
-                    Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.2)),
-                    _buildInfoRow(
-                      'Origen:',
-                      traslado.origenBodegaNombre ?? '-',
-                    ),
-                    Divider(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.2)),
-                    _buildInfoRow(
-                      'Destino:',
-                      traslado.destinoBodegaNombre ?? '-',
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancelar',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-            ),
-          ),
-          ElevatedButton.icon(
-            onPressed: () async {
-              Navigator.pop(context);
-              await _procesarTraslado(traslado.id!, 'RECHAZAR', aprobador);
-            },
-            icon: Icon(Icons.close, size: 18),
-            label: Text('Rechazar'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.error,
-              foregroundColor: Colors.white,
-            ),
-          ),
-          ElevatedButton.icon(
-            onPressed: () async {
-              Navigator.pop(context);
-              await _aceptarTraslado(traslado, aprobador);
-            },
-            icon: Icon(Icons.check, size: 18),
-            label: Text('Aceptar'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.success,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
-          Text(
-            value,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _procesarTraslado(
-    String trasladoId,
-    String accion,
-    String aprobador,
-  ) async {
-    try {
-      await _trasladoService.procesarTraslado(
-        trasladoId: trasladoId,
-        accion: accion,
-        aprobador: aprobador,
-      );
-      _mostrarExito('Traslado ${accion.toLowerCase()} correctamente');
-      _cargarDatos();
-    } catch (e) {
-      _mostrarError('Error al procesar traslado: ${errorMessage(e)}');
-    }
-  }
-
-  // Aceptar traslado usando el endpoint de traslado rápido
-  Future<void> _aceptarTraslado(Traslado traslado, String aprobador) async {
-    try {
-      // Buscar el producto para obtener los valores actuales
-      final producto = _productos.firstWhere(
-        (p) => p.id == traslado.productoId,
-        orElse: () => throw Exception('Producto no encontrado'),
-      );
-
-        
-        
-        
-        
-        
-        
-        
-
-      // Determinar si origen/destino son ALMACEN o BODEGA
-      final origenEsAlmacen =
-          traslado.origenBodegaNombre?.toUpperCase().contains('ALMACEN') ==
-          true;
-      final destinoEsAlmacen =
-          traslado.destinoBodegaNombre?.toUpperCase().contains('ALMACEN') ==
-          true;
-
-      // Calcular nuevos valores
-      int nuevoAlmacen = producto.almacen ?? 0;
-      int nuevoBodega = producto.bodega ?? 0;
-
-      if (origenEsAlmacen) {
-        nuevoAlmacen -= traslado.cantidad!.toInt();
-      } else {
-        nuevoBodega -= traslado.cantidad!.toInt();
-      }
-
-      if (destinoEsAlmacen) {
-        nuevoAlmacen += traslado.cantidad!.toInt();
-      } else {
-        nuevoBodega += traslado.cantidad!.toInt();
-      }
-
-        
-        
-
-      // Actualizar producto directamente
-      final productoJson = producto.toJson();
-      productoJson['almacen'] = nuevoAlmacen;
-      productoJson['bodega'] = nuevoBodega;
-      productoJson['cantidadAlmacen'] = nuevoAlmacen;
-      productoJson['cantidadBodega'] = nuevoBodega;
-
-      // Hacer petición PUT con headers básicos
-      final token = await readJwtToken();
-      final headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
-      };
-
-      final apiConfig = ApiConfig();
-      final response = await http.put(
-        Uri.parse('${apiConfig.baseUrl}/api/productos/${producto.id}'),
-        headers: headers,
-        body: json.encode(productoJson),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Error al actualizar producto');
-      }
-
-      // 🎯 Usar el nuevo endpoint /completar para marcar el traslado como completado
-      await _trasladoService.completarTraslado(
-        trasladoId: traslado.id!,
-        aprobador: aprobador,
-      );
-
-               _mostrarExito('Traslado aceptado y ejecutado correctamente');
-      _cargarDatos();
-    } catch (e) {
-        
-      _mostrarError('Error al aceptar traslado: ${errorMessage(e)}');
-    }
   }
 
   void _verDetalles(Traslado traslado) {
@@ -1166,16 +863,6 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
     );
   }
 
-  void _mostrarMensaje(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(mensaje),
-        backgroundColor: AppTheme.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
 }
 
 // ==================== FORMULARIO CREAR TRASLADO ====================
@@ -2534,14 +2221,4 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
     );
   }
 
-  void _mostrarMensaje(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(mensaje),
-        backgroundColor: AppTheme.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
 }
