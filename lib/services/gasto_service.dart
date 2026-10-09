@@ -66,6 +66,27 @@ class GastoService implements IGastoService {
   String get baseUrl => ApiConfig.instance.baseUrl;
   final AlertasService _alertasService = AlertasService();
 
+  // Caché en memoria de getGastosByCuadre(), por cuadreId — respaldada por
+  // CajaWebSocketService (canal /rt/caja): cuando este dispositivo u OTRO
+  // crea/edita/borra un gasto, el backend avisa por WebSocket y
+  // invalidarCacheCuadre() la limpia al instante (ver app_shell.dart, donde
+  // se conecta el canal). Sin ese aviso en tiempo real, un TTL a ciegas acá
+  // sería arriesgado: es dato financiero, y mostrar un total de gastos
+  // vencido es peor que no cachear nada — el TTL corto que sigue es solo
+  // una red de seguridad por si el WebSocket está desconectado.
+  static final Map<String, List<Gasto>> _cachePorCuadre = {};
+  static final Map<String, DateTime> _cacheEnPorCuadre = {};
+  static const _cacheTtl = Duration(minutes: 2);
+  static final Map<String, Future<List<Gasto>>> _cargasEnCurso = {};
+
+  /// Olvida el caché de gastos de un cuadre — llamado al crear/editar/borrar
+  /// un gasto (en este dispositivo) y al recibir un evento GASTO_* por
+  /// WebSocket (desde cualquier dispositivo).
+  static void invalidarCacheCuadre(String cuadreId) {
+    _cachePorCuadre.remove(cuadreId);
+    _cacheEnPorCuadre.remove(cuadreId);
+  }
+
   // Headers con autenticación
   Future<Map<String, String>> _getHeaders() async {
     final token = await readJwtToken();
@@ -128,8 +149,28 @@ class GastoService implements IGastoService {
     }
   }
 
-  // Obtener gastos por cuadre de caja
-  Future<List<Gasto>> getGastosByCuadre(String cuadreId) async {
+  // Obtener gastos por cuadre de caja. Cacheado en memoria por cuadreId (ver
+  // _cachePorCuadre); pasar [forzar] para saltarse el caché.
+  Future<List<Gasto>> getGastosByCuadre(String cuadreId, {bool forzar = false}) async {
+    if (!forzar) {
+      final cacheadoEn = _cacheEnPorCuadre[cuadreId];
+      if (cacheadoEn != null && DateTime.now().difference(cacheadoEn) < _cacheTtl) {
+        return _cachePorCuadre[cuadreId]!;
+      }
+      final enCurso = _cargasEnCurso[cuadreId];
+      if (enCurso != null) return enCurso;
+    }
+
+    final future = _obtenerGastosDeCuadreDesdeRed(cuadreId);
+    _cargasEnCurso[cuadreId] = future;
+    try {
+      return await future;
+    } finally {
+      _cargasEnCurso.remove(cuadreId);
+    }
+  }
+
+  Future<List<Gasto>> _obtenerGastosDeCuadreDesdeRed(String cuadreId) async {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
@@ -137,7 +178,7 @@ class GastoService implements IGastoService {
         headers: headers,
       ).timeout(Duration(seconds: ApiConfig.requestTimeout));
 
-         
+
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         List<dynamic> jsonList = responseData['data'] ?? [];
@@ -146,11 +187,15 @@ class GastoService implements IGastoService {
         // Ordenar gastos por fecha descendente (más recientes primero)
         gastos.sort((a, b) => b.fechaGasto.compareTo(a.fechaGasto));
 
+        _cachePorCuadre[cuadreId] = gastos;
+        _cacheEnPorCuadre[cuadreId] = DateTime.now();
         return gastos;
       } else {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener gastos del cuadre');
       }
     } catch (e) {
+      final cacheado = _cachePorCuadre[cuadreId];
+      if (cacheado != null) return cacheado;
       wrapOrThrow(e, context: 'Error al obtener gastos del cuadre');
     }
   }
@@ -210,6 +255,7 @@ class GastoService implements IGastoService {
       if (response.statusCode == 201) {
         final responseData = json.decode(response.body);
         final gasto = Gasto.fromJson(responseData['data']);
+        invalidarCacheCuadre(gasto.cuadreCajaId);
 
         // ⛔ ALERTAS DE TELEGRAM DESHABILITADAS
         // Enviar alerta de Telegram en segundo plano
@@ -293,7 +339,9 @@ class GastoService implements IGastoService {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        return Gasto.fromJson(responseData['data']);
+        final gasto = Gasto.fromJson(responseData['data']);
+        invalidarCacheCuadre(gasto.cuadreCajaId);
+        return gasto;
       } else {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar gasto');
       }
@@ -338,6 +386,8 @@ class GastoService implements IGastoService {
       ).timeout(Duration(seconds: ApiConfig.requestTimeout));
 
       if (response.statusCode == 200 || response.statusCode == 204) {
+        if (gastoInfo != null) invalidarCacheCuadre(gastoInfo.cuadreCajaId);
+
         // Preparar respuesta exitosa
         Map<String, dynamic> result = {
           'success': true,

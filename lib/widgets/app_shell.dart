@@ -6,6 +6,7 @@ import '../providers/user_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/notificaciones_provider.dart';
 import '../providers/datos_cache_provider.dart';
+import '../services/caja_realtime_service.dart';
 import '../utils/notification_sound.dart';
 
 /// Shell persistente: sidebar a la izquierda + topbar minimal + área de contenido.
@@ -58,6 +59,11 @@ class _AppShellState extends State<AppShell> {
     // cubrir recargar el navegador estando ya en una ruta protegida.
     Provider.of<DatosCacheProvider>(context, listen: false)
         .iniciarEscuchaTiempoReal();
+
+    // Canal /rt/caja: invalida el caché de gastos (GastoService) al instante
+    // cuando otro dispositivo/cajero crea, edita o borra un gasto — ver
+    // CajaRealtimeService.
+    CajaRealtimeService.instance.iniciarEscuchaTiempoReal();
   }
 
   @override
