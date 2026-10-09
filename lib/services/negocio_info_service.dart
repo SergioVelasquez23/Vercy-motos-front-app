@@ -12,6 +12,26 @@ class NegocioInfoService {
   final ApiConfig _apiConfig = ApiConfig();
   final ImageService _imageService = ImageService();
 
+  // Caché en memoria de getNegocioInfo() — datos casi estáticos (nombre, NIT,
+  // logo, resolución DIAN): no hay una pantalla de "editar negocio" que se
+  // use seguido, así que un TTL largo es seguro. 9 lugares distintos
+  // (Facturación, Facturas, Cotizaciones, impresión, FE/POS, documento
+  // soporte...) pedían esto cada uno por su cuenta en cada factura/PDF/
+  // impresión — existía un NegocioInfoCache en utils/ con esta misma idea,
+  // pero ningún llamador lo usaba (confirmado: todos llaman al service
+  // directo). Cachearlo acá, adentro del service, beneficia a los 9 sin
+  // tocarlos uno por uno.
+  static NegocioInfo? _cache;
+  static DateTime? _cacheEn;
+  static const _cacheTtl = Duration(minutes: 30);
+  static Future<NegocioInfo?>? _cargaEnCurso;
+
+  /// Olvida el caché — llamado tras guardar/borrar la info del negocio.
+  static void invalidarCache() {
+    _cache = null;
+    _cacheEn = null;
+  }
+
   /// Headers con Authorization (Bearer) desde BaseApiService
   Future<Map<String, String>> get _headers async {
     final h = await BaseApiService().getHeaders();
@@ -19,28 +39,52 @@ class NegocioInfoService {
     return h;
   }
 
-  /// Obtener información del negocio
-  Future<NegocioInfo?> getNegocioInfo() async {
+  /// Obtener información del negocio. Cacheada en memoria (ver [_cache]);
+  /// pasar [forzar] para saltarse el caché.
+  Future<NegocioInfo?> getNegocioInfo({bool forzar = false}) async {
+    if (!forzar &&
+        _cache != null &&
+        _cacheEn != null &&
+        DateTime.now().difference(_cacheEn!) < _cacheTtl) {
+      return _cache;
+    }
+    if (!forzar && _cargaEnCurso != null) return _cargaEnCurso;
+
+    final future = _obtenerNegocioInfoDesdeRed();
+    _cargaEnCurso = future;
+    try {
+      return await future;
+    } finally {
+      _cargaEnCurso = null;
+    }
+  }
+
+  Future<NegocioInfo?> _obtenerNegocioInfoDesdeRed() async {
     try {
       final response = await http.get(
         Uri.parse('${_apiConfig.baseUrl}/api/negocio'),
         headers: await _headers,
       );
 
-        
+
 
       if (response.statusCode == 200) {
         final body = json.decode(response.body);
         final data = body['data'] ?? body;
         debugPrint('=== GET /api/negocio RESPUESTA ===\n${json.encode(data)}\n==================================');
-        return NegocioInfo.fromJson(data);
+        final info = NegocioInfo.fromJson(data);
+        _cache = info;
+        _cacheEn = DateTime.now();
+        return info;
       } else if (response.statusCode == 404) {
-          
+
         return null;
       } else {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener información del negocio');
       }
     } catch (e) {
+      // Si falló pero hay un caché vencido, devolver eso antes que nada.
+      if (_cache != null) return _cache;
       wrapOrThrow(e, context: 'Error al obtener información del negocio');
     }
   }
@@ -78,6 +122,7 @@ class NegocioInfoService {
         final body = json.decode(response.body);
         // Handle both {"data": {...}} and plain {...} responses
         final data = body is Map && body.containsKey('data') ? body['data'] : body;
+        invalidarCache();
         return NegocioInfo.fromJson(data as Map<String, dynamic>);
       } else {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al guardar información del negocio');
@@ -113,7 +158,7 @@ class NegocioInfoService {
         
 
       if (response.statusCode == 200 || response.statusCode == 204) {
-          
+        invalidarCache();
       } else {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al eliminar información del negocio');
       }
