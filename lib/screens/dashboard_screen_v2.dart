@@ -229,17 +229,17 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           .catchError((e) {
             return null;
           });
-      final ingresosFuture = _cargarIngresosVsEgresos().catchError((e) {
+      final ingresosFuture = _cargarIngresosVsEgresos(forceRefresh: forceRefresh).catchError((e) {
         return null;
       });
-      final topProductosFuture = _cargarTopProductos().catchError((e) {
+      final topProductosFuture = _cargarTopProductos(forceRefresh: forceRefresh).catchError((e) {
         return null;
       });
-      final topClientesFuture = _cargarTopClientes().catchError((e) {
+      final topClientesFuture = _cargarTopClientes(forceRefresh: forceRefresh).catchError((e) {
         return null;
       });
       final ventasPorDiaFuture = _reportesService
-          .getVentasPorDia(7)
+          .getVentasPorDia(7, forceRefresh)
           .then((data) {
             setState(() {
               // Transformar los datos del backend al formato esperado por el frontend
@@ -258,7 +258,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           });
 
       final ventasPorMesFuture = _reportesService
-          .getVentasPorMes(6)
+          .getVentasPorMes(6, forceRefresh)
           .then((data) {
             setState(() {
               _ventasPorMes = data.map((item) {
@@ -276,17 +276,17 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           });
 
       // Cargar pedidos por hora
-      final pedidosPorHoraFuture = _cargarPedidosPorHora().catchError((e) {
+      final pedidosPorHoraFuture = _cargarPedidosPorHora(forceRefresh: forceRefresh).catchError((e) {
         return null;
       });
 
       // Cargar vendedores del mes
-      final vendedoresDelMesFuture = _cargarVendedoresDelMes().catchError((e) {
+      final vendedoresDelMesFuture = _cargarVendedoresDelMes(forceRefresh: forceRefresh).catchError((e) {
         return null;
       });
 
       // Cargar top vendidos con bajo stock (KPI reabastecimiento)
-      final topBajoStockFuture = _cargarTopVendidosBajoStock().catchError((e) {
+      final topBajoStockFuture = _cargarTopVendidosBajoStock(forceRefresh: forceRefresh).catchError((e) {
         return null;
       });
 
@@ -374,10 +374,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     }
   }
 
-  Future<void> _cargarIngresosVsEgresos() async {
+  Future<void> _cargarIngresosVsEgresos({bool forceRefresh = false}) async {
     try {
       // Obtener ingresos vs egresos de los últimos 12 meses desde el backend
-      final ingresosVsEgresos = await _reportesService.getIngresosVsEgresos(12);
+      final ingresosVsEgresos = await _reportesService.getIngresosVsEgresos(12, forceRefresh);
 
       if (mounted) {
         setState(() {
@@ -399,10 +399,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     }
   }
 
-  Future<void> _cargarTopProductos() async {
+  Future<void> _cargarTopProductos({bool forceRefresh = false}) async {
     try {
       // Obtener top 5 productos más vendidos del mes actual desde el backend
-      final topProductos = await _reportesService.getTopProductos(5);
+      final topProductos = await _reportesService.getTopProductos(5, forceRefresh);
 
       // Transformar datos al formato esperado por la UI
       final List<Map<String, dynamic>> productosTransformados = [];
@@ -435,10 +435,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     }
   }
 
-  Future<void> _cargarTopClientes() async {
+  Future<void> _cargarTopClientes({bool forceRefresh = false}) async {
     try {
       // Obtener top 5 clientes que más compran (excluyendo Consumidor Final)
-      final topClientes = await _reportesService.getTopClientes(5);
+      final topClientes = await _reportesService.getTopClientes(5, forceRefresh);
 
       // Transformar datos al formato esperado por la UI
       final List<Map<String, dynamic>> clientesTransformados = [];
@@ -472,10 +472,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     }
   }
 
-  Future<void> _cargarPedidosPorHora() async {
+  Future<void> _cargarPedidosPorHora({bool forceRefresh = false}) async {
     try {
       // Obtener pedidos por hora desde el backend
-      final pedidosPorHora = await _reportesService.getPedidosPorHora();
+      final pedidosPorHora = await _reportesService.getPedidosPorHora(null, forceRefresh);
 
       // Validar y limpiar los datos
       final pedidosValidados = pedidosPorHora.map((pedido) {
@@ -499,11 +499,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     }
   }
 
-  Future<void> _cargarTopVendidosBajoStock() async {
+  Future<void> _cargarTopVendidosBajoStock({bool forceRefresh = false}) async {
     try {
       final lista = await _reportesService.getTopVendidosBajoStock(
         dias: 7,
         limite: 10,
+        forzar: forceRefresh,
       );
       if (!mounted) return;
       setState(() => _topVendidosBajoStock = lista);
@@ -512,10 +513,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     }
   }
 
-  Future<void> _cargarVendedoresDelMes() async {
+  Future<void> _cargarVendedoresDelMes({bool forceRefresh = false}) async {
     try {
       // Obtener vendedores del mes desde el backend
-      final vendedores = await _reportesService.getVendedoresDelMes(30);
+      final vendedores = await _reportesService.getVendedoresDelMes(30, forceRefresh);
 
       // Validar y limpiar los datos
       final vendedoresValidados = vendedores.map((vendedor) {
@@ -742,8 +743,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           );
         }
 
-        // IMPORTANTE: Recargar datos del dashboard para obtener los objetivos actualizados
-        await _cargarDatos();
+        // IMPORTANTE: Recargar datos del dashboard para obtener los objetivos
+        // actualizados — forceRefresh porque si no, el caché de 45s de
+        // ReportesService podía devolver el dashboard de antes de guardar.
+        await _cargarDatos(forceRefresh: true);
 
         // Calcular totales corregidos después de cargar datos
         await _calcularTotalesCorregidos();
@@ -854,7 +857,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                   ),
                                 )
                               : RefreshIndicator(
-                                  onRefresh: _cargarDatos,
+                                  // forceRefresh: true — sin esto, "pull to
+                                  // refresh" caía en el caché de 45s de
+                                  // ReportesService (agregado para que volver
+                                  // al dashboard sea instantáneo) y el gesto
+                                  // de actualizar a veces no traía nada nuevo.
+                                  onRefresh: () => _cargarDatos(forceRefresh: true),
                                   color: AppTheme.primary,
                                   child: SingleChildScrollView(
                                     physics: AlwaysScrollableScrollPhysics(),

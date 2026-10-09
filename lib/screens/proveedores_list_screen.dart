@@ -260,15 +260,15 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
                 : Column(
                     children: [
                       Expanded(
-                        child: ListView.builder(
-                          itemCount: paginarLista(_proveedoresFiltrados).length,
-                          itemBuilder: (context, index) {
-                            final proveedor = paginarLista(
-                              _proveedoresFiltrados,
-                            )[index];
-                            return _buildFilaTabla(proveedor, index);
-                          },
-                        ),
+                        child: Builder(builder: (context) {
+                          // Una sola vez por build, no una vez por fila visible.
+                          final pagina = paginarLista(_proveedoresFiltrados);
+                          return ListView.builder(
+                            itemCount: pagina.length,
+                            itemBuilder: (context, index) =>
+                                _buildFilaTabla(pagina[index], index),
+                          );
+                        }),
                       ),
                       buildPaginacion(
                         totalItems: _proveedoresFiltrados.length,

@@ -581,6 +581,10 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
       return Center(child: CircularProgressIndicator(color: AppTheme.primary));
     }
 
+    // Una sola vez por build en vez de recalcular el sublist de la página
+    // en itemCount y de nuevo por cada fila visible en itemBuilder.
+    final pagina = paginarLista(_gastosFiltrados);
+
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
@@ -664,11 +668,8 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
                   : ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: paginarLista(_gastosFiltrados).length,
-                      itemBuilder: (context, index) {
-                        final gasto = paginarLista(_gastosFiltrados)[index];
-                        return _buildFilaTabla(gasto, index);
-                      },
+                      itemCount: pagina.length,
+                      itemBuilder: (context, index) => _buildFilaTabla(pagina[index], index),
                     ),
             ],
           ),

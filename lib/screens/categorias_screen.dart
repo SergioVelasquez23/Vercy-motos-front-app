@@ -107,15 +107,18 @@ class _CategoriasScreenState extends State<CategoriasScreen>
               child: Column(
                 children: [
                   Expanded(
-                    child: ListView.builder(
-                      padding: EdgeInsets.all(16),
-                      itemCount: paginarLista(_categorias).length,
-                      itemBuilder: (context, index) {
-                        return _buildCategoriaItem(
-                          paginarLista(_categorias)[index],
-                        );
-                      },
-                    ),
+                    child: Builder(builder: (context) {
+                      // Una sola vez por build en vez de recalcular el
+                      // sublist de la página en itemCount y de nuevo por
+                      // cada item visible en itemBuilder.
+                      final pagina = paginarLista(_categorias);
+                      return ListView.builder(
+                        padding: EdgeInsets.all(16),
+                        itemCount: pagina.length,
+                        itemBuilder: (context, index) =>
+                            _buildCategoriaItem(pagina[index]),
+                      );
+                    }),
                   ),
                   buildPaginacion(
                     totalItems: _categorias.length,

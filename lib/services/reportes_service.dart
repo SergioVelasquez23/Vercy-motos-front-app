@@ -8,26 +8,55 @@ class ReportesService {
 
   final BaseApiService _apiService = BaseApiService();
 
+  // Caché en memoria de los ~9 endpoints que arma el Dashboard, con TTL
+  // corto: abrirlo dispara esa cantidad de llamadas en paralelo (ver
+  // dashboard_screen_v2._cargarDatos), y volver a entrar (navegar a otra
+  // pantalla y volver, o el refresh automático por cambio de día/semana) las
+  // repetía todas de nuevo sin importar cuánto hubiera pasado. 45s es
+  // razonable para un dashboard de reportes (no es un total de caja en vivo
+  // durante una venta activa) — "Actualizar"/forceRefresh lo saltea.
+  static final Map<String, _ReporteCacheEntry> _cache = {};
+  static const Duration _cacheTtl = Duration(seconds: 45);
+
+  /// Olvida todo el caché de reportes del dashboard — llamar si hace falta
+  /// forzar que la próxima carga sea 100% fresca desde todos lados.
+  static void invalidarCacheDashboard() => _cache.clear();
+
+  Future<T> _cacheado<T>(
+    String key,
+    Future<T> Function() fetch, {
+    bool forzar = false,
+  }) async {
+    if (!forzar) {
+      final entry = _cache[key];
+      if (entry != null && DateTime.now().difference(entry.cacheadoEn) < _cacheTtl) {
+        return entry.data as T;
+      }
+    }
+    final data = await fetch();
+    _cache[key] = _ReporteCacheEntry(data, DateTime.now());
+    return data;
+  }
+
   // Obtener dashboard
   // soloElectronicos=true → backend excluye pedidos LOCAL (solo POS + FACTURA)
-  Future<DashboardData?> getDashboard({bool forceRefresh = false, bool soloElectronicos = false}) async {
+  Future<DashboardData?> getDashboard({bool forceRefresh = false, bool soloElectronicos = false}) {
+    return _cacheado(
+      'dashboard:$soloElectronicos',
+      () => _obtenerDashboardDesdeRed(soloElectronicos),
+      forzar: forceRefresh,
+    );
+  }
+
+  Future<DashboardData?> _obtenerDashboardDesdeRed(bool soloElectronicos) async {
     try {
-      // Agregar parámetro de timestamp para evitar caching de HTTP
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      // ✅ IMPORTANTE: ignorarCaja=true para que el backend NO filtre por cuadreId
-      // Esto evita que "Facturado Hoy" muestre datos de cajas anteriores
       final filtro = soloElectronicos ? '&soloElectronicos=true' : '';
-      final endpoint = forceRefresh
-          ? '/api/reportes/dashboard?_t=$timestamp&ignorarCaja=true$filtro'
-          : '/api/reportes/dashboard?ignorarCaja=true$filtro';
+      final endpoint = '/api/reportes/dashboard?ignorarCaja=true$filtro';
 
       final response = await _apiService.get<Map<String, dynamic>>(
         endpoint,
         (json) => json,
       );
-
-      // Respuesta recibida - Success: ${response.isSuccess}
-        
 
       if (response.isSuccess && response.data != null) {
         // Se usan siempre los valores del servidor tal cual. Antes aquí se
@@ -40,91 +69,80 @@ class ReportesService {
         return null;
       }
     } catch (e) {
-        
+
       return null;
     }
   }
 
-  // Obtener pedidos por hora
+  // Obtener pedidos por hora. [forzar] se agregó al final (y no como named,
+  // ver más abajo) para no romper las llamadas posicionales que ya existían
+  // — p. ej. getTopProductos(5) — al mezclar [] con {} Dart no compila.
   Future<List<Map<String, dynamic>>> getPedidosPorHora([
     DateTime? fecha,
-  ]) async {
-    final fechaParam = fecha != null ? '?fecha=${fecha.toIso8601String()}' : '';
-    final response = await _apiService.get<List<Map<String, dynamic>>>(
-      '/reportes/pedidos-por-hora$fechaParam',
-      (json) => List<Map<String, dynamic>>.from(json),
-    );
-
-    if (response.isSuccess) {
-      return response.data ?? [];
-    } else {
-        
-      return [];
-    }
+    bool forzar = false,
+  ]) {
+    return _cacheado('pedidosPorHora:${fecha?.toIso8601String()}', () async {
+      final fechaParam = fecha != null ? '?fecha=${fecha.toIso8601String()}' : '';
+      final response = await _apiService.get<List<Map<String, dynamic>>>(
+        '/reportes/pedidos-por-hora$fechaParam',
+        (json) => List<Map<String, dynamic>>.from(json),
+      );
+      return response.isSuccess ? (response.data ?? []) : <Map<String, dynamic>>[];
+    }, forzar: forzar);
   }
 
   // Obtener ventas por día
   Future<List<Map<String, dynamic>>> getVentasPorDia([
     int ultimosDias = 7,
-  ]) async {
-    final response = await _apiService.get<List<Map<String, dynamic>>>(
-      '/ventas-por-dia?ultimosDias=$ultimosDias',
-      (json) => List<Map<String, dynamic>>.from(json),
-    );
-
-    if (response.isSuccess) {
-      return response.data ?? [];
-    } else {
-        
-      return [];
-    }
+    bool forzar = false,
+  ]) {
+    return _cacheado('ventasPorDia:$ultimosDias', () async {
+      final response = await _apiService.get<List<Map<String, dynamic>>>(
+        '/ventas-por-dia?ultimosDias=$ultimosDias',
+        (json) => List<Map<String, dynamic>>.from(json),
+      );
+      return response.isSuccess ? (response.data ?? []) : <Map<String, dynamic>>[];
+    }, forzar: forzar);
   }
 
   // Obtener ventas (facturado) por mes — excluye pedidos locales, solo
   // Facturación Electrónica + POS (mismo criterio que ventas por día)
   Future<List<Map<String, dynamic>>> getVentasPorMes([
     int ultimosMeses = 12,
-  ]) async {
-    final response = await _apiService.get<List<Map<String, dynamic>>>(
-      '/ventas-por-mes?ultimosMeses=$ultimosMeses',
-      (json) => List<Map<String, dynamic>>.from(json),
-    );
-
-    if (response.isSuccess) {
-      return response.data ?? [];
-    } else {
-      return [];
-    }
+    bool forzar = false,
+  ]) {
+    return _cacheado('ventasPorMes:$ultimosMeses', () async {
+      final response = await _apiService.get<List<Map<String, dynamic>>>(
+        '/ventas-por-mes?ultimosMeses=$ultimosMeses',
+        (json) => List<Map<String, dynamic>>.from(json),
+      );
+      return response.isSuccess ? (response.data ?? []) : <Map<String, dynamic>>[];
+    }, forzar: forzar);
   }
 
   // Obtener ingresos vs egresos
   Future<List<Map<String, dynamic>>> getIngresosVsEgresos([
     int ultimosMeses = 12,
-  ]) async {
-    final response = await _apiService.get<List<Map<String, dynamic>>>(
-      '/reportes/ingresos-egresos?ultimosMeses=$ultimosMeses',
-      (json) => List<Map<String, dynamic>>.from(json),
-    );
-
-    if (response.isSuccess) {
-      return response.data ?? [];
-    } else {
-               return [];
-    }
+    bool forzar = false,
+  ]) {
+    return _cacheado('ingresosVsEgresos:$ultimosMeses', () async {
+      final response = await _apiService.get<List<Map<String, dynamic>>>(
+        '/reportes/ingresos-egresos?ultimosMeses=$ultimosMeses',
+        (json) => List<Map<String, dynamic>>.from(json),
+      );
+      return response.isSuccess ? (response.data ?? []) : <Map<String, dynamic>>[];
+    }, forzar: forzar);
   }
 
   // Obtener top productos
-  Future<List<Map<String, dynamic>>> getTopProductos([int limite = 5]) async {
-    final response = await _apiService.get<List<Map<String, dynamic>>>(
-      '/reportes/top-productos?limite=$limite',
-      (json) => List<Map<String, dynamic>>.from(json),
-    );
-
-    if (response.isSuccess) {
-      return response.data ?? [];
-    } else {
-      return [];
-    }
+  Future<List<Map<String, dynamic>>> getTopProductos([int limite = 5, bool forzar = false]) {
+    return _cacheado('topProductos:$limite', () async {
+      final response = await _apiService.get<List<Map<String, dynamic>>>(
+        '/reportes/top-productos?limite=$limite',
+        (json) => List<Map<String, dynamic>>.from(json),
+      );
+      return response.isSuccess ? (response.data ?? []) : <Map<String, dynamic>>[];
+    }, forzar: forzar);
   }
 
   /// Productos más vendidos en los últimos [dias] días que están en stock bajo
@@ -134,27 +152,26 @@ class ReportesService {
   Future<List<Map<String, dynamic>>> getTopVendidosBajoStock({
     int dias = 7,
     int limite = 10,
-  }) async {
-    final response = await _apiService.get<List<Map<String, dynamic>>>(
-      '/api/top-vendidos-bajo-stock?dias=$dias&limite=$limite',
-      (json) => List<Map<String, dynamic>>.from(json),
-    );
-    if (response.isSuccess) return response.data ?? [];
-    return [];
+    bool forzar = false,
+  }) {
+    return _cacheado('topVendidosBajoStock:$dias:$limite', () async {
+      final response = await _apiService.get<List<Map<String, dynamic>>>(
+        '/api/top-vendidos-bajo-stock?dias=$dias&limite=$limite',
+        (json) => List<Map<String, dynamic>>.from(json),
+      );
+      return response.isSuccess ? (response.data ?? []) : <Map<String, dynamic>>[];
+    }, forzar: forzar);
   }
 
   // Obtener top clientes (excluyendo Consumidor Final)
-  Future<List<Map<String, dynamic>>> getTopClientes([int limite = 5]) async {
-    final response = await _apiService.get<List<Map<String, dynamic>>>(
-      '/api/reportes/top-clientes?limite=$limite&excluirConsumidorFinal=true',
-      (json) => List<Map<String, dynamic>>.from(json),
-    );
-
-    if (response.isSuccess) {
-      return response.data ?? [];
-    } else {
-      return [];
-    }
+  Future<List<Map<String, dynamic>>> getTopClientes([int limite = 5, bool forzar = false]) {
+    return _cacheado('topClientes:$limite', () async {
+      final response = await _apiService.get<List<Map<String, dynamic>>>(
+        '/api/reportes/top-clientes?limite=$limite&excluirConsumidorFinal=true',
+        (json) => List<Map<String, dynamic>>.from(json),
+      );
+      return response.isSuccess ? (response.data ?? []) : <Map<String, dynamic>>[];
+    }, forzar: forzar);
   }
 
   // Obtener reporte detallado de ventas por producto
@@ -408,22 +425,24 @@ class ReportesService {
   // Obtener vendedores del mes
   Future<List<Map<String, dynamic>>> getVendedoresDelMes([
     int dias = 30,
-  ]) async {
-    try {
-      final response = await _apiService.get<List<Map<String, dynamic>>>(
-        '/vendedores-mes?dias=$dias',
-        (json) => List<Map<String, dynamic>>.from(json),
-      );
-
-      if (response.isSuccess) {
-        return response.data ?? [];
-      } else {
-                   return [];
+    bool forzar = false,
+  ]) {
+    return _cacheado('vendedoresDelMes:$dias', () async {
+      try {
+        // /vendedores-mes -> /api/vendedores-mes (DashboardController), que sí
+        // delega en ReporteService.getVendedoresDelMes — no confundir con el
+        // endpoint de mismo nombre bajo /api/reportes en ReportesController,
+        // que es una implementación aparte (duplicada inline, no delega en el
+        // service) para compatibilidad con clientes viejos.
+        final response = await _apiService.get<List<Map<String, dynamic>>>(
+          '/vendedores-mes?dias=$dias',
+          (json) => List<Map<String, dynamic>>.from(json),
+        );
+        return response.isSuccess ? (response.data ?? []) : <Map<String, dynamic>>[];
+      } catch (e) {
+        return <Map<String, dynamic>>[];
       }
-    } catch (e) {
-        
-      return [];
-    }
+    }, forzar: forzar);
   }
 
   /// Ranking de ventas por facturador (Pedido.mesero) en un rango de fechas
@@ -459,7 +478,16 @@ class ReportesService {
       // En una implementación real, usarías SharedPreferences o similar
                // Por ahora solo mostramos el mensaje
     } catch (e) {
-        
+
     }
   }
+}
+
+/// Entrada del caché genérico de [ReportesService] — [data] es `dynamic` a
+/// propósito porque un solo mapa cachea respuestas de tipos distintos
+/// (DashboardData, List<Map>...); `_cacheado<T>` hace el cast al leerla.
+class _ReporteCacheEntry {
+  final dynamic data;
+  final DateTime cacheadoEn;
+  _ReporteCacheEntry(this.data, this.cacheadoEn);
 }

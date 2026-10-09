@@ -267,14 +267,19 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
       child: Column(
         children: [
           Expanded(
-            child: ListView.separated(
-              itemCount: paginarLista(_clientesFiltrados).length,
-              separatorBuilder: (context, index) => Divider(height: 1),
-              itemBuilder: (context, index) {
-                final cliente = paginarLista(_clientesFiltrados)[index];
-                return _buildClienteItem(cliente);
-              },
-            ),
+            child: Builder(builder: (context) {
+              // Antes paginarLista(_clientesFiltrados) se llamaba una vez
+              // para itemCount y de nuevo POR CADA item visible en
+              // itemBuilder — cada llamada re-arma el sublist completo de la
+              // página. Calcularlo una sola vez acá evita ese trabajo
+              // repetido en cada build.
+              final pagina = paginarLista(_clientesFiltrados);
+              return ListView.separated(
+                itemCount: pagina.length,
+                separatorBuilder: (context, index) => Divider(height: 1),
+                itemBuilder: (context, index) => _buildClienteItem(pagina[index]),
+              );
+            }),
           ),
           buildPaginacion(
             totalItems: _clientesFiltrados.length,

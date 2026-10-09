@@ -314,14 +314,15 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
       child: Column(
         children: [
           Expanded(
-            child: ListView.separated(
-              itemCount: paginarLista(_cotizacionesFiltradas).length,
-              separatorBuilder: (context, index) => Divider(height: 1),
-              itemBuilder: (context, index) {
-                final cotizacion = paginarLista(_cotizacionesFiltradas)[index];
-                return _buildCotizacionItem(cotizacion);
-              },
-            ),
+            child: Builder(builder: (context) {
+              // Una sola vez por build, no una vez por item visible.
+              final pagina = paginarLista(_cotizacionesFiltradas);
+              return ListView.separated(
+                itemCount: pagina.length,
+                separatorBuilder: (context, index) => Divider(height: 1),
+                itemBuilder: (context, index) => _buildCotizacionItem(pagina[index]),
+              );
+            }),
           ),
           buildPaginacion(
             totalItems: _cotizacionesFiltradas.length,

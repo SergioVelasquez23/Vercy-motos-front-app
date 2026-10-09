@@ -525,13 +525,17 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                               ],
                             ),
                           )
-                        : ListView.builder(
-                            itemCount: paginarLista(_productosFiltrados).length,
-                            itemBuilder: (context, index) {
-                              final producto = paginarLista(_productosFiltrados)[index];
-                              return _buildFilaTabla(producto, index);
-                            },
-                          ),
+                        : Builder(builder: (context) {
+                            // Una sola vez por build en vez de recalcular el
+                            // sublist de la página en itemCount y de nuevo
+                            // por cada fila visible en itemBuilder.
+                            final pagina = paginarLista(_productosFiltrados);
+                            return ListView.builder(
+                              itemCount: pagina.length,
+                              itemBuilder: (context, index) =>
+                                  _buildFilaTabla(pagina[index], index),
+                            );
+                          }),
                   ),
                 ],
               ),
