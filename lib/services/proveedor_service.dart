@@ -3,33 +3,63 @@ import 'package:http/http.dart' as http;
 import '../config/constants.dart';
 import '../config/endpoints_config.dart';
 import '../models/proveedor.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import '../utils/logger.dart';
-import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
+import '../utils/token_storage.dart' show readJwtToken;
 import '../utils/api_error.dart';
 
 class ProveedorService {
   static String get baseUrl => kDynamicBackendUrl;
-  final storage = FlutterSecureStorage();
   final _endpoints = EndpointsConfig().proveedores;
 
-  // Obtener token del storage
+  // Obtener token del storage — delega en token_storage.dart (cacheado en
+  // memoria, ver el comentario de readJwtToken).
   Future<String?> _getToken() async {
     try {
-      if (kIsWeb) {
-        return html.window.localStorage['jwt_token'];
-      } else {
-        return await storage.read(key: 'jwt_token');
-      }
+      return await readJwtToken();
     } catch (e) {
-        
+
       return null;
     }
   }
 
-  // Obtener proveedores activos (para selects/listas)
-  Future<List<Proveedor>> getProveedores() async {
+  // Caché en memoria de getProveedores() — static: compartido por todas las
+  // instancias (cada pantalla crea la suya, no es singleton), mismo patrón
+  // que ClienteService. 7 pantallas (Compras, Crear Factura Compra, Cuentas
+  // por Pagar, Gastos, Proveedores, Documento Soporte...) pedían la lista
+  // completa de proveedores cada una por su cuenta.
+  static List<Proveedor>? _cache;
+  static DateTime? _cacheEn;
+  static const _cacheTtl = Duration(minutes: 3);
+  static Future<List<Proveedor>>? _cargaEnCurso;
+
+  bool get _cacheVigente =>
+      _cache != null &&
+      _cacheEn != null &&
+      DateTime.now().difference(_cacheEn!) < _cacheTtl;
+
+  /// Olvida el caché de getProveedores() — llamar tras crear/editar/borrar
+  /// un proveedor para que la próxima lectura traiga el dato fresco.
+  static void invalidarCache() {
+    _cache = null;
+    _cacheEn = null;
+  }
+
+  /// Obtener proveedores activos (para selects/listas). Cacheado en memoria
+  /// (ver [_cache]); pasar [forzar] para saltarse el caché.
+  Future<List<Proveedor>> getProveedores({bool forzar = false}) async {
+    if (!forzar && _cacheVigente) return _cache!;
+    if (!forzar && _cargaEnCurso != null) return _cargaEnCurso!;
+
+    final future = _obtenerProveedoresDesdeRed();
+    _cargaEnCurso = future;
+    try {
+      return await future;
+    } finally {
+      _cargaEnCurso = null;
+    }
+  }
+
+  Future<List<Proveedor>> _obtenerProveedoresDesdeRed() async {
     try {
       final token = await _getToken();
       if (token == null) {
@@ -52,28 +82,29 @@ class ProveedorService {
 
         final decodedData = json.decode(responseBody);
 
+        List<Proveedor> proveedores;
         // Si la respuesta es un objeto con success/data, extraer la data
         if (decodedData is Map<String, dynamic>) {
-          if (decodedData.containsKey('data')) {
-            final data = decodedData['data'];
-            if (data is List) {
-              return data.map((json) => Proveedor.fromJson(json)).toList();
-            }
-          }
-            
-          return [];
+          final data = decodedData['data'];
+          proveedores = data is List
+              ? data.map((json) => Proveedor.fromJson(json)).toList()
+              : [];
+        } else if (decodedData is List) {
+          // Si la respuesta es directamente una lista
+          proveedores = decodedData.map((json) => Proveedor.fromJson(json)).toList();
+        } else {
+          proveedores = [];
         }
 
-        // Si la respuesta es directamente una lista
-        if (decodedData is List) {
-          return decodedData.map((json) => Proveedor.fromJson(json)).toList();
-        }
-
-                   return [];
+        _cache = proveedores;
+        _cacheEn = DateTime.now();
+        return proveedores;
       } else {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al cargar proveedores');
       }
     } catch (e) {
+      // Si falló pero hay un caché vencido, devolver eso antes que nada.
+      if (_cache != null) return _cache!;
       wrapOrThrow(e, context: 'Error al cargar proveedores');
     }
   }
@@ -146,6 +177,7 @@ class ProveedorService {
       );
 
       if (response.statusCode == 201) {
+        invalidarCache();
         return Proveedor.fromJson(json.decode(response.body));
       } else {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al crear proveedor');
@@ -189,6 +221,7 @@ class ProveedorService {
         
 
       if (response.statusCode == 200) {
+        invalidarCache();
         return Proveedor.fromJson(json.decode(response.body));
       } else {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al actualizar proveedor');
@@ -228,7 +261,7 @@ class ProveedorService {
         
 
       bool success = response.statusCode == 200;
-         
+      if (success) invalidarCache();
       return success;
     } catch (e) {
       wrapOrThrow(e, context: 'Error al cambiar estado del proveedor');

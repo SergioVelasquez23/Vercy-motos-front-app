@@ -23,11 +23,25 @@ String? pickPreferredToken({String? memoryToken, String? storageToken}) {
   return null;
 }
 
+// Caché en memoria del JWT — en móvil/desktop, FlutterSecureStorage().read()
+// es una llamada a un canal de plataforma nativo: cualquier pantalla con
+// varias peticiones (y hay pantallas con 8-10) la repetía una vez por
+// petición solo para leer el mismo valor. En web no hace falta (localStorage
+// ya es sincrónico), pero mantener una sola ruta evita otra bifurcación.
+// [cacheJwtTokenInMemory] la mantiene sincronizada: login/logout deben
+// llamarla junto con escribir/borrar el token real (ver UserProvider).
+String? _memoryToken;
+
+void cacheJwtTokenInMemory(String? token) {
+  _memoryToken = token?.trim().isEmpty == true ? null : token;
+}
+
 /// Lee el JWT guardado, con el mismo criterio de plataforma que usa
 /// UserProvider/AuthService al iniciar sesión: en web, del
 /// window.localStorage donde se guarda (ahí es donde AuthService.saveToken
 /// y UserProvider.setToken lo escriben en web); en móvil/desktop, de
-/// FlutterSecureStorage.
+/// FlutterSecureStorage (o de la caché en memoria de arriba, si ya se leyó
+/// una vez en esta sesión).
 ///
 /// Antes varios servicios leían el token solo con
 /// `FlutterSecureStorage().read(key: 'jwt_token')`, que en web NUNCA
@@ -38,17 +52,22 @@ Future<String?> readJwtToken() async {
   if (kIsWeb) {
     // ignore: undefined_prefixed_name
     final storageToken = html.window.localStorage['jwt_token'];
-    return pickPreferredToken(memoryToken: null, storageToken: storageToken);
+    return pickPreferredToken(memoryToken: _memoryToken, storageToken: storageToken);
   }
+
+  if (_memoryToken != null) return _memoryToken;
 
   const storage = FlutterSecureStorage();
   final storageToken = await storage.read(key: 'jwt_token');
-  return pickPreferredToken(memoryToken: null, storageToken: storageToken);
+  final token = pickPreferredToken(memoryToken: _memoryToken, storageToken: storageToken);
+  _memoryToken = token;
+  return token;
 }
 
 /// Contraparte de [readJwtToken] para logout: borra el token del mismo
-/// lugar de donde se lee según la plataforma.
+/// lugar de donde se lee según la plataforma, y de la caché en memoria.
 Future<void> clearJwtToken() async {
+  _memoryToken = null;
   if (kIsWeb) {
     // ignore: undefined_prefixed_name
     html.window.localStorage.remove('jwt_token');

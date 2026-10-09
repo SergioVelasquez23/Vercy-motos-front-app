@@ -2,28 +2,19 @@
 import 'package:http/http.dart' as http;
 import '../config/constants.dart';
 import '../models/role.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-// ignore: uri_does_not_exist
-import 'dart:html'
-    if (dart.library.io) 'package:vercy_motos/utils/html_stub.dart'
-    as html;
+import '../utils/token_storage.dart' show readJwtToken;
 import '../utils/api_error.dart';
 
 class RoleService {
   static String get baseUrl => kDynamicBackendUrl;
-  final storage = FlutterSecureStorage();
 
-  // Obtener token del storage
+  // Obtener token del storage — delega en token_storage.dart (cacheado en
+  // memoria, ver el comentario de readJwtToken).
   Future<String?> _getToken() async {
     try {
-      if (kIsWeb) {
-        return html.window.localStorage['jwt_token'];
-      } else {
-        return await storage.read(key: 'jwt_token');
-      }
+      return await readJwtToken();
     } catch (e) {
-        
+
       return null;
     }
   }

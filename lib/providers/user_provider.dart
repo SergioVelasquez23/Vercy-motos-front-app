@@ -7,6 +7,7 @@ import 'dart:html'
     if (dart.library.io) 'package:vercy_motos/utils/html_stub.dart'
     as html;
 import '../utils/jwt_utils.dart';
+import '../utils/token_storage.dart' show cacheJwtTokenInMemory;
 
 class UserProvider extends ChangeNotifier {
   // Singleton: HttpApiService necesita poder forzar un logout completo
@@ -111,6 +112,7 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<void> _clearStoredToken() async {
+    cacheJwtTokenInMemory(null);
     if (kIsWeb) {
       html.window.localStorage.remove('jwt_token');
     } else {
@@ -120,6 +122,10 @@ class UserProvider extends ChangeNotifier {
 
   Future<void> setToken(String token, {bool saveToStorage = true}) async {
     _token = token;
+    // Sincroniza la caché en memoria que usa token_storage.dart (compartida
+    // por los servicios que leen el token con readJwtToken()) — sin esto, un
+    // login quedaba "atrás" de la caché hasta la próxima lectura desde disco.
+    cacheJwtTokenInMemory(token);
 
     try {
       // Extract user information from token

@@ -1,10 +1,8 @@
 import 'dart:convert';
 import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:async'; // Importar para usar StreamController
-import 'package:flutter/foundation.dart';
-import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
+import '../utils/token_storage.dart' show readJwtToken;
 import '../models/pedido.dart';
 import '../utils/pedido_helper.dart'; // Añadido import
 import '../services/producto_service.dart';
@@ -202,19 +200,17 @@ class PedidoService implements IPedidoService {
   }
 
   String get baseUrl => ApiConfig.instance.baseUrl;
-  final storage = FlutterSecureStorage();
   final ProductoService _productoService = ProductoService();
 
-  // Obtener token del storage
+  // Obtener token del storage — delega en token_storage.dart (cacheado en
+  // memoria; ver el comentario de readJwtToken). Esta clase sola hace
+  // decenas de _getHeaders() por pantalla (crear/pagar/listar pedidos),
+  // cada una antes releía el storage seguro desde cero.
   Future<String?> _getToken() async {
     try {
-      if (kIsWeb) {
-        return html.window.localStorage['jwt_token'];
-      } else {
-        return await storage.read(key: 'jwt_token');
-      }
+      return await readJwtToken();
     } catch (e) {
-        
+
       return null;
     }
   }
@@ -791,7 +787,12 @@ class PedidoService implements IPedidoService {
         headers: headers,
         body: json.encode(pedido.toJson()),
           )
-          .timeout(const Duration(seconds: 90));
+          // 90s -> 30s: crear/actualizar/pagar un pedido es la acción más
+          // frecuente e interactiva de toda la app (cada venta la dispara) —
+          // ante un cuelgue del backend, 90s dejaba al cajero mirando un
+          // spinner hasta minuto y medio sin ninguna señal. 30s ya es el
+          // estándar del resto de servicios (ClienteService, etc.).
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 201) {
         return Pedido.fromJson(json.decode(response.body));
@@ -831,7 +832,12 @@ class PedidoService implements IPedidoService {
         headers: headers,
         body: json.encode(pedidoJson),
           )
-          .timeout(const Duration(seconds: 90));
+          // 90s -> 30s: crear/actualizar/pagar un pedido es la acción más
+          // frecuente e interactiva de toda la app (cada venta la dispara) —
+          // ante un cuelgue del backend, 90s dejaba al cajero mirando un
+          // spinner hasta minuto y medio sin ninguna señal. 30s ya es el
+          // estándar del resto de servicios (ClienteService, etc.).
+          .timeout(const Duration(seconds: 30));
 
         
         
@@ -906,7 +912,12 @@ class PedidoService implements IPedidoService {
         headers: headers,
         body: json.encode(pedidoJson),
           )
-          .timeout(const Duration(seconds: 90));
+          // 90s -> 30s: crear/actualizar/pagar un pedido es la acción más
+          // frecuente e interactiva de toda la app (cada venta la dispara) —
+          // ante un cuelgue del backend, 90s dejaba al cajero mirando un
+          // spinner hasta minuto y medio sin ninguna señal. 30s ya es el
+          // estándar del resto de servicios (ClienteService, etc.).
+          .timeout(const Duration(seconds: 30));
 
         
         
@@ -2044,7 +2055,12 @@ class PedidoService implements IPedidoService {
         headers: headers,
         body: json.encode(pagarData),
           )
-          .timeout(const Duration(seconds: 90));
+          // 90s -> 30s: crear/actualizar/pagar un pedido es la acción más
+          // frecuente e interactiva de toda la app (cada venta la dispara) —
+          // ante un cuelgue del backend, 90s dejaba al cajero mirando un
+          // spinner hasta minuto y medio sin ninguna señal. 30s ya es el
+          // estándar del resto de servicios (ClienteService, etc.).
+          .timeout(const Duration(seconds: 30));
 
         
         

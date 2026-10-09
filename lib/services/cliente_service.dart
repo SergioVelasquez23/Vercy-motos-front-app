@@ -27,17 +27,61 @@ class ClienteService {
 
   // CRUD
 
-  /// Obtener todos los clientes
-  Future<List<Cliente>> obtenerClientes() async {
+  // Caché en memoria de obtenerClientes() — static: compartido por todas las
+  // instancias de ClienteService (cada pantalla crea la suya propia, no es
+  // singleton), igual que DocumentosCache/DatosCacheProvider. Facturación,
+  // Análisis Ventas, Pedidos Asesor, Cotización, Clientes y Reportes llamaban
+  // cada una a /api/clientes por su cuenta — la misma lista completa, 6 veces
+  // por sesión en vez de una. TTL corto porque a diferencia de productos acá
+  // no hay WebSocket que avise cambios en tiempo real.
+  static List<Cliente>? _cache;
+  static DateTime? _cacheEn;
+  static const _cacheTtl = Duration(minutes: 3);
+  static Future<List<Cliente>>? _cargaEnCurso;
+
+  bool get _cacheVigente =>
+      _cache != null &&
+      _cacheEn != null &&
+      DateTime.now().difference(_cacheEn!) < _cacheTtl;
+
+  /// Olvida el caché de obtenerClientes() — llamar tras crear/editar/borrar
+  /// un cliente para que la próxima lectura traiga el dato fresco.
+  static void invalidarCache() {
+    _cache = null;
+    _cacheEn = null;
+  }
+
+  /// Obtener todos los clientes. Cacheado en memoria (ver [_cache]); pasar
+  /// [forzar] para saltarse el caché y pedirlos de nuevo al backend.
+  Future<List<Cliente>> obtenerClientes({bool forzar = false}) async {
+    if (!forzar && _cacheVigente) {
+      return _cache!;
+    }
+    // Deduplicar llamadas concurrentes a la misma lista (varias pantallas
+    // pidiendo clientes casi al mismo tiempo) en una sola petición de red.
+    if (!forzar && _cargaEnCurso != null) {
+      return _cargaEnCurso!;
+    }
+
+    final future = _obtenerClientesDesdeRed();
+    _cargaEnCurso = future;
     try {
-        
+      return await future;
+    } finally {
+      _cargaEnCurso = null;
+    }
+  }
+
+  Future<List<Cliente>> _obtenerClientesDesdeRed() async {
+    try {
+
       final response = await http.get(
         Uri.parse(baseUrl),
         headers: await _headers,
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
-          
+
         final dynamic responseData = json.decode(response.body);
 
         // Manejar si viene como lista directa o dentro de un objeto
@@ -47,18 +91,24 @@ class ClienteService {
         } else if (responseData is Map && responseData['data'] != null) {
           data = responseData['data'];
         } else {
-            
+
           throw Exception('Estructura de respuesta inesperada');
         }
 
-          
-        return data.map((json) => Cliente.fromJson(json)).toList();
+
+        final clientes = data.map((json) => Cliente.fromJson(json)).toList();
+        _cache = clientes;
+        _cacheEn = DateTime.now();
+        return clientes;
       }
 
-        
+
       throwBackendError(response.body, response.statusCode, prefix: 'Error al obtener clientes');
     } catch (e) {
-        
+      // Si falló pero hay un caché vencido, es mejor devolver eso que nada
+      // — mismo criterio que DatosCacheProvider con productos.
+      if (_cache != null) return _cache!;
+
       rethrow;
     }
   }
@@ -119,6 +169,7 @@ class ClienteService {
       ).timeout(_timeout);
 
       if (response.statusCode == 201 || response.statusCode == 200) {
+        invalidarCache();
         return Cliente.fromJson(json.decode(response.body));
       }
 
@@ -138,6 +189,7 @@ class ClienteService {
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
+        invalidarCache();
         return Cliente.fromJson(json.decode(response.body));
       }
 
@@ -155,9 +207,10 @@ class ClienteService {
         headers: await _headers,
         body: json.encode({'estado': 'inactivo'}),
       );
+      if (response.statusCode == 200) invalidarCache();
       return response.statusCode == 200;
     } catch (e) {
-        
+
       return false;
     }
   }
@@ -234,6 +287,7 @@ class ClienteService {
       );
 
       if (response.statusCode == 200) {
+        invalidarCache();
         return Cliente.fromJson(json.decode(response.body));
       }
 
@@ -252,6 +306,7 @@ class ClienteService {
       );
 
       if (response.statusCode == 200) {
+        invalidarCache();
         return Cliente.fromJson(json.decode(response.body));
       }
 

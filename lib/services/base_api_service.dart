@@ -1,12 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/api_response.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
-import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
+import 'package:flutter/foundation.dart' show kDebugMode;
 import '../config/api_config.dart';
 import '../utils/logger.dart';
 import '../utils/api_error.dart';
+import '../utils/token_storage.dart' show readJwtToken;
 
 /// Clase base para todos los servicios de API
 /// Centraliza la lógica común de autenticación, headers y manejo de errores
@@ -17,7 +16,6 @@ class BaseApiService {
 
   // Cliente HTTP reutilizable
   http.Client _httpClient = http.Client();
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
   static const Duration _defaultTimeout = Duration(seconds: 15);
 
   /// Getter para acceso al cliente HTTP
@@ -32,14 +30,15 @@ class BaseApiService {
   /// Obtiene la URL base de la API
   String get baseUrl => ApiConfig.instance.baseUrl;
 
-  /// Obtiene el token de autenticación desde el almacenamiento seguro
+  /// Obtiene el token de autenticación. Delega en token_storage.dart (antes
+  /// esto era una implementación propia y duplicada: leía FlutterSecureStorage
+  /// directo en vez de localStorage en web — nunca encontraba el token ahí —
+  /// y sin la caché en memoria que ya tiene readJwtToken(), que evita releer
+  /// el storage seguro en cada petición de las muchas pantallas que encadenan
+  /// varias llamadas.
   Future<String?> getToken() async {
     try {
-      if (kIsWeb) {
-        return html.window.localStorage['jwt_token'];
-      } else {
-        return await _storage.read(key: 'jwt_token');
-      }
+      return await readJwtToken();
     } catch (e) {
       return null;
     }
