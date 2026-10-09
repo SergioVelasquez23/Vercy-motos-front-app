@@ -564,8 +564,8 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> with Subm
                   Expanded(
                     child: InkWell(
                       // runGuarded evita que un doble-tap (o doble-confirmacion
-                      // en el dialogo) dispare dos veces revertirInventarioCompra
-                      // para la misma factura - sin esto, el stock se devolvia
+                      // en el dialogo) dispare dos veces la eliminacion
+                      // de la misma factura - sin esto, el stock se devolvia
                       // dos veces aunque el segundo eliminarFacturaCompra fallara.
                       onTap: _isLoading
                           ? null
@@ -749,9 +749,6 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> with Subm
     if (result != null) {
       setState(() => _isLoading = true);
       try {
-        // Revertir inventario ANTES de eliminar la factura
-        await _facturaCompraService.revertirInventarioCompra(factura);
-
         final resultado = await _facturaCompraService.eliminarFacturaCompra(
           factura.id!,
           motivoEliminacion: result.isNotEmpty ? result : null,

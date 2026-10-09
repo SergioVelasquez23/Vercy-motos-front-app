@@ -810,9 +810,6 @@ class _ComprasListScreenState extends State<ComprasListScreen>
     if (result != null) {
       setState(() => _isLoading = true);
       try {
-        // Revertir inventario ANTES de eliminar la factura
-        await _facturaCompraService.revertirInventarioCompra(compra);
-
         final resultado = await _facturaCompraService.eliminarFacturaCompra(
           compra.id!,
           motivoEliminacion: result.isNotEmpty ? result : null,

@@ -5,7 +5,7 @@ class MovimientoStock {
   final String productoId;
   final String productoNombre;
   final int cantidad; // Positivo (+) o negativo (-)
-  final String tipo; // 'entrada', 'salida', 'ajuste', 'devolución', 'venta'
+  final String tipo; // 'entrada', 'salida', 'ajuste', 'devolucion', 'venta', 'traslado'
   final DateTime fecha;
   final String? observaciones;
   final String? usuario;
@@ -63,10 +63,13 @@ class MovimientoStock {
         return 'Salida';
       case 'ajuste':
         return 'Ajuste';
+      case 'devolucion':
       case 'devolución':
         return 'Devolución';
       case 'venta':
         return 'Venta';
+      case 'traslado':
+        return 'Traslado';
       default:
         return tipo;
     }

@@ -3,16 +3,12 @@ import 'package:provider/provider.dart';
 import '../models/pedido.dart';
 import '../models/producto.dart';
 import '../models/cuadre_caja.dart';
-import '../models/inventario.dart';
-import '../models/movimiento_inventario.dart';
 import '../services/pedido_service.dart';
 import '../services/cuadre_caja_service.dart';
-import '../services/inventario_service.dart';
 import '../services/notification_service.dart';
 import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../utils/format_utils.dart';
-import '../utils/datetime_utils.dart';
 import '../theme/app_theme.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
@@ -113,7 +109,6 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
 
   final PedidoService _pedidoService = PedidoService();
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
-  final InventarioService _inventarioService = InventarioService();
   List<Pedido> _pedidos = [];
   List<Pedido> _pedidosFiltrados = [];
   List<Pedido> _pedidosPorPeriodoCaja =
@@ -239,87 +234,6 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
         _error = errorMessage(e);
         _isLoading = false;
       });
-    }
-  }
-
-  /// 📦 NUEVO: Reversa el inventario de un pedido eliminado (operación inversa a descontar)
-  /// Este método agrega de vuelta al inventario los ingredientes que se descontaron cuando se pagó el pedido
-  Future<void> _reversarInventarioDelPedido(Pedido pedido) async {
-      
-
-    try {
-      // Obtener todos los items del inventario
-      final inventario = await _inventarioService.getInventario();
-        
-
-      int itemsRestaurados = 0;
-
-      // Iterar sobre todos los items del pedido
-      for (var itemPedido in pedido.items) {
-           
-        // Verificar que el item tenga ingredientes usados
-        if (itemPedido.ingredientesUsados.isEmpty) {
-                       continue;
-        }
-
-          
-
-        // Restaurar cada ingrediente al inventario
-        for (var ingredienteId in itemPedido.ingredientesUsados) {
-          // Buscar el ingrediente en el inventario
-          final itemInventario = inventario.firstWhere(
-            (item) => item.id == ingredienteId,
-            orElse: () => Inventario(
-              id: '',
-              categoria: '',
-              codigo: '',
-              nombre: 'No encontrado',
-              unidad: '',
-              precioCompra: 0,
-              stockActual: 0,
-              stockMinimo: 0,
-              estado: 'INACTIVO',
-            ),
-          );
-
-          if (itemInventario.id.isEmpty) {
-              
-            continue;
-          }
-
-          // Crear movimiento de ENTRADA por cada unidad del item pedido
-          // (la cantidad a restaurar es la misma que se descontó)
-          final cantidadARestaurar = itemPedido.cantidad.toDouble();
-
-          final movimiento = MovimientoInventario(
-            inventarioId: itemInventario.id,
-            productoId: itemPedido.productoId,
-            productoNombre: itemPedido.productoNombre ?? 'Producto',
-            tipoMovimiento: 'Entrada - Reversión',
-            motivo: 'Reversión por eliminación de pedido pagado',
-            cantidadAnterior: itemInventario.stockActual,
-            cantidadMovimiento: cantidadARestaurar, // POSITIVO para restaurar
-            cantidadNueva: itemInventario.stockActual + cantidadARestaurar,
-            responsable: 'Sistema',
-            referencia: 'Pedido ${pedido.id} - Mesa ${pedido.mesa}',
-            observaciones: 'Restauración automática al eliminar pedido pagado',
-            fecha: DateTimeUtils.nowColombia(),
-          );
-
-          try {
-            await _inventarioService.crearMovimientoInventario(movimiento);
-            itemsRestaurados++;
-                         } catch (e) {
-                         }
-        }
-      }
-
-        
-        
-        
-    } catch (e) {
-        
-      // No lanzar el error para que no bloquee la eliminación del pedido
     }
   }
 
@@ -992,18 +906,13 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
 
       for (String pedidoId in pedidosIds) {
         try {
-          // ✅ NUEVO: Obtener el pedido completo antes de eliminarlo
-          // para poder reversar el inventario
+          // Pedido completo: se necesita para notificar el cambio a las demás pantallas
           final pedido = _pedidos.firstWhere(
             (p) => p.id == pedidoId,
             orElse: () => throw Exception('Pedido no encontrado: $pedidoId'),
           );
 
-          // ✅ NUEVO: Reversar el inventario ANTES de eliminar el pedido
-            
-          await _reversarInventarioDelPedido(pedido);
-
-          // Eliminar el pedido (esto revierte el dinero automáticamente)
+          // El backend restaura el inventario y revierte el dinero al eliminar el pedido
           await _pedidoService.eliminarPedidoPagado(pedidoId);
           exitosos++;
                        
