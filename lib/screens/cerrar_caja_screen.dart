@@ -778,6 +778,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> with SubmitGuard {
       );
 
       if (cuadre.id != null) {
+        _pedidoService.limpiarCacheCuadreId();
         // Mostrar mensaje apropiado según si hay descuadre o no
         if (descuadre.abs() > 0.01) {
           _mostrarExito(

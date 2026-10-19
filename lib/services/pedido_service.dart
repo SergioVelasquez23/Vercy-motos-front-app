@@ -90,6 +90,8 @@ class PedidoService implements IPedidoService {
   final Map<String, DateTime> _estadoCorregidoCache = {};
   
   final Map<String, String?> _cuadreIdActivoPorTipo = {};
+  final Map<String, DateTime> _cuadreIdActivoPorTipoTs = {};
+  static const Duration _ttlCuadreIdActivo = Duration(seconds: 30);
 
   final InventarioService _inventarioService = InventarioService();
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
@@ -225,9 +227,17 @@ class PedidoService implements IPedidoService {
   /// mostrando "Debe abrir caja" con la caja abierta y todo. Quien llama a
   /// este método decide cómo mostrar el error real si la consulta falla.
   Future<String?> _getCuadreIdActivo(String tipoCaja) async {
+    final ts = _cuadreIdActivoPorTipoTs[tipoCaja];
+    if (ts != null &&
+        DateTime.now().difference(ts) < _ttlCuadreIdActivo &&
+        _cuadreIdActivoPorTipo.containsKey(tipoCaja)) {
+      return _cuadreIdActivoPorTipo[tipoCaja];
+    }
+
     final cajaActiva = await _cuadreCajaService.getCajaActivaPorTipo(tipoCaja);
     appLog('[PedidoService] tipoCaja=$tipoCaja cajaActiva.id = ${cajaActiva?.id}');
     _cuadreIdActivoPorTipo[tipoCaja] = cajaActiva?.id;
+    _cuadreIdActivoPorTipoTs[tipoCaja] = DateTime.now();
     return cajaActiva?.id;
   }
 
@@ -256,6 +266,7 @@ class PedidoService implements IPedidoService {
 
   void limpiarCacheCuadreId() {
     _cuadreIdActivoPorTipo.clear();
+    _cuadreIdActivoPorTipoTs.clear();
   }
 
   /// 🔥 Pre-calentar: obtener cuadreId activo anticipadamente para que

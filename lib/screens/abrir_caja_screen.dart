@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../models/cuadre_caja.dart';
 import '../services/cuadre_caja_service.dart';
+import '../services/pedido_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/caja/caja_ya_abierta_widget.dart';
 import '../widgets/caja/formulario_abrir_caja_widget.dart';
@@ -122,6 +123,7 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> with SubmitGuard {
       );
 
       if (cuadre.id != null) {
+        PedidoService().limpiarCacheCuadreId();
         if (!mounted) return;
         _mostrarExito('Caja abierta exitosamente');
         Navigator.of(context).pop(true);
