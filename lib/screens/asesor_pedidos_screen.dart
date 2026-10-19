@@ -1006,29 +1006,33 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
               }
             }
 
-            final todosItems = [...pedido.items, ...nuevosFinales];
-            final nuevoTotal = todosItems.fold<double>(0, (sum, i) => sum + i.subtotal);
-            final pedidoActualizado = PedidoAsesor(
-              clienteNombre: pedido.clienteNombre,
-              clienteId: pedido.clienteId,
-              asesorNombre: pedido.asesorNombre,
-              asesorId: pedido.asesorId,
-              items: todosItems,
-              subtotal: nuevoTotal,
-              impuestos: pedido.impuestos,
-              total: nuevoTotal,
-              fechaCreacion: pedido.fechaCreacion,
-              observaciones: pedido.observaciones,
-            );
-
             try {
-              await _pedidoService.actualizarPedido(pedido.id!, pedidoActualizado);
+              final pedidoActualizado = await _pedidoService.agregarItems(
+                pedido.id!,
+                userProvider.userName ?? 'Asesor',
+                nuevosFinales,
+              );
               if (Navigator.canPop(sheetCtx)) Navigator.pop(sheetCtx);
-              _cargarMisPedidos();
+              if (mounted) {
+                setState(() {
+                  final idx = _misPedidos.indexWhere((p) => p.id == pedidoActualizado.id);
+                  if (idx >= 0) {
+                    _misPedidos[idx] = pedidoActualizado;
+                  }
+                });
+              }
               _mostrarExito('Pedido actualizado con ${nuevosFinales.length} producto(s)');
             } catch (e) {
               setSheet(() => guardando = false);
-              _mostrarError('Error al actualizar pedido: ${errorMessage(e)}');
+              if (e is BackendException && e.isConflict) {
+                if (Navigator.canPop(sheetCtx)) Navigator.pop(sheetCtx);
+                _mostrarError(
+                  'Este pedido ya no admite cambios (fue facturado o cancelado).',
+                );
+                _cargarMisPedidos();
+                return;
+              }
+              _mostrarError('Error al agregar productos: ${errorMessage(e)}');
             }
           }
 

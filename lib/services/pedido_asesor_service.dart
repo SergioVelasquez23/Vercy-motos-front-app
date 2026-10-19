@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../utils/api_error.dart';
 import '../models/pedido_asesor.dart';
+import '../models/item_pedido.dart';
 import '../utils/logger.dart';
 import '../utils/token_storage.dart';
 
@@ -225,6 +226,47 @@ class PedidoAsesorService {
       }
     } catch (e) {
         
+      rethrow;
+    }
+  }
+
+  // Agregar items a un pedido PENDIENTE existente (no reemplaza los que ya
+  // tiene, como sí hace actualizarPedido/PUT — el backend los suma).
+  // Permite a un asesor seguir agregando productos al mismo pedido para que
+  // caja facture todo de una sola vez.
+  Future<PedidoAsesor> agregarItems(
+    String id,
+    String usuario,
+    List<ItemPedido> items,
+  ) async {
+    try {
+      final headers = await _getHeaders();
+      final uri = Uri.parse(
+        '$baseUrl/$id/items',
+      ).replace(queryParameters: {'usuario': usuario});
+
+      final response = await http
+          .post(
+            uri,
+            headers: headers,
+            body: json.encode(items.map((item) => item.toJson()).toList()),
+          )
+          .timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final data = decoded is Map && decoded['data'] != null
+            ? decoded['data']
+            : decoded;
+        return PedidoAsesor.fromJson(data);
+      } else {
+        throwBackendError(
+          response.body,
+          response.statusCode,
+          prefix: 'Error al agregar productos al pedido',
+        );
+      }
+    } catch (e) {
       rethrow;
     }
   }
