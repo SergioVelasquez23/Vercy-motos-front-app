@@ -3,19 +3,24 @@ class ItemTraslado {
   final String? nombreProducto;
   final String? referencia;
   final int cantidad;
+  final double precioUnitario;
 
   const ItemTraslado({
     this.productoId,
     this.nombreProducto,
     this.referencia,
     this.cantidad = 0,
+    this.precioUnitario = 0,
   });
+
+  double get subtotal => cantidad * precioUnitario;
 
   factory ItemTraslado.fromJson(Map<String, dynamic> json) => ItemTraslado(
         productoId: json['productoId'],
         nombreProducto: json['nombreProducto'],
         referencia: json['referencia'],
         cantidad: (json['cantidad'] as num?)?.toInt() ?? 0,
+        precioUnitario: (json['precioUnitario'] as num?)?.toDouble() ?? 0,
       );
 }
 

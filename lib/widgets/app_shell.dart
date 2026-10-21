@@ -7,6 +7,7 @@ import '../providers/theme_provider.dart';
 import '../providers/notificaciones_provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../services/caja_realtime_service.dart';
+import '../utils/currency_utils.dart';
 import '../utils/notification_sound.dart';
 
 /// Shell persistente: sidebar a la izquierda + topbar minimal + área de contenido.
@@ -890,13 +891,38 @@ void _mostrarItemsTraslado(BuildContext context, NotificacionItem item) {
                               ],
                             ),
                           ),
-                          Text(
-                            'x${producto.cantidad}',
-                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                'x${producto.cantidad}',
+                                style: const TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                              if (producto.precioUnitario > 0)
+                                Text(
+                                  CurrencyUtils.format(producto.subtotal),
+                                  style: TextStyle(color: color.onSurface.withOpacity(0.6), fontSize: 11),
+                                ),
+                            ],
                           ),
                         ],
                       ),
                     ),
+                if (itemsTraslado.any((p) => p.precioUnitario > 0)) ...[
+                  const Divider(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Total', style: TextStyle(fontWeight: FontWeight.w700)),
+                      Text(
+                        CurrencyUtils.format(
+                          itemsTraslado.fold<double>(0, (s, p) => s + p.subtotal),
+                        ),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),

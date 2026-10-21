@@ -263,14 +263,22 @@ class NotificacionesProvider extends ChangeNotifier {
   }
 
   NotificacionItem _construirItemTraslado(Traslado traslado) {
-    final cantidadTotal = traslado.items.fold<int>(0, (sum, i) => sum + i.cantidad);
+    // Lista los productos por nombre (en vez de solo "N producto(s)") y suma su
+    // valor, para saber de un vistazo qué hay que preparar y de cuánto es.
+    const maxNombres = 3;
+    final nombres = traslado.items
+        .take(maxNombres)
+        .map((i) => '${i.cantidad}x ${i.nombreProducto ?? 'Producto'}')
+        .join(', ');
+    final restantes = traslado.items.length - maxNombres;
+    final detalle = restantes > 0 ? '$nombres y $restantes más' : nombres;
+    final valorTotal = traslado.items.fold<double>(0, (sum, i) => sum + i.subtotal);
+    final valor = valorTotal > 0 ? ' · ${CurrencyUtils.format(valorTotal)}' : '';
     return NotificacionItem(
       id: 'traslado-${traslado.id}',
       tipo: TipoNotificacion.trasladoPendiente,
       titulo: 'Nuevo traslado por preparar',
-      descripcion:
-          '${traslado.asesor ?? 'Un asesor'} solicitó ${traslado.items.length} '
-          'producto(s) · $cantidadTotal unidad(es) de bodega',
+      descripcion: '${traslado.asesor ?? 'Un asesor'} solicitó: $detalle$valor',
       ruta: '/traslados',
       origen: traslado,
       itemsTraslado: traslado.items,
