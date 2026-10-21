@@ -5,6 +5,7 @@ import '../models/cotizacion.dart';
 import '../models/cliente.dart';
 import '../models/negocio_info.dart';
 import '../providers/datos_cache_provider.dart';
+import '../providers/user_provider.dart';
 import '../services/cotizacion_service.dart';
 import '../services/cliente_service.dart';
 import '../services/negocio_info_service.dart';
@@ -92,6 +93,44 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
     await context.push('/facturar', extra: cotizacion);
     // Recargar lista al regresar (la cotización puede haber quedado convertida)
     _cargarCotizaciones();
+  }
+
+  Future<void> _convertirEnPedidoAsesor(Cotizacion cotizacion) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Convertir en pedido'),
+        content: const Text(
+          'Se creará un pedido de asesor con los productos de esta cotización y se '
+          'avisará a bodega para que los traiga al almacén. La cotización quedará como convertida.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Convertir')),
+        ],
+      ),
+    );
+    if (confirmar != true || cotizacion.id == null) return;
+
+    final user = Provider.of<UserProvider>(context, listen: false);
+    try {
+      await _cotizacionService.convertirAPedidoAsesor(
+        cotizacion.id!,
+        asesorNombre: user.userName ?? 'Asesor',
+        asesorId: user.userId,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cotización convertida en pedido. Bodega fue notificada.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      _cargarCotizaciones();
+    } catch (e) {
+      if (!mounted) return;
+      showErrorDialog(context, 'Error al convertir en pedido: ${errorMessage(e)}');
+    }
   }
 
   @override
@@ -515,6 +554,12 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
             icon: Icon(Icons.point_of_sale, color: AppTheme.primary),
             onPressed: () => _facturarCotizacion(cotizacion),
             tooltip: 'Facturar',
+          ),
+        if (cotizacion.puedeConvertirseAFactura)
+          IconButton(
+            icon: Icon(Icons.local_shipping_outlined, color: Colors.teal),
+            onPressed: () => _convertirEnPedidoAsesor(cotizacion),
+            tooltip: 'Convertir en pedido (avisa a bodega)',
           ),
         IconButton(
           icon: Icon(Icons.picture_as_pdf, color: Colors.orange),

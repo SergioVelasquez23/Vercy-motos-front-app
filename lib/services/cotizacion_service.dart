@@ -218,6 +218,24 @@ class CotizacionService {
     }
   }
 
+  /// Convierte la cotización en un pedido de asesor y avisa a bodega (el backend
+  /// registra el traslado bodega→almacén con los productos de la cotización).
+  Future<void> convertirAPedidoAsesor(String id, {required String asesorNombre, String? asesorId}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/$id/convertir-pedido-asesor'),
+        headers: await _headers,
+        body: json.encode({'asesorNombre': asesorNombre, if (asesorId != null) 'asesorId': asesorId}),
+      ).timeout(_timeout);
+
+      if (response.statusCode == 200) return;
+
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al convertir en pedido');
+    } catch (e) {
+      wrapOrThrow(e, context: 'Error al convertir en pedido');
+    }
+  }
+
   // Filtros
 
   /// Obtener cotizaciones por cliente
