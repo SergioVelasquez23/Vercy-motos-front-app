@@ -879,6 +879,41 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
               '${pedido.items.length} producto(s) · ${_formatFecha(pedido.fechaCreacion)}',
               style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
             ),
+            if (pedido.items.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: pedido.items
+                      .map(
+                        (item) => Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${item.cantidad}x ${item.productoNombre ?? 'Producto'}',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.85),
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                CurrencyUtils.format(item.subtotal),
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
             if (pedido.observaciones != null && pedido.observaciones!.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 2),
