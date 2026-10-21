@@ -114,19 +114,36 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
 
     final user = Provider.of<UserProvider>(context, listen: false);
     try {
-      await _cotizacionService.convertirAPedidoAsesor(
+      final excluidos = await _cotizacionService.convertirAPedidoAsesor(
         cotizacion.id!,
         asesorNombre: user.userName ?? 'Asesor',
         asesorId: user.userId,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cotización convertida en pedido. Bodega fue notificada.'),
-          backgroundColor: Colors.green,
-        ),
-      );
       _cargarCotizaciones();
+      if (excluidos.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cotización convertida en pedido. Bodega fue notificada.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        // Un diálogo (no snackbar) para que no se pierda: hay productos que NO entraron al pedido.
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Pedido creado con productos excluidos'),
+            content: Text(
+              'Bodega fue notificada, pero estos productos no tienen stock suficiente '
+              'en bodega y no se incluyeron en el pedido:\n\n${excluidos.map((e) => '• $e').join('\n')}',
+            ),
+            actions: [
+              FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Entendido')),
+            ],
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       showErrorDialog(context, 'Error al convertir en pedido: ${errorMessage(e)}');

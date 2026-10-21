@@ -220,7 +220,10 @@ class CotizacionService {
 
   /// Convierte la cotización en un pedido de asesor y avisa a bodega (el backend
   /// registra el traslado bodega→almacén con los productos de la cotización).
-  Future<void> convertirAPedidoAsesor(String id, {required String asesorNombre, String? asesorId}) async {
+  ///
+  /// Devuelve los productos que se excluyeron por no tener stock suficiente en
+  /// bodega (lista vacía si entraron todos), con el formato "Casco (pidió 5, hay 1)".
+  Future<List<String>> convertirAPedidoAsesor(String id, {required String asesorNombre, String? asesorId}) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/$id/convertir-pedido-asesor'),
@@ -228,7 +231,12 @@ class CotizacionService {
         body: json.encode({'asesorNombre': asesorNombre, if (asesorId != null) 'asesorId': asesorId}),
       ).timeout(_timeout);
 
-      if (response.statusCode == 200) return;
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        return ((data['excluidos'] as List?) ?? [])
+            .map((e) => '${e['productoNombre']} (pidió ${e['solicitado']}, hay ${e['disponible']})')
+            .toList();
+      }
 
       throwBackendError(response.body, response.statusCode, prefix: 'Error al convertir en pedido');
     } catch (e) {
