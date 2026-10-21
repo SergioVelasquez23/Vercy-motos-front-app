@@ -366,8 +366,30 @@ class PedidoAsesorService {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al eliminar pedido');
       }
     } catch (e) {
-        
+
       rethrow;
     }
+  }
+
+  /// Elimina varios pedidos de una vez (solo SUPERADMIN). Devuelve cuántos se
+  /// eliminaron y los que no se pudieron (por ejemplo, facturados) con su motivo.
+  Future<({int eliminados, List<String> fallidos})> eliminarPedidosEnLote(List<String> ids) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$baseUrl/eliminar-lote'),
+      headers: headers,
+      body: json.encode({'ids': ids}),
+    ).timeout(_timeout);
+
+    if (response.statusCode != 200) {
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al eliminar pedidos');
+    }
+
+    final data = json.decode(response.body) as Map<String, dynamic>;
+    final eliminados = (data['eliminados'] as List?)?.length ?? 0;
+    final fallidos = ((data['fallidos'] as List?) ?? [])
+        .map((f) => '${f['id']}: ${f['motivo']}')
+        .toList();
+    return (eliminados: eliminados, fallidos: fallidos);
   }
 }

@@ -27,6 +27,60 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
   bool _isLoading = false;
   String _filtroEstado = 'TODOS';
 
+  // Selección múltiple (solo SUPERADMIN): se activa con pulsación larga sobre un pedido.
+  final Set<String> _seleccionados = {};
+  bool get _modoSeleccion => _seleccionados.isNotEmpty;
+
+  void _alternarSeleccion(PedidoAsesor pedido) {
+    final id = pedido.id;
+    if (id == null) return;
+    setState(() {
+      if (!_seleccionados.remove(id)) _seleccionados.add(id);
+    });
+  }
+
+  Future<void> _eliminarSeleccionados() async {
+    final cantidad = _seleccionados.length;
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar pedidos'),
+        content: Text(
+          '¿Eliminar $cantidad pedido(s)? Esta acción no se puede deshacer. '
+          'Los pedidos facturados no se eliminan.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Eliminar', style: TextStyle(color: AppTheme.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmar != true) return;
+
+    try {
+      final resultado = await _pedidoService.eliminarPedidosEnLote(_seleccionados.toList());
+      if (!mounted) return;
+      // El backend revierte los traslados de los pedidos pendientes eliminados, así que
+      // el caché local de productos queda con stock viejo si no se limpia.
+      Provider.of<DatosCacheProvider>(context, listen: false).limpiarProductos();
+      setState(() => _seleccionados.clear());
+      if (resultado.fallidos.isEmpty) {
+        _mostrarExito('${resultado.eliminados} pedido(s) eliminado(s)');
+      } else {
+        _mostrarError(
+          '${resultado.eliminados} eliminado(s). No se pudieron eliminar '
+          '${resultado.fallidos.length}: ${resultado.fallidos.first}',
+        );
+      }
+      _cargarPedidos();
+    } catch (e) {
+      _mostrarError('Error al eliminar pedidos: ${errorMessage(e)}');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -143,17 +197,30 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'Pedidos de Asesores',
+          _modoSeleccion ? '${_seleccionados.length} seleccionado(s)' : 'Pedidos de Asesores',
           style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
-          onPressed: () =>
-              context.go('/dashboard'),
-        ),
-        actions: [
+        leading: _modoSeleccion
+            ? IconButton(
+                icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
+                onPressed: () => setState(() => _seleccionados.clear()),
+                tooltip: 'Cancelar selección',
+              )
+            : IconButton(
+                icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+                onPressed: () => context.go('/dashboard'),
+              ),
+        actions: _modoSeleccion
+            ? [
+                IconButton(
+                  icon: Icon(Icons.delete_outline, color: AppTheme.error),
+                  onPressed: _eliminarSeleccionados,
+                  tooltip: 'Eliminar seleccionados',
+                ),
+              ]
+            : [
           IconButton(
             icon: Icon(Icons.add_circle_outline, color: Theme.of(context).colorScheme.onSurface),
             onPressed: () {
@@ -267,19 +334,28 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
   }
 
   Widget _buildPedidoCard(PedidoAsesor pedido) {
+    final seleccionado = pedido.id != null && _seleccionados.contains(pedido.id);
+    final esSuperAdmin = Provider.of<UserProvider>(context, listen: false).isSuperAdmin;
+    // Los facturados no se pueden eliminar, así que no se ofrecen para selección.
+    final seleccionable = esSuperAdmin && pedido.estado != 'FACTURADO';
     return Card(
-      color: Theme.of(context).colorScheme.surface,
+      color: seleccionado
+          ? AppTheme.error.withOpacity(0.08)
+          : Theme.of(context).colorScheme.surface,
       margin: EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: _getEstadoColor(pedido.estado).withOpacity(0.5),
-        ),
+        side: seleccionado
+            ? BorderSide(color: AppTheme.error, width: 2)
+            : BorderSide(color: _getEstadoColor(pedido.estado).withOpacity(0.5)),
       ),
       child: InkWell(
-        onTap: pedido.estado == 'PENDIENTE'
-            ? () => _seleccionarPedido(pedido)
-            : null,
+        onLongPress: seleccionable ? () => _alternarSeleccion(pedido) : null,
+        onTap: _modoSeleccion
+            ? (seleccionable ? () => _alternarSeleccion(pedido) : null)
+            : pedido.estado == 'PENDIENTE'
+                ? () => _seleccionarPedido(pedido)
+                : null,
         borderRadius: BorderRadius.circular(12),
         child: Container(
           decoration: pedido.estado == 'PENDIENTE'
