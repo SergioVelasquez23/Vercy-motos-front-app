@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
 
 /// Ancho responsivo para el contenido de un diálogo que normalmente usa un
@@ -53,6 +54,105 @@ Future<bool> showConfirmDialog(
     ),
   );
   return result ?? false;
+}
+
+/// Diálogo de confirmación para eliminar algo (compra, factura, etc.) con un
+/// campo de texto opcional para el motivo. Retorna el motivo escrito (puede
+/// ser `''` si se dejó vacío) si el usuario confirma, o `null` si canceló.
+/// Antes este mismo diálogo (mismo título/mensaje/estilo de campo, cambiando
+/// solo "compra"/"factura") estaba duplicado tal cual en
+/// `compras_list_screen.dart` y `facturas_compras_screen.dart`.
+Future<String?> showMotivoEliminacionDialog(
+  BuildContext context, {
+  required String titulo,
+  required String mensaje,
+  String hintText = 'Motivo (opcional)',
+  String confirmText = 'Eliminar',
+}) {
+  final motivoController = TextEditingController();
+  final onSurface = Theme.of(context).colorScheme.onSurface;
+  return showDialog<String?>(
+    context: context,
+    builder: (ctx) {
+      return AlertDialog(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Text(titulo, style: TextStyle(color: onSurface)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(mensaje, style: TextStyle(color: onSurface.withOpacity(0.7))),
+            const SizedBox(height: 16),
+            TextField(
+              controller: motivoController,
+              maxLines: 3,
+              style: TextStyle(color: onSurface),
+              decoration: InputDecoration(
+                labelText: 'Razón de la eliminación (opcional)',
+                labelStyle: TextStyle(color: onSurface.withOpacity(0.7)),
+                hintText: hintText,
+                hintStyle: TextStyle(color: onSurface.withOpacity(0.7).withOpacity(0.5)),
+                filled: true,
+                fillColor: Theme.of(context).scaffoldBackgroundColor,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: onSurface.withOpacity(0.7).withOpacity(0.3)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: onSurface.withOpacity(0.7).withOpacity(0.3)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Colors.red),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(null),
+            child: Text('Cancelar', style: TextStyle(color: onSurface.withOpacity(0.7))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(motivoController.text.trim()),
+            child: Text(confirmText, style: const TextStyle(color: Colors.red)),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+/// Pregunta de dónde tomar una imagen (cámara o galería). Retorna el
+/// [ImageSource] elegido, o `null` si el usuario cerró el diálogo sin elegir.
+/// Antes este mismo diálogo estaba duplicado en `categorias_screen.dart` y
+/// `productos_screen.dart`.
+Future<ImageSource?> showImageSourceDialog(BuildContext context) {
+  final onSurface = Theme.of(context).colorScheme.onSurface;
+  return showDialog<ImageSource>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      title: Text('Seleccionar imagen', style: TextStyle(color: onSurface)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: Icon(Icons.camera_alt, color: AppTheme.primary),
+            title: Text('Tomar foto', style: TextStyle(color: onSurface)),
+            onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+          ),
+          ListTile(
+            leading: Icon(Icons.photo_library, color: AppTheme.primary),
+            title: Text('Galería', style: TextStyle(color: onSurface)),
+            onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Pregunta con qué caja se va a facturar un pedido de asesor: LOCAL o

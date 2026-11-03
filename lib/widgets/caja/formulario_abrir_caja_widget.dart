@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/currency_utils.dart';
+import '../common/gradient_action_button.dart';
 import 'caja_ui_helpers.dart';
 
 class FormularioAbrirCajaWidget extends StatelessWidget {
@@ -180,30 +181,14 @@ class FormularioAbrirCajaWidget extends StatelessWidget {
 
         // Botón para abrir caja
         Center(
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: AppTheme.primaryGradient,
-              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-              boxShadow: AppTheme.primaryShadow,
-            ),
-            child: ElevatedButton.icon(
-              icon: Icon(Icons.lock_open, size: 24),
-              label: Text(
-                'ABRIR CAJA',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                foregroundColor: Colors.white,
-                shadowColor: Colors.transparent,
-                padding: EdgeInsets.symmetric(horizontal: 40, vertical: 18),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                ),
-              ),
-              onPressed: onAbrirCaja,
-            ),
+          child: GradientActionButton(
+            label: 'ABRIR CAJA',
+            icon: Icons.lock_open,
+            fontSize: 18,
+            letterSpacing: 1,
+            expand: true,
+            padding: EdgeInsets.symmetric(horizontal: 40, vertical: 18),
+            onPressed: onAbrirCaja,
           ),
         ),
       ],

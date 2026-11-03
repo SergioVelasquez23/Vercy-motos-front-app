@@ -13,6 +13,7 @@ import '../providers/notificaciones_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../widgets/common/gradient_action_button.dart';
 
 class TrasladosScreen extends StatefulWidget {
   const TrasladosScreen({super.key});
@@ -2169,32 +2170,12 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
           ),
         ),
         SizedBox(width: 16),
-        Container(
-          decoration: BoxDecoration(
-            gradient: AppTheme.primaryGradient,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: AppTheme.primaryShadow,
-          ),
-          child: ElevatedButton.icon(
-            onPressed: _isLoading ? null : _crearTraslados,
-            icon: _isLoading
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : Icon(Icons.save),
-            label: Text('Guardar Traslados'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              foregroundColor: Colors.white,
-              shadowColor: Colors.transparent,
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            ),
-          ),
+        GradientActionButton(
+          label: 'Guardar Traslados',
+          icon: Icons.save,
+          borderRadius: 10,
+          isLoading: _isLoading,
+          onPressed: _crearTraslados,
         ),
       ],
     );

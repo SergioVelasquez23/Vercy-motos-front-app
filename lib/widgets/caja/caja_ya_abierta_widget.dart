@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/cuadre_caja.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/currency_utils.dart';
+import '../common/gradient_action_button.dart';
 import 'caja_ui_helpers.dart';
 
 class CajaYaAbiertaWidget extends StatelessWidget {
@@ -100,37 +101,22 @@ class CajaYaAbiertaWidget extends StatelessWidget {
         ),
         SizedBox(height: 24),
         Center(
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppTheme.warning, AppTheme.warning.withOpacity(0.8)],
-              ),
-              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.warning.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: Offset(0, 4),
-                ),
-              ],
+          child: GradientActionButton(
+            label: 'Ir a Cerrar Caja',
+            icon: Icons.lock_clock,
+            iconSize: 22,
+            padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            gradient: LinearGradient(
+              colors: [AppTheme.warning, AppTheme.warning.withOpacity(0.8)],
             ),
-            child: ElevatedButton.icon(
-              icon: Icon(Icons.lock_clock, size: 22),
-              label: Text(
-                'Ir a Cerrar Caja',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.warning.withOpacity(0.3),
+                blurRadius: 8,
+                offset: Offset(0, 4),
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                foregroundColor: Colors.white,
-                shadowColor: Colors.transparent,
-                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                ),
-              ),
-              onPressed: onIrCerrarCaja,
-            ),
+            ],
+            onPressed: onIrCerrarCaja,
           ),
         ),
       ],

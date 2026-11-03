@@ -473,38 +473,5 @@ class _CategoriasScreenState extends State<CategoriasScreen>
     );
   }
 
-  Future<ImageSource?> _showImageSourceDialog() async {
-    final Color cardBg = Color(0xFF252525);
-    final Color textLight = Color(0xFFE0E0E0);
-    final Color primary = Color(0xFFFF6B00);
-
-    return showDialog<ImageSource>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: cardBg,
-          title: Text('Seleccionar imagen', style: TextStyle(color: textLight)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: Icon(Icons.camera_alt, color: primary),
-                title: Text('Tomar foto', style: TextStyle(color: textLight)),
-                onTap: () {
-                  Navigator.of(context).pop(ImageSource.camera);
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.photo_library, color: primary),
-                title: Text('Galería', style: TextStyle(color: textLight)),
-                onTap: () {
-                  Navigator.of(context).pop(ImageSource.gallery);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+  Future<ImageSource?> _showImageSourceDialog() => showImageSourceDialog(context);
 }

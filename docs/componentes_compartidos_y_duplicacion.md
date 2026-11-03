@@ -23,9 +23,9 @@ god-file más grande (5,634 líneas, incluso creció) — ese problema sigue vig
 |---|---|---|---|---|
 | Snackbar de éxito/error/info | `utils/snackbar_helper.dart` | 8 | 41 (144 llamadas directas a `ScaffoldMessenger`) | **Alta** |
 | Diálogo de confirmación | `utils/dialogs_helper.dart` → `showConfirmDialog` | 48 | — pero existe una **segunda implementación paralela, muerta** (`dialogs/dialogo_confirmacion.dart`) | **Alta** (es dead code real) |
-| Diálogo "motivo" (texto + confirmar) | No existe todavía | 0 | 3 (`compras_list_screen.dart`, `eliminar_pedidos_screen.dart`, `facturas_compras_screen.dart`) | Media |
-| Selector de imagen (cámara/galería) | No existe todavía | 0 | 2 (`categorias_screen.dart`, `productos_screen.dart`) | Media |
-| Botón con degradado (`AppTheme.primaryGradient` + `ElevatedButton`) | No existe todavía | 0 | 6 archivos | Media |
+| Diálogo "motivo" (texto + confirmar) | `showMotivoEliminacionDialog` en `dialogs_helper.dart` | 2 (`compras_list_screen.dart`, `facturas_compras_screen.dart` — eran idénticos) | `eliminar_pedidos_screen.dart` queda custom (tiene banner de advertencia + lista de IDs, no es solo motivo+confirmar) | ✅ Resuelto (2 de 3) |
+| Selector de imagen (cámara/galería) | `showImageSourceDialog` en `dialogs_helper.dart` | 2 (`categorias_screen.dart`, `productos_screen.dart`) | 0 | ✅ Resuelto |
+| Botón con degradado (`Container`+gradiente + `ElevatedButton`) | `widgets/common/gradient_action_button.dart` → `GradientActionButton` | 3 (los 3 casos reales que había) | 0 | ✅ Resuelto |
 | Formateo de monto con separador de miles | `utils/currency_utils.dart` → `MilesInputFormatter` | 2 | el resto de campos de monto usan `double.tryParse` directo (riesgo real de mal-parseo) | **Alta** |
 | Paginación (lógica) | `utils/pagination_mixin.dart` | 9 | — | Buena adopción |
 | Paginación (UI) | `widgets/common/pagination_controls.dart` | 1 | 8 de las 9 que usan el mixin reconstruyen su propia UI de paginación | Media |
@@ -77,18 +77,37 @@ tres llamadas a usar `showConfirmDialog` (ya soporta `isDangerous`/`confirmColor
 
 ### 2.3 Patrones repetidos sin helper todavía (candidatos a extraer)
 
-- **Diálogo de "motivo"** (texto libre + Cancelar/Confirmar, usado al eliminar/anular):
-  duplicado en `compras_list_screen.dart`, `eliminar_pedidos_screen.dart`,
-  `facturas_compras_screen.dart`. Candidato a `showMotivoDialog(context, {title, label})`
-  en `dialogs_helper.dart`.
-- **Selector de imagen (cámara/galería)**: duplicado byte-a-byte en `categorias_screen.dart`
-  y `productos_screen.dart`. Candidato a `showImageSourceDialog(context)` reutilizable.
-- **Botón con degradado** (`Container` + `BoxDecoration(gradient: AppTheme.primaryGradient)`
-  + `ElevatedButton` transparente encima): el mismo bloque de ~15 líneas aparece en
-  `admin_panel_screen.dart`, `cerrar_caja_screen.dart`, `deudas_list_screen.dart`,
-  `traslados_screen.dart`, `widgets/caja/formulario_abrir_caja_widget.dart` y
-  `widgets/facturacion/botones_accion_facturacion.dart`. Candidato a un widget
-  `GradientButton(label:, icon:, onPressed:, gradient:)` en `widgets/common/`.
+- **Diálogo de "motivo"** (texto libre + Cancelar/Confirmar, usado al eliminar) — ✅
+  **resuelto parcialmente**. `compras_list_screen.dart` y `facturas_compras_screen.dart`
+  tenían el diálogo idéntico carácter por carácter (mismo título, mensaje, estilo de
+  campo); se extrajo a `showMotivoEliminacionDialog(context, {titulo, mensaje, hintText})`
+  en `dialogs_helper.dart` y se migraron ambos. `eliminar_pedidos_screen.dart` NO se
+  migró: su diálogo tiene contenido adicional genuino (banner de advertencia en rojo,
+  lista condicional de IDs, botón de confirmar distinto) — forzarlo en el mismo helper
+  habría requerido una API con "slot de contenido extra" que complica más de lo que
+  simplifica. Verificado con los 4 tests de `facturas_compras_screen_secuencias_test.dart`
+  que el diálogo extraído preserva el comportamiento exacto (mismo `AlertDialog`,
+  mismos textos, mismo guard de doble-tap).
+- **Selector de imagen (cámara/galería)** — ✅ **resuelto**. Estaba duplicado byte-a-byte
+  en `categorias_screen.dart` y `productos_screen.dart` (la versión de `categorias_screen.dart`
+  además tenía colores oscuros fijos a mano en vez de `Theme.of(context)`, por lo que
+  no respetaba tema claro — se corrigió de paso al migrar). Extraído a
+  `showImageSourceDialog(context)` en `dialogs_helper.dart`.
+- **Botón con degradado** (`Container` + `BoxDecoration(gradient: ...)` + `ElevatedButton`
+  transparente encima) — ✅ **resuelto**. La primera pasada contaba cualquier
+  `gradient: AppTheme.primaryGradient` como botón, pero la mayoría eran banners/badges
+  decorativos (un ícono o un título con fondo degradado, sin `onPressed`), no botones.
+  Verificado con grep buscando específicamente `ElevatedButton`/`InkWell` cerca del
+  degradado, los únicos 3 casos reales eran `widgets/caja/formulario_abrir_caja_widget.dart`
+  ("ABRIR CAJA"), `widgets/caja/caja_ya_abierta_widget.dart` ("Ir a Cerrar Caja", con
+  degradado *warning*, no *primary* — por eso no apareció en el primer grep) y
+  `traslados_screen.dart` ("Guardar Traslados", con spinner de carga inline). Se creó
+  `widgets/common/gradient_action_button.dart` (`GradientActionButton`) y se migraron
+  los 3 sitios.
+  `traslados_screen.dart` además tiene un `_buildBotonAccion` privado (botón compacto
+  tipo InkWell con variante outline/icon-only) que es un patrón distinto — no se forzó
+  dentro de `GradientActionButton` para no sobrecargar el componente; queda como
+  candidato a promover por separado si se repite en otra screen.
 
 ### 2.4 Lo que ya funciona bien y vale la pena generalizar
 
@@ -204,8 +223,8 @@ escribir código nuevo", pensada para que no se repitan los casos de la sección
 | Decidir qué hacer con `dialogs/dialogo_confirmacion.dart` (código muerto) | Bajo | Bajo | Resuelve una inconsistencia visual real si se elimina |
 | Migrar snackbars directos a `snackbar_helper.dart`, screen por screen al tocarlas | Bajo (incremental) | Bajo | Alto — consistencia visual inmediata |
 | Auditar campos de monto sin `MilesInputFormatter` y agregarlo | Bajo-medio | Bajo | Alto — previene bugs de monto mal interpretado |
-| Crear `showMotivoDialog` y `showImageSourceDialog` en `dialogs_helper.dart`, migrar los 5 sitios que los duplican | Medio | Bajo | Medio |
-| Crear `GradientButton` compartido, migrar los 6 sitios que lo duplican | Medio | Bajo | Medio (visual) |
+| ~~Crear `showMotivoEliminacionDialog` y `showImageSourceDialog`, migrar los sitios idénticos~~ | Medio | Bajo | ✅ Hecho (4 de 5 sitios; `eliminar_pedidos_screen.dart` queda custom a propósito) |
+| ~~Crear `GradientButton` compartido, migrar los sitios que lo duplican~~ | Medio | Bajo | ✅ Hecho (`GradientActionButton`, 3 sitios) |
 | Unificar `PaginacionMixin` + `PaginationControls` en las 8 screens que usan solo el mixin | Medio | Bajo | Medio |
 | Todo servicio nuevo parte de `BaseApiService().get/post/put/delete` | — (regla hacia adelante) | — | Alto a largo plazo |
 | Extraer lógica de negocio de screens grandes a controllers/view models | Alto | Medio | Muy alto, pero es el ítem de `analisis_arquitectura_frontend.md` — no duplicar esfuerzo aquí |

@@ -734,76 +734,12 @@ class _ComprasListScreenState extends State<ComprasListScreen>
 
   // Método para confirmar la eliminación de una compra
   Future<void> _confirmarEliminarCompra(FacturaCompra compra) async {
-    final motivoController = TextEditingController();
-    final result = await showDialog<String?>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          title: Text(
-            'Eliminar Compra',
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '¿Estás seguro de que deseas eliminar la compra ${compra.numeroFactura}?\n\n'
-                'Se revertirá el inventario asociado a esta compra.',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: motivoController,
-                maxLines: 3,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                decoration: InputDecoration(
-                  labelText: 'Razón de la eliminación (opcional)',
-                  labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-                  hintText: 'Ej: Factura duplicada, error de digitación...',
-                  hintStyle: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.5),
-                  ),
-                  filled: true,
-                  fillColor: Theme.of(context).scaffoldBackgroundColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7).withOpacity(0.3),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Colors.red),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(null),
-              child: Text(
-                'Cancelar',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(motivoController.text.trim());
-              },
-              child: Text('Eliminar', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        );
-      },
+    final result = await showMotivoEliminacionDialog(
+      context,
+      titulo: 'Eliminar Compra',
+      mensaje: '¿Estás seguro de que deseas eliminar la compra ${compra.numeroFactura}?\n\n'
+          'Se revertirá el inventario asociado a esta compra.',
+      hintText: 'Ej: Factura duplicada, error de digitación...',
     );
 
     if (result != null) {

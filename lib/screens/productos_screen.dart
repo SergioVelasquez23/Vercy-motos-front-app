@@ -918,7 +918,6 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                       onTap: () async {
                         final result = await _showImageSourceDialog();
                         if (result != null) {
-                          if (result is ImageSource) {
                             try {
                               // Usar el servicio de imágenes para seleccionar y subir
                               XFile? pickedFile;
@@ -997,7 +996,6 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                                 showErrorDialog(context, 'Error subiendo imagen: ${errorMessage(e)}');
                               }
                             }
-                          }
                         }
                       },
                       child: Container(
@@ -2857,45 +2855,7 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
     );
   }
 
-  Future<dynamic> _showImageSourceDialog() async {
-    return showDialog<dynamic>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          title: Text(
-            'Seleccionar imagen',
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: Icon(Icons.camera_alt, color: AppTheme.primary),
-                title: Text(
-                  'Tomar foto',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                ),
-                onTap: () {
-                  Navigator.of(context).pop(ImageSource.camera);
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.photo_library, color: AppTheme.primary),
-                title: Text(
-                  'Galería',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                ),
-                onTap: () {
-                  Navigator.of(context).pop(ImageSource.gallery);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+  Future<ImageSource?> _showImageSourceDialog() => showImageSourceDialog(context);
 
   // 🚀 OPTIMIZACIÓN: Método para cargar ingredientes con cache
   Future<List<Ingrediente>> _cargarIngredientesDisponibles() async {
