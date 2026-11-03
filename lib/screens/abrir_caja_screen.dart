@@ -9,7 +9,9 @@ import '../widgets/caja/caja_ya_abierta_widget.dart';
 import '../widgets/caja/formulario_abrir_caja_widget.dart';
 import '../widgets/caja/caja_ui_helpers.dart';
 import '../utils/api_error.dart';
+import '../utils/currency_utils.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 import '../utils/submit_guard.dart';
 
 class AbrirCajaScreen extends StatefulWidget {
@@ -95,8 +97,8 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> with SubmitGuard {
       return;
     }
 
-    final montoInicial = double.tryParse(_montoInicialController.text);
-    if (montoInicial == null || montoInicial < 0) {
+    final montoInicial = CurrencyUtils.parse(_montoInicialController.text);
+    if (montoInicial < 0) {
       _mostrarError('El monto inicial debe ser un valor válido positivo');
       return;
     }
@@ -156,13 +158,7 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> with SubmitGuard {
   }
 
   void _mostrarExito(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(mensaje),
-        backgroundColor: AppTheme.success,
-        duration: Duration(seconds: 3),
-      ),
-    );
+    showSuccessSnackBar(context, mensaje);
   }
 
   @override

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/currency_utils.dart';
 import 'caja_ui_helpers.dart';
 
 class FormularioAbrirCajaWidget extends StatelessWidget {
@@ -60,6 +61,7 @@ class FormularioAbrirCajaWidget extends StatelessWidget {
               TextFormField(
                 controller: montoInicialController,
                 keyboardType: TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [MilesInputFormatter()],
                 style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18),
                 decoration: InputDecoration(
                   hintText: 'Ingrese el monto inicial',
