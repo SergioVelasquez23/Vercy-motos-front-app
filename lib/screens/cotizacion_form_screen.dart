@@ -13,6 +13,7 @@ import '../utils/busqueda_productos_utils.dart';
 import '../utils/currency_utils.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../widgets/disponibilidad_dialog.dart';
 
 class CotizacionFormScreen extends StatefulWidget {
   final Cotizacion? cotizacion;
@@ -1038,7 +1039,19 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _items.isEmpty ? null : _verificarInventario,
+              icon: Icon(Icons.inventory_2_outlined),
+              label: Text('Verificar inventario'),
+            ),
+          ),
+          SizedBox(height: 10),
+          Row(
         children: [
           Expanded(
             child: OutlinedButton(
@@ -1075,7 +1088,22 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
           ),
         ],
       ),
+        ],
+      ),
     );
+  }
+
+  /// Muestra qué productos de la cotización no hay (o no alcanzan) en inventario,
+  /// para saberlo antes de guardar o de convertirla en pedido.
+  Future<void> _verificarInventario() async {
+    try {
+      final disponibilidad = await _cotizacionService.verificarDisponibilidad(_items);
+      if (!mounted) return;
+      await mostrarDisponibilidad(context, disponibilidad);
+    } catch (e) {
+      if (!mounted) return;
+      showErrorDialog(context, 'Error al verificar inventario: ${errorMessage(e)}');
+    }
   }
 
   void _agregarItem() {

@@ -6,6 +6,8 @@ import '../models/cliente.dart';
 import '../models/negocio_info.dart';
 import '../providers/datos_cache_provider.dart';
 import '../providers/user_provider.dart';
+import '../models/disponibilidad_item.dart';
+import '../widgets/disponibilidad_dialog.dart';
 import '../services/cotizacion_service.dart';
 import '../services/cliente_service.dart';
 import '../services/negocio_info_service.dart';
@@ -96,13 +98,37 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
   }
 
   Future<void> _convertirEnPedidoAsesor(Cotizacion cotizacion) async {
+    // Antes de confirmar, ver qué hay en bodega: lo que no alcance se excluye del pedido.
+    // Si la verificación falla no se bloquea la conversión, solo no se muestra el detalle.
+    List<DisponibilidadItem>? disponibilidad;
+    try {
+      disponibilidad = await _cotizacionService.verificarDisponibilidad(cotizacion.items);
+    } catch (_) {}
+    if (!mounted) return;
+
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Convertir en pedido'),
-        content: const Text(
-          'Se creará un pedido de asesor con los productos de esta cotización y se '
-          'avisará a bodega para que los traiga al almacén. La cotización quedará como convertida.',
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420, maxHeight: 460),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Se creará un pedido de asesor con los productos de esta cotización y se '
+                  'avisará a bodega para que los traiga al almacén. La cotización quedará como convertida. '
+                  'Los productos sin stock suficiente en bodega no se incluirán.',
+                ),
+                if (disponibilidad != null) ...[
+                  const SizedBox(height: 12),
+                  DisponibilidadLista(items: disponibilidad),
+                ],
+              ],
+            ),
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
