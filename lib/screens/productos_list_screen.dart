@@ -40,7 +40,20 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
 
   // Rol asesor: solo puede ver la lista y las cantidades, no crear, editar,
   // eliminar productos ni cargar cambios masivos por Excel.
-  bool get _esAsesor => Provider.of<UserProvider>(context, listen: false).isAsesor;
+  //
+  // Excepción de un solo usuario (mismo criterio que
+  // app_shell.dart#_emailEditarStockAutorizado): este correo sí necesita
+  // poder modificar el inventario aunque su rol sea asesor.
+  static const _emailPermisosInventarioExtra = 'mapura873@gmail.com';
+
+  bool get _esAsesor {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    if (userProvider.userEmail?.trim().toLowerCase() ==
+        _emailPermisosInventarioExtra) {
+      return false;
+    }
+    return userProvider.isAsesor;
+  }
 
   // Controladores de filtros
   final _filtroCodigoController = TextEditingController();
