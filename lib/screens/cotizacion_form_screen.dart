@@ -35,6 +35,9 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
   final _validezController = TextEditingController(text: '30');
   final _codigoProductoController = TextEditingController();
   final _nombreProductoController = TextEditingController();
+  // ID real del producto elegido en el autocompletar. Sin esto el item se guardaba con
+  // un ID inventado ('temp-...'), y el backend no podía revisar su stock ni convertirlo en pedido.
+  String? _productoSeleccionadoId;
   final _cantidadController = TextEditingController(text: '1');
   final _precioController = TextEditingController();
   final _porcentajeImpuestoController = TextEditingController(text: '0');
@@ -584,6 +587,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
                       producto.nombre,
                   onSelected: (Producto producto) {
                     setState(() {
+                      _productoSeleccionadoId = producto.id;
                       _nombreProductoController.text = producto.nombre;
                       _codigoProductoController.text =
                           producto.codigo?.isNotEmpty ?? false
@@ -1116,7 +1120,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
     }
 
     final item = ItemCotizacion(
-      productoId: 'temp-${DateTime.now().millisecondsSinceEpoch}',
+      productoId: _productoSeleccionadoId ?? 'temp-${DateTime.now().millisecondsSinceEpoch}',
       codigoProducto: _codigoProductoController.text,
       productoNombre: _nombreProductoController.text,
       cantidad: int.tryParse(_cantidadController.text) ?? 1,
@@ -1139,6 +1143,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
   }
 
   void _limpiarFormularioProducto() {
+    _productoSeleccionadoId = null;
     _codigoProductoController.clear();
     _nombreProductoController.clear();
     _cantidadController.text = '1';

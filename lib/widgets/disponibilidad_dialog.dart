@@ -8,7 +8,7 @@ String _etiquetaEstado(DisponibilidadItem i) {
     case 'SOLO_ALMACEN':
       return 'Solo en almacén';
     case 'NO_ENCONTRADO':
-      return 'Producto no encontrado';
+      return 'No vinculado al inventario (quítalo y vuelve a agregarlo)';
     default:
       return 'Sin stock';
   }
