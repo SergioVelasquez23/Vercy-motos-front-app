@@ -242,6 +242,13 @@ class _AppShellState extends State<AppShell> {
   // constante compartida por lo mismo que se explica allá.
   static const _emailEditarStockAutorizado = 'francia@gmail.com';
 
+  // Excepción de un solo usuario (mismo criterio que
+  // _emailEditarStockAutorizado): este correo es asesor pero también
+  // necesita ver "Lista de Compras" para importar facturas en PDF — el
+  // resto de asesores solo ve "Crear Compra". Duplicado a propósito en
+  // productos_list_screen.dart#_emailPermisosInventarioExtra.
+  static const _emailPermisosInventarioExtra = 'mapura873@gmail.com';
+
   Widget _buildMenuItems(BuildContext context, UserProvider userProvider) {
     // Este usuario no debe ver nada del menú normal (Dashboard, Facturar,
     // etc.) — solo la pantalla simplificada de stock. Se corta acá antes de
@@ -279,8 +286,11 @@ class _AppShellState extends State<AppShell> {
           _MenuItem(icon: Icons.add_shopping_cart, label: 'Crear Compra', route: '/facturas-compras', currentRoute: _currentRoute),
           _MenuItem(icon: Icons.people_outline, label: 'Proveedores', route: '/proveedores', currentRoute: _currentRoute),
           // Solo ver la lista y las cantidades — productos_list_screen.dart
-          // oculta Nuevo/Editar/Eliminar/Carga masiva cuando el rol es asesor.
+          // oculta Nuevo/Editar/Eliminar/Carga masiva cuando el rol es asesor
+          // (salvo _emailPermisosInventarioExtra, ver allá).
           _MenuItem(icon: Icons.inventory_2, label: 'Lista Productos', route: '/productos-lista', currentRoute: _currentRoute),
+          if (userProvider.userEmail?.trim().toLowerCase() == _emailPermisosInventarioExtra)
+            _MenuItem(icon: Icons.list_alt, label: 'Lista de Compras', route: '/compras', currentRoute: _currentRoute),
         ],
         if (!userProvider.isAsesor) ...[
           _MenuItem(icon: Icons.receipt, label: 'Facturar', route: '/facturar', currentRoute: _currentRoute),
