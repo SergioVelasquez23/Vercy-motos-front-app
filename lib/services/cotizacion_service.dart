@@ -1,6 +1,8 @@
 ﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/cotizacion.dart';
+import '../models/disponibilidad_item.dart';
+import '../models/item_cotizacion.dart';
 import '../config/endpoints_config.dart';
 import '../utils/api_error.dart';
 import 'base_api_service.dart';
@@ -215,6 +217,37 @@ class CotizacionService {
       throwBackendError(response.body, response.statusCode, prefix: 'Error al convertir cotización');
     } catch (e) {
       wrapOrThrow(e, context: 'Error al convertir cotización');
+    }
+  }
+
+  /// Revisa qué hay en inventario (bodega y almacén) para una lista de productos,
+  /// aunque la cotización todavía no esté guardada.
+  Future<List<DisponibilidadItem>> verificarDisponibilidad(List<ItemCotizacion> items) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/verificar-disponibilidad'),
+        headers: await _headers,
+        body: json.encode({
+          'items': items
+              .map((i) => {
+                    'productoId': i.productoId,
+                    'productoNombre': i.productoNombre,
+                    'cantidad': i.cantidad,
+                  })
+              .toList(),
+        }),
+      ).timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        return ((data['items'] as List?) ?? [])
+            .map((e) => DisponibilidadItem.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+
+      throwBackendError(response.body, response.statusCode, prefix: 'Error al verificar inventario');
+    } catch (e) {
+      wrapOrThrow(e, context: 'Error al verificar inventario');
     }
   }
 
