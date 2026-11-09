@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'users_screen.dart';
 import '../theme/app_theme.dart';
 import '../providers/theme_provider.dart';
+import '../providers/user_provider.dart';
 import '../models/negocio_info.dart';
 import '../services/negocio_info_service.dart';
 import '../utils/api_error.dart';
@@ -16,23 +17,35 @@ class ConfiguracionScreen extends StatefulWidget {
 }
 
 class _ConfiguracionScreenState extends State<ConfiguracionScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+    with TickerProviderStateMixin {
+  // La pestaña "Usuarios" (crear/editar/desactivar usuarios, crear roles y asignarlos) solo la ven los
+  // administradores: el backend exige ADMIN/SUPERADMIN para esas operaciones y a cualquier otro rol le
+  // responde 403. Como el número de pestañas depende del rol (que puede cargarse después de abrir la
+  // pantalla), el controlador se recrea cuando cambia.
+  TabController? _tabController;
+  int _numTabs = 0;
 
   @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final esAdmin = Provider.of<UserProvider>(context).isAdmin;
+    final nTabs = esAdmin ? 3 : 2;
+    if (nTabs != _numTabs) {
+      _tabController?.dispose();
+      _tabController = TabController(length: nTabs, vsync: this);
+      _numTabs = nTabs;
+    }
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _tabController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final esAdmin = Provider.of<UserProvider>(context).isAdmin;
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
@@ -58,17 +71,21 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen>
               controller: _tabController,
               indicatorColor: AppTheme.primary,
               isScrollable: true,
-              tabs: const [
-                Tab(icon: Icon(Icons.people), text: 'Usuarios'),
-                Tab(icon: Icon(Icons.palette), text: 'Apariencia'),
-                Tab(icon: Icon(Icons.store_outlined), text: 'Mi Negocio'),
+              tabs: [
+                if (esAdmin) const Tab(icon: Icon(Icons.people), text: 'Usuarios'),
+                const Tab(icon: Icon(Icons.palette), text: 'Apariencia'),
+                const Tab(icon: Icon(Icons.store_outlined), text: 'Mi Negocio'),
               ],
             ),
           ),
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: const [UsersScreen(), _AparienciaTab()] + [_NegocioTab()],
+              children: [
+                if (esAdmin) const UsersScreen(),
+                const _AparienciaTab(),
+                _NegocioTab(),
+              ],
             ),
           ),
         ],

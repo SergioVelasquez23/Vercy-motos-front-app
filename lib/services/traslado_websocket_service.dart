@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
+import 'base_api_service.dart';
 import '../utils/logger.dart';
 
 typedef OnTrasladoEvent = void Function(Map<String, dynamic> data);
@@ -67,8 +68,16 @@ class TrasladoWebSocketService {
           .replaceFirst(RegExp(r'^http://'), 'ws://');
       wsUrl = '$wsUrl$_websocketPath';
 
-      appLog('🔌 [TrasladoWS] Conectando a $wsUrl');
-      _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+      // El backend valida el token en el handshake de /rt/traslados (hoy solo avisa en su log si falta;
+      // más adelante lo exigirá con un 401). Va en la URL porque el WebSocket del navegador no permite
+      // cabeceras propias. Nunca se escribe en el log.
+      final token = await BaseApiService().getToken();
+      final uri = Uri.parse(wsUrl).replace(
+        queryParameters: (token != null && token.isNotEmpty) ? {'token': token} : null,
+      );
+
+      appLog('🔌 [TrasladoWS] Conectando a $wsUrl${uri.hasQuery ? ' (con token)' : ' (sin token)'}');
+      _channel = WebSocketChannel.connect(uri);
       await _channel!.ready;
       _isConnected = true;
       _intentosFallidos = 0;
