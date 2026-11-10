@@ -38,6 +38,95 @@
   </script>
   <!-- This script adds the flutter initialization JS code -->
   <script src="flutter.js" defer></script>
+  <style>
+    /* Pantalla de arranque (antes de que cargue Flutter). Misma paleta, mismo logo y misma
+       posicion que la SplashScreen de Flutter (lib/screens/splash_screen.dart) para que el
+       paso de una a otra no se note. */
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: #0F172A radial-gradient(circle at 50% 42%, #1E293B 0%, #0F172A 72%);
+      color: #FFFFFF;
+      font-family: Roboto, 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+      overflow: hidden;
+    }
+    #loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.45s ease;
+    }
+    #loading.hide { opacity: 0; pointer-events: none; }
+    #loading .rise { opacity: 0; animation: rise 0.7s cubic-bezier(.2,.7,.2,1) forwards; }
+    #loading .logo-card {
+      width: 128px;
+      height: 128px;
+      border-radius: 30px;
+      background: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.12), 0 12px 40px rgba(59,130,246,0.28),
+                  0 0 90px rgba(139,92,246,0.16);
+      animation: rise 0.7s cubic-bezier(.2,.7,.2,1) forwards, glow 2.4s ease-in-out 0.7s infinite alternate;
+    }
+    #loading .logo-card img { width: 104px; height: 104px; object-fit: contain; }
+    #loading .brand {
+      margin-top: 30px;
+      padding-left: 0.32em; /* compensa el espaciado de letras para que quede centrado */
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 0.32em;
+      background: linear-gradient(90deg, #60A5FA, #A78BFA);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation-delay: 0.12s;
+    }
+    #loading .tagline {
+      margin-top: 8px;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      color: rgba(255,255,255,0.5);
+      animation-delay: 0.24s;
+    }
+    #loading .bar {
+      position: relative;
+      width: 168px;
+      height: 3px;
+      margin-top: 40px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.10);
+      overflow: hidden;
+      animation-delay: 0.36s;
+    }
+    #loading .bar::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 42%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #3B82F6, #8B5CF6);
+      animation: slide 1.35s cubic-bezier(.65,0,.35,1) infinite;
+    }
+    #loading .sr-only {
+      position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+      overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
+    @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    @keyframes slide { from { left: -42%; } to { left: 100%; } }
+    @keyframes glow {
+      from { box-shadow: 0 0 0 1px rgba(255,255,255,0.12), 0 12px 40px rgba(59,130,246,0.18), 0 0 70px rgba(139,92,246,0.10); }
+      to   { box-shadow: 0 0 0 1px rgba(255,255,255,0.16), 0 12px 46px rgba(59,130,246,0.36), 0 0 110px rgba(139,92,246,0.22); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #loading .rise, #loading .logo-card { animation: none; opacity: 1; }
+      #loading .bar::after { animation: none; left: 29%; }
+    }
+  </style>
 </head>
 
 <body>
@@ -74,60 +163,27 @@
       });
     });
   </script>
-  <div id="loading">
-    <style>
-      body {
-        margin: 0;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        background-color: #1A1A1A;
-        color: #FFFFFF;
-      }
-
-      #loading {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      }
-
-      .spinner {
-        width: 50px;
-        height: 50px;
-        border: 5px solid #313131;
-        border-top: 5px solid #FF6B00;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-      }
-
-      /* Asegura que no haya reglas globales que pongan texto gris */
-      a,
-      p,
-      span,
-      div,
-      h1,
-      h2,
-      h3,
-      h4,
-      h5,
-      h6 {
-        color: inherit;
-      }
-
-      @keyframes spin {
-        0% {
-          transform: rotate(0deg);
-        }
-
-        100% {
-          transform: rotate(360deg);
-        }
-      }
-    </style>
-    <div class="spinner"></div>
-    <p>Cargando...</p>
+  <div id="loading" role="status" aria-live="polite">
+    <div class="logo-card"><img src="icons/Icon-192.png" alt="Vercy Motos" width="104" height="104"></div>
+    <div class="brand rise">VERCY MOTOS</div>
+    <div class="tagline rise">Gestión inteligente de tu negocio</div>
+    <div class="bar rise"></div>
+    <span class="sr-only">Cargando…</span>
   </div>
+
+  <script>
+    // Cuando Flutter dibuja su primer cuadro (la SplashScreen, que se ve igual), se retira este
+    // cargador con un fundido suave. Si el evento no llegara, el cargador queda detras de Flutter,
+    // como antes.
+    window.addEventListener('flutter-first-frame', function () {
+      var cargador = document.getElementById('loading');
+      if (!cargador) return;
+      cargador.classList.add('hide');
+      setTimeout(function () {
+        if (cargador.parentNode) cargador.parentNode.removeChild(cargador);
+      }, 600);
+    });
+  </script>
 </body>
 
 </html>
