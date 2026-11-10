@@ -13,6 +13,8 @@ Widget _wrap({
   required ValueChanged<String> onMetodoPagoChanged,
   VoidCallback? onMontoChanged,
   double totalAPagar = 100000,
+  String efectivo = '',
+  String transferencia = '',
 }) {
   return MaterialApp(
     home: Scaffold(
@@ -26,8 +28,8 @@ Widget _wrap({
           totalAPagar: totalAPagar,
           onMetodoPagoChanged: onMetodoPagoChanged,
           onMontoChanged: onMontoChanged ?? () {},
-          montoEfectivoController: TextEditingController(),
-          montoTransferenciaController: TextEditingController(),
+          montoEfectivoController: TextEditingController(text: efectivo),
+          montoTransferenciaController: TextEditingController(text: transferencia),
           montoNequiController: TextEditingController(),
           montoDaviplataController: TextEditingController(),
           montoBancolombiaController: TextEditingController(),
@@ -104,5 +106,54 @@ void main() {
     await tester.enterText(find.byType(TextField).first, '50000');
 
     expect(llamadas, greaterThan(0));
+  });
+
+  group('indicador de suma en Pago Múltiple: los montos se ven con separador de miles', () {
+    testWidgets('cuando cuadra: "\$100.000 de \$100.000" y no avisa diferencia', (tester) async {
+      await tester.pumpWidget(_wrap(
+        metodoPago: 'multiple',
+        onMetodoPagoChanged: (_) {},
+        efectivo: '60000',
+        transferencia: '40000',
+      ));
+
+      expect(find.text('\$100.000 de \$100.000'), findsOneWidget);
+      expect(find.textContaining('Faltan'), findsNothing);
+      expect(find.textContaining('Sobran'), findsNothing);
+    });
+
+    testWidgets('cuando falta: "Faltan \$40.000"', (tester) async {
+      await tester.pumpWidget(_wrap(
+        metodoPago: 'multiple',
+        onMetodoPagoChanged: (_) {},
+        efectivo: '60000',
+      ));
+
+      expect(find.text('\$60.000 de \$100.000'), findsOneWidget);
+      expect(find.text('Faltan \$40.000'), findsOneWidget);
+    });
+
+    testWidgets('cuando sobra: "Sobran \$20.000"', (tester) async {
+      await tester.pumpWidget(_wrap(
+        metodoPago: 'multiple',
+        onMetodoPagoChanged: (_) {},
+        efectivo: '120000',
+      ));
+
+      expect(find.text('\$120.000 de \$100.000'), findsOneWidget);
+      expect(find.text('Sobran \$20.000'), findsOneWidget);
+    });
+
+    testWidgets('con millones agrupa de tres en tres: "\$1.000.000 de \$1.500.000"', (tester) async {
+      await tester.pumpWidget(_wrap(
+        metodoPago: 'multiple',
+        onMetodoPagoChanged: (_) {},
+        totalAPagar: 1500000,
+        efectivo: '1000000',
+      ));
+
+      expect(find.text('\$1.000.000 de \$1.500.000'), findsOneWidget);
+      expect(find.text('Faltan \$500.000'), findsOneWidget);
+    });
   });
 }
