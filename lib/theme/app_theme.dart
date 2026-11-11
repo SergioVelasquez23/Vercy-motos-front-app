@@ -49,13 +49,16 @@ class AppTheme {
   static const Color accent = Color(0xFF8B5CF6);
 
   // ===== PALETA OSCURA =====
-  static const Color darkBackground = Color(0xFF0F172A);
-  static const Color darkSurface = Color(0xFF1E293B);
-  static const Color darkCard = Color(0xFF1E293B);
-  static const Color darkCardElevated = Color(0xFF334155);
-  static const Color darkTextPrimary = Color(0xFFE2E8F0);
-  static const Color darkTextSecondary = Color(0xFFCBD5E1);
-  static const Color darkTextMuted = Color(0xFF94A3B8);
+  // Negro neutro (sin tinte azul): fondo casi negro, tarjetas gris carbon y
+  // bordes sutiles. El azul/violeta de la marca queda solo para acentos.
+  static const Color darkBackground = Color(0xFF0A0A0A);
+  static const Color darkSurface = Color(0xFF161616);
+  static const Color darkCard = Color(0xFF161616);
+  static const Color darkCardElevated = Color(0xFF232323);
+  static const Color darkBorder = Color(0xFF2A2A2A);
+  static const Color darkTextPrimary = Color(0xFFEDEDED);
+  static const Color darkTextSecondary = Color(0xFFC6C6C6);
+  static const Color darkTextMuted = Color(0xFF8C8C8C);
   static const Color darkPrimary = Color(0xFF60A5FA);
   static const Color darkSecondary = Color(0xFFA78BFA);
 
@@ -336,9 +339,9 @@ class AppTheme {
     fontFamily: 'Roboto',
     colorScheme: const ColorScheme.dark(
       primary: darkPrimary,
-      onPrimary: Color(0xFF0F172A),
+      onPrimary: Color(0xFF0A0A0A),
       secondary: darkSecondary,
-      onSecondary: Color(0xFF0F172A),
+      onSecondary: Color(0xFF0A0A0A),
       surface: darkSurface,
       onSurface: darkTextPrimary,
       error: error,
@@ -369,11 +372,11 @@ class AppTheme {
       ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(radiusMedium),
-        borderSide: const BorderSide(color: Color(0xFF334155)),
+        borderSide: const BorderSide(color: darkBorder),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(radiusMedium),
-        borderSide: const BorderSide(color: Color(0xFF334155)),
+        borderSide: const BorderSide(color: darkBorder),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(radiusMedium),
@@ -388,7 +391,7 @@ class AppTheme {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(radiusMedium),
-        side: const BorderSide(color: Color(0xFF334155)),
+        side: const BorderSide(color: darkBorder),
       ),
     ),
     dialogTheme: DialogThemeData(
