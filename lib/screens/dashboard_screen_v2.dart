@@ -1196,7 +1196,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                               );
                             },
                           ),
-                          borderData: FlBorderData(show: false),
+                          borderData: _bordeBaseGrafica(),
                           barGroups:
                               _ingresosVsEgresos.asMap().entries.map((entry) {
                             return BarChartGroupData(
@@ -1702,7 +1702,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                           sideTitles: SideTitles(showTitles: false),
                         ),
                       ),
-                      borderData: FlBorderData(show: false),
+                      borderData: _bordeBaseGrafica(),
                       barGroups: _ventasPorDia.asMap().entries.map((entry) {
                         final index = entry.key;
                         final data = entry.value;
@@ -1879,7 +1879,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                           sideTitles: SideTitles(showTitles: false),
                         ),
                       ),
-                      borderData: FlBorderData(show: false),
+                      borderData: _bordeBaseGrafica(),
                       barGroups: _ventasPorMes.asMap().entries.map((entry) {
                         final index = entry.key;
                         final data = entry.value;
@@ -2138,12 +2138,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           // Lista compacta de bajo stock
           Row(
             children: [
-              Icon(Icons.inventory_2_outlined, size: 16, color: AppTheme.warning),
+              Icon(Icons.inventory_2_outlined, size: 16, color: AppTheme.secondary),
               SizedBox(width: 6),
               Text(
                 'TOP VENDIDOS - STOCK BAJO',
                 style: TextStyle(
-                  color: AppTheme.warning,
+                  color: AppTheme.secondary,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5,
@@ -2154,7 +2154,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                   decoration: BoxDecoration(
-                    color: AppTheme.warning,
+                    color: AppTheme.secondary,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -2283,9 +2283,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: AppTheme.warning.withOpacity(0.05),
+        color: AppTheme.secondary.withOpacity(0.05),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppTheme.warning.withOpacity(0.15)),
+        border: Border.all(color: AppTheme.secondary.withOpacity(0.15)),
       ),
       child: Row(
         children: [
@@ -2293,7 +2293,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             width: 6,
             height: 6,
             decoration: BoxDecoration(
-              color: AppTheme.warning,
+              color: AppTheme.secondary,
               shape: BoxShape.circle,
             ),
           ),
@@ -2323,13 +2323,13 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           Container(
             padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: AppTheme.error.withOpacity(0.1),
+              color: AppTheme.secondary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               '${actual ?? 0}/${minima ?? 0}',
               style: TextStyle(
-                color: AppTheme.error,
+                color: AppTheme.secondary,
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
               ),
@@ -2532,6 +2532,18 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       ),
     );
   }
+
+  /// Línea base de las gráficas de barras: marca el cero del que salen las
+  /// barras (solo el borde inferior; sin marco alrededor).
+  FlBorderData _bordeBaseGrafica() => FlBorderData(
+    show: true,
+    border: Border(
+      bottom: BorderSide(
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+        width: 1.5,
+      ),
+    ),
+  );
 
   Color _getPuestoColor(int puesto) {
     switch (puesto) {

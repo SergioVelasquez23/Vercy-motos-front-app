@@ -94,7 +94,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
           title: 'Lista de Clientes',
           badge: '${_clientesFiltrados.length}',
           actions: [
-            ScreenHeaderAction.success(
+            ScreenHeaderAction.secondary(
               icon: Icons.upload_file,
               label: 'Carga Masiva',
               mobileLabel: 'Carga',
@@ -312,15 +312,15 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
         : 0.0;
     final isMobile = context.isMobile;
 
+    // Dentro de la paleta: activo en azul, inactivo en gris neutro (antes verde y rojo).
+    final colorAvatar = cliente.estado == 'activo'
+        ? AppTheme.primary
+        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55);
     final avatar = CircleAvatar(
-      backgroundColor: cliente.estado == 'activo'
-          ? Colors.green[100]
-          : Colors.red[100],
+      backgroundColor: colorAvatar.withValues(alpha: 0.15),
       child: Icon(
         esEmpresa ? Icons.business : Icons.person,
-        color: cliente.estado == 'activo'
-            ? Colors.green[700]
-            : Colors.red[700],
+        color: colorAvatar,
       ),
     );
 
@@ -367,7 +367,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
         ),
         _iconoAccionCompacto(
           icono: cliente.estado == 'activo' ? Icons.block : Icons.check_circle,
-          color: cliente.estado == 'activo' ? Colors.red : Colors.green,
+          color: cliente.estado == 'activo' ? Colors.red : AppTheme.primary,
           onPressed: () => _toggleEstado(cliente),
           tooltip: cliente.estado == 'activo' ? 'Bloquear' : 'Activar',
         ),
@@ -383,7 +383,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
     final subtitleBuilder = Builder(builder: (context) {
         final onSurface = Theme.of(context).colorScheme.onSurface;
         final muted = onSurface.withOpacity(0.7);
-        final saldoColor = cliente.saldoActual > 0 ? AppTheme.warning : AppTheme.success;
+        final saldoColor = cliente.saldoActual > 0 ? AppTheme.secondary : AppTheme.primary;
         final cupoColor = cupoDisponiblePorcentaje > 50
             ? AppTheme.primary
             : cupoDisponiblePorcentaje > 20
@@ -531,7 +531,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
           IconButton(
             icon: Icon(
               cliente.estado == 'activo' ? Icons.block : Icons.check_circle,
-              color: cliente.estado == 'activo' ? Colors.red : Colors.green,
+              color: cliente.estado == 'activo' ? Colors.red : AppTheme.primary,
             ),
             onPressed: () => _toggleEstado(cliente),
             tooltip: cliente.estado == 'activo' ? 'Bloquear' : 'Activar',
@@ -677,10 +677,10 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
               Container(
                 padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.2),
+                  color: AppTheme.secondary.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(Icons.upload_file, color: Colors.green, size: 24),
+                child: Icon(Icons.upload_file, color: AppTheme.secondary, size: 24),
               ),
               SizedBox(width: 12),
               Text(
@@ -1031,7 +1031,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
           children: [
             Icon(
               errores.isEmpty ? Icons.check_circle : Icons.warning_amber,
-              color: errores.isEmpty ? Colors.green : Colors.orange,
+              color: errores.isEmpty ? AppTheme.primary : AppTheme.secondary,
               size: 28,
             ),
             SizedBox(width: 12),
@@ -1050,13 +1050,13 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
               Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: AppTheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green.withOpacity(0.3)),
+                  border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.people, color: Colors.green, size: 32),
+                    Icon(Icons.people, color: AppTheme.primary, size: 32),
                     SizedBox(width: 12),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1066,7 +1066,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: Colors.green,
+                            color: AppTheme.primary,
                           ),
                         ),
                         Text(

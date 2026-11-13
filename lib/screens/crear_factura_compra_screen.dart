@@ -6,6 +6,9 @@ import '../models/factura_compra.dart';
 import '../models/proveedor.dart';
 import '../models/producto.dart';
 import '../services/factura_compra_service.dart';
+import '../services/borrador_compra_service.dart';
+import '../models/borrador_compra.dart';
+import '../utils/migracion_borradores_compra.dart';
 import '../services/proveedor_service.dart';
 import '../services/producto_service.dart';
 import '../providers/datos_cache_provider.dart';
@@ -16,8 +19,6 @@ import '../utils/dialogs_helper.dart';
 import '../utils/logger.dart';
 import '../utils/datetime_utils.dart';
 import '../utils/api_error.dart';
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/snackbar_helper.dart';
 import '../widgets/compras/field_label.dart';
 import '../widgets/compras/descripcion_y_retenciones_compacto.dart';
@@ -2415,7 +2416,9 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
 
 
   // ─── Gestión de borradores ────────────────────────────────────────────────
-  static const String _kDraftKey = 'factura_compra_borradores';
+  // Los borradores se guardan en el servidor, por usuario (antes vivían solo
+  // en el navegador y no aparecían al entrar desde otro dispositivo).
+  final IBorradorCompraService _borradorService = BorradorCompraService();
 
   /// Serializa el formulario actual como mapa JSON para guardar como borrador
   Map<String, dynamic> _formularioAJson() {
@@ -2429,7 +2432,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
     };
   }
 
-  /// Guarda el formulario actual como borrador en SharedPreferences
+  /// Guarda el formulario actual como borrador en el servidor (de este usuario)
   Future<void> _guardarComoBorrador() async {
     if (_items.isEmpty && _proveedorSeleccionado == null) {
       showWarningSnackBar(context, 'El formulario está vacío, no hay nada que guardar');
@@ -2437,16 +2440,9 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
     }
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_kDraftKey);
-      final List<dynamic> borradores = raw != null ? jsonDecode(raw) : [];
-      borradores.add(_formularioAJson());
-      // Mantener máximo 10 borradores
-      if (borradores.length > 10) borradores.removeAt(0);
-      await prefs.setString(_kDraftKey, jsonEncode(borradores));
-
+      await _borradorService.guardar(_formularioAJson());
       if (mounted) {
-        showSuccessSnackBar(context, 'Borrador guardado correctamente');
+        showSuccessSnackBar(context, 'Borrador guardado en tu cuenta');
       }
     } catch (e) {
       appLog('Error guardando borrador: $e', level: LogLevel.error);
@@ -2456,19 +2452,23 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
     }
   }
 
-  /// Muestra la lista de borradores guardados y permite cargar uno
+  /// Muestra la lista de borradores del usuario y permite cargar uno
   Future<void> _verBorradores() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_kDraftKey);
-      if (raw == null || raw == '[]') {
+      // Pasa al servidor los borradores que quedaron solo en este navegador
+      // (versiones anteriores), para que no se pierdan.
+      final migrados = await migrarBorradoresCompraLocales(_borradorService);
+      if (migrados > 0 && mounted) {
+        showInfoSnackBar(context, '$migrados borrador(es) de este navegador pasaron a tu cuenta');
+      }
+
+      final borradores = await _borradorService.listar();
+      if (borradores.isEmpty) {
         if (mounted) {
           showInfoSnackBar(context, 'No hay borradores guardados');
         }
         return;
       }
-
-      final List<dynamic> borradores = jsonDecode(raw);
       if (!mounted) return;
 
       await showDialog(
@@ -2486,34 +2486,38 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
               itemCount: borradores.length,
               separatorBuilder: (_, __) => Divider(height: 1, color: Colors.white12),
               itemBuilder: (_, i) {
-                final b = borradores[borradores.length - 1 - i] as Map<String, dynamic>;
-                final fecha = DateTime.tryParse(b['timestamp'] ?? '')?.toLocal();
+                final b = borradores[i];
+                // La hora del dispositivo que lo guardó; si falta, la del servidor.
+                final fecha = (DateTime.tryParse('${b.datos['timestamp'] ?? ''}') ?? b.fechaCreacion)?.toLocal();
                 final fechaStr = fecha != null
                     ? '${fecha.day}/${fecha.month}/${fecha.year} ${fecha.hour}:${fecha.minute.toString().padLeft(2, '0')}'
                     : 'Fecha desconocida';
-                final proveedor = b['proveedorNombre'] ?? 'Sin proveedor';
-                final nItems = (b['items'] as List?)?.length ?? 0;
+                final proveedor = b.proveedorNombre ?? 'Sin proveedor';
 
                 return ListTile(
                   leading: Icon(Icons.description_outlined, color: AppTheme.primary),
                   title: Text(proveedor, style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
                   subtitle: Text(
-                    '$fechaStr · $nItems ítem(s)',
+                    '$fechaStr · ${b.cantidadItems} ítem(s)',
                     style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 12),
                   ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       TextButton(
-                        child: const Text('Cargar', style: TextStyle(color: Colors.greenAccent)),
+                        child: const Text('Cargar', style: TextStyle(color: AppTheme.primary)),
                         onPressed: () => Navigator.pop(ctx, b),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                        icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6), size: 20),
                         tooltip: 'Eliminar borrador',
                         onPressed: () async {
-                          borradores.removeAt(borradores.length - 1 - i);
-                          await prefs.setString(_kDraftKey, jsonEncode(borradores));
+                          try {
+                            if (b.id != null) await _borradorService.eliminar(b.id!);
+                          } catch (e) {
+                            if (mounted) showErrorSnackBar(context, 'No se pudo eliminar: ${errorMessage(e)}');
+                            return;
+                          }
                           if (ctx.mounted) Navigator.pop(ctx);
                           _verBorradores(); // reabrir actualizado
                         },
@@ -2532,12 +2536,15 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
           ],
         ),
       ).then((borrador) {
-        if (borrador is Map<String, dynamic>) {
-          _cargarBorrador(borrador);
+        if (borrador is BorradorCompra) {
+          _cargarBorrador(borrador.datos);
         }
       });
     } catch (e) {
       appLog('Error cargando borradores: $e', level: LogLevel.error);
+      if (mounted) {
+        showErrorSnackBar(context, 'No se pudieron cargar los borradores: ${errorMessage(e)}');
+      }
     }
   }
 

@@ -671,6 +671,18 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
     );
   }
 
+  // Proporción de cada columna. El encabezado y las filas usan ESTOS mismos
+  // valores: antes cada uno tenía los suyos (Acciones valía 8 en el encabezado
+  // y 5 en las filas) y las columnas quedaban desalineadas.
+  static const int _flexFactura = 2;
+  static const int _flexCliente = 3;
+  static const int _flexExpedicion = 2;
+  static const int _flexTotal = 2;
+  static const int _flexAbono = 2;
+  static const int _flexSaldo = 2;
+  static const int _flexEstado = 2;
+  static const int _flexAcciones = 5;
+
   Widget _buildTableContent() {
     return Column(
         children: [
@@ -684,7 +696,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
             child: Row(
               children: [
                 Expanded(
-                  flex: 2,
+                  flex: _flexFactura,
                   child: Text(
                     'N. Factura',
                     style: TextStyle(
@@ -695,7 +707,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   ),
                 ),
                 Expanded(
-                  flex: 3,
+                  flex: _flexCliente,
                   child: Text(
                     'Cliente',
                     style: TextStyle(
@@ -706,7 +718,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   ),
                 ),
                 Expanded(
-                  flex: 2,
+                  flex: _flexExpedicion,
                   child: Text(
                     'Expedición',
                     style: TextStyle(
@@ -717,7 +729,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   ),
                 ),
                 Expanded(
-                  flex: 2,
+                  flex: _flexTotal,
                   child: Text(
                     'Total',
                     style: TextStyle(
@@ -729,7 +741,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   ),
                 ),
                 Expanded(
-                  flex: 2,
+                  flex: _flexAbono,
                   child: Text(
                     'Abono',
                     style: TextStyle(
@@ -741,7 +753,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   ),
                 ),
                 Expanded(
-                  flex: 2,
+                  flex: _flexSaldo,
                   child: Text(
                     'Saldo',
                     style: TextStyle(
@@ -753,7 +765,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   ),
                 ),
                 Expanded(
-                  flex: 2,
+                  flex: _flexEstado,
                   child: Text(
                     'Estado',
                     style: TextStyle(
@@ -765,7 +777,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                   ),
                 ),
                 Expanded(
-                  flex: 8,
+                  flex: _flexAcciones,
                   child: Text(
                     'Acciones',
                     style: TextStyle(
@@ -773,7 +785,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
-                    textAlign: TextAlign.center,
+                    textAlign: TextAlign.end,
                   ),
                 ),
               ],
@@ -941,7 +953,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
         children: [
           // Número de factura
           Expanded(
-            flex: 2,
+            flex: _flexFactura,
             child: Row(
               children: [
                 if (esPedido) ...[
@@ -975,7 +987,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
 
           // Cliente
           Expanded(
-            flex: 3,
+            flex: _flexCliente,
             child: Text(
               clienteNombre,
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
@@ -985,7 +997,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
 
           // Fecha de expedición
           Expanded(
-            flex: 2,
+            flex: _flexExpedicion,
             child: Text(
               fecha != null
                   ? '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}'
@@ -996,7 +1008,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
 
           // Total
           Expanded(
-            flex: 2,
+            flex: _flexTotal,
             child: Text(
               CurrencyUtils.format(total),
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
@@ -1006,7 +1018,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
 
           // Abono
           Expanded(
-            flex: 2,
+            flex: _flexAbono,
             child: Text(
               CurrencyUtils.format(abono),
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
@@ -1016,7 +1028,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
 
           // Saldo
           Expanded(
-            flex: 2,
+            flex: _flexSaldo,
             child: Text(
               CurrencyUtils.format(saldo),
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
@@ -1026,10 +1038,14 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
 
           // Estado
           Expanded(
-            flex: 2,
+            flex: _flexEstado,
             child: Row(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // Hueco simétrico al icono de error (18 + 4 de margen): así la
+                // etiqueta queda en el mismo eje en todas las filas, con o sin
+                // el aviso de error a su derecha.
+                if (errorFacturacion != null) const SizedBox(width: 22),
                 Flexible(
                   child: Container(
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1079,7 +1095,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
 
           // Acciones
           Expanded(
-            flex: 5,
+            flex: _flexAcciones,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [

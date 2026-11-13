@@ -67,3 +67,9 @@ app.*.map.json
 
 # Web build
 /web/build/
+
+# Caché de `firebase deploy` (se reescribe en cada despliegue y ensucia el árbol)
+.firebase/
+
+# Configuración local de Claude Code (permisos de cada equipo)
+.claude/settings.local.json

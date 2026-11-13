@@ -5,6 +5,9 @@ import '../models/cotizacion.dart';
 import '../models/cliente.dart';
 import '../models/negocio_info.dart';
 import '../providers/datos_cache_provider.dart';
+import '../providers/user_provider.dart';
+import '../models/disponibilidad_item.dart';
+import '../widgets/disponibilidad_dialog.dart';
 import '../services/cotizacion_service.dart';
 import '../services/cliente_service.dart';
 import '../services/negocio_info_service.dart';
@@ -92,6 +95,85 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
     await context.push('/facturar', extra: cotizacion);
     // Recargar lista al regresar (la cotización puede haber quedado convertida)
     _cargarCotizaciones();
+  }
+
+  Future<void> _convertirEnPedidoAsesor(Cotizacion cotizacion) async {
+    // Antes de confirmar, ver qué hay en bodega: lo que no alcance se excluye del pedido.
+    // Si la verificación falla no se bloquea la conversión, solo no se muestra el detalle.
+    List<DisponibilidadItem>? disponibilidad;
+    try {
+      disponibilidad = await _cotizacionService.verificarDisponibilidad(cotizacion.items);
+    } catch (_) {}
+    if (!mounted) return;
+
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Convertir en pedido'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420, maxHeight: 460),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Se creará un pedido de asesor con los productos de esta cotización y se '
+                  'avisará a bodega para que los traiga al almacén. La cotización quedará como convertida. '
+                  'Los productos sin stock suficiente en bodega no se incluirán.',
+                ),
+                if (disponibilidad != null) ...[
+                  const SizedBox(height: 12),
+                  DisponibilidadLista(items: disponibilidad),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Convertir')),
+        ],
+      ),
+    );
+    if (confirmar != true || cotizacion.id == null) return;
+
+    final user = Provider.of<UserProvider>(context, listen: false);
+    try {
+      final excluidos = await _cotizacionService.convertirAPedidoAsesor(
+        cotizacion.id!,
+        asesorNombre: user.userName ?? 'Asesor',
+        asesorId: user.userId,
+      );
+      if (!mounted) return;
+      _cargarCotizaciones();
+      if (excluidos.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cotización convertida en pedido. Bodega fue notificada.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        // Un diálogo (no snackbar) para que no se pierda: hay productos que NO entraron al pedido.
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Pedido creado con productos excluidos'),
+            content: Text(
+              'Bodega fue notificada, pero estos productos no tienen stock suficiente '
+              'en bodega y no se incluyeron en el pedido:\n\n${excluidos.map((e) => '• $e').join('\n')}',
+            ),
+            actions: [
+              FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Entendido')),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      showErrorDialog(context, 'Error al convertir en pedido: ${errorMessage(e)}');
+    }
   }
 
   @override
@@ -514,6 +596,12 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
             icon: Icon(Icons.point_of_sale, color: AppTheme.primary),
             onPressed: () => _facturarCotizacion(cotizacion),
             tooltip: 'Facturar',
+          ),
+        if (cotizacion.puedeConvertirseAFactura)
+          IconButton(
+            icon: Icon(Icons.local_shipping_outlined, color: Colors.teal),
+            onPressed: () => _convertirEnPedidoAsesor(cotizacion),
+            tooltip: 'Convertir en pedido (avisa a bodega)',
           ),
         IconButton(
           icon: Icon(Icons.picture_as_pdf, color: Colors.orange),

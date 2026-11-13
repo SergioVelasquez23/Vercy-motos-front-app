@@ -411,8 +411,20 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
     // desbordaba a la derecha. Ahora la tabla tiene ancho fijo por columna y
     // se scrollea horizontal en pantallas angostas (encabezado y filas
     // juntos, para que no se desalineen).
-    return Container(
-      margin: EdgeInsets.fromLTRB(16, 0, 16, 16),
+    //
+    // 🖥️ En pantallas anchas la tabla se expande a todo el ancho: el espacio
+    // sobrante se reparte entre las columnas de texto (sobre todo Producto,
+    // que antes se cortaba con "…"). En pantallas angostas conserva el ancho
+    // mínimo y se scrollea horizontal.
+    return LayoutBuilder(builder: (context, constraints) {
+      const margenHorizontal = 16.0;
+      const paddingFila = 16.0;
+      final disponible = constraints.maxWidth - margenHorizontal * 2;
+      final anchoMinimo = _anchoTotalTablaTraslados + paddingFila * 2;
+      final anchoTabla = disponible > anchoMinimo ? disponible : anchoMinimo;
+      final anchos = _anchosColumnasAjustadas(anchoTabla - anchoMinimo);
+      return Container(
+      margin: EdgeInsets.fromLTRB(margenHorizontal, 0, margenHorizontal, 16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
@@ -423,7 +435,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: SizedBox(
-            width: _anchoTotalTablaTraslados,
+            width: anchoTabla,
             child: Column(
               children: [
                 // Encabezado fijo
@@ -433,14 +445,14 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _celdaTraslado(_anchosColumnasTraslado[0], _buildColumnHeader('#')),
-                      _celdaTraslado(_anchosColumnasTraslado[1], _buildColumnHeader('Fecha')),
-                      _celdaTraslado(_anchosColumnasTraslado[2], _buildColumnHeader('Asesor')),
-                      _celdaTraslado(_anchosColumnasTraslado[3], _buildColumnHeader('Origen')),
-                      _celdaTraslado(_anchosColumnasTraslado[4], _buildColumnHeader('Destino')),
-                      _celdaTraslado(_anchosColumnasTraslado[5], _buildColumnHeader('Cant.')),
-                      _celdaTraslado(_anchosColumnasTraslado[6], _buildColumnHeader('Producto')),
-                      _celdaTraslado(_anchosColumnasTraslado[7], _buildColumnHeader('Acciones')),
+                      _celdaTraslado(anchos[0], _buildColumnHeader('#')),
+                      _celdaTraslado(anchos[1], _buildColumnHeader('Fecha')),
+                      _celdaTraslado(anchos[2], _buildColumnHeader('Asesor')),
+                      _celdaTraslado(anchos[3], _buildColumnHeader('Origen')),
+                      _celdaTraslado(anchos[4], _buildColumnHeader('Destino')),
+                      _celdaTraslado(anchos[5], _buildColumnHeader('Cant.')),
+                      _celdaTraslado(anchos[6], _buildColumnHeader('Producto')),
+                      _celdaTraslado(anchos[7], _buildColumnHeader('Acciones')),
                     ],
                   ),
                 ),
@@ -451,7 +463,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
                     itemCount: _trasladosFiltrados.length,
                     itemBuilder: (context, index) {
                       final traslado = _trasladosFiltrados[index];
-                      return _buildFilaTraslado(traslado);
+                      return _buildFilaTraslado(traslado, anchos);
                     },
                   ),
                 ),
@@ -461,10 +473,20 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
         ),
       ),
     );
+    });
   }
 
   static const List<double> _anchosColumnasTraslado = [50, 100, 90, 90, 90, 50, 140, 90];
   static const double _gapColumnasTraslado = 8;
+  /// Cómo se reparte el ancho sobrante entre columnas (suma 1.0). `#`, `Cant.`
+  /// y `Acciones` no crecen.
+  static const List<double> _repartoExtraTraslado = [0, 0, 0.10, 0.05, 0.05, 0, 0.80, 0];
+
+  List<double> _anchosColumnasAjustadas(double extra) => [
+    for (var i = 0; i < _anchosColumnasTraslado.length; i++)
+      _anchosColumnasTraslado[i] + extra * _repartoExtraTraslado[i],
+  ];
+
   static double get _anchoTotalTablaTraslados =>
       _anchosColumnasTraslado.reduce((a, b) => a + b) +
       _gapColumnasTraslado * _anchosColumnasTraslado.length;
@@ -487,7 +509,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
     );
   }
 
-  Widget _buildFilaTraslado(Traslado traslado) {
+  Widget _buildFilaTraslado(Traslado traslado, List<double> anchos) {
     return Container(
       decoration: BoxDecoration(
         border: Border(
@@ -499,7 +521,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           _celdaTraslado(
-            _anchosColumnasTraslado[0],
+            anchos[0],
             Container(
               padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
               decoration: BoxDecoration(
@@ -514,7 +536,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
             ),
           ),
           _celdaTraslado(
-            _anchosColumnasTraslado[1],
+            anchos[1],
             Text(
               traslado.fechaSolicitud != null
                   ? DateFormat('yy-MM-dd HH:mm').format(traslado.fechaSolicitud!)
@@ -524,24 +546,24 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
             ),
           ),
           _celdaTraslado(
-            _anchosColumnasTraslado[2],
+            anchos[2],
             Text(
               traslado.solicitante ?? '-',
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 11),
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          _celdaTraslado(_anchosColumnasTraslado[3], _buildBodegaChip(traslado.origenBodegaNombre ?? '-')),
-          _celdaTraslado(_anchosColumnasTraslado[4], _buildBodegaChip(traslado.destinoBodegaNombre ?? '-')),
+          _celdaTraslado(anchos[3], _buildBodegaChip(traslado.origenBodegaNombre ?? '-')),
+          _celdaTraslado(anchos[4], _buildBodegaChip(traslado.destinoBodegaNombre ?? '-')),
           _celdaTraslado(
-            _anchosColumnasTraslado[5],
+            anchos[5],
             Text(
               '${traslado.cantidad?.toStringAsFixed(0) ?? 0}',
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 11),
             ),
           ),
           _celdaTraslado(
-            _anchosColumnasTraslado[6],
+            anchos[6],
             Text(
               traslado.items.isNotEmpty
                   ? traslado.items.map((i) => i.nombreProducto ?? '-').join(', ')
@@ -551,7 +573,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
               maxLines: 1,
             ),
           ),
-          _celdaTraslado(_anchosColumnasTraslado[7], _buildAccionesCompactas(traslado)),
+          _celdaTraslado(anchos[7], _buildAccionesCompactas(traslado)),
         ],
       ),
     );

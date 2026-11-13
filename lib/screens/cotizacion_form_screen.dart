@@ -13,6 +13,7 @@ import '../utils/busqueda_productos_utils.dart';
 import '../utils/currency_utils.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../widgets/disponibilidad_dialog.dart';
 
 class CotizacionFormScreen extends StatefulWidget {
   final Cotizacion? cotizacion;
@@ -34,6 +35,9 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
   final _validezController = TextEditingController(text: '30');
   final _codigoProductoController = TextEditingController();
   final _nombreProductoController = TextEditingController();
+  // ID real del producto elegido en el autocompletar. Sin esto el item se guardaba con
+  // un ID inventado ('temp-...'), y el backend no podía revisar su stock ni convertirlo en pedido.
+  String? _productoSeleccionadoId;
   final _cantidadController = TextEditingController(text: '1');
   final _precioController = TextEditingController();
   final _porcentajeImpuestoController = TextEditingController(text: '0');
@@ -583,6 +587,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
                       producto.nombre,
                   onSelected: (Producto producto) {
                     setState(() {
+                      _productoSeleccionadoId = producto.id;
                       _nombreProductoController.text = producto.nombre;
                       _codigoProductoController.text =
                           producto.codigo?.isNotEmpty ?? false
@@ -1038,7 +1043,19 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _items.isEmpty ? null : _verificarInventario,
+              icon: Icon(Icons.inventory_2_outlined),
+              label: Text('Verificar inventario'),
+            ),
+          ),
+          SizedBox(height: 10),
+          Row(
         children: [
           Expanded(
             child: OutlinedButton(
@@ -1075,7 +1092,22 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
           ),
         ],
       ),
+        ],
+      ),
     );
+  }
+
+  /// Muestra qué productos de la cotización no hay (o no alcanzan) en inventario,
+  /// para saberlo antes de guardar o de convertirla en pedido.
+  Future<void> _verificarInventario() async {
+    try {
+      final disponibilidad = await _cotizacionService.verificarDisponibilidad(_items);
+      if (!mounted) return;
+      await mostrarDisponibilidad(context, disponibilidad);
+    } catch (e) {
+      if (!mounted) return;
+      showErrorDialog(context, 'Error al verificar inventario: ${errorMessage(e)}');
+    }
   }
 
   void _agregarItem() {
@@ -1088,7 +1120,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
     }
 
     final item = ItemCotizacion(
-      productoId: 'temp-${DateTime.now().millisecondsSinceEpoch}',
+      productoId: _productoSeleccionadoId ?? 'temp-${DateTime.now().millisecondsSinceEpoch}',
       codigoProducto: _codigoProductoController.text,
       productoNombre: _nombreProductoController.text,
       cantidad: int.tryParse(_cantidadController.text) ?? 1,
@@ -1111,6 +1143,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
   }
 
   void _limpiarFormularioProducto() {
+    _productoSeleccionadoId = null;
     _codigoProductoController.clear();
     _nombreProductoController.clear();
     _cantidadController.text = '1';

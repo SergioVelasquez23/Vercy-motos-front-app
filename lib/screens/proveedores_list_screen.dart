@@ -95,7 +95,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
           title: 'Lista proveedores',
           badge: '${_proveedoresFiltrados.length}',
           actions: [
-            ScreenHeaderAction.success(
+            ScreenHeaderAction.secondary(
               icon: Icons.file_upload,
               label: 'Carga Masiva',
               mobileLabel: 'Carga',
