@@ -1106,9 +1106,14 @@ class ProductoService {
         'codigoBarras': producto.codigoBarras,
         'marca': producto.marca,
         'localizacion': producto.localizacion,
-        'controlInventario': producto.controlInventario == 'SI',
-        'stockMinimo': producto.inventarioBajo,
-        'stockOptimo': producto.inventarioOptimo,
+        // Solo si se conocen: muchos productos vienen del caché liviano
+        // (/api/productos, /ligero) sin estos campos. Antes se mandaban como
+        // false/null y el backend desactivaba el control de inventario y
+        // ponía stockMinimo/stockOptimo en 0 en cada ajuste de stock.
+        if (producto.controlInventarioBool != null)
+          'controlInventario': producto.controlInventarioBool,
+        if (producto.inventarioBajo != null) 'stockMinimo': producto.inventarioBajo,
+        if (producto.inventarioOptimo != null) 'stockOptimo': producto.inventarioOptimo,
       };
 
       // Agregar campos opcionales solo si no son null ni vacíos

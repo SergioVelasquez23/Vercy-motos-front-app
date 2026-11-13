@@ -264,7 +264,9 @@ class _CategoriasScreenState extends State<CategoriasScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Imagen
-                    GestureDetector(
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
                       onTap: () async {
                         final source = await _showImageSourceDialog();
                         if (source != null) {
@@ -338,6 +340,7 @@ class _CategoriasScreenState extends State<CategoriasScreen>
                                       size: 40,
                                     )),
                       ),
+                    ),
                     ),
                     SizedBox(height: 16),
 

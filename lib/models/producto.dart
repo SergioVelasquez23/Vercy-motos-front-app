@@ -222,8 +222,10 @@ class Producto {
     // El backend solo acepta `tipoItem` (en minúscula). `productoOServicio`
     // se eliminó porque duplicaba el dato.
     'tipoItem': productoOServicio?.toLowerCase(),
-    // `controlInventario` ahora es booleano en el backend.
-    'controlInventario': controlInventario == 'SI',
+    // `controlInventario` es booleano en el backend. Si no se conoce (null),
+    // NO se envía: antes null se mandaba como `false` y desactivaba el control
+    // de inventario (las compras dejaban de sumar stock).
+    if (controlInventarioBool != null) 'controlInventario': controlInventarioBool,
     'porcentajeImpuesto': porcentajeImpuesto,
     // Backend renombró los campos: inventarioBajo → stockMinimo, inventarioOptimo → stockOptimo.
     'stockMinimo': inventarioBajo,
@@ -558,6 +560,15 @@ class Producto {
 
   // 🔧 HELPER: Normalizar campo "Sí/No" que puede venir como bool, "true"/"false",
   // "si"/"no", "1"/"0", etc. Devuelve siempre 'SI', 'NO' o null.
+  /// `controlInventario` como bool para el backend, o null si no se conoce
+  /// (p. ej. productos del caché liviano, que no traen el campo). Tolera
+  /// texto libre: "si", "Sí", "SI" → true; "no" → false.
+  bool? get controlInventarioBool {
+    final v = controlInventario?.trim().toUpperCase();
+    if (v == null || v.isEmpty) return null;
+    return v != 'NO';
+  }
+
   static String? _normalizarSiNo(dynamic value) {
     if (value == null) return null;
     if (value is bool) return value ? 'SI' : 'NO';

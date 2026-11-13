@@ -1250,7 +1250,9 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
               // Código de barras
               Row(
                 children: [
-                  GestureDetector(
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
                     onTap: _abrirScannerCodigos,
                     child: Container(
                       padding: EdgeInsets.symmetric(
@@ -1280,6 +1282,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
                         ],
                       ),
                     ),
+                  ),
                   ),
                   SizedBox(width: 12),
                   Expanded(

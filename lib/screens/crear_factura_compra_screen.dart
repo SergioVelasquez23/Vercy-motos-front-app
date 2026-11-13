@@ -12,6 +12,7 @@ import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/busqueda_productos_utils.dart';
 import '../utils/currency_utils.dart';
+import '../utils/dialogs_helper.dart';
 import '../utils/logger.dart';
 import '../utils/datetime_utils.dart';
 import '../utils/api_error.dart';
@@ -345,7 +346,8 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                       Expanded(
                         child: TextField(
                           controller: costoController,
-                          keyboardType: TextInputType.number,
+                          keyboardType: TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [MilesInputFormatter(decimalDigits: 2)],
                           style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           decoration: InputDecoration(
                             labelText: 'Costo *',
@@ -367,6 +369,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                         child: TextField(
                           controller: precioController,
                           keyboardType: TextInputType.number,
+                          inputFormatters: [MilesInputFormatter()],
                           style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                           decoration: InputDecoration(
                             labelText: 'Precio venta *',
@@ -544,7 +547,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                         return;
                       }
                       if (costoController.text.isEmpty ||
-                          precioController.text.isEmpty) {
+                          CurrencyUtils.parse(precioController.text) <= 0) {
                         showInfoSnackBar(context, 'El costo y precio son obligatorios');
                         return;
                       }
@@ -552,8 +555,8 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                       setDialogState(() => guardando = true);
 
                       try {
-                        final precio = double.parse(precioController.text);
-                        final costo = double.parse(costoController.text);
+                        final precio = CurrencyUtils.parse(precioController.text);
+                        final costo = CurrencyUtils.parseDecimal(costoController.text);
                         final utilidad = precio - costo;
                         final cantidad =
                             int.tryParse(cantidadController.text) ?? 0;
@@ -606,8 +609,8 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                                 productoCreado.codigo ?? productoCreado.id;
                             _nombreProductoController.text =
                                 productoCreado.nombre;
-                            _valorUnitarioController.text = productoCreado.costo
-                                .toString();
+                            _valorUnitarioController.text =
+                                CurrencyUtils.formatForMilesInputAuto(productoCreado.costo);
                           });
 
                           // 2️⃣ Actualizar TAMBIÉN el Provider para next time
@@ -650,8 +653,42 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
     );
   }
 
+  /// En modo crear, hay trabajo sin guardar si ya se agregó algún producto.
+  /// (En modo editar no se puede saber si hubo cambios, así que no se pregunta.)
+  bool get _hayCambiosSinGuardar => !_modoEdicion && _items.isNotEmpty;
+
+  Future<void> _confirmarSalida() async {
+    if (!_hayCambiosSinGuardar) {
+      context.go('/compras');
+      return;
+    }
+    final salir = await showConfirmDialog(
+      context,
+      title: '¿Salir sin guardar?',
+      content:
+          'Esta compra tiene ${_items.length} producto(s) que se perderán si sales. '
+          'Si quieres conservarlos, guárdala como borrador.',
+      confirmText: 'Salir sin guardar',
+      cancelText: 'Seguir editando',
+      isDangerous: true,
+    );
+    if (salir && mounted) context.go('/compras');
+  }
+
   @override
   Widget build(BuildContext context) {
+    // PopScope cubre el "atrás" del sistema/navegador; el botón de volver del
+    // AppBar llama a _confirmarSalida() directamente.
+    return PopScope(
+      canPop: !_hayCambiosSinGuardar,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmarSalida();
+      },
+      child: _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
@@ -667,7 +704,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
         iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
-          onPressed: () => context.go('/compras'),
+          onPressed: _confirmarSalida,
         ),
         actions: [
           // Botón Compras en borrador
@@ -1180,7 +1217,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
   Widget _buildDatosProducto() {
     // Calcular valor total del producto actual
     final cantidad = double.tryParse(_cantidadProductoController.text) ?? 0;
-    final valorUnitario = double.tryParse(_valorUnitarioController.text) ?? 0;
+    final valorUnitario = CurrencyUtils.parseDecimal(_valorUnitarioController.text);
     final valorTotal = cantidad * valorUnitario;
 
     return Column(
@@ -1240,8 +1277,8 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                         _productoSeleccionado = producto;
                         _codigoProductoController.text = producto.id;
                         _nombreProductoController.text = producto.nombre;
-                        _valorUnitarioController.text = producto.precio
-                            .toString();
+                        _valorUnitarioController.text =
+                            CurrencyUtils.formatForMilesInputAuto(producto.precio);
                       });
                     }
                   },
@@ -1323,8 +1360,8 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                               ? producto.codigo!
                               : producto.id;
                           _nombreProductoController.text = producto.nombre;
-                          _valorUnitarioController.text = producto.costo
-                              .toString();
+                          _valorUnitarioController.text =
+                              CurrencyUtils.formatForMilesInputAuto(producto.costo);
                         });
                       },
                       fieldViewBuilder:
@@ -1472,8 +1509,8 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                               ? producto.codigo!
                               : producto.id;
                           _nombreProductoController.text = producto.nombre;
-                          _valorUnitarioController.text = producto.costo
-                              .toString();
+                          _valorUnitarioController.text =
+                              CurrencyUtils.formatForMilesInputAuto(producto.costo);
                         });
                       },
                       fieldViewBuilder:
@@ -1658,7 +1695,8 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
               child: TextField(
                 controller: _valorUnitarioController,
                 style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
-                keyboardType: TextInputType.number,
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [MilesInputFormatter(decimalDigits: 2)],
                 decoration: InputDecoration(
                   isDense: true,
                   contentPadding: EdgeInsets.symmetric(
@@ -2308,7 +2346,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
       cantidadAlmacen = cantidad;
     }
 
-    final precioUnitario = double.tryParse(_valorUnitarioController.text) ?? 0;
+    final precioUnitario = CurrencyUtils.parseDecimal(_valorUnitarioController.text);
     if (precioUnitario <= 0) {
       showWarningSnackBar(context, 'El valor unitario debe ser mayor a 0');
       return;
@@ -2769,6 +2807,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
         } catch (e) {
             
         }
+      } else if (facturaCreada.productosSinControlInventario.isNotEmpty) {
+        showWarningSnackBar(
+          context,
+          'Factura creada, pero NO se sumó stock a (sin control de inventario): '
+          '${facturaCreada.productosSinControlInventario.join(', ')}',
+        );
       } else {
         showSuccessSnackBar(context, 'Factura creada exitosamente');
       }

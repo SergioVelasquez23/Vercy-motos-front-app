@@ -358,7 +358,9 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: GestureDetector(
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
                         onTap: () => _seleccionarFecha(context, true),
                         child: Container(
                           padding: EdgeInsets.symmetric(
@@ -399,10 +401,13 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                           ),
                         ),
                       ),
+                      ),
                     ),
                     SizedBox(width: 8),
                     Expanded(
-                      child: GestureDetector(
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
                         onTap: () => _seleccionarFecha(context, false),
                         child: Container(
                           padding: EdgeInsets.symmetric(
@@ -442,6 +447,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                             ],
                           ),
                         ),
+                      ),
                       ),
                     ),
                   ],

@@ -524,7 +524,9 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
     required VoidCallback onTap,
     required VoidCallback onClear,
   }) {
-    return GestureDetector(
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -549,15 +551,19 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
               ),
             ),
             if (fecha != null)
-              GestureDetector(
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
                 onTap: onClear,
                 child: Icon(Icons.close, color: Colors.grey, size: 18),
+              ),
               )
             else
               Icon(Icons.calendar_today, color: Colors.grey, size: 18),
           ],
         ),
       ),
+    ),
     );
   }
 

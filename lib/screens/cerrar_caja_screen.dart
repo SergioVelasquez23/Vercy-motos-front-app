@@ -7,6 +7,7 @@ import '../services/pedido_service.dart';
 import '../services/resumen_cierre_completo_service.dart';
 import '../services/backup_inventario_service.dart';
 import '../models/resumen_cierre_completo.dart';
+import '../utils/currency_utils.dart';
 import '../utils/format_utils.dart';
 import '../utils/file_download_helper.dart';
 import '../theme/app_theme.dart';
@@ -580,6 +581,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> with SubmitGuard {
                       keyboardType: TextInputType.numberWithOptions(
                         decimal: true,
                       ),
+                      inputFormatters: [MilesInputFormatter(decimalDigits: 2)],
                       style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       decoration: InputDecoration(
                         hintText: '0.00',
@@ -602,7 +604,9 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> with SubmitGuard {
                       ),
                       onChanged: (value) {
                         setState(() {
-                          efectivoDeclarado = double.tryParse(value);
+                          efectivoDeclarado = value.trim().isEmpty
+                              ? null
+                              : CurrencyUtils.parseDecimal(value);
                           if (efectivoDeclarado != null) {
                             descuadre = _efectivoEsperado - efectivoDeclarado!;
                             mostrarDescuadre =

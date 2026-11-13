@@ -588,7 +588,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
                           producto.codigo?.isNotEmpty ?? false
                               ? producto.codigo!
                               : '';
-                      _precioController.text = producto.precio.toString();
+                      _precioController.text = CurrencyUtils.formatForMilesInput(producto.precio, decimalDigits: 0);
                     });
                   },
                   fieldViewBuilder:
@@ -712,6 +712,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
               ),
               TextField(
                 controller: _precioController,
+                inputFormatters: [MilesInputFormatter()],
                 style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 decoration: InputDecoration(
                   labelText: 'Precio',
@@ -1079,7 +1080,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
 
   void _agregarItem() {
     if (_nombreProductoController.text.isEmpty ||
-        _precioController.text.isEmpty) {
+        CurrencyUtils.parse(_precioController.text) <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Complete los datos del producto')),
       );
@@ -1091,7 +1092,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
       codigoProducto: _codigoProductoController.text,
       productoNombre: _nombreProductoController.text,
       cantidad: int.tryParse(_cantidadController.text) ?? 1,
-      precioUnitario: double.tryParse(_precioController.text) ?? 0,
+      precioUnitario: CurrencyUtils.parse(_precioController.text),
       tipoImpuesto: _tipoImpuesto,
       porcentajeImpuesto:
           double.tryParse(_porcentajeImpuestoController.text) ?? 0,
