@@ -470,6 +470,11 @@ class PdfExportService {
           'Gastos Desde Caja',
           currencyFormat.format(gastos.totalGastosDesdeCaja),
         ),
+        if (gastos.hayGastoMixtoDesdeCaja)
+          _buildRow(
+            'De los cuales en efectivo',
+            currencyFormat.format(gastos.totalGastosEfectivoDesdeCaja),
+          ),
         _buildRow(
           'Fact. desde Caja',
           currencyFormat.format(gastos.facturasPagadasDesdeCaja),

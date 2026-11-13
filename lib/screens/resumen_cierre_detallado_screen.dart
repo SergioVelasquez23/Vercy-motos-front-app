@@ -1541,6 +1541,16 @@ class _ResumenCierreDetalladoScreenState
                 ],
               ),
 
+              // Con un gasto mixto, lo que realmente resta del efectivo es menor
+              // que "Gastos Desde Caja": se muestra la parte en efectivo.
+              if (gastos.hayGastoMixtoDesdeCaja) ...[
+                SizedBox(height: 6),
+                _buildInfoRow(
+                  'De los cuales en efectivo',
+                  formatCurrency(gastos.totalGastosEfectivoDesdeCaja),
+                ),
+              ],
+
               // Total incluyendo facturas
               Divider(height: 16, color: textLight.withOpacity(0.2)),
               _buildInfoRow(

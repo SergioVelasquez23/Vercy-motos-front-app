@@ -235,6 +235,19 @@ class ResumenGastosCompleto {
   final int totalRegistros;
   final double totalGastosIncluyendoFacturas;
   final double totalGastosDesdeCaja;
+
+  /// Solo la parte de los gastos desde caja que sale del efectivo físico. Un gasto
+  /// mixto (parte efectivo, parte transferencia) cuenta completo en
+  /// [totalGastosDesdeCaja] (500), pero solo su parte en efectivo (250) resta del
+  /// efectivo de la caja.
+  final double totalGastosEfectivoDesdeCaja;
+
+  /// `true` si algún gasto pagado desde caja no salió todo en efectivo: entonces
+  /// "Gastos Desde Caja" y lo que realmente restó de la caja no coinciden y
+  /// conviene mostrar ambos.
+  bool get hayGastoMixtoDesdeCaja =>
+      (totalGastosDesdeCaja - totalGastosEfectivoDesdeCaja).abs() > 0.5;
+
   final List<DetalleGasto> detallesGastos;
   final Map<String, double> gastosPorFormaPago;
   final double facturasPagadasDesdeCaja;
@@ -246,6 +259,7 @@ class ResumenGastosCompleto {
     required this.totalRegistros,
     required this.totalGastosIncluyendoFacturas,
     required this.totalGastosDesdeCaja,
+    required this.totalGastosEfectivoDesdeCaja,
     required this.detallesGastos,
     required this.gastosPorFormaPago,
     required this.facturasPagadasDesdeCaja,
@@ -299,6 +313,11 @@ class ResumenGastosCompleto {
         json['totalGastosIncluyendoFacturas'],
       ),
       totalGastosDesdeCaja: safeToDouble(json['totalGastosDesdeCaja']),
+      // Si el backend no lo manda (versión anterior), se asume que todo salió en
+      // efectivo: queda igual que el total y no se muestra la línea extra.
+      totalGastosEfectivoDesdeCaja: json['totalGastosEfectivoDesdeCaja'] != null
+          ? safeToDouble(json['totalGastosEfectivoDesdeCaja'])
+          : safeToDouble(json['totalGastosDesdeCaja']),
       detallesGastos:
           (json['detallesGastos'] as List<dynamic>?)
               ?.map((item) => DetalleGasto.fromJson(item))
