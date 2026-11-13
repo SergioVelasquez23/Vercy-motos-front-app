@@ -207,7 +207,9 @@ class _EditarStockSimpleScreenState extends State<EditarStockSimpleScreen> {
         nombre: nombre,
         precio: precio,
         costo: costo,
-        utilidad: precio - costo,
+        // utilidad 0 → el backend la calcula con la fórmula estándar
+        // (base sin IVA - costo), igual que al editar.
+        utilidad: 0,
         codigo: codigo.isEmpty ? null : codigo,
         almacen: almacen,
         bodega: bodega,

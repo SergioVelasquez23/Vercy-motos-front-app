@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../widgets/common/error_retry_view.dart';
 import '../models/resumen_cartera.dart';
 import '../models/gasto_programado.dart';
 import '../services/cartera_service.dart';
@@ -82,32 +83,10 @@ class _CarteraScreenState extends State<CarteraScreen> {
   }
 
   Widget _buildErrorWidget() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 64, color: AppTheme.error),
-          const SizedBox(height: 16),
-          Text(
-            'Error al cargar datos',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              error ?? 'Error desconocido',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: _cargarResumen,
-            child: const Text('Reintentar'),
-          ),
-        ],
-      ),
+    return ErrorRetryView(
+      title: 'Error al cargar datos',
+      message: error,
+      onRetry: _cargarResumen,
     );
   }
 

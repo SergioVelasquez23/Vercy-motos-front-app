@@ -61,7 +61,9 @@ class StatCard extends StatelessWidget {
                 children: [
                   // Botón para editar objetivo
                   if (periodo != null && onEditObjective != null)
-                    GestureDetector(
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
                       onTap: () => onEditObjective!(periodo!, title),
                       child: Container(
                         padding: EdgeInsets.all(AppTheme.spacingXSmall),
@@ -77,6 +79,7 @@ class StatCard extends StatelessWidget {
                         ),
                         child: Icon(Icons.edit, size: 14, color: color),
                       ),
+                    ),
                     ),
                   if (periodo != null && onEditObjective != null) SizedBox(width: AppTheme.spacingSmall),
                   Container(

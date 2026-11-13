@@ -7,6 +7,7 @@ import 'package:printing/printing.dart';
 import 'package:barcode/barcode.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../widgets/common/skeleton_list.dart';
 import '../models/producto.dart';
 import '../models/categoria.dart';
 import '../services/producto_service.dart';
@@ -464,7 +465,16 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
 
   Widget _buildTabla() {
     if (_isLoading) {
-      return Center(child: CircularProgressIndicator(color: AppTheme.primary));
+      // Skeleton dentro del mismo marco de la tabla: al llegar los datos el
+      // diseño no salta.
+      return Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade800),
+        ),
+        child: const SkeletonList(itemCount: 10),
+      );
     }
 
     return Container(

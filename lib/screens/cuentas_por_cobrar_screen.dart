@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../widgets/common/error_retry_view.dart';
 import '../models/cuenta_por_cobrar.dart';
 import '../models/pedido.dart';
 import '../models/api_response.dart';
@@ -132,7 +133,8 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: montoController,
-              keyboardType: TextInputType.number,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [MilesInputFormatter(decimalDigits: 2)],
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: const InputDecoration(
                 labelText: 'Monto del abono',
@@ -150,10 +152,8 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              final monto = double.tryParse(montoController.text);
-              if (monto != null &&
-                  monto > 0 &&
-                  monto <= cuenta.saldoPendiente) {
+              final monto = CurrencyUtils.parseDecimal(montoController.text);
+              if (monto > 0 && monto <= cuenta.saldoPendiente) {
                 Navigator.pop(context, monto);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -323,32 +323,10 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
   }
 
   Widget _buildErrorWidget() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 64, color: AppTheme.error),
-          const SizedBox(height: 16),
-          Text(
-            'Error al cargar cuentas',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              error ?? 'Error desconocido',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: _cargarCuentas,
-            child: const Text('Reintentar'),
-          ),
-        ],
-      ),
+    return ErrorRetryView(
+      title: 'Error al cargar cuentas',
+      message: error,
+      onRetry: _cargarCuentas,
     );
   }
 

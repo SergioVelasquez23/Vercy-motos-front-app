@@ -8,6 +8,7 @@ import '../config/constants.dart';
 import '../services/cuadre_caja_service.dart';
 
 import 'resumen_cierre_detallado_screen.dart';
+import '../utils/currency_utils.dart';
 import '../utils/format_utils.dart';
 import 'contador_efectivo_screen.dart';
 import 'package:http/http.dart' as http;
@@ -378,7 +379,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final responsable = userProvider.userName ?? _cuadreActual!.responsable;
-      final montoEfectivo = double.tryParse(_montoEfectivoController.text) ?? 0;
+      final montoEfectivo = CurrencyUtils.parse(_montoEfectivoController.text);
       final observaciones =
           '${_notasController.text}. Identificación máquina: ${_idMaquinaController.text}';
 
@@ -414,11 +415,11 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
             // Callback que se ejecuta cuando se usa el total
             if (paraEfectivo) {
               setState(() {
-                _montoEfectivoController.text = total.toStringAsFixed(0);
+                _montoEfectivoController.text = CurrencyUtils.formatForMilesInput(total, decimalDigits: 0);
               });
             } else {
               setState(() {
-                _montoTransferenciasController.text = total.toStringAsFixed(0);
+                _montoTransferenciasController.text = CurrencyUtils.formatForMilesInput(total, decimalDigits: 0);
               });
             }
             _actualizarTotales();
@@ -1454,6 +1455,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                     TextFormField(
                       controller: _montoAperturaController,
                       keyboardType: TextInputType.number,
+                      inputFormatters: [MilesInputFormatter()],
                       decoration: InputDecoration(
                         border: OutlineInputBorder(),
                         labelText: 'Ingrese el monto inicial',
@@ -1594,6 +1596,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                               child: TextFormField(
                                 controller: _montoEfectivoController,
                                 keyboardType: TextInputType.number,
+                                inputFormatters: [MilesInputFormatter()],
                                 decoration: InputDecoration(
                                   isDense: true,
                                   contentPadding: EdgeInsets.symmetric(
@@ -1697,6 +1700,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                               child: TextFormField(
                                 controller: _montoTransferenciasController,
                                 keyboardType: TextInputType.number,
+                                inputFormatters: [MilesInputFormatter()],
                                 decoration: InputDecoration(
                                   isDense: true,
                                   contentPadding: EdgeInsets.symmetric(
@@ -1737,6 +1741,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                               child: TextFormField(
                                 controller: _montoTarjetaController,
                                 keyboardType: TextInputType.number,
+                                inputFormatters: [MilesInputFormatter()],
                                 decoration: InputDecoration(
                                   isDense: true,
                                   contentPadding: EdgeInsets.symmetric(
@@ -1777,6 +1782,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                               child: TextFormField(
                                 controller: _montoSistereditoController,
                                 keyboardType: TextInputType.number,
+                                inputFormatters: [MilesInputFormatter()],
                                 decoration: InputDecoration(
                                   isDense: true,
                                   contentPadding: EdgeInsets.symmetric(
@@ -1817,6 +1823,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                               child: TextFormField(
                                 controller: _montoDatafonoController,
                                 keyboardType: TextInputType.number,
+                                inputFormatters: [MilesInputFormatter()],
                                 decoration: InputDecoration(
                                   isDense: true,
                                   contentPadding: EdgeInsets.symmetric(
@@ -2003,7 +2010,9 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                     if (!tieneError &&
                                         (efectivoEsperado > 0 ||
                                             transferenciasEsperadas > 0)) ...[
-                                      GestureDetector(
+                                      MouseRegion(
+                                        cursor: SystemMouseCursors.click,
+                                        child: GestureDetector(
                                         onTap: () {
                                           // Autocompletar los campos de ventas
                                           setState(() {
@@ -2068,6 +2077,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                             ],
                                           ),
                                         ),
+                                      ),
                                       ),
                                     ],
                                   ],

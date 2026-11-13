@@ -43,7 +43,9 @@ class CategoriaFilterRow extends StatelessWidget {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -64,6 +66,7 @@ class CategoriaFilterRow extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 }

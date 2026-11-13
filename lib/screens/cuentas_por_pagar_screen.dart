@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../widgets/common/error_retry_view.dart';
 import '../models/cuenta_por_pagar.dart';
 import '../models/proveedor.dart';
 import '../services/cartera_service.dart';
@@ -134,7 +135,8 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: montoController,
-              keyboardType: TextInputType.number,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [MilesInputFormatter(decimalDigits: 2)],
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: const InputDecoration(
                 labelText: 'Monto del pago',
@@ -152,10 +154,8 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              final monto = double.tryParse(montoController.text);
-              if (monto != null &&
-                  monto > 0 &&
-                  monto <= cuenta.saldoPendiente) {
+              final monto = CurrencyUtils.parseDecimal(montoController.text);
+              if (monto > 0 && monto <= cuenta.saldoPendiente) {
                 Navigator.pop(context, monto);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -361,32 +361,10 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
   }
 
   Widget _buildErrorWidget() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 64, color: AppTheme.error),
-          const SizedBox(height: 16),
-          Text(
-            'Error al cargar cuentas',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              error ?? 'Error desconocido',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: _cargarCuentas,
-            child: const Text('Reintentar'),
-          ),
-        ],
-      ),
+    return ErrorRetryView(
+      title: 'Error al cargar cuentas',
+      message: error,
+      onRetry: _cargarCuentas,
     );
   }
 
@@ -888,7 +866,8 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                       // Monto total
                       TextField(
                         controller: montoTotalCtrl,
-                        keyboardType: TextInputType.number,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: [MilesInputFormatter(decimalDigits: 2)],
                         style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                         decoration: const InputDecoration(
                           labelText: 'Monto total *',
@@ -1058,12 +1037,11 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                   onPressed: () {
                     final nombre = proveedorNombreCtrl.text.trim();
                     final factura = numeroFacturaCtrl.text.trim();
-                    final monto = double.tryParse(montoTotalCtrl.text);
+                    final monto = CurrencyUtils.parseDecimal(montoTotalCtrl.text);
                     final dias = int.tryParse(diasVencimientoCtrl.text) ?? 30;
 
                     if (nombre.isEmpty ||
                         factura.isEmpty ||
-                        monto == null ||
                         monto <= 0) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(

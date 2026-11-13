@@ -44,6 +44,17 @@ class CurrencyUtils {
     return decimal != null ? '$signo$agrupado.$decimal' : '$signo$agrupado';
   }
 
+  /// Como [formatForMilesInput], pero sin decimales cuando el valor es entero
+  /// (13400.0 -> "13.400" en vez de "13.400.00"). Para prellenar un campo con
+  /// `MilesInputFormatter(decimalDigits: 2)`: se lee de vuelta con
+  /// [parseDecimal].
+  static String formatForMilesInputAuto(double value) {
+    return formatForMilesInput(
+      value,
+      decimalDigits: value == value.roundToDouble() ? 0 : 2,
+    );
+  }
+
   /// Formatea un valor de manera abreviada para espacios pequeños
   /// Ejemplo: 55500 -> $55.5K, 1500000 -> $1.5M
   static String formatShort(double value) {
@@ -112,8 +123,17 @@ class CurrencyUtils {
   /// Convierte texto ya producido por [MilesInputFormatter] (con puntos de
   /// miles y, si tiene, un último punto como separador decimal) de vuelta a
   /// double. Ejemplo: "1.234.567" -> 1234567.0, "42.016.81" -> 42016.81.
+  ///
+  /// Si el texto es una agrupación de miles pura ("1.500", "13.400",
+  /// "1.500.000"), TODOS los puntos son miles. Es lo que deja
+  /// [MilesInputFormatter] al teclear un entero, incluso con decimalDigits: 2
+  /// (un decimal escrito nunca tiene 3 dígitos tras el último punto). Antes,
+  /// "1.500" se leía como 1,5 y "1.500.000" como 1500.
   static double parseDecimal(String text) {
     if (text.isEmpty) return 0.0;
+    if (RegExp(r'^[1-9]\d{0,2}(\.\d{3})+$').hasMatch(text)) {
+      return double.parse(text.replaceAll('.', ''));
+    }
     final lastDot = text.lastIndexOf('.');
     if (lastDot == -1) {
       return double.tryParse(text) ?? 0.0;
