@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/common/error_retry_view.dart';
 import '../models/alerta_notificacion.dart';
 import '../services/alertas_service.dart';
 import '../services/cartera_service.dart';
@@ -133,32 +134,10 @@ class _AlertasScreenState extends State<AlertasScreen>
   }
 
   Widget _buildErrorWidget() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.red),
-          const SizedBox(height: 16),
-          Text(
-            'Error al cargar estado',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              error ?? 'Error desconocido',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: _cargarEstadoCompleto,
-            child: const Text('Reintentar'),
-          ),
-        ],
-      ),
+    return ErrorRetryView(
+      title: 'Error al cargar estado',
+      message: error,
+      onRetry: _cargarEstadoCompleto,
     );
   }
 

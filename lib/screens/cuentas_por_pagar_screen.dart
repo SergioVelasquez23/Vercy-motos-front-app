@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../widgets/common/error_retry_view.dart';
 import '../models/cuenta_por_pagar.dart';
 import '../models/proveedor.dart';
 import '../services/cartera_service.dart';
@@ -360,32 +361,10 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
   }
 
   Widget _buildErrorWidget() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 64, color: AppTheme.error),
-          const SizedBox(height: 16),
-          Text(
-            'Error al cargar cuentas',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              error ?? 'Error desconocido',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: _cargarCuentas,
-            child: const Text('Reintentar'),
-          ),
-        ],
-      ),
+    return ErrorRetryView(
+      title: 'Error al cargar cuentas',
+      message: error,
+      onRetry: _cargarCuentas,
     );
   }
 
