@@ -47,6 +47,7 @@ import '../widgets/facturizacion/confirmacion_dian_dialog.dart';
 import '../services/documento_service.dart';
 import '../utils/base64_file_launcher.dart';
 import '../utils/currency_utils.dart';
+import '../utils/borradores_utils.dart';
 import '../utils/payment_mapping.dart' as payment_mapping;
 import '../utils/facturacion_calculos.dart' as calculos;
 import 'package:url_launcher/url_launcher.dart';
@@ -3484,8 +3485,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     try {
       // ⚡ OPTIMIZADO: Usar endpoint específico para pedidos activos de FACTURACION
       // En lugar de traer TODOS los pedidos históricos
-      final borradores = await _pedidoService.getPedidosActivosMesa(
+      final todosLosBorradores = await _pedidoService.getPedidosActivosMesa(
         'FACTURACION',
+      );
+      // Cada usuario ve solo SUS borradores (antes aparecían los de todos).
+      final borradores = filtrarBorradoresDelUsuario(
+        todosLosBorradores,
+        Provider.of<UserProvider>(context, listen: false).userName,
       );
 
       setState(() => _isLoading = false);
@@ -3970,6 +3976,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         mesero: _nombreFacturador(
           Provider.of<UserProvider>(context, listen: false).userName ?? 'Sistema',
         ),
+        // Quién guarda el borrador: en la caja de ENVÍOS `mesero` es el
+        // facturador elegido, no necesariamente quien lo guarda; con esto el
+        // borrador sigue siendo de su autor.
+        guardadoPor: Provider.of<UserProvider>(context, listen: false).userName,
         items: _items,
         total: total,
         estado: EstadoPedido.activo,
