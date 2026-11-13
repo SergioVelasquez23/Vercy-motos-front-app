@@ -439,21 +439,27 @@ class MetodoPagoSection extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '\$${suma.toStringAsFixed(0)} de \$${totalAPagar.toStringAsFixed(0)}',
-                style: TextStyle(color: color, fontWeight: FontWeight.bold),
-              ),
-              if (!cuadra)
+          // Flexible: en pantallas angostas el importe se ajusta en vez de
+          // desbordar la fila.
+          SizedBox(width: 8),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
                 Text(
-                  diferencia < 0
-                      ? 'Faltan \$${diferencia.abs().toStringAsFixed(0)}'
-                      : 'Sobran \$${diferencia.toStringAsFixed(0)}',
-                  style: TextStyle(color: color, fontSize: 12),
+                  '\$${suma.toStringAsFixed(0)} de \$${totalAPagar.toStringAsFixed(0)}',
+                  textAlign: TextAlign.end,
+                  style: TextStyle(color: color, fontWeight: FontWeight.bold),
                 ),
-            ],
+                if (!cuadra)
+                  Text(
+                    diferencia < 0
+                        ? 'Faltan \$${diferencia.abs().toStringAsFixed(0)}'
+                        : 'Sobran \$${diferencia.toStringAsFixed(0)}',
+                    style: TextStyle(color: color, fontSize: 12),
+                  ),
+              ],
+            ),
           ),
         ],
       ),

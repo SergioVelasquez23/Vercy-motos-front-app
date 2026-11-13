@@ -61,14 +61,18 @@ class ScreenHeader extends StatelessWidget {
             children: [
               Icon(icon, color: AppTheme.primary, size: isMobile ? 22 : 26),
               const SizedBox(width: 10),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: isMobile ? 18 : 22,
-                  fontWeight: FontWeight.w700,
-                  color: color.onSurface,
+              // Flexible: sin él, el `ellipsis` no actúa y un título largo +
+              // insignia desbordan la fila en un celular.
+              Flexible(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: isMobile ? 18 : 22,
+                    fontWeight: FontWeight.w700,
+                    color: color.onSurface,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
               if (badge != null) ...[
                 const SizedBox(width: 10),

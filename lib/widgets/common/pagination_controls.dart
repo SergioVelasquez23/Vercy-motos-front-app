@@ -35,8 +35,13 @@ class PaginationControls extends StatelessWidget {
           top: BorderSide(color: AppTheme.primary.withOpacity(0.2)),
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      // Wrap en vez de Row: en una pantalla ancha se ve en una sola línea, y
+      // en un celular los controles pasan a una segunda línea en lugar de
+      // desbordar (la fila medía ~560 px).
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        runSpacing: 4,
         children: [
           IconButton(
             icon: Icon(Icons.arrow_back_ios, size: 18),
