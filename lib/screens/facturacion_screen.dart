@@ -176,6 +176,15 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
   // Método de pago
   String _metodoPago = 'efectivo';
+
+  /// Borradores/facturas en espera guardados antes de quitar las tarjetas
+  /// débito/crédito pueden traerlas: se normalizan a efectivo.
+  String _metodoPagoVigente(String? metodo) {
+    if (metodo == null || !_metodosPago.any((m) => m['value'] == metodo)) {
+      return 'efectivo';
+    }
+    return metodo;
+  }
   // Sub-categoría visual del medio de pago para el libro contable (nequi/daviplata/
   // bancolombia/bold/credilondon/...). No cambia el formaPago contable enviado al
   // backend, solo permite agrupar/filtrar ventas por plataforma específica.
@@ -190,8 +199,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     {'value': 'nequi', 'label': 'Nequi', 'icon': Icons.account_balance},
     {'value': 'daviplata', 'label': 'DaviPlata', 'icon': Icons.account_balance},
     {'value': 'bancolombia', 'label': 'Bancolombia', 'icon': Icons.account_balance},
-    {'value': 'tarjeta', 'label': 'Tarjeta débito', 'icon': Icons.credit_card},
-    {'value': 'tarjeta_credito', 'label': 'Tarjeta crédito', 'icon': Icons.credit_score},
     {'value': 'bold', 'label': 'Bold', 'icon': Icons.point_of_sale},
     {'value': 'addi', 'label': 'Addi', 'icon': Icons.shopping_bag_outlined},
     {'value': 'credilondon', 'label': 'Credilondon', 'icon': Icons.shopping_bag_outlined},
@@ -765,7 +772,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         _clienteController.text = draftProvider.clienteNombre;
 
         // Restaurar método de pago
-        _metodoPago = draftProvider.metodoPago;
+        _metodoPago = _metodoPagoVigente(draftProvider.metodoPago);
         _tipoFactura = draftProvider.tipoFactura;
         _origenSeleccionado = draftProvider.origenSeleccionado;
         _fechaFactura = draftProvider.fechaFactura;
@@ -880,16 +887,16 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       final montos = {
         'efectivo': double.tryParse(_montoEfectivoController.text) ?? 0,
         'transferencia':
-            double.tryParse(_montoTransferenciaController.text) ?? 0,
-        'tarjeta': double.tryParse(_montoTarjetaController.text) ?? 0,
-        'sistecredito': double.tryParse(_montoSistereditoController.text) ?? 0,
-        'datafono': double.tryParse(_montoDatafonoController.text) ?? 0,
-        'bold': double.tryParse(_montoBoldController.text) ?? 0,
-        'addi': double.tryParse(_montoAddiController.text) ?? 0,
-        'credilondon': double.tryParse(_montoCredilondonController.text) ?? 0,
-        'nequi': double.tryParse(_montoNequiController.text) ?? 0,
-        'daviplata': double.tryParse(_montoDaviplataController.text) ?? 0,
-        'bancolombia': double.tryParse(_montoBancolombiaController.text) ?? 0,
+            CurrencyUtils.parseDecimal(_montoTransferenciaController.text),
+        'tarjeta': CurrencyUtils.parseDecimal(_montoTarjetaController.text),
+        'sistecredito': CurrencyUtils.parseDecimal(_montoSistereditoController.text),
+        'datafono': CurrencyUtils.parseDecimal(_montoDatafonoController.text),
+        'bold': CurrencyUtils.parseDecimal(_montoBoldController.text),
+        'addi': CurrencyUtils.parseDecimal(_montoAddiController.text),
+        'credilondon': CurrencyUtils.parseDecimal(_montoCredilondonController.text),
+        'nequi': CurrencyUtils.parseDecimal(_montoNequiController.text),
+        'daviplata': CurrencyUtils.parseDecimal(_montoDaviplataController.text),
+        'bancolombia': CurrencyUtils.parseDecimal(_montoBancolombiaController.text),
       };
       draftProvider.setMontosPago(montos);
 
@@ -3898,7 +3905,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       if (b['fechaVencimiento'] != null) {
         _fechaVencimiento = DateTime.tryParse(b['fechaVencimiento']) ?? DateTime.now().add(Duration(days: 30));
       }
-      _metodoPago = b['metodoPago'] ?? 'efectivo';
+      _metodoPago = _metodoPagoVigente(b['metodoPago']);
       final montos = (b['montosPago'] as Map?)?.cast<String, dynamic>() ?? {};
       _montoEfectivoController.text = '${montos['efectivo'] ?? 0}';
       _montoTransferenciaController.text = '${montos['transferencia'] ?? 0}';
