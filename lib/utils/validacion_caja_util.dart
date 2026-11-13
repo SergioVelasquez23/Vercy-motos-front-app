@@ -1,8 +1,6 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import '../config/api_config.dart';
-import '../dialogs/dialogo_confirmacion.dart';
 import '../services/base_api_service.dart';
 
 /// Utilidad para validar efectivo disponible en caja
@@ -69,44 +67,6 @@ class ValidacionCajaUtil {
     } catch (e) {
       throw Exception('Error de conexión: $e');
     }
-  }
-
-  /// Muestra diálogo de confirmación para operaciones que afectan el efectivo
-  ///
-  /// Si se proporciona [context], muestra un diálogo real de Flutter.
-  /// Si no se proporciona [context], solo muestra información en la consola.
-  static Future<bool> confirmarOperacionEfectivo({
-    required double monto,
-    required String tipoOperacion,
-    required String detalleOperacion,
-    BuildContext? context,
-  }) async {
-    // Obtener el efectivo actual
-    final detalles = await obtenerDetallesEfectivo();
-    final efectivoActual = detalles.totalEfectivoEnCaja;
-    final efectivoRestante = efectivoActual - monto;
-
-    // Si hay un BuildContext disponible, mostrar un diálogo real
-    if (context != null) {
-      return DialogoConfirmacion.confirmarOperacionEfectivo(
-        context,
-        tipo: tipoOperacion,
-        detalle: detalleOperacion,
-        monto: monto,
-        efectivoDisponible: efectivoActual,
-      );
-    }
-
-    // Si no hay contexto, mostrar información en consola
-      
-      
-      
-      
-      
-      
-
-    // Por defecto retornamos true en modo consola
-    return true;
   }
 }
 
