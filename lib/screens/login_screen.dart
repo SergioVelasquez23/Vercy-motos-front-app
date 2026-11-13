@@ -8,7 +8,8 @@ import '../services/auth_service.dart';
 import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
-import '../services/keep_alive_service.dart';
+import 'package:http/http.dart' as http;
+import '../config/endpoints_config.dart';
 import '../utils/api_error.dart' as api_error;
 import '../utils/legal_texts.dart';
 import '../utils/dialogs_helper.dart';
@@ -149,7 +150,9 @@ class _LoginScreenState extends State<LoginScreen>
   Future<void> _performWakeupStep() async {
     // Ping liviano para despertar el backend sin saturarlo con recargas de datos
     try {
-      await KeepAliveService().forcePing();
+      await http
+          .get(Uri.parse('${EndpointsConfig.baseUrl}/api/health'))
+          .timeout(const Duration(seconds: 30));
     } catch (_) {}
   }
 
@@ -216,9 +219,6 @@ class _LoginScreenState extends State<LoginScreen>
             listen: false,
           );
           cacheProvider.warmupProductos();
-
-          // Mantener el backend de Render despierto
-          KeepAliveService().startKeepAlive();
 
           // Navegar automáticamente
           await Future.delayed(Duration(milliseconds: 100));
@@ -343,9 +343,6 @@ class _LoginScreenState extends State<LoginScreen>
               listen: false,
             );
             cacheProvider.warmupProductos();
-
-            // Mantener el backend de Render despierto
-            KeepAliveService().startKeepAlive();
 
             await Future.delayed(Duration(milliseconds: 100));
 

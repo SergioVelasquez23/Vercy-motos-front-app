@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
 
 import 'providers/user_provider.dart';
 import 'providers/datos_cache_provider.dart';
@@ -14,17 +13,11 @@ import 'providers/notificaciones_provider.dart';
 import 'providers/theme_provider.dart';
 import 'theme/app_theme.dart';
 import 'router/app_router.dart';
-import 'services/http_502_hard_reset.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Envuelve TODA la app en un cliente HTTP que cuenta 502 por endpoint
-  // distinto y hace un hard reset (recarga completa) si se superan 8 — ver
-  // Http502TrackingClient. runWithClient hace que hasta las llamadas que usan
-  // http.get/post directamente (sin pasar por ningún service base) pasen por
-  // este cliente, así que no hace falta tocar cada servicio.
-  await http.runWithClient(_runApp, () => Http502TrackingClient(http.Client()));
+  await _runApp();
 }
 
 Future<void> _runApp() async {
