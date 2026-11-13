@@ -505,6 +505,7 @@ class FacturaCompraService {
               fechaActualizacion: facturaCreada.fechaActualizacion,
               productosSinControlInventario:
                   facturaCreada.productosSinControlInventario,
+              advertencias: facturaCreada.advertencias,
             );
           }
 

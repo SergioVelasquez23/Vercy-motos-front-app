@@ -64,6 +64,10 @@ class FacturaCompra {
   /// NO les sumó stock por tener controlInventario=false. Antes era silencioso.
   final List<String> productosSinControlInventario;
 
+  /// Solo viene en la respuesta de creación/edición: cosas secundarias que
+  /// fallaron aunque la compra se guardó (caja, cuenta por pagar, stock).
+  final List<String> advertencias;
+
   FacturaCompra({
     this.id,
     required this.numeroFactura,
@@ -93,6 +97,7 @@ class FacturaCompra {
     this.porcentajeReteIca = 0.0,
     this.valorReteIca = 0.0,
     this.productosSinControlInventario = const [],
+    this.advertencias = const [],
   }) : proveedorNombre = proveedorNombre ?? 'Proveedor general',
        subtotal =
            subtotal ??
@@ -191,6 +196,10 @@ class FacturaCompra {
       productosSinControlInventario: _parseSinControl(
         json['productosSinControlInventario'] ??
             (json['compra'] is Map ? json['compra']['productosSinControlInventario'] : null),
+      ),
+      advertencias: _parseSinControl(
+        json['advertencias'] ??
+            (json['compra'] is Map ? json['compra']['advertencias'] : null),
       ),
     );
   }

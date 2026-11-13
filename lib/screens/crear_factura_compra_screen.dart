@@ -2814,6 +2814,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
         } catch (e) {
             
         }
+      } else if (facturaCreada.advertencias.isNotEmpty) {
+        await showInfoDialog(
+          context,
+          title: 'Compra guardada, pero revisa esto',
+          content: facturaCreada.advertencias.map((a) => '• $a').join('\n'),
+        );
       } else if (facturaCreada.productosSinControlInventario.isNotEmpty) {
         showWarningSnackBar(
           context,
