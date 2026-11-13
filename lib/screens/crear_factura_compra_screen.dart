@@ -2769,6 +2769,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
         } catch (e) {
             
         }
+      } else if (facturaCreada.productosSinControlInventario.isNotEmpty) {
+        showWarningSnackBar(
+          context,
+          'Factura creada, pero NO se sumó stock a (sin control de inventario): '
+          '${facturaCreada.productosSinControlInventario.join(', ')}',
+        );
       } else {
         showSuccessSnackBar(context, 'Factura creada exitosamente');
       }

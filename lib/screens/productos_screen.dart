@@ -784,7 +784,8 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
 
     // INVENTARIO
     final controlInventarioController = TextEditingController(
-      text: isEditing ? (producto.controlInventario ?? '') : '',
+      // Por defecto SI: coincide con el desplegable y con el default del backend.
+      text: isEditing ? (producto.controlInventario ?? 'SI') : 'SI',
     );
     final inventarioBajoController = TextEditingController(
       text: isEditing ? (producto.inventarioBajo?.toString() ?? '') : '',
@@ -1496,13 +1497,21 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                           padding: EdgeInsets.symmetric(horizontal: 16),
                           child: Column(
                             children: [
-                              // Control de inventario
-                              TextField(
-                                controller: controlInventarioController,
+                              // Control de inventario: desplegable (antes era
+                              // texto libre y "si"/"Sí" se enviaban como false).
+                              DropdownButtonFormField<String>(
+                                value: controlInventarioController.text.toUpperCase() == 'NO'
+                                    ? 'NO'
+                                    : 'SI',
+                                items: const [
+                                  DropdownMenuItem(value: 'SI', child: Text('SI')),
+                                  DropdownMenuItem(value: 'NO', child: Text('NO')),
+                                ],
+                                onChanged: (v) => controlInventarioController.text = v ?? 'SI',
                                 style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 decoration: InputDecoration(
                                   labelText: 'Control de Inventario',
-                                  helperText: 'Ej: SI, NO',
+                                  helperText: 'NO = las compras no le suman stock',
                                   helperStyle: TextStyle(fontSize: 11),
                                   filled: true,
                                   fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.3),

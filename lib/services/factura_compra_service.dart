@@ -503,6 +503,8 @@ class FacturaCompraService {
               items: facturaCompra.items, // Usar los items originales
               fechaCreacion: facturaCreada.fechaCreacion,
               fechaActualizacion: facturaCreada.fechaActualizacion,
+              productosSinControlInventario:
+                  facturaCreada.productosSinControlInventario,
             );
           }
 

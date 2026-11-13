@@ -60,6 +60,10 @@ class FacturaCompra {
   final double porcentajeReteIca;
   final double valorReteIca;
 
+  /// Solo viene en la respuesta de creación: productos a los que el backend
+  /// NO les sumó stock por tener controlInventario=false. Antes era silencioso.
+  final List<String> productosSinControlInventario;
+
   FacturaCompra({
     this.id,
     required this.numeroFactura,
@@ -88,6 +92,7 @@ class FacturaCompra {
     this.valorReteIva = 0.0,
     this.porcentajeReteIca = 0.0,
     this.valorReteIca = 0.0,
+    this.productosSinControlInventario = const [],
   }) : proveedorNombre = proveedorNombre ?? 'Proveedor general',
        subtotal =
            subtotal ??
@@ -183,8 +188,15 @@ class FacturaCompra {
       valorReteIva: (json['valorReteIva'] ?? 0).toDouble(),
       porcentajeReteIca: (json['porcentajeReteIca'] ?? 0).toDouble(),
       valorReteIca: (json['valorReteIca'] ?? 0).toDouble(),
+      productosSinControlInventario: _parseSinControl(
+        json['productosSinControlInventario'] ??
+            (json['compra'] is Map ? json['compra']['productosSinControlInventario'] : null),
+      ),
     );
   }
+
+  static List<String> _parseSinControl(dynamic raw) =>
+      raw is List ? raw.map((e) => e.toString()).toList() : const [];
 
   Map<String, dynamic> toJson() {
     // Calcular el total basado en los ítems siempre
