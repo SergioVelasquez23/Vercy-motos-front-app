@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../widgets/common/skeleton_list.dart';
 import '../data/facturas_reconstruidas_manual.dart';
 import '../models/cliente.dart';
 import '../models/factura.dart';
@@ -314,7 +315,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
           _buildHeader(),
           Expanded(
             child: _isLoading
-                ? Center(child: CircularProgressIndicator())
+                ? const SkeletonList(itemCount: 10)
                 // 📱 Antes _buildFiltros() quedaba fijo arriba y solo la
                 // tabla scrolleaba dentro de su propio Expanded — en un
                 // celular eso tapaba media pantalla con los buscadores todo
