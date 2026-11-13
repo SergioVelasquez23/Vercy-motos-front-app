@@ -140,7 +140,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
           title: 'Lista Compras',
           badge: '${_comprasFiltradas.length}',
           actions: [
-            ScreenHeaderAction.success(
+            ScreenHeaderAction.secondary(
               icon: Icons.picture_as_pdf,
               label: 'Importar PDF',
               mobileLabel: 'PDF',
