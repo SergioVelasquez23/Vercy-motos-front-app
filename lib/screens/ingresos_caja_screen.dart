@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../utils/currency_utils.dart';
 import '../theme/app_theme.dart';
 import '../models/ingreso_caja.dart';
 import '../services/ingreso_caja_service.dart';
@@ -480,11 +481,12 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
                     border: OutlineInputBorder(),
                   ),
                   style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                  keyboardType: TextInputType.number,
-                  validator: (v) => v == null || double.tryParse(v) == null
-                      ? 'Monto válido'
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [MilesInputFormatter(decimalDigits: 2)],
+                  validator: (v) => v == null || CurrencyUtils.parseDecimal(v) <= 0
+                      ? 'Ingrese un monto mayor a 0'
                       : null,
-                  onSaved: (v) => monto = double.parse(v!),
+                  onSaved: (v) => monto = CurrencyUtils.parseDecimal(v!),
                 ),
                 SizedBox(height: 16),
                 DropdownButtonFormField<String>(

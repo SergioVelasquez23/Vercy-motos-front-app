@@ -132,7 +132,8 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: montoController,
-              keyboardType: TextInputType.number,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [MilesInputFormatter(decimalDigits: 2)],
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: const InputDecoration(
                 labelText: 'Monto del abono',
@@ -150,10 +151,8 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              final monto = double.tryParse(montoController.text);
-              if (monto != null &&
-                  monto > 0 &&
-                  monto <= cuenta.saldoPendiente) {
+              final monto = CurrencyUtils.parseDecimal(montoController.text);
+              if (monto > 0 && monto <= cuenta.saldoPendiente) {
                 Navigator.pop(context, monto);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(

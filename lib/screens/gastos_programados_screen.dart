@@ -127,7 +127,7 @@ class _GastosProgramadosScreenState extends State<GastosProgramadosScreen> {
 
   Future<void> _marcarComoPagado(GastoProgramado gasto) async {
     final TextEditingController montoController = TextEditingController();
-    montoController.text = gasto.montoEstimado.toString();
+    montoController.text = CurrencyUtils.formatForMilesInputAuto(gasto.montoEstimado);
 
     final result = await showDialog<double>(
       context: context,
@@ -143,7 +143,8 @@ class _GastosProgramadosScreenState extends State<GastosProgramadosScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: montoController,
-              keyboardType: TextInputType.number,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [MilesInputFormatter(decimalDigits: 2)],
               decoration: const InputDecoration(
                 labelText: 'Monto real pagado',
                 prefixText: '\$ ',
@@ -160,8 +161,8 @@ class _GastosProgramadosScreenState extends State<GastosProgramadosScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              final monto = double.tryParse(montoController.text);
-              if (monto != null && monto > 0) {
+              final monto = CurrencyUtils.parseDecimal(montoController.text);
+              if (monto > 0) {
                 Navigator.pop(context, monto);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -837,7 +838,7 @@ class __FormularioGastoProgramadoState
         nombre: _nombreController.text,
         categoria: categoria,
         frecuencia: frecuencia,
-        montoEstimado: double.parse(_montoController.text),
+        montoEstimado: CurrencyUtils.parseDecimal(_montoController.text),
         diaDelMes: frecuencia == FrecuenciaGasto.mensual
             ? int.tryParse(_diaDelMesController.text)
             : null,
@@ -934,16 +935,18 @@ class __FormularioGastoProgramadoState
 
                 TextFormField(
                   controller: _montoController,
-                  keyboardType: TextInputType.number,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [MilesInputFormatter(decimalDigits: 2)],
                   decoration: const InputDecoration(
                     labelText: 'Monto estimado',
                     prefixText: '\$ ',
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value?.isEmpty == true) return 'Campo requerido';
-                    if (double.tryParse(value!) == null)
-                      return 'Monto inválido';
+                    if (value == null || value.trim().isEmpty) return 'Campo requerido';
+                    if (CurrencyUtils.parseDecimal(value) <= 0) {
+                      return 'El monto debe ser mayor a 0';
+                    }
                     return null;
                   },
                 ),

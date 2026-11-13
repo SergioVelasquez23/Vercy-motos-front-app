@@ -416,7 +416,7 @@ class _PagoDialogState extends State<_PagoDialog> {
   @override
   void initState() {
     super.initState();
-    _montoCtrl.text = widget.deuda.montoDeuda.toStringAsFixed(0);
+    _montoCtrl.text = CurrencyUtils.formatForMilesInputAuto(widget.deuda.montoDeuda);
   }
 
   @override
@@ -475,6 +475,7 @@ class _PagoDialogState extends State<_PagoDialog> {
               TextFormField(
                 controller: _montoCtrl,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [MilesInputFormatter(decimalDigits: 2)],
                 style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 decoration: InputDecoration(
                   labelText: 'Monto a pagar *',
@@ -484,8 +485,8 @@ class _PagoDialogState extends State<_PagoDialog> {
                   fillColor: Theme.of(context).colorScheme.surface,
                 ),
                 validator: (v) {
-                  final m = double.tryParse(v ?? '');
-                  if (m == null || m <= 0) return 'Ingrese un monto válido';
+                  final m = CurrencyUtils.parseDecimal(v ?? '');
+                  if (m <= 0) return 'Ingrese un monto válido';
                   if (m > pendiente) return 'No puede superar ${CurrencyUtils.format(pendiente)}';
                   return null;
                 },
@@ -552,7 +553,7 @@ class _PagoDialogState extends State<_PagoDialog> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     await widget.onPagar(
-      double.parse(_montoCtrl.text),
+      CurrencyUtils.parseDecimal(_montoCtrl.text),
       _medioPago,
       _recibidoPorCtrl.text.trim(),
       _notasCtrl.text.trim().isEmpty ? null : _notasCtrl.text.trim(),

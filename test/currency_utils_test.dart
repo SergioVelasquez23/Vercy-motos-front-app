@@ -42,6 +42,42 @@ void main() {
     });
   });
 
+  group('CurrencyUtils.formatForMilesInputAuto', () {
+    test('un valor entero no muestra decimales', () {
+      expect(CurrencyUtils.formatForMilesInputAuto(13400.0), '13.400');
+      expect(CurrencyUtils.formatForMilesInputAuto(0), '0');
+    });
+
+    test('un valor con centavos conserva 2 decimales', () {
+      expect(CurrencyUtils.formatForMilesInputAuto(4639.32), '4.639.32');
+    });
+
+    test('ciclo completo: prellenar -> reformatear al teclear -> leer', () {
+      // Costos reales de producción: enteros y con decimales.
+      for (final costo in [13400.0, 4639.32, 20780.9, 1500000.0]) {
+        final prellenado = CurrencyUtils.formatForMilesInputAuto(costo);
+        final tras = _apply(const MilesInputFormatter(decimalDigits: 2), prellenado).text;
+        expect(CurrencyUtils.parseDecimal(tras), closeTo(costo, 0.001),
+            reason: 'costo $costo -> "$prellenado" -> "$tras"');
+      }
+    });
+
+    test('el texto crudo que se asigna por código también se lee bien', () {
+      // facturacion_screen asigna "50000.0" o "0" directo al controller.
+      expect(CurrencyUtils.parseDecimal('50000.0'), 50000.0);
+      expect(CurrencyUtils.parseDecimal('0'), 0.0);
+      expect(CurrencyUtils.parseDecimal(''), 0.0);
+    });
+
+    test('un precio sin decimales con puntos de miles no se lee como 1,5', () {
+      const f = MilesInputFormatter();
+      final tras = _apply(f, '1500').text;
+      expect(tras, '1.500');
+      expect(CurrencyUtils.parse(tras), 1500.0);
+      expect(double.tryParse(tras), 1.5, reason: 'el bug que se evita');
+    });
+  });
+
   group('CurrencyUtils.formatShort', () {
     test('valores en miles usan sufijo K', () {
       expect(CurrencyUtils.formatShort(55500), '\$55.5K');
@@ -122,6 +158,36 @@ void main() {
 
     test('string vacío da 0', () {
       expect(CurrencyUtils.parseDecimal(''), 0.0);
+    });
+
+    test('una agrupación de miles pura NO se lee como decimal', () {
+      expect(CurrencyUtils.parseDecimal('1.500'), 1500.0);
+      expect(CurrencyUtils.parseDecimal('13.400'), 13400.0);
+      expect(CurrencyUtils.parseDecimal('85.000'), 85000.0);
+      expect(CurrencyUtils.parseDecimal('1.500.000'), 1500000.0);
+    });
+
+    test('un decimal real (1-2 dígitos tras el último punto) se sigue leyendo', () {
+      expect(CurrencyUtils.parseDecimal('80.000.00'), 80000.0);
+      expect(CurrencyUtils.parseDecimal('4.639.32'), closeTo(4639.32, 0.001));
+      expect(CurrencyUtils.parseDecimal('50000.0'), 50000.0);
+      expect(CurrencyUtils.parseDecimal('0.5'), 0.5);
+    });
+
+    test('tecleando enteros en un campo con decimalDigits: 2 se lee el valor correcto', () {
+      const f = MilesInputFormatter(decimalDigits: 2);
+      for (final t in ['500', '1500', '85000', '150000', '1500000']) {
+        var v = TextEditingValue.empty;
+        for (final ch in t.split('')) {
+          final txt = v.text + ch;
+          v = f.formatEditUpdate(
+            v,
+            TextEditingValue(text: txt, selection: TextSelection.collapsed(offset: txt.length)),
+          );
+        }
+        expect(CurrencyUtils.parseDecimal(v.text), double.parse(t),
+            reason: 'tecleado "$t" -> campo "${v.text}"');
+      }
     });
   });
 

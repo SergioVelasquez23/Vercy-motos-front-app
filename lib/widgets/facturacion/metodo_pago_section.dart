@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/currency_utils.dart';
 
 /// Selector de método de pago + campos de "Pago Múltiple" de
 /// facturacion_screen.dart, extraído tal cual (mismo layout, mismos
@@ -186,6 +187,7 @@ class MetodoPagoSection extends StatelessWidget {
                         keyboardType: TextInputType.numberWithOptions(
                           decimal: true,
                         ),
+                        inputFormatters: [MilesInputFormatter(decimalDigits: 2)],
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 16,
@@ -279,6 +281,7 @@ class MetodoPagoSection extends StatelessWidget {
                         keyboardType: TextInputType.numberWithOptions(
                           decimal: true,
                         ),
+                        inputFormatters: [MilesInputFormatter(decimalDigits: 2)],
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 16,
@@ -322,6 +325,7 @@ class MetodoPagoSection extends StatelessWidget {
                         keyboardType: TextInputType.numberWithOptions(
                           decimal: true,
                         ),
+                        inputFormatters: [MilesInputFormatter(decimalDigits: 2)],
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 16,
@@ -396,16 +400,16 @@ class MetodoPagoSection extends StatelessWidget {
   /// Suma de todos los campos de "Pago Múltiple" tal como están ahora mismo
   /// en los controllers.
   double get _sumaMontosMixtos =>
-      (double.tryParse(montoEfectivoController.text) ?? 0.0) +
-      (double.tryParse(montoTransferenciaController.text) ?? 0.0) +
-      (double.tryParse(montoTarjetaController.text) ?? 0.0) +
-      (double.tryParse(montoSistereditoController.text) ?? 0.0) +
-      (double.tryParse(montoBoldController.text) ?? 0.0) +
-      (double.tryParse(montoAddiController.text) ?? 0.0) +
-      (double.tryParse(montoCredilondonController.text) ?? 0.0) +
-      (double.tryParse(montoNequiController.text) ?? 0.0) +
-      (double.tryParse(montoDaviplataController.text) ?? 0.0) +
-      (double.tryParse(montoBancolombiaController.text) ?? 0.0);
+      CurrencyUtils.parseDecimal(montoEfectivoController.text) +
+      CurrencyUtils.parseDecimal(montoTransferenciaController.text) +
+      CurrencyUtils.parseDecimal(montoTarjetaController.text) +
+      CurrencyUtils.parseDecimal(montoSistereditoController.text) +
+      CurrencyUtils.parseDecimal(montoBoldController.text) +
+      CurrencyUtils.parseDecimal(montoAddiController.text) +
+      CurrencyUtils.parseDecimal(montoCredilondonController.text) +
+      CurrencyUtils.parseDecimal(montoNequiController.text) +
+      CurrencyUtils.parseDecimal(montoDaviplataController.text) +
+      CurrencyUtils.parseDecimal(montoBancolombiaController.text);
 
   /// Aviso en vivo de cuánto llevan sumado los montos repartidos frente al
   /// total a pagar — mismo criterio (tolerancia $10) que la validación al
@@ -480,6 +484,7 @@ class MetodoPagoSection extends StatelessWidget {
         TextField(
           controller: controller,
           keyboardType: TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [MilesInputFormatter(decimalDigits: 2)],
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurface,
             fontSize: 16,

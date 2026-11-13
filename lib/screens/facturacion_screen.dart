@@ -885,7 +885,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
       // Guardar montos de pago múltiple
       final montos = {
-        'efectivo': double.tryParse(_montoEfectivoController.text) ?? 0,
+        'efectivo': CurrencyUtils.parseDecimal(_montoEfectivoController.text),
         'transferencia':
             CurrencyUtils.parseDecimal(_montoTransferenciaController.text),
         'tarjeta': CurrencyUtils.parseDecimal(_montoTarjetaController.text),
@@ -4344,16 +4344,16 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       // Tolerancia de $10 por redondeos, igual criterio que en DialogoPago.
       if (_metodoPago == 'multiple') {
         final sumaMontosMixtos =
-            (double.tryParse(_montoEfectivoController.text) ?? 0.0) +
-            (double.tryParse(_montoTransferenciaController.text) ?? 0.0) +
-            (double.tryParse(_montoTarjetaController.text) ?? 0.0) +
-            (double.tryParse(_montoSistereditoController.text) ?? 0.0) +
-            (double.tryParse(_montoBoldController.text) ?? 0.0) +
-            (double.tryParse(_montoAddiController.text) ?? 0.0) +
-            (double.tryParse(_montoCredilondonController.text) ?? 0.0) +
-            (double.tryParse(_montoNequiController.text) ?? 0.0) +
-            (double.tryParse(_montoDaviplataController.text) ?? 0.0) +
-            (double.tryParse(_montoBancolombiaController.text) ?? 0.0);
+            (CurrencyUtils.parseDecimal(_montoEfectivoController.text)) +
+            (CurrencyUtils.parseDecimal(_montoTransferenciaController.text)) +
+            (CurrencyUtils.parseDecimal(_montoTarjetaController.text)) +
+            (CurrencyUtils.parseDecimal(_montoSistereditoController.text)) +
+            (CurrencyUtils.parseDecimal(_montoBoldController.text)) +
+            (CurrencyUtils.parseDecimal(_montoAddiController.text)) +
+            (CurrencyUtils.parseDecimal(_montoCredilondonController.text)) +
+            (CurrencyUtils.parseDecimal(_montoNequiController.text)) +
+            (CurrencyUtils.parseDecimal(_montoDaviplataController.text)) +
+            (CurrencyUtils.parseDecimal(_montoBancolombiaController.text));
         final diferenciaMontosMixtos = sumaMontosMixtos - total;
 
         if (diferenciaMontosMixtos.abs() > 10) {
@@ -4391,53 +4391,53 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       final montoEfectivo = _metodoPago == 'efectivo'
           ? total
           : (_metodoPago == 'multiple'
-                ? double.tryParse(_montoEfectivoController.text) ?? 0.0
+                ? CurrencyUtils.parseDecimal(_montoEfectivoController.text)
                 : 0.0);
       final montoTransferencia = _metodoPago == 'transferencia'
           ? total
           : (_metodoPago == 'multiple'
-                ? double.tryParse(_montoTransferenciaController.text) ?? 0.0
+                ? CurrencyUtils.parseDecimal(_montoTransferenciaController.text)
                 : 0.0);
       final montoTarjeta = _metodoPago == 'tarjeta'
           ? total
           : (_metodoPago == 'multiple'
-                ? double.tryParse(_montoTarjetaController.text) ?? 0.0
+                ? CurrencyUtils.parseDecimal(_montoTarjetaController.text)
                 : 0.0);
       final montoSistecredito = _metodoPago == 'sistecredito'
           ? total
           : (_metodoPago == 'multiple'
-                ? double.tryParse(_montoSistereditoController.text) ?? 0.0
+                ? CurrencyUtils.parseDecimal(_montoSistereditoController.text)
                 : 0.0);
       final montoDatafono = _metodoPago == 'datafono' ? total : 0.0;
       final montoBold = _metodoPago == 'bold'
           ? total
           : (_metodoPago == 'multiple'
-                ? double.tryParse(_montoBoldController.text) ?? 0.0
+                ? CurrencyUtils.parseDecimal(_montoBoldController.text)
                 : 0.0);
       final montoAddi = _metodoPago == 'addi'
           ? total
           : (_metodoPago == 'multiple'
-                ? double.tryParse(_montoAddiController.text) ?? 0.0
+                ? CurrencyUtils.parseDecimal(_montoAddiController.text)
                 : 0.0);
       final montoCredilondon = _metodoPago == 'credilondon'
           ? total
           : (_metodoPago == 'multiple'
-                ? double.tryParse(_montoCredilondonController.text) ?? 0.0
+                ? CurrencyUtils.parseDecimal(_montoCredilondonController.text)
                 : 0.0);
       final montoNequi = _metodoPago == 'nequi'
           ? total
           : (_metodoPago == 'multiple'
-                ? double.tryParse(_montoNequiController.text) ?? 0.0
+                ? CurrencyUtils.parseDecimal(_montoNequiController.text)
                 : 0.0);
       final montoDaviplata = _metodoPago == 'daviplata'
           ? total
           : (_metodoPago == 'multiple'
-                ? double.tryParse(_montoDaviplataController.text) ?? 0.0
+                ? CurrencyUtils.parseDecimal(_montoDaviplataController.text)
                 : 0.0);
       final montoBancolombia = _metodoPago == 'bancolombia'
           ? total
           : (_metodoPago == 'multiple'
-                ? double.tryParse(_montoBancolombiaController.text) ?? 0.0
+                ? CurrencyUtils.parseDecimal(_montoBancolombiaController.text)
                 : 0.0);
       final esPedidoAsesor = widget.pedidoAsesor != null;
       final pedidoAsesorId = widget.pedidoAsesor?.id;

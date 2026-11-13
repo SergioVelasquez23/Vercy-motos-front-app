@@ -23,7 +23,9 @@ import '../models/categoria.dart';
 import '../models/ingrediente.dart';
 import 'package:provider/provider.dart';
 import '../providers/datos_cache_provider.dart';
+import 'package:flutter/services.dart';
 import '../services/image_service.dart';
+import '../utils/currency_utils.dart';
 import '../services/producto_service.dart';
 import '../services/image_loader_service.dart';
 import '../utils/format_utils.dart';
@@ -729,11 +731,16 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
     );
 
     // PRECIOS
+    // Precio y costo usan MilesInputFormatter: se prellenan con puntos de
+    // miles y se leen con CurrencyUtils.parse/parseDecimal (nunca con
+    // double.tryParse, que leería "1.500" como 1,5).
     final precioController = TextEditingController(
-      text: isEditing ? producto.precio.toString() : '',
+      text: isEditing
+          ? CurrencyUtils.formatForMilesInput(producto.precio, decimalDigits: 0)
+          : '',
     );
     final costoController = TextEditingController(
-      text: isEditing ? producto.costo.toString() : '',
+      text: isEditing ? CurrencyUtils.formatForMilesInputAuto(producto.costo) : '',
     );
     final impuestosController = TextEditingController(
       text: isEditing ? producto.impuestos.toString() : '0',
@@ -839,16 +846,16 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
 
     // Función para calcular la utilidad automáticamente
     void calcularUtilidad() {
-      final precio = double.tryParse(precioController.text) ?? 0.0;
-      final costo = double.tryParse(costoController.text) ?? 0.0;
+      final precio = CurrencyUtils.parse(precioController.text);
+      final costo = CurrencyUtils.parseDecimal(costoController.text);
       final utilidad = precio - costo;
       utilidadController.text = utilidad.toStringAsFixed(2);
     }
 
     // Función para obtener el margen de ganancia
     double obtenerMargenGanancia() {
-      final precio = double.tryParse(precioController.text) ?? 0.0;
-      final costo = double.tryParse(costoController.text) ?? 0.0;
+      final precio = CurrencyUtils.parse(precioController.text);
+      final costo = CurrencyUtils.parseDecimal(costoController.text);
       if (precio > 0) {
         return ((precio - costo) / precio) * 100;
       }
@@ -1317,6 +1324,7 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                         ),
                       ),
                       keyboardType: TextInputType.number,
+                      inputFormatters: [MilesInputFormatter()],
                     ),
                     SizedBox(height: 16),
 
@@ -1341,7 +1349,8 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                           borderSide: BorderSide(color: AppTheme.primary),
                         ),
                       ),
-                      keyboardType: TextInputType.number,
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [MilesInputFormatter(decimalDigits: 2)],
                     ),
                     SizedBox(height: 16),
 
@@ -2427,16 +2436,14 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                       ? null
                       : () => runGuarded(() async {
                           // Validar campos
-                          if (nombreController.text.isEmpty ||
-                              precioController.text.isEmpty) {
+                          if (nombreController.text.trim().isEmpty ||
+                              CurrencyUtils.parse(precioController.text) <= 0) {
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Complete los campos requeridos',
-                                  ),
-                                  backgroundColor: Colors.redAccent,
-                                ),
+                              showWarningSnackBar(
+                                context,
+                                nombreController.text.trim().isEmpty
+                                    ? 'El nombre es obligatorio'
+                                    : 'El precio debe ser mayor a 0',
                               );
                             }
                             return;
@@ -2501,8 +2508,8 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                               final updatedProducto = Producto(
                                 id: producto.id,
                                 nombre: nombreController.text,
-                                precio: double.parse(precioController.text),
-                                costo: double.parse(costoController.text),
+                                precio: CurrencyUtils.parse(precioController.text),
+                                costo: CurrencyUtils.parseDecimal(costoController.text),
                                 imagenUrl: finalImageUrl,
                                 categoria: categoriaSeleccionada,
                                 // CÓDIGOS SEPARADOS
@@ -2661,8 +2668,8 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                               final nuevoProducto = Producto(
                                 id: '', // El backend asignará el ID
                                 nombre: nombreController.text,
-                                precio: double.parse(precioController.text),
-                                costo: double.parse(costoController.text),
+                                precio: CurrencyUtils.parse(precioController.text),
+                                costo: CurrencyUtils.parseDecimal(costoController.text),
                                 imagenUrl: finalImageUrl,
                                 categoria: categoriaSeleccionada,
                                 // CÓDIGOS SEPARADOS
