@@ -206,7 +206,10 @@ class CuadreCajaService implements ICuadreCajaService {
         Uri.parse('$baseUrl/api/cuadres-caja/abiertas'),
         headers: headers,
           )
-          .timeout(const Duration(seconds: 60));
+          // Lectura pequeña que se hace al entrar a facturar: 20 s bastan y, si el
+          // backend no responde, es mejor fallar pronto (antes esperaba 60 s con la
+          // pantalla en blanco). Las escrituras y las descargas de Excel NO se bajan.
+          .timeout(const Duration(seconds: 20));
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
