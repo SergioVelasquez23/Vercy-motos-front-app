@@ -922,7 +922,9 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Imagen
-                    GestureDetector(
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
                       onTap: () async {
                         final result = await _showImageSourceDialog();
                         if (result != null) {
@@ -1039,6 +1041,7 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                                 size: 40,
                               ),
                       ),
+                    ),
                     ),
                     SizedBox(height: 16),
 

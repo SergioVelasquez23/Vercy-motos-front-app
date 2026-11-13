@@ -2010,7 +2010,9 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                     if (!tieneError &&
                                         (efectivoEsperado > 0 ||
                                             transferenciasEsperadas > 0)) ...[
-                                      GestureDetector(
+                                      MouseRegion(
+                                        cursor: SystemMouseCursors.click,
+                                        child: GestureDetector(
                                         onTap: () {
                                           // Autocompletar los campos de ventas
                                           setState(() {
@@ -2075,6 +2077,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                             ],
                                           ),
                                         ),
+                                      ),
                                       ),
                                     ],
                                   ],
