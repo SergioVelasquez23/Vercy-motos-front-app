@@ -186,12 +186,15 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
 
   Color _getEstadoColor(String estado) {
     switch (estado) {
+      // Estados dentro de la paleta de la app: azul (pendiente, el mismo azul
+      // del recuadro interior de la card), morado (facturado) y gris neutro
+      // (cancelado). Antes eran naranja, verde y rojo.
       case 'PENDIENTE':
-        return Colors.orange;
+        return AppTheme.primary;
       case 'FACTURADO':
-        return Colors.green;
+        return AppTheme.secondary;
       case 'CANCELADO':
-        return AppTheme.error;
+        return Theme.of(context).colorScheme.onSurface.withOpacity(0.55);
       default:
         return Theme.of(context).colorScheme.onSurface.withOpacity(0.7);
     }
@@ -346,13 +349,13 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
     final seleccionable = esSuperAdmin && pedido.estado != 'FACTURADO';
     return Card(
       color: seleccionado
-          ? AppTheme.error.withOpacity(0.08)
+          ? AppTheme.secondary.withOpacity(0.10)
           : Theme.of(context).colorScheme.surface,
       margin: EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: seleccionado
-            ? BorderSide(color: AppTheme.error, width: 2)
+            ? BorderSide(color: AppTheme.secondary, width: 2)
             : BorderSide(color: _getEstadoColor(pedido.estado).withOpacity(0.5)),
       ),
       child: InkWell(
@@ -591,7 +594,7 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
                           pedido.fechaFacturacion != null)
                         Text(
                           'Facturado ${_formatearFecha(pedido.fechaFacturacion!)}',
-                          style: TextStyle(color: Colors.green, fontSize: 11),
+                          style: TextStyle(color: _getEstadoColor('FACTURADO'), fontSize: 11),
                         ),
                     ],
                   ),
