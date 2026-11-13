@@ -12,6 +12,7 @@ import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/busqueda_productos_utils.dart';
 import '../utils/currency_utils.dart';
+import '../utils/dialogs_helper.dart';
 import '../utils/logger.dart';
 import '../utils/datetime_utils.dart';
 import '../utils/api_error.dart';
@@ -652,8 +653,42 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
     );
   }
 
+  /// En modo crear, hay trabajo sin guardar si ya se agregó algún producto.
+  /// (En modo editar no se puede saber si hubo cambios, así que no se pregunta.)
+  bool get _hayCambiosSinGuardar => !_modoEdicion && _items.isNotEmpty;
+
+  Future<void> _confirmarSalida() async {
+    if (!_hayCambiosSinGuardar) {
+      context.go('/compras');
+      return;
+    }
+    final salir = await showConfirmDialog(
+      context,
+      title: '¿Salir sin guardar?',
+      content:
+          'Esta compra tiene ${_items.length} producto(s) que se perderán si sales. '
+          'Si quieres conservarlos, guárdala como borrador.',
+      confirmText: 'Salir sin guardar',
+      cancelText: 'Seguir editando',
+      isDangerous: true,
+    );
+    if (salir && mounted) context.go('/compras');
+  }
+
   @override
   Widget build(BuildContext context) {
+    // PopScope cubre el "atrás" del sistema/navegador; el botón de volver del
+    // AppBar llama a _confirmarSalida() directamente.
+    return PopScope(
+      canPop: !_hayCambiosSinGuardar,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmarSalida();
+      },
+      child: _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
@@ -669,7 +704,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
         iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
-          onPressed: () => context.go('/compras'),
+          onPressed: _confirmarSalida,
         ),
         actions: [
           // Botón Compras en borrador
