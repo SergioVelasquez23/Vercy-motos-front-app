@@ -1246,7 +1246,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         border: Border.all(
-          color: AppTheme.secondary.withOpacity(0.5),
+          color: AppTheme.primary.withOpacity(0.5),
           width: 1.2,
         ),
         boxShadow: [
@@ -1264,10 +1264,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: AppTheme.secondary.withOpacity(0.08),
+              color: AppTheme.primary.withOpacity(0.08),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: AppTheme.secondary.withOpacity(0.15),
+                color: AppTheme.primary.withOpacity(0.15),
                 width: 0.5,
               ),
             ),
@@ -1277,11 +1277,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 Container(
                   padding: EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: AppTheme.secondary,
+                    color: AppTheme.primary,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.secondary.withOpacity(0.4),
+                        color: AppTheme.primary.withOpacity(0.4),
                         blurRadius: 8,
                         spreadRadius: 1,
                       ),
@@ -1296,7 +1296,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                     Text(
                       'TOP 5',
                       style: TextStyle(
-                        color: AppTheme.secondary,
+                        color: AppTheme.primary,
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.5,
@@ -1305,7 +1305,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                     Text(
                       'PRODUCTOS MES ACTUAL',
                       style: TextStyle(
-                        color: AppTheme.secondary.withOpacity(0.7),
+                        color: AppTheme.primary.withOpacity(0.7),
                         fontSize: 9,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1740,7 +1740,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: AppTheme.secondary.withOpacity(0.5), width: 1.2),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.5), width: 1.2),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -1756,10 +1756,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: AppTheme.secondary.withOpacity(0.08),
+              color: AppTheme.primary.withOpacity(0.08),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: AppTheme.secondary.withOpacity(0.15),
+                color: AppTheme.primary.withOpacity(0.15),
                 width: 0.5,
               ),
             ),
@@ -1769,11 +1769,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 Container(
                   padding: EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: AppTheme.secondary,
+                    color: AppTheme.primary,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.secondary.withOpacity(0.4),
+                        color: AppTheme.primary.withOpacity(0.4),
                         blurRadius: 8,
                         spreadRadius: 1,
                       ),
@@ -1785,7 +1785,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 Text(
                   'FACTURADO ÚLTIMOS MESES',
                   style: TextStyle(
-                    color: AppTheme.secondary,
+                    color: AppTheme.primary,
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.8,
@@ -1845,7 +1845,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                     Text(
                                       '\$${_formatCurrency(ventas)}',
                                       style: TextStyle(
-                                        color: AppTheme.secondary,
+                                        color: AppTheme.primary,
                                         fontSize: 8,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -1891,7 +1891,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                           barRods: [
                             BarChartRodData(
                               toY: ventas,
-                              color: AppTheme.secondaryLight,
+                              color: AppTheme.primaryLight,
                               width: 20,
                               borderRadius: BorderRadius.circular(4),
                             ),
@@ -1939,7 +1939,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                   _obtenerObjetivoActual('semana') *
                   100)
               .round(),
-          color: AppTheme.secondary,
+          color: AppTheme.primary,
           periodo: 'semana',
         ),
         StatCardData(
@@ -1953,7 +1953,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                   _obtenerObjetivoActual('mes') *
                   100)
               .round(),
-          color: AppTheme.secondary,
+          color: AppTheme.primary,
           periodo: 'mes',
         ),
         StatCardData(
@@ -1967,7 +1967,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                   _obtenerObjetivoActual('año') *
                   100)
               .round(),
-          color: AppTheme.info,
+          color: AppTheme.primary,
           periodo: 'año',
         ),
       ],
@@ -2037,7 +2037,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         border: Border.all(
-          color: AppTheme.secondary.withOpacity(0.5),
+          color: AppTheme.primary.withOpacity(0.5),
           width: 1.2,
         ),
         boxShadow: [
@@ -2054,10 +2054,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: AppTheme.secondary.withOpacity(0.08),
+              color: AppTheme.primary.withOpacity(0.08),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: AppTheme.secondary.withOpacity(0.15),
+                color: AppTheme.primary.withOpacity(0.15),
                 width: 0.5,
               ),
             ),
@@ -2067,7 +2067,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 Container(
                   padding: EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: AppTheme.secondary,
+                    color: AppTheme.primary,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(Icons.insights, color: Colors.white, size: 14),
@@ -2076,7 +2076,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 Text(
                   'INDICADORES CLAVE',
                   style: TextStyle(
-                    color: AppTheme.secondary,
+                    color: AppTheme.primary,
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.5,
@@ -2105,7 +2105,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                   label: 'Ciclo venta',
                   primary: _formatHoras(cicloHoy),
                   secondary: 'Hoy',
-                  color: AppTheme.info,
+                  color: AppTheme.primary,
                 ),
               ),
             ],
@@ -2119,7 +2119,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                   label: 'AOV mensual',
                   primary: '\$${_formatNumber(aovMes)}',
                   secondary: '30 días',
-                  color: AppTheme.secondary,
+                  color: AppTheme.primary,
                 ),
               ),
               SizedBox(width: 8),
@@ -2129,7 +2129,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                   label: 'Ciclo mensual',
                   primary: _formatHoras(cicloMes),
                   secondary: '30 días',
-                  color: AppTheme.warning,
+                  color: AppTheme.primary,
                 ),
               ),
             ],
@@ -2357,7 +2357,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
         border: Border.all(
-          color: AppTheme.secondary.withOpacity(0.5),
+          color: AppTheme.primary.withOpacity(0.5),
           width: 1.2,
         ),
         boxShadow: [
@@ -2378,10 +2378,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               vertical: AppTheme.spacingSmall,
             ),
             decoration: BoxDecoration(
-              color: AppTheme.secondary.withOpacity(0.08),
+              color: AppTheme.primary.withOpacity(0.08),
               borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
               border: Border.all(
-                color: AppTheme.secondary.withOpacity(0.15),
+                color: AppTheme.primary.withOpacity(0.15),
                 width: 0.5,
               ),
             ),
@@ -2391,11 +2391,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 Container(
                   padding: EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppTheme.secondary.withOpacity(0.15),
+                    color: AppTheme.primary.withOpacity(0.15),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.secondary.withOpacity(0.3),
+                        color: AppTheme.primary.withOpacity(0.3),
                         blurRadius: 8,
                         spreadRadius: 0,
                       ),
@@ -2403,7 +2403,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                   ),
                   child: Icon(
                     Icons.star,
-                    color: AppTheme.secondary,
+                    color: AppTheme.primary,
                     size: context.isMobile ? 16 : 18,
                   ),
                 ),
@@ -2459,7 +2459,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                             ),
                             border: Border.all(
                               color: puesto <= 3
-                                  ? AppTheme.secondary
+                                  ? AppTheme.primary
                                   : Theme.of(context).colorScheme.onSurface.withOpacity(0.6).withOpacity(0.3),
                               width: puesto <= 3 ? 2 : 1,
                             ),
@@ -2511,7 +2511,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                 '\$${_formatCurrency(vendedor['totalVentas'] ?? 0)}',
                                 style: Theme.of(context).textTheme.titleMedium
                                     ?.copyWith(
-                                      color: AppTheme.secondary,
+                                      color: AppTheme.primary,
                                       fontWeight: FontWeight.bold,
                                     ),
                               ),

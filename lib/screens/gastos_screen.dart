@@ -1080,23 +1080,12 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
   }
 
   Widget _buildHeaderRow() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Ancho mínimo para que quepan todas las columnas (incluida "Caja",
-        // que solo aparece cuando widget.cuadreCajaId es null); si no cabe,
-        // scroll horizontal con anchos fijos.
-        final anchoMinimo = widget.cuadreCajaId == null ? 1050.0 : 900.0;
-        final needScroll = constraints.maxWidth < anchoMinimo;
-        return SingleChildScrollView(
-          scrollDirection: needScroll ? Axis.horizontal : Axis.vertical,
-          physics: needScroll ? null : const NeverScrollableScrollPhysics(),
-          child: SizedBox(
-            width: needScroll ? anchoMinimo : constraints.maxWidth,
-            child: _buildHeaderRowContent(),
-          ),
-        );
-      },
-    );
+    // Antes: Row con Expanded(flex:) + scroll horizontal de respaldo. Con 7-8
+    // campos en una sola fila, el ancho por campo quedaba tan chico que el
+    // texto se partía ("Fecha" -> "Fech"/"a") en vez de verse completo.
+    // Wrap resuelve esto sin matemática de anchos: cada campo tiene su ancho
+    // mínimo fijo y los que no caben pasan a la siguiente línea solos.
+    return _buildHeaderRowContent();
   }
 
   /// Selector de caja (Local/Envíos) para el formulario de crear/editar
@@ -1180,12 +1169,14 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
   }
 
   Widget _buildHeaderRowContent() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Wrap(
+      spacing: 20,
+      runSpacing: 20,
+      crossAxisAlignment: WrapCrossAlignment.start,
       children: [
         // Proveedor con botón +
-        Expanded(
-          flex: 2,
+        SizedBox(
+          width: 360,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1396,11 +1387,9 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
             ],
           ),
         ),
-        SizedBox(width: 20),
-
         // Fecha
-        Expanded(
-          flex: 1,
+        SizedBox(
+          width: 200,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1463,11 +1452,9 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
             ],
           ),
         ),
-        SizedBox(width: 20),
-
         // Vencimiento
-        Expanded(
-          flex: 1,
+        SizedBox(
+          width: 200,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1536,11 +1523,9 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
             ],
           ),
         ),
-        SizedBox(width: 20),
-
         // Tipo de Gasto con botón +
-        Expanded(
-          flex: 1,
+        SizedBox(
+          width: 240,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1632,22 +1617,18 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
             ],
           ),
         ),
-        SizedBox(width: 20),
-
         // Caja (Local/Envios): a qué caja se carga este gasto. Solo se
         // muestra cuando la pantalla no viene fijada a un cuadre puntual
         // (widget.cuadreCajaId) y hay cuadres abiertos entre los que elegir
         // — sin este selector el gasto se asignaba en silencio a la primera
         // caja de la lista (ver _saveGastoNuevo), sin que el usuario pudiera
         // elegir "Envíos" cuando ambas cajas estaban abiertas a la vez.
-        if (widget.cuadreCajaId == null) ...[
-          Expanded(flex: 1, child: _buildCajaField()),
-          SizedBox(width: 20),
-        ],
+        if (widget.cuadreCajaId == null)
+          SizedBox(width: 200, child: _buildCajaField()),
 
         // Forma de Pago
-        Expanded(
-          flex: 1,
+        SizedBox(
+          width: 220,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1703,7 +1684,6 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
             ],
           ),
         ),
-        SizedBox(width: 20),
 
         // Documento Soporte con toggle
         Column(
@@ -1763,7 +1743,6 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
             ),
           ],
         ),
-        SizedBox(width: 20),
 
         // Pagado desde Caja con toggle
         Column(

@@ -447,15 +447,15 @@ class MetodoPagoSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '\$${suma.toStringAsFixed(0)} de \$${totalAPagar.toStringAsFixed(0)}',
+                  '${CurrencyUtils.format(suma)} de ${CurrencyUtils.format(totalAPagar)}',
                   textAlign: TextAlign.end,
                   style: TextStyle(color: color, fontWeight: FontWeight.bold),
                 ),
                 if (!cuadra)
                   Text(
                     diferencia < 0
-                        ? 'Faltan \$${diferencia.abs().toStringAsFixed(0)}'
-                        : 'Sobran \$${diferencia.toStringAsFixed(0)}',
+                        ? 'Faltan ${CurrencyUtils.format(diferencia.abs())}'
+                        : 'Sobran ${CurrencyUtils.format(diferencia)}',
                     style: TextStyle(color: color, fontSize: 12),
                   ),
               ],

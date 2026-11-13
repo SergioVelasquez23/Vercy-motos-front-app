@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +6,12 @@ import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../services/keep_alive_service.dart';
 
+/// Pantalla de arranque de la app (mientras se restaura la sesion y se decide a que ruta ir).
+///
+/// Se ve IGUAL que el cargador del navegador de web/index.html (mismo fondo, logo, nombre y barra,
+/// en la misma posicion): el navegador lo muestra mientras descarga Flutter y, cuando esta pantalla
+/// dibuja su primer cuadro, retira el suyo con un fundido. Por eso aqui no hay animacion de entrada:
+/// el logo ya estaba en pantalla y no debe desaparecer y volver a aparecer.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -16,49 +21,22 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
-  late AnimationController _logoController;
-  late AnimationController _pulseController;
-  late AnimationController _spinnerController;
-
-  late Animation<double> _logoScale;
-  late Animation<double> _logoOpacity;
-  late Animation<double> _glowPulse;
+  late final AnimationController _pulseController;
+  late final AnimationController _barController;
 
   @override
   void initState() {
     super.initState();
 
-    _logoController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 2400),
     )..repeat(reverse: true);
 
-    _spinnerController = AnimationController(
+    _barController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 1350),
     )..repeat();
-
-    _logoScale = Tween<double>(begin: 0.6, end: 1.0).animate(
-      CurvedAnimation(parent: _logoController, curve: Curves.easeOutBack),
-    );
-
-    _logoOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _logoController,
-        curve: const Interval(0.0, 0.7, curve: Curves.easeIn),
-      ),
-    );
-
-    _glowPulse = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-
-    _logoController.forward();
 
     Future.delayed(const Duration(milliseconds: 400), _initializeApp);
   }
@@ -110,115 +88,91 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
-    _logoController.dispose();
     _pulseController.dispose();
-    _spinnerController.dispose();
+    _barController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    return SplashView(pulse: _pulseController, bar: _barController);
+  }
+}
+
+/// Parte visual de la pantalla de arranque (sin logica), para poder probarla aparte.
+class SplashView extends StatelessWidget {
+  final Animation<double> pulse;
+  final Animation<double> bar;
+
+  const SplashView({super.key, required this.pulse, required this.bar});
+
+  static const Color _fondo = Color(0xFF0F172A);
+  static const Color _fondoClaro = Color(0xFF1E293B);
+  static const Color _azul = Color(0xFF3B82F6);
+  static const Color _azulClaro = Color(0xFF60A5FA);
+  static const Color _violeta = Color(0xFF8B5CF6);
+  static const Color _violetaClaro = Color(0xFFA78BFA);
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: _fondo,
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: const BoxDecoration(
           gradient: RadialGradient(
-            center: Alignment(0, -0.2),
-            radius: 1.4,
-            colors: [
-              Color(0xFF1E293B),
-              Color(0xFF0F172A),
-            ],
+            center: Alignment(0, -0.16),
+            radius: 1.0,
+            colors: [_fondoClaro, _fondo],
+            stops: [0.0, 0.76],
           ),
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              const Spacer(flex: 3),
-
-              // Logo con glow
-              AnimatedBuilder(
-                animation: Listenable.merge(
-                    [_logoController, _pulseController]),
-                builder: (context, child) {
-                  return FadeTransition(
-                    opacity: _logoOpacity,
-                    child: ScaleTransition(
-                      scale: _logoScale,
-                      child: _GlowLogo(pulse: _glowPulse.value),
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 28),
-
-              // Nombre de la app
-              FadeTransition(
-                opacity: _logoOpacity,
-                child: Column(
-                  children: [
-                    ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
-                        colors: [Color(0xFF60A5FA), Color(0xFFA78BFA)],
-                      ).createShader(bounds),
-                      child: const Text(
-                        'VERCY MOTOS',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 4,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Gestión inteligente de tu negocio',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
+        child: Semantics(
+          label: 'Cargando',
+          liveRegion: true,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedBuilder(
+                  animation: pulse,
+                  builder: (context, _) => _LogoCard(
+                    resplandor: Curves.easeInOut.transform(pulse.value),
+                  ),
                 ),
-              ),
-
-              const Spacer(flex: 3),
-
-              // Spinner de carga
-              AnimatedBuilder(
-                animation: _spinnerController,
-                builder: (context, child) {
-                  return Column(
-                    children: [
-                      SizedBox(
-                        width: 36,
-                        height: 36,
-                        child: CustomPaint(
-                          painter: _ArcSpinnerPainter(
-                            progress: _spinnerController.value,
-                          ),
-                        ),
+                const SizedBox(height: 30),
+                // El espaciado de letras deja un hueco tras la ultima letra: se compensa a la izquierda.
+                Padding(
+                  padding: const EdgeInsets.only(left: 8.32),
+                  child: ShaderMask(
+                    shaderCallback: (rect) => const LinearGradient(
+                      colors: [_azulClaro, _violetaClaro],
+                    ).createShader(rect),
+                    child: const Text(
+                      'VERCY MOTOS',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 8.32,
                       ),
-                      const SizedBox(height: 14),
-                      Text(
-                        'Cargando...',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.4),
-                          fontSize: 12,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-
-              const SizedBox(height: 40),
-            ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Gestión inteligente de tu negocio',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    fontSize: 13,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 40),
+                _BarraDeCarga(progreso: bar),
+              ],
+            ),
           ),
         ),
       ),
@@ -226,128 +180,95 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
-class _GlowLogo extends StatelessWidget {
-  final double pulse;
-  const _GlowLogo({required this.pulse});
+/// Logo sobre una tarjeta blanca (el logo es oscuro y con fondo transparente) con un resplandor
+/// azul-violeta que respira suavemente.
+class _LogoCard extends StatelessWidget {
+  /// 0 = resplandor minimo, 1 = maximo.
+  final double resplandor;
+
+  const _LogoCard({required this.resplandor});
 
   @override
   Widget build(BuildContext context) {
-    const double logoSize = 160;
-    const double borderRadius = 32.0;
-
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        // Glow exterior difuminado
-        Container(
-          width: logoSize + 40,
-          height: logoSize + 40,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(borderRadius + 20),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF3B82F6).withOpacity(0.18 * pulse),
-                blurRadius: 60,
-                spreadRadius: 20,
-              ),
-              BoxShadow(
-                color: const Color(0xFF8B5CF6).withOpacity(0.14 * pulse),
-                blurRadius: 80,
-                spreadRadius: 30,
-              ),
-            ],
-          ),
+    return Container(
+      width: 128,
+      height: 128,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.12 + 0.04 * resplandor),
         ),
-
-        // Anillo exterior animado
-        Container(
-          width: logoSize + 16,
-          height: logoSize + 16,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(borderRadius + 8),
-            border: Border.all(
-              color: const Color(0xFF60A5FA).withOpacity(0.25 * pulse),
-              width: 1.5,
-            ),
+        boxShadow: [
+          BoxShadow(
+            color: SplashView._azul.withValues(alpha: 0.18 + 0.18 * resplandor),
+            blurRadius: 40 + 6 * resplandor,
+            offset: const Offset(0, 12),
           ),
+          BoxShadow(
+            color: SplashView._violeta.withValues(alpha: 0.10 + 0.12 * resplandor),
+            blurRadius: 90 + 20 * resplandor,
+          ),
+        ],
+      ),
+      child: Image.asset(
+        'assets/images/vercy_logo_cuadrado.png',
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => const Icon(
+          Icons.two_wheeler,
+          color: SplashView._azul,
+          size: 64,
         ),
-
-        // Logo con bordes redondeados
-        Container(
-          width: logoSize,
-          height: logoSize,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(borderRadius),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF3B82F6).withOpacity(0.3 * pulse),
-                blurRadius: 24,
-                spreadRadius: 2,
-              ),
-            ],
-            border: Border.all(
-              color: Colors.white.withOpacity(0.12),
-              width: 1,
-            ),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(borderRadius),
-            child: Image.asset(
-              'assets/images/vercylogo.png',
-              width: logoSize,
-              height: logoSize,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                color: const Color(0xFF1E293B),
-                child: const Icon(
-                  Icons.two_wheeler,
-                  color: Color(0xFF60A5FA),
-                  size: 64,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
 
-class _ArcSpinnerPainter extends CustomPainter {
-  final double progress;
-  _ArcSpinnerPainter({required this.progress});
+/// Barra fina con un destello azul-violeta que la recorre de izquierda a derecha.
+class _BarraDeCarga extends StatelessWidget {
+  final Animation<double> progreso;
+
+  const _BarraDeCarga({required this.progreso});
+
+  static const double _ancho = 168;
+  static const double _alto = 3;
+  static const double _tramo = _ancho * 0.42;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 3;
-
-    // Track
-    final trackPaint = Paint()
-      ..color = Colors.white.withOpacity(0.08)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawCircle(center, radius, trackPaint);
-
-    // Arc gradient
-    final rect = Rect.fromCircle(center: center, radius: radius);
-    final gradientPaint = Paint()
-      ..shader = const SweepGradient(
-        colors: [Color(0xFF3B82F6), Color(0xFF8B5CF6), Color(0xFF3B82F6)],
-        stops: [0.0, 0.5, 1.0],
-      ).createShader(rect)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
-
-    const arcLength = math.pi * 1.3;
-    final startAngle = progress * 2 * math.pi - math.pi / 2;
-
-    canvas.drawArc(rect, startAngle, arcLength, false, gradientPaint);
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(_alto),
+      child: Container(
+        width: _ancho,
+        height: _alto,
+        color: Colors.white.withValues(alpha: 0.10),
+        child: AnimatedBuilder(
+          animation: progreso,
+          builder: (context, _) {
+            final t = const Cubic(0.65, 0, 0.35, 1).transform(progreso.value);
+            final izquierda = -_tramo + t * (_ancho + _tramo);
+            return Stack(
+              children: [
+                Positioned(
+                  left: izquierda,
+                  top: 0,
+                  bottom: 0,
+                  width: _tramo,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(_alto),
+                      gradient: const LinearGradient(
+                        colors: [SplashView._azul, SplashView._violeta],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
   }
-
-  @override
-  bool shouldRepaint(_ArcSpinnerPainter old) => old.progress != progress;
 }
