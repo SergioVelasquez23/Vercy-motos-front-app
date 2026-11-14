@@ -2644,6 +2644,7 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                               // Llamar al servicio para actualizar el producto
                               await _productoService.updateProducto(
                                 updatedProducto,
+                                original: producto,
                               );
                                 
                               

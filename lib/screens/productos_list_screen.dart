@@ -2182,7 +2182,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
           utilidad: precio - costo,
         );
 
-        await service.updateProducto(productoActualizado);
+        await service.updateProducto(productoActualizado, original: producto);
 
         // ✅ Actualizar el producto en la lista local
         if (mounted) {

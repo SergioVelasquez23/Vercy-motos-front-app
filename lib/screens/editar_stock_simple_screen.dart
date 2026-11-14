@@ -140,7 +140,8 @@ class _EditarStockSimpleScreenState extends State<EditarStockSimpleScreen> {
     });
     try {
       final actualizado = producto.copyWith(almacen: nuevoAlmacen, bodega: nuevoBodega);
-      final resultado = await _productoService.updateProducto(actualizado);
+      // Solo se envía lo que cambió: si solo cuentas el almacén, la bodega no se toca.
+      final resultado = await _productoService.updateProducto(actualizado, original: producto);
       if (!mounted) return;
       setState(() {
         _seleccionado = resultado;

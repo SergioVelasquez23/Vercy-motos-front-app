@@ -1070,8 +1070,25 @@ class ProductoService {
     }
   }
 
+  /// Stock que realmente hay que enviar al guardar un producto: SOLO lo que el usuario cambió respecto a
+  /// [original] (el producto tal como se cargó en el formulario). Antes se mandaba siempre el stock del
+  /// formulario, y si mientras tanto se vendían unidades (o solo se contaba una de las dos ubicaciones),
+  /// el número viejo pisaba el stock real. Sin [original] se envía todo lo que haya (comportamiento previo).
+  static Map<String, int> camposDeStockModificados(Producto nuevo, Producto? original) {
+    final campos = <String, int>{};
+    if (nuevo.almacen != null && (original == null || nuevo.almacen != original.almacen)) {
+      campos['cantidadAlmacen'] = nuevo.almacen!;
+    }
+    if (nuevo.bodega != null && (original == null || nuevo.bodega != original.bodega)) {
+      campos['cantidadBodega'] = nuevo.bodega!;
+    }
+    return campos;
+  }
+
   // Actualizar producto
-  Future<Producto> updateProducto(Producto producto) async {
+  //
+  // [original]: el producto tal como se cargó antes de editarlo. Si se pasa, solo se envía el stock que cambió.
+  Future<Producto> updateProducto(Producto producto, {Producto? original}) async {
     try {
       // ⛔ NOTIFICACIONES DE TELEGRAM DESHABILITADAS
       // Verificar si la cantidad en bodega es baja y notificar por Telegram
@@ -1139,12 +1156,7 @@ class ProductoService {
       if (producto.nitProveedor != null) {
         productoJson['nitProveedor'] = producto.nitProveedor;
       }
-      if (producto.almacen != null) {
-        productoJson['cantidadAlmacen'] = producto.almacen;
-      }
-      if (producto.bodega != null) {
-        productoJson['cantidadBodega'] = producto.bodega;
-      }
+      productoJson.addAll(camposDeStockModificados(producto, original));
 
       // 🔍 LOG: Ver exactamente qué se envía al backend
       appLog('');
