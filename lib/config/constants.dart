@@ -1,7 +1,12 @@
 // Constantes generales para la aplicación
 // Configuración de API
-const String kBackendUrl =
-    'https://204-168-190-85.nip.io'; // URL del backend en producción (Hetzner)
+//
+// Se puede cambiar al compilar con --dart-define=BACKEND_URL=https://... (así se arma
+// el front de staging, ver docs/STAGING.md del backend). Sin eso, es producción.
+const String kBackendUrl = String.fromEnvironment(
+  'BACKEND_URL',
+  defaultValue: 'https://204-168-190-85.nip.io', // backend en producción (Hetzner)
+);
 
 // URL de desarrollo local
 const String kLocalBackendUrl = 'http://localhost:8081';
