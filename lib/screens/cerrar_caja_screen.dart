@@ -1444,6 +1444,11 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> with SubmitGuard {
             valueColor: AppTheme.primary,
           ),
           _buildInfoRow(
+            'Ingresos Efectivo:',
+            formatCurrencyRoundedTo1000(movimientos.ingresosEfectivo),
+            valueColor: AppTheme.success,
+          ),
+          _buildInfoRow(
             'Gastos Efectivo:',
             formatCurrencyRoundedTo1000(movimientos.gastosEfectivo),
             valueColor: AppTheme.error,

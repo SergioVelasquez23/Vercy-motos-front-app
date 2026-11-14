@@ -64,9 +64,7 @@ class IngresoCajaService {
       // OBTENER CUADRE ACTIVO AUTOMÁTICAMENTE
       final cuadreService = CuadreCajaService();
       final cuadres = await cuadreService.getAllCuadres();
-      final cuadreActivo = cuadres
-          .where((c) => c.estado == 'pendiente')
-          .firstOrNull;
+      final cuadreActivo = cuadres.where((c) => c.estaAbierta).firstOrNull;
 
       // Crear una copia del ingreso con el cuadreCajaId asignado
       final ingresoConCuadre = IngresoCaja(

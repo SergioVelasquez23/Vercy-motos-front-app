@@ -202,6 +202,11 @@ class CuadreCaja {
   bool get estaRechazado => estado == 'rechazado';
   bool get estaPendiente => estado == 'pendiente';
 
+  /// Caja en curso. El backend marca las cajas abiertas como `ABIERTA` (el valor
+  /// `pendiente` es el default del modelo cuando el JSON no trae estado).
+  bool get estaAbierta =>
+      estado.toUpperCase() == 'ABIERTA' || estado == 'pendiente';
+
   String get estadoFormatted {
     switch (estado) {
       case 'ABIERTA':
