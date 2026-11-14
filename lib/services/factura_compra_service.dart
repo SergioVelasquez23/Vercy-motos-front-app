@@ -909,7 +909,8 @@ class FacturaCompraService {
             bodega: bodegaNuevo.toInt(),
           );
           try {
-            await productoService.updateProducto(productoActualizado);
+            // original: solo se envía el stock que cambió (no se pisa la otra ubicación con un valor viejo)
+            await productoService.updateProducto(productoActualizado, original: productoCompleto);
             appLog(
               '✅ Stock revertido manualmente: ${productoActualizado.nombre} - '
               'ALM: ${almacenActual.toInt()} → ${almacenNuevo.toInt()}, '
