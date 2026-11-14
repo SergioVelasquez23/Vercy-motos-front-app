@@ -120,3 +120,22 @@ Mientras tanto:
 flutter analyze                    # se espera 0 errores (puede haber infos/warnings preexistentes)
 flutter test --concurrency=1       # 280+ tests, correr con concurrency=1 por memoria; en background si el entorno lo requiere
 ```
+
+## NUNCA empujar a `main` ni desplegar
+
+- **Un `git push` a `main` de este repo PUBLICA el sitio real** (`vercy-motos.web.app`) por GitHub Actions, sin ninguna
+  aprobación. Por eso: **trabaja siempre en una rama** (`feature/…`, `fix/…`) y deja el cambio listo para un Pull Request.
+  Nada de `git push` a `main`, `--force` ni borrar ramas remotas.
+- No ejecutes `firebase deploy` ni toques el hosting. Para ver un cambio antes de publicarlo existe un canal de
+  vista previa de staging (`firebase hosting:channel:deploy staging`) que lanza el dueño.
+- El backend a producción es manual y lo lanza el dueño (ver `CLAUDE.md` del repo `Vercy-motos-app`). El front de staging
+  se compila con `--dart-define=BACKEND_URL=https://staging.204-168-190-85.nip.io`; sin ese parámetro apunta a producción.
+
+## Stock y datos que el front no debe pisar
+
+- Al guardar un producto, **solo se envía el stock que el usuario cambió** (`updateProducto(producto, original: …)`).
+  Mandar siempre el stock del formulario deshace ventas que ocurrieron mientras estaba abierto. Si agregas otra pantalla
+  que edite productos, pasa `original:`. Test: `test/stock_solo_si_cambia_test.dart`.
+- Un producto nuevo se crea con `controlInventario: 'SI'` (los de "mano de obra" los fuerza el backend a no controlar).
+- Los snackbars y avisos van por `utils/snackbar_helper.dart`; los errores de venta/compra/caja se muestran, no se tragan.
+
