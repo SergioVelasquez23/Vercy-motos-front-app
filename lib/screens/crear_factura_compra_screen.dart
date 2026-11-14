@@ -589,6 +589,8 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
                               : null,
                           porcentajeImpuesto: impuestos,
                           estado: 'Activo',
+                          // Un producto nuevo controla inventario por defecto (si no, las compras no le suman stock).
+                          controlInventario: 'SI',
                         );
 
                         final productoCreado = await _productoService
