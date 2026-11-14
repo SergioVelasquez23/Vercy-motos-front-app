@@ -7,6 +7,7 @@ import '../providers/user_provider.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/reportes/rango_fechas_dialog.dart';
+import '../utils/snackbar_helper.dart';
 
 /// Rentabilidad por Producto y Cliente: responde "¿qué productos son más
 /// rentables?", "¿cuáles tienen mucha venta pero poco margen?" y "¿qué
@@ -517,9 +518,7 @@ class _RentabilidadScreenState extends State<RentabilidadScreen> {
       final nombreArchivo = 'Rentabilidad_${DateTime.now().millisecondsSinceEpoch}.pdf';
       await _pdfService.descargarPDFDirecto(pdfBytes: pdfBytes, nombreArchivo: nombreArchivo);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('PDF generado exitosamente'), backgroundColor: Colors.green),
-        );
+        showSuccessSnackBar(context, 'PDF generado exitosamente');
       }
     } catch (e) {
       if (mounted) {

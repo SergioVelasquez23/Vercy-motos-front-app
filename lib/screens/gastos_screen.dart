@@ -14,6 +14,7 @@ import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class GastosScreen extends StatefulWidget {
   final String? cuadreCajaId;
@@ -458,9 +459,7 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
 
   void _showSuccess(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.green),
-      );
+      showSuccessSnackBar(context, message);
     }
   }
 
@@ -583,12 +582,7 @@ class _GastosScreenState extends State<GastosScreen> with SubmitGuard {
                   ? null
                   : () async {
                       if (nombreController.text.trim().isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('El nombre es requerido'),
-                            backgroundColor: Colors.orange,
-                          ),
-                        );
+                        showWarningSnackBar(context, 'El nombre es requerido');
                         return;
                       }
 

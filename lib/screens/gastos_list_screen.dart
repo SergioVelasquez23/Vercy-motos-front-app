@@ -9,6 +9,7 @@ import '../widgets/common/screen_header.dart';
 import '../widgets/horizontal_scroll_table.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class GastosListScreen extends StatefulWidget {
   const GastosListScreen({super.key});
@@ -1056,12 +1057,7 @@ class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixi
         final resultado = await _gastoService.deleteGasto(gasto.id!);
         if (!mounted) return;
         if (resultado['success'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(resultado['message'] ?? 'Gasto eliminado correctamente'),
-              backgroundColor: AppTheme.success,
-            ),
-          );
+          showSuccessSnackBar(context, resultado['message'] ?? 'Gasto eliminado correctamente');
           _cargarDatos();
         } else {
           showErrorDialog(context, resultado['message'] ?? 'No se pudo eliminar el gasto');

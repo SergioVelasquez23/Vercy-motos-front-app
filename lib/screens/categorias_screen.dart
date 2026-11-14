@@ -11,6 +11,7 @@ import '../utils/pagination_mixin.dart';
 import '../theme/app_theme.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class CategoriasScreen extends StatefulWidget {
   const CategoriasScreen({super.key});
@@ -217,12 +218,7 @@ class _CategoriasScreenState extends State<CategoriasScreen>
                 await _productoService.deleteCategoria(categoria.id);
                 Navigator.of(context).pop();
                 await _cargarDatos(); // Recargar datos después de eliminar
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Categoría eliminada'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+                showSuccessSnackBar(context, 'Categoría eliminada');
               } catch (e) {
                 Navigator.of(context).pop();
                 showErrorDialog(context, errorMessage(e));
@@ -446,16 +442,9 @@ class _CategoriasScreenState extends State<CategoriasScreen>
                             // Los datos se actualizarán cuando las otras pantallas se recarguen
                               
 
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  isEditing
+                            showSuccessSnackBar(context, isEditing
                                       ? 'Categoría actualizada'
-                                      : 'Categoría agregada',
-                                ),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
+                                      : 'Categoría agregada');
                           } catch (e) {
                             showErrorDialog(context, errorMessage(e));
                           } finally {

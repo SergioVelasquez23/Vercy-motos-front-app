@@ -620,15 +620,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
 
                         Navigator.pop(dialogContext);
 
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              '✅ Producto creado: ${productoCreado.nombre}',
-                            ),
-                            backgroundColor: AppTheme.success,
-                            duration: Duration(seconds: 3),
-                          ),
-                        );
+                        showSuccessSnackBar(context, '✅ Producto creado: ${productoCreado.nombre}', duration: Duration(seconds: 3));
                       } catch (e) {
                         setDialogState(() => guardando = false);
                         showErrorSnackBar(context, 'Error al crear producto: ${errorMessage(e)}');
@@ -2329,15 +2321,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
 
       final sumaCantidades = cantidadAlmacen + cantidadBodega;
       if ((sumaCantidades - cantidad).abs() > 0.01) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'La suma de Almacén ($cantidadAlmacen) + Bodega ($cantidadBodega) debe ser igual a la cantidad total ($cantidad)',
-            ),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        showWarningSnackBar(context, 'La suma de Almacén ($cantidadAlmacen) + Bodega ($cantidadBodega) debe ser igual a la cantidad total ($cantidad)', duration: Duration(seconds: 3));
         return;
       }
     } else if (_destinoSeleccionado == 'BODEGA') {
@@ -2607,14 +2591,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
           _numeroFactura == 'Generando...' ||
           _numeroFactura == 'Error al generar') {
           
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Error: Número de factura no válido. Reintentando generación...',
-            ),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        showWarningSnackBar(context, 'Error: Número de factura no válido. Reintentando generación...');
 
         // Intentar regenerar el número
         _generarNumeroFactura();
@@ -2798,15 +2775,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> wit
       // Verificar si la factura creada tiene el total correcto
       if (facturaCreada.total <= 0 && total > 0) {
           
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Advertencia: La factura se creó pero el total puede estar incorrecto. Se intentará corregir.',
-            ),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 5),
-          ),
-        );
+        showWarningSnackBar(context, 'Advertencia: La factura se creó pero el total puede estar incorrecto. Se intentará corregir.', duration: Duration(seconds: 5));
 
         // Intentar actualizar la factura con el total correcto
         try {

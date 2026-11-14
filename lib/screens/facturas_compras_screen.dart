@@ -671,14 +671,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> with Subm
         );
 
         if (resultado['success'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Factura eliminada correctamente. Stock revertido.',
-              ),
-              backgroundColor: Colors.green,
-            ),
-          );
+          showSuccessSnackBar(context, 'Factura eliminada correctamente. Stock revertido.');
           await _cargarFacturas();
         } else {
           showErrorDialog(context, resultado['message'] ?? 'No se pudo eliminar la factura');

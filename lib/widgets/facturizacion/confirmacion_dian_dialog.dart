@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 import '../../services/documento_service.dart';
+import '../../utils/snackbar_helper.dart';
 
 /// Dialog que muestra el resultado de una facturación electrónica exitosa:
 ///   - CUFE / CUDE
@@ -167,10 +168,7 @@ class ConfirmacionDianDialog extends StatelessWidget {
                   onTap: () {
                     Clipboard.setData(
                         ClipboardData(text: resultado.pdfUrl!));
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('URL del PDF copiada'),
-                      duration: Duration(seconds: 2),
-                    ));
+                    showInfoSnackBar(context, 'URL del PDF copiada', duration: Duration(seconds: 2));
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -319,11 +317,7 @@ class _InfoRow extends StatelessWidget {
             InkWell(
               onTap: () {
                 Clipboard.setData(ClipboardData(text: value));
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text('$label copiado al portapapeles'),
-                  backgroundColor: AppTheme.success,
-                  duration: const Duration(seconds: 2),
-                ));
+                showSuccessSnackBar(context, '$label copiado al portapapeles', duration: const Duration(seconds: 2));
               },
               child: Padding(
                 padding: const EdgeInsets.only(left: 8),

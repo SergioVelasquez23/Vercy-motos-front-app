@@ -8,6 +8,7 @@ import '../services/user_role_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class UsersScreen extends StatefulWidget {
   const UsersScreen({super.key});
@@ -720,12 +721,7 @@ class _UsersScreenState extends State<UsersScreen> {
       });
 
       if (Navigator.canPop(context)) Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Rol cambiado correctamente'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      showSuccessSnackBar(context, 'Rol cambiado correctamente');
 
       // Confirmar contra el servidor en segundo plano (no bloquea la UI).
       _actualizarRolesUsuarioEspecifico(user.id!);
@@ -788,21 +784,11 @@ class _UsersScreenState extends State<UsersScreen> {
       if (isEditing) {
         // Actualizar usuario existente
         await _userService.updateUser(newUser);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Usuario actualizado correctamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, 'Usuario actualizado correctamente');
       } else {
         // Crear nuevo usuario
         await _userService.createUser(newUser);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Usuario creado correctamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, 'Usuario creado correctamente');
       }
 
       Navigator.pop(context);
@@ -847,12 +833,7 @@ class _UsersScreenState extends State<UsersScreen> {
     try {
       await _userService.deleteUser(user.id!);
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Usuario eliminado correctamente'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      showSuccessSnackBar(context, 'Usuario eliminado correctamente');
       _cargarDatos();
     } catch (e) {
       Navigator.pop(context);

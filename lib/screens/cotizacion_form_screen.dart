@@ -14,6 +14,7 @@ import '../utils/currency_utils.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/disponibilidad_dialog.dart';
+import '../utils/snackbar_helper.dart';
 
 class CotizacionFormScreen extends StatefulWidget {
   final Cotizacion? cotizacion;
@@ -1113,9 +1114,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
   void _agregarItem() {
     if (_nombreProductoController.text.isEmpty ||
         CurrencyUtils.parse(_precioController.text) <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Complete los datos del producto')),
-      );
+      showInfoSnackBar(context, 'Complete los datos del producto');
       return;
     }
 
@@ -1195,20 +1194,10 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> with Submit
           widget.cotizacion!.id!,
           cotizacion,
         );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Cotización actualizada'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, 'Cotización actualizada');
       } else {
         await _cotizacionService.crearCotizacion(cotizacion);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Cotización creada'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, 'Cotización creada');
       }
 
       Navigator.pop(context, true);

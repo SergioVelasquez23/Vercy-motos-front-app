@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import '../utils/legal_texts.dart';
+import '../utils/snackbar_helper.dart';
 
 class ClienteFormScreen extends StatefulWidget {
   final Cliente? cliente;
@@ -972,12 +973,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> with SubmitGuard 
 
   Future<void> _guardarCliente() async {
     if (!_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Complete todos los campos requeridos'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      showWarningSnackBar(context, 'Complete todos los campos requeridos');
       return;
     }
 
@@ -1031,20 +1027,10 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> with SubmitGuard 
           widget.cliente!.id!,
           cliente,
         );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Cliente actualizado exitosamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, 'Cliente actualizado exitosamente');
       } else {
         clienteGuardado = await _clienteService.crearCliente(cliente);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Cliente creado exitosamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, 'Cliente creado exitosamente');
       }
 
       Navigator.pop(context, clienteGuardado);

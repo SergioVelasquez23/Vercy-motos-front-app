@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class ContadorEfectivoScreen extends StatefulWidget {
   final Function(double)?
@@ -122,14 +123,7 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
 
   Future<void> _exportarAExcel() async {
     if (!ExcelExportService.hayDatosParaExportar(_denominaciones)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'No hay datos para exportar. Ingresa al menos una cantidad.',
-          ),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      showWarningSnackBar(context, 'No hay datos para exportar. Ingresa al menos una cantidad.');
       return;
     }
 

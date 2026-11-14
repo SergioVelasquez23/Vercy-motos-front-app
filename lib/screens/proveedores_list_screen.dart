@@ -9,6 +9,7 @@ import '../utils/pagination_mixin.dart';
 import '../widgets/common/screen_header.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class ProveedoresListScreen extends StatefulWidget {
   const ProveedoresListScreen({super.key});
@@ -834,12 +835,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
                   ? null
                   : () => runGuarded(() async {
                       if (nombresController.text.trim().isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('El nombre es requerido'),
-                            backgroundColor: Colors.orange,
-                          ),
-                        );
+                        showWarningSnackBar(context, 'El nombre es requerido');
                         return;
                       }
 
@@ -912,16 +908,9 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
                         }
 
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              esEdicion
+                        showSuccessSnackBar(context, esEdicion
                                   ? 'Proveedor actualizado exitosamente'
-                                  : 'Proveedor creado exitosamente',
-                            ),
-                            backgroundColor: AppTheme.success,
-                          ),
-                        );
+                                  : 'Proveedor creado exitosamente');
                         await _cargarProveedores();
                       } catch (e) {
                         showErrorDialog(context, errorMessage(e));
@@ -1063,12 +1052,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
     if (result == true) {
       try {
         await _proveedorService.eliminarProveedor(proveedor.id);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Proveedor eliminado exitosamente'),
-            backgroundColor: AppTheme.success,
-          ),
-        );
+        showSuccessSnackBar(context, 'Proveedor eliminado exitosamente');
         await _cargarProveedores();
       } catch (e) {
         showErrorDialog(context, 'Error al eliminar: ${errorMessage(e)}');

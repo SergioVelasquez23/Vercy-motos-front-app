@@ -9,6 +9,7 @@ import '../providers/datos_cache_provider.dart';
 import '../utils/currency_utils.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class AdminPedidosAsesorScreen extends StatefulWidget {
   const AdminPedidosAsesorScreen({super.key});
@@ -621,8 +622,6 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
   }
 
   void _mostrarExito(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensaje), backgroundColor: Colors.green),
-    );
+    showSuccessSnackBar(context, mensaje);
   }
 }

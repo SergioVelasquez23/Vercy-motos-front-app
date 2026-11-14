@@ -7,6 +7,7 @@ import '../services/ingreso_caja_service.dart';
 import '../utils/datetime_utils.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class IngresosCajaScreen extends StatefulWidget {
   const IngresosCajaScreen({super.key});
@@ -147,12 +148,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
       try {
         await _service.registrarIngreso(result);
         _cargarIngresos();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ingreso registrado exitosamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, 'Ingreso registrado exitosamente');
       } catch (e) {
         showErrorDialog(context, 'Error al registrar ingreso: ${errorMessage(e)}');
       }

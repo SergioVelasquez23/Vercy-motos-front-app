@@ -6,6 +6,7 @@ import '../services/cartera_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class AlertasScreen extends StatefulWidget {
   const AlertasScreen({Key? key}) : super(key: key);
@@ -73,12 +74,7 @@ class _AlertasScreenState extends State<AlertasScreen>
     try {
       final response = await _carteraService.verificarAlertas();
       if (response.isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response.data ?? 'Verificación iniciada'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, response.data ?? 'Verificación iniciada');
       } else {
         showErrorDialog(context, response.message);
       }

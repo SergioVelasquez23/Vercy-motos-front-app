@@ -15,6 +15,7 @@ import '../utils/datetime_utils.dart';
 import '../theme/app_theme.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class PedidosScreenFusion extends StatefulWidget {
   const PedidosScreenFusion({super.key});
@@ -470,12 +471,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
         .toList();
 
     if (pedidosActivos.isEmpty && pedidosPagados.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No hay pedidos que se puedan eliminar'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      showWarningSnackBar(context, 'No hay pedidos que se puedan eliminar');
       return;
     }
 

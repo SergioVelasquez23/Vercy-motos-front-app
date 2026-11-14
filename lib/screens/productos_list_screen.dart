@@ -2810,13 +2810,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
 
   void _mostrarMensajeExito(String mensaje) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(mensaje),
-        backgroundColor: AppTheme.success,
-        duration: Duration(seconds: 2),
-      ),
-    );
+    showSuccessSnackBar(context, mensaje, duration: Duration(seconds: 2));
   }
 
   void _mostrarMensajeError(String mensaje) {

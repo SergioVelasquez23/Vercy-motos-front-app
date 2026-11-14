@@ -15,6 +15,7 @@ import '../utils/logger.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import '../utils/submit_guard.dart';
+import '../utils/snackbar_helper.dart';
 
 class CerrarCajaScreen extends StatefulWidget {
   /// Inyectable solo para tests de secuencia (doble-tap, etc.) - en la app
@@ -295,13 +296,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> with SubmitGuard {
         // Error específico del cuadre completo - usar método alternativo
           
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Obteniendo datos de caja con método alternativo...'),
-            backgroundColor: Colors.blue,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        showInfoSnackBar(context, 'Obteniendo datos de caja con método alternativo...', duration: Duration(seconds: 3));
       }
 
       // Fallback: usar detalles de ventas tradicional
@@ -457,15 +452,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> with SubmitGuard {
         
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Aviso: Usando datos básicos de caja. Resumen detallado no disponible.',
-            ),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        showWarningSnackBar(context, 'Aviso: Usando datos básicos de caja. Resumen detallado no disponible.', duration: Duration(seconds: 3));
       }
     }
   }
@@ -1002,13 +989,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> with SubmitGuard {
   }
 
   void _mostrarExito(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(mensaje),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 3),
-      ),
-    );
+    showSuccessSnackBar(context, mensaje, duration: Duration(seconds: 3));
   }
 
   @override

@@ -3,6 +3,7 @@ import '../models/role.dart';
 import '../services/role_service.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class RolesScreen extends StatefulWidget {
   const RolesScreen({super.key});
@@ -376,23 +377,13 @@ class _RolesScreenState extends State<RolesScreen> {
         // Reload roles immediately after update
         await _cargarRoles();
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Rol actualizado correctamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, 'Rol actualizado correctamente');
       } else {
         await _roleService.createRole(newRole);
         // Reload roles immediately after create
         await _cargarRoles();
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Rol creado correctamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, 'Rol creado correctamente');
       }
 
       Navigator.pop(context);
@@ -437,12 +428,7 @@ class _RolesScreenState extends State<RolesScreen> {
     try {
       await _roleService.deleteRole(role.id!);
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Rol eliminado correctamente'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      showSuccessSnackBar(context, 'Rol eliminado correctamente');
       _cargarRoles();
     } catch (e) {
       Navigator.pop(context);

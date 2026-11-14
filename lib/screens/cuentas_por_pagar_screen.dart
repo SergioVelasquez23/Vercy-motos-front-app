@@ -11,6 +11,7 @@ import '../utils/logger.dart';
 import '../widgets/common/screen_header.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class CuentasPorPagarScreen extends StatefulWidget {
   const CuentasPorPagarScreen({Key? key}) : super(key: key);
@@ -205,12 +206,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
           '   Ver línea 335 de cartera_service.dart - allí se invoca _alertasService.enviarAlertaCuentaPagada()\n',
         );
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pago registrado exitosamente'),
-            backgroundColor: AppTheme.primary,
-          ),
-        );
+        showInfoSnackBar(context, 'Pago registrado exitosamente');
         await _cargarCuentas();
       } else {
         appLog('❌ [PAGO CxP] Error al registrar pago: ${response.message}');
@@ -239,12 +235,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
       final response = await _carteraService.eliminarCuentaPorPagar(cuenta.id!);
       if (!mounted) return;
       if (response.isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cuenta por pagar eliminada'),
-            backgroundColor: AppTheme.primary,
-          ),
-        );
+        showInfoSnackBar(context, 'Cuenta por pagar eliminada');
         await _cargarCuentas();
       } else {
         // Si está vinculada a una compra a crédito o tiene abonos, el
@@ -1120,12 +1111,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
     try {
       final response = await _carteraService.crearCuentaPorPagar(cuenta);
       if (response.isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cuenta por pagar creada exitosamente'),
-            backgroundColor: AppTheme.primary,
-          ),
-        );
+        showInfoSnackBar(context, 'Cuenta por pagar creada exitosamente');
         // Enviar alerta Telegram de nueva CxP
         _enviarAlertaNuevaCxPTelegram(cuenta);
         await _cargarCuentas();
@@ -1216,12 +1202,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
       appLog('📧 Tipo de alerta enviada: $tipoAlerta');
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Alerta $tipoAlerta enviada por Telegram'),
-            backgroundColor: AppTheme.primary,
-          ),
-        );
+        showInfoSnackBar(context, 'Alerta $tipoAlerta enviada por Telegram');
       }
     } catch (e) {
       appLog('❌ [ALERTA MANUAL CxP] Error al enviar alerta: $e');

@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class GastosProgramadosScreen extends StatefulWidget {
   const GastosProgramadosScreen({Key? key}) : super(key: key);
@@ -212,12 +213,7 @@ class _GastosProgramadosScreenState extends State<GastosProgramadosScreen> {
     try {
       final response = await _carteraService.eliminarGastoProgramado(gasto.id!);
       if (response.isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gasto programado eliminado'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, 'Gasto programado eliminado');
         await _cargarGastos();
       } else {
         showErrorDialog(context, response.message);
@@ -234,12 +230,7 @@ class _GastosProgramadosScreenState extends State<GastosProgramadosScreen> {
         montoReal,
       );
       if (response.isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gasto marcado como pagado'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, 'Gasto marcado como pagado');
         await _cargarGastos();
       } else {
         showErrorDialog(context, response.message);
@@ -829,12 +820,7 @@ class __FormularioGastoProgramadoState
       final response = await _carteraService.crearGastoProgramado(gasto);
       if (response.isSuccess) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gasto programado creado exitosamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, 'Gasto programado creado exitosamente');
       } else {
         showErrorDialog(context, response.message);
       }

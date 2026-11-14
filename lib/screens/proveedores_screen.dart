@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../utils/submit_guard.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class ProveedoresScreen extends StatefulWidget {
   const ProveedoresScreen({super.key});
@@ -192,9 +193,7 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> with SubmitGuard 
                     ? null
                     : () => runGuarded(() async {
                         if (nombreController.text.trim().isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('El nombre es requerido')),
-                          );
+                          showInfoSnackBar(context, 'El nombre es requerido');
                           return;
                         }
 

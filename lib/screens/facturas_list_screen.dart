@@ -26,6 +26,7 @@ import '../widgets/common/screen_header.dart';
 import '../utils/currency_utils.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class FacturasListScreen extends StatefulWidget {
   final String? filtroInicial;
@@ -348,13 +349,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
             await _cargarDocumentos(forzar: true);
             await _cargarCantidadMatias();
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Lista actualizada'),
-                backgroundColor: AppTheme.success,
-                duration: Duration(seconds: 2),
-              ),
-            );
+            showSuccessSnackBar(context, 'Lista actualizada', duration: Duration(seconds: 2));
           },
         ),
         ScreenHeaderAction.iconOnly(
@@ -383,13 +378,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
               resetPagina();
               _cargarDocumentos(forzar: true);
             }
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Filtros limpiados'),
-                backgroundColor: AppTheme.success,
-                duration: Duration(seconds: 2),
-              ),
-            );
+            showSuccessSnackBar(context, 'Filtros limpiados', duration: Duration(seconds: 2));
           },
         ),
       ],
@@ -1821,9 +1810,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
                 ElevatedButton.icon(
                   onPressed: () {
                     if (hasta.isBefore(desde)) {
-                      ScaffoldMessenger.of(dialogContext).showSnackBar(
-                        SnackBar(content: Text('La fecha "Hasta" no puede ser anterior a "Desde"')),
-                      );
+                      showInfoSnackBar(dialogContext, 'La fecha "Hasta" no puede ser anterior a "Desde"');
                       return;
                     }
                     Navigator.of(dialogContext).pop(DateTimeRange(start: desde, end: hasta));
@@ -1995,9 +1982,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
     }).toList();
 
     if (pedidosEnRango.isEmpty && reconstruidasEnRango.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No hay facturas electrónicas ni documentos POS en ese rango de fechas')),
-      );
+      showInfoSnackBar(context, 'No hay facturas electrónicas ni documentos POS en ese rango de fechas');
       return;
     }
 

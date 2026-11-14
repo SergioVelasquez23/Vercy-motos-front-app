@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/common/screen_header.dart';
+import '../utils/snackbar_helper.dart';
 
 class DeudasListScreen extends StatefulWidget {
   const DeudasListScreen({super.key});
@@ -219,12 +220,7 @@ class _DeudasListScreenState extends State<DeudasListScreen>
     final result = await _service.eliminarDeuda(deuda.id!);
     if (!mounted) return;
     if (result['success'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Deuda eliminada'),
-          backgroundColor: AppTheme.success,
-        ),
-      );
+      showSuccessSnackBar(context, 'Deuda eliminada');
       _cargar();
     } else {
       // Si ya tiene pagos registrados, el backend responde 409 con un

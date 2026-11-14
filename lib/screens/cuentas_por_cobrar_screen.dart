@@ -11,6 +11,7 @@ import '../utils/currency_utils.dart';
 import '../widgets/common/screen_header.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class CuentasPorCobrarScreen extends StatefulWidget {
   const CuentasPorCobrarScreen({Key? key}) : super(key: key);
@@ -183,12 +184,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
         observaciones: 'Abono registrado desde aplicación',
       );
       if (response.isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Abono registrado exitosamente'),
-            backgroundColor: AppTheme.primary,
-          ),
-        );
+        showInfoSnackBar(context, 'Abono registrado exitosamente');
         await _cargarCuentas();
       } else {
         showErrorDialog(context, response.message);
@@ -215,12 +211,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
       final response = await _carteraService.eliminarCuentaPorCobrar(cuenta.id!);
       if (!mounted) return;
       if (response.isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cuenta por cobrar eliminada'),
-            backgroundColor: AppTheme.primary,
-          ),
-        );
+        showInfoSnackBar(context, 'Cuenta por cobrar eliminada');
         await _cargarCuentas();
       } else {
         showErrorDialog(context, response.message);

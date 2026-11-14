@@ -7,6 +7,7 @@ import '../providers/user_provider.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/reportes/rango_fechas_dialog.dart';
+import '../utils/snackbar_helper.dart';
 
 /// Comparación de Períodos: mes actual vs. mes anterior, o un rango contra el
 /// mismo rango del año anterior — usando la utilidad real (ventas, costo de
@@ -469,9 +470,7 @@ class _ComparativoPeriodosScreenState extends State<ComparativoPeriodosScreen> {
       final nombreArchivo = 'Comparativo_Periodos_${DateTime.now().millisecondsSinceEpoch}.pdf';
       await _pdfService.descargarPDFDirecto(pdfBytes: pdfBytes, nombreArchivo: nombreArchivo);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('PDF generado exitosamente'), backgroundColor: Colors.green),
-        );
+        showSuccessSnackBar(context, 'PDF generado exitosamente');
       }
     } catch (e) {
       if (mounted) {

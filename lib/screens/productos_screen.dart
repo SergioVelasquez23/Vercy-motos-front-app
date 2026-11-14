@@ -984,15 +984,7 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                                     ScaffoldMessenger.of(
                                       context,
                                     ).hideCurrentSnackBar();
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          '✓ Imagen guardada exitosamente',
-                                        ),
-                                        backgroundColor: Colors.green,
-                                        duration: Duration(seconds: 2),
-                                      ),
-                                    );
+                                    showSuccessSnackBar(context, '✓ Imagen guardada exitosamente', duration: Duration(seconds: 2));
                                   }
                                 } catch (e) {
                                     
@@ -2841,16 +2833,9 @@ class _ProductosScreenState extends State<ProductosScreen> with SubmitGuard {
                             await cacheProvider.recargarDatos();
 
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    isEditing
+                              showSuccessSnackBar(context, isEditing
                                         ? 'Producto actualizado'
-                                        : 'Producto agregado',
-                                  ),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
+                                        : 'Producto agregado');
                             }
                           } catch (e) {
                             if (mounted) {

@@ -17,6 +17,7 @@ import '../theme/app_theme.dart';
 import '../utils/pagination_mixin.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class CuadreCajaScreen extends StatefulWidget {
   const CuadreCajaScreen({super.key});
@@ -393,12 +394,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       );
 
       if (cuadre.id != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Cuadre actualizado exitosamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, 'Cuadre actualizado exitosamente');
         _loadCuadresCaja();
       }
     } catch (e) {
@@ -429,14 +425,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     );
 
     if (resultado != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Total de ${formatCurrency(resultado)} ${paraEfectivo ? 'agregado al efectivo' : 'agregado a transferencias'}',
-          ),
-          backgroundColor: Colors.green,
-        ),
-      );
+      showSuccessSnackBar(context, 'Total de ${formatCurrency(resultado)} ${paraEfectivo ? 'agregado al efectivo' : 'agregado a transferencias'}');
     }
   }
 
@@ -1320,19 +1309,9 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                               _cajerosAgregados.add(_selectedCajero!);
                             });
                           } else if (_selectedCajero == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Seleccione un cajero primero'),
-                                backgroundColor: Colors.orange,
-                              ),
-                            );
+                            showWarningSnackBar(context, 'Seleccione un cajero primero');
                           } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Este cajero ya fue agregado'),
-                                backgroundColor: Colors.orange,
-                              ),
-                            );
+                            showWarningSnackBar(context, 'Este cajero ya fue agregado');
                           }
                         },
                       ),
@@ -1409,12 +1388,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                     setState(() {
                                       _cajerosAgregados.remove(cajero);
                                     });
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('$cajero eliminado'),
-                                        duration: const Duration(seconds: 2),
-                                      ),
-                                    );
+                                    showInfoSnackBar(context, '$cajero eliminado', duration: const Duration(seconds: 2));
                                   },
                                 ),
                               ],

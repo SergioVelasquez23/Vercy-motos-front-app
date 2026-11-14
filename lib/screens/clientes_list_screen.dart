@@ -12,6 +12,7 @@ import '../utils/currency_utils.dart';
 import '../widgets/common/screen_header.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class ClientesListScreen extends StatefulWidget {
   @override
@@ -569,21 +570,11 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
         if (motivo == null) return;
 
         await _clienteService.bloquearCliente(cliente.id!, motivo);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Cliente bloqueado'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        showWarningSnackBar(context, 'Cliente bloqueado');
       } else {
         // Activar
         await _clienteService.activarCliente(cliente.id!);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Cliente activado'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, 'Cliente activado');
       }
 
       _cargarClientes();
@@ -646,12 +637,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
     if (confirmar == true) {
       try {
         await _clienteService.eliminarCliente(cliente.id!);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Cliente deshabilitado exitosamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, 'Cliente deshabilitado exitosamente');
         _cargarClientes();
       } catch (e) {
         showErrorDialog(context, 'Error al deshabilitar: ${errorMessage(e)}');
@@ -895,12 +881,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> with Paginacion
     if (result.files.isEmpty) {
         
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No se seleccionó ningún archivo'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        showWarningSnackBar(context, 'No se seleccionó ningún archivo');
       }
       return;
     }

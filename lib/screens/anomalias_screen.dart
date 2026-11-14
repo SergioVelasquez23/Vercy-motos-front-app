@@ -7,6 +7,7 @@ import '../providers/user_provider.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/reportes/rango_fechas_dialog.dart';
+import '../utils/snackbar_helper.dart';
 
 /// Alertas y Anomalías: gastos que subieron anormalmente por categoría,
 /// caída de ventas, clientes que compran menos, facturas inusualmente
@@ -378,9 +379,7 @@ class _AnomaliasScreenState extends State<AnomaliasScreen> {
       final nombreArchivo = 'Anomalias_${DateTime.now().millisecondsSinceEpoch}.pdf';
       await _pdfService.descargarPDFDirecto(pdfBytes: pdfBytes, nombreArchivo: nombreArchivo);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('PDF generado exitosamente'), backgroundColor: Colors.green),
-        );
+        showSuccessSnackBar(context, 'PDF generado exitosamente');
       }
     } catch (e) {
       if (mounted) {

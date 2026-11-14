@@ -7,6 +7,7 @@ import '../services/excel_export_service.dart';
 import '../providers/user_provider.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class ExportarMensualScreen extends StatefulWidget {
   const ExportarMensualScreen({super.key});
@@ -517,14 +518,7 @@ class _ExportarMensualScreenState extends State<ExportarMensualScreen> {
 
   Future<void> _exportarAExcel() async {
     if (!ExcelExportService.hayDatosEstadisticasParaExportar(_datosPreview)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'No hay datos para exportar. Carga la vista previa primero.',
-          ),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      showWarningSnackBar(context, 'No hay datos para exportar. Carga la vista previa primero.');
       return;
     }
 

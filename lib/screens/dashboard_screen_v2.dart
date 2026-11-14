@@ -732,14 +732,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
       if (exitoso) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Objetivo de $periodo actualizado a \$${_formatNumber(nuevoObjetivo)}',
-              ),
-              backgroundColor: AppTheme.primary,
-            ),
-          );
+          showInfoSnackBar(context, 'Objetivo de $periodo actualizado a \$${_formatNumber(nuevoObjetivo)}');
         }
 
         // IMPORTANTE: Recargar datos del dashboard para obtener los objetivos actualizados

@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../utils/logger.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class ResumenCierreDetalladoScreen extends StatefulWidget {
   final String cuadreId;
@@ -324,13 +325,7 @@ class _ResumenCierreDetalladoScreenState
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('PDF generado exitosamente'),
-          backgroundColor: AppTheme.success,
-          duration: Duration(seconds: 2),
-        ),
-      );
+      showSuccessSnackBar(context, 'PDF generado exitosamente', duration: Duration(seconds: 2));
     } catch (e) {
       if (!mounted) return;
 

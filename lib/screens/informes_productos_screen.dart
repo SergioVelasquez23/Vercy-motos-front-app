@@ -12,6 +12,7 @@ import '../services/pdf_service.dart';
 import '../widgets/common/screen_header.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class InformesProductosScreen extends StatefulWidget {
   /// Caja con la que arranca el filtro ('TODAS'/'LOCAL'/'ENVIOS') — lo usa el
@@ -72,12 +73,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
     final pedidoId =
         item['pedidoId']?.toString() ?? item['numeroFactura']?.toString();
     if (pedidoId == null || pedidoId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No se encontró el ID del pedido'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      showWarningSnackBar(context, 'No se encontró el ID del pedido');
       return;
     }
     context.push('/facturas-lista', extra: pedidoId);
@@ -179,9 +175,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
         if (cuadreId == null) {
           if (mounted) {
             setState(() => _isLoading = false);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('No hay caja activa.')),
-            );
+            showInfoSnackBar(context, 'No hay caja activa.');
           }
           return;
         }
@@ -195,11 +189,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
           'yyyy-MM-dd',
         ).parse(_fechaHastaController.text);
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Formato de fecha inválido. Use yyyy-MM-dd.'),
-          ),
-        );
+        showInfoSnackBar(context, 'Formato de fecha inválido. Use yyyy-MM-dd.');
         setState(() => _isLoading = false);
         return;
       }
@@ -343,9 +333,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
           _isLoading = false;
           _cargandoFacturadores = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Formato de fecha inválido. Use yyyy-MM-dd.')),
-        );
+        showInfoSnackBar(context, 'Formato de fecha inválido. Use yyyy-MM-dd.');
       }
       return;
     }
@@ -368,9 +356,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
         _isLoading = false;
         _cargandoFacturadores = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al generar el ranking: ${errorMessage(e)}')),
-      );
+      showInfoSnackBar(context, 'Error al generar el ranking: ${errorMessage(e)}');
     }
   }
 
@@ -1619,13 +1605,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                 );
 
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('PDF descargado exitosamente'),
-                      backgroundColor: Colors.green,
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
+                  showSuccessSnackBar(context, 'PDF descargado exitosamente', duration: Duration(seconds: 2));
                 }
               } catch (e) {
                 if (mounted) {

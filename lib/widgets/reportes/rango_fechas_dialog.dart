@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../utils/snackbar_helper.dart';
 
 String formatearFechaCorta(DateTime fecha) => DateFormat('dd/MM/yyyy').format(fecha);
 
@@ -77,9 +78,7 @@ Future<DateTimeRange?> mostrarSelectorRangoFechas(
               ElevatedButton.icon(
                 onPressed: () {
                   if (hasta.isBefore(desde)) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      const SnackBar(content: Text('La fecha "Hasta" no puede ser anterior a "Desde"')),
-                    );
+                    showInfoSnackBar(dialogContext, 'La fecha "Hasta" no puede ser anterior a "Desde"');
                     return;
                   }
                   Navigator.of(dialogContext).pop(DateTimeRange(start: desde, end: hasta));

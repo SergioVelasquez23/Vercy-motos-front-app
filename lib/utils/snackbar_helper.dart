@@ -2,14 +2,18 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'dialogs_helper.dart';
 
-void showSuccessSnackBar(BuildContext context, String message) {
+void showSuccessSnackBar(
+  BuildContext context,
+  String message, {
+  Duration duration = const Duration(seconds: 3),
+}) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(
       content: Text(message, style: const TextStyle(color: Colors.white)),
       backgroundColor: AppTheme.success,
       behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 3),
+      duration: duration,
     ));
 }
 
@@ -20,23 +24,31 @@ void showErrorSnackBar(BuildContext context, String message) {
   showErrorDialog(context, message);
 }
 
-void showWarningSnackBar(BuildContext context, String message) {
+void showWarningSnackBar(
+  BuildContext context,
+  String message, {
+  Duration duration = const Duration(seconds: 3),
+}) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(
       content: Text(message, style: const TextStyle(color: Colors.white)),
       backgroundColor: AppTheme.warning,
       behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 3),
+      duration: duration,
     ));
 }
 
-void showInfoSnackBar(BuildContext context, String message) {
+void showInfoSnackBar(
+  BuildContext context,
+  String message, {
+  Duration duration = const Duration(seconds: 3),
+}) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(
       content: Text(message),
       behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 3),
+      duration: duration,
     ));
 }

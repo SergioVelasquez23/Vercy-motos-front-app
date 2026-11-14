@@ -10,6 +10,7 @@ import '../../services/proveedor_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/currency_utils.dart';
 import '../../utils/api_error.dart';
+import '../../utils/snackbar_helper.dart';
 
 class DocumentoSoporteDialog extends StatefulWidget {
   /// Cuando se pasa, el dialog pre-llena todo desde la compra y solo
@@ -274,14 +275,8 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
       if (resultado.success) {
         Navigator.of(context).pop();
         widget.onSuccess?.call();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-            '✅ ${_esAjuste ? "Nota de Ajuste" : "Documento Soporte"} emitido. '
-            'CUDE: ${resultado.documentKey ?? "N/A"}',
-          ),
-          backgroundColor: AppTheme.success,
-          duration: const Duration(seconds: 5),
-        ));
+        showSuccessSnackBar(context, '✅ ${_esAjuste ? "Nota de Ajuste" : "Documento Soporte"} emitido. '
+            'CUDE: ${resultado.documentKey ?? "N/A"}', duration: const Duration(seconds: 5));
       } else {
         setState(() => _errorMsg = resultado.message);
       }

@@ -4,6 +4,7 @@ import '../services/bodega_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 /// Pantalla para gestionar bodegas/almacenes/ubicaciones de inventario
 class BodegasScreen extends StatefulWidget {
@@ -78,9 +79,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
   }
 
   void _mostrarExito(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensaje), backgroundColor: AppTheme.success),
-    );
+    showSuccessSnackBar(context, mensaje);
   }
 
   Future<void> _mostrarDialogoBodega({Bodega? bodega}) async {
@@ -313,12 +312,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
                   ? null
                   : () async {
                       if (nombreController.text.trim().isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('El nombre es requerido'),
-                            backgroundColor: Colors.orange,
-                          ),
-                        );
+                        showWarningSnackBar(context, 'El nombre es requerido');
                         return;
                       }
 

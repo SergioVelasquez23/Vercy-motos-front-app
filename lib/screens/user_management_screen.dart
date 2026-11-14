@@ -6,6 +6,7 @@ import '../models/role.dart';
 import '../theme/app_theme.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -196,12 +197,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       if (!mounted) return;
       Navigator.pop(context);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Rol actualizado a "${_formatRoleName(newRoleName)}" correctamente'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      showSuccessSnackBar(context, 'Rol actualizado a "${_formatRoleName(newRoleName)}" correctamente');
       await _loadUsers();
     } catch (e) {
       if (!mounted) return;
@@ -253,12 +249,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         newStatus,
       );
       if (result['success']) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message']),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, result['message']);
         await _loadUsers();
       } else {
         showErrorDialog(context, result['message']);

@@ -826,15 +826,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       });
 
       // Mostrar notificación
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '✨ Borrador restaurado - ${draftProvider.itemsCount} productos',
-          ),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
+      showSuccessSnackBar(context, '✨ Borrador restaurado - ${draftProvider.itemsCount} productos', duration: Duration(seconds: 2));
 
       appLog('✅ Borrador restaurado exitosamente');
     } catch (e) {
@@ -4068,9 +4060,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     }
 
     if (_faltaElegirFacturador) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Selecciona quién factura antes de continuar')),
-      );
+      showInfoSnackBar(context, 'Selecciona quién factura antes de continuar');
       return;
     }
 
@@ -4314,9 +4304,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     }
 
     if (_faltaElegirFacturador) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Selecciona quién factura antes de continuar')),
-      );
+      showInfoSnackBar(context, 'Selecciona quién factura antes de continuar');
       return;
     }
 

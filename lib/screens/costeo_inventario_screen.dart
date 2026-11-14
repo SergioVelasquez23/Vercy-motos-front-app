@@ -7,6 +7,7 @@ import '../providers/user_provider.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/reportes/rango_fechas_dialog.dart';
+import '../utils/snackbar_helper.dart';
 
 /// Costeo de Inventario y Utilidad Real: responde con datos del sistema a las
 /// 3 preguntas clásicas para reconstruir la utilidad sin depender de un
@@ -552,9 +553,7 @@ class _CosteoInventarioScreenState extends State<CosteoInventarioScreen> {
       final nombreArchivo = 'Costeo_Utilidad_${DateTime.now().millisecondsSinceEpoch}.pdf';
       await _pdfService.descargarPDFDirecto(pdfBytes: pdfBytes, nombreArchivo: nombreArchivo);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('PDF generado exitosamente'), backgroundColor: Colors.green),
-        );
+        showSuccessSnackBar(context, 'PDF generado exitosamente');
       }
     } catch (e) {
       if (mounted) {

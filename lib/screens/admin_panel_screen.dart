@@ -12,6 +12,7 @@ import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import 'exportar_mensual_screen.dart';
 import 'libro_contable_screen.dart';
+import '../utils/snackbar_helper.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({super.key});
@@ -390,13 +391,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 
   void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 3),
-      ),
-    );
+    showSuccessSnackBar(context, message, duration: Duration(seconds: 3));
   }
 
   void _showError(String message) {

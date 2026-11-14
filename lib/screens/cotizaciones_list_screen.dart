@@ -19,6 +19,7 @@ import '../utils/pagination_mixin.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/common/screen_header.dart';
+import '../utils/snackbar_helper.dart';
 
 class CotizacionesListScreen extends StatefulWidget {
   @override
@@ -148,12 +149,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
       if (!mounted) return;
       _cargarCotizaciones();
       if (excluidos.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cotización convertida en pedido. Bodega fue notificada.'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, 'Cotización convertida en pedido. Bodega fue notificada.');
       } else {
         // Un diálogo (no snackbar) para que no se pierda: hay productos que NO entraron al pedido.
         await showDialog<void>(
@@ -891,12 +887,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
     if (confirmar == true) {
       try {
         await _cotizacionService.eliminarCotizacion(cotizacion.id!);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Cotización eliminada'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, 'Cotización eliminada');
         _cargarCotizaciones();
       } catch (e) {
         showErrorDialog(context, 'Error al eliminar: ${errorMessage(e)}');

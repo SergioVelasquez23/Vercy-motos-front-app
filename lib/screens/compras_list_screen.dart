@@ -11,6 +11,7 @@ import '../widgets/common/screen_header.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/facturizacion/documento_soporte_dialog.dart';
+import '../utils/snackbar_helper.dart';
 
 class ComprasListScreen extends StatefulWidget {
   const ComprasListScreen({super.key});
@@ -760,12 +761,7 @@ class _ComprasListScreenState extends State<ComprasListScreen>
         );
 
         if (resultado['success'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Compra eliminada correctamente. Stock revertido.'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          showSuccessSnackBar(context, 'Compra eliminada correctamente. Stock revertido.');
           await _cargarDatos();
         } else {
           showErrorDialog(context, resultado['message'] ?? 'No se pudo eliminar la compra');

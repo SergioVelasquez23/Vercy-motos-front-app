@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 class EliminarPedidosScreen extends StatefulWidget {
   const EliminarPedidosScreen({Key? key}) : super(key: key);
@@ -65,12 +66,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
   Future<void> _eliminarPedidoPorId() async {
     final id = _idController.text.trim();
     if (id.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ingrese un ID de pedido'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      showWarningSnackBar(context, 'Ingrese un ID de pedido');
       return;
     }
 
@@ -85,12 +81,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
         motivoEliminacion: motivo.isNotEmpty ? motivo : null,
       );
       _idController.clear();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Pedido $id eliminado exitosamente'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      showSuccessSnackBar(context, 'Pedido $id eliminado exitosamente');
       _cargarPedidosHoy();
     } catch (e) {
       showErrorDialog(context, 'Error al eliminar: ${errorMessage(e)}');
@@ -101,12 +92,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
 
   Future<void> _eliminarSeleccionados() async {
     if (_selectedIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Seleccione al menos un pedido'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      showWarningSnackBar(context, 'Seleccione al menos un pedido');
       return;
     }
 
@@ -826,12 +812,7 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                                     ? motivo
                                     : null,
                               );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Pedido eliminado'),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
+                              showSuccessSnackBar(context, 'Pedido eliminado');
                               _cargarPedidosHoy();
                             } catch (e) {
                               showErrorDialog(context, errorMessage(e));

@@ -13,6 +13,7 @@ import '../utils/logger.dart';
 import '../utils/api_error.dart';
 import '../utils/currency_utils.dart';
 import '../utils/dialogs_helper.dart';
+import '../utils/snackbar_helper.dart';
 
 /// Pantalla "Bandeja de Documentos Electrónicos"
 ///
@@ -247,29 +248,14 @@ class _DocumentosPendientesScreenState
       if (!mounted) return;
 
       if (resultado.success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '✅ Documento reenviado. CUFE: ${resultado.documentKey ?? "Procesando"}',
-            ),
-            backgroundColor: AppTheme.success,
-            duration: const Duration(seconds: 4),
-          ),
-        );
+        showSuccessSnackBar(context, '✅ Documento reenviado. CUFE: ${resultado.documentKey ?? "Procesando"}', duration: const Duration(seconds: 4));
         _cargarDocumentos();
       } else {
         // Si falla auto-increment, intentar reenvío genérico
         final resGen = await _documentoService.reenviarDocumento(uuid);
         if (!mounted) return;
         if (resGen.success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '✅ Reenviado. CUFE: ${resGen.cufe ?? "Procesando"}',
-              ),
-              backgroundColor: AppTheme.success,
-            ),
-          );
+          showSuccessSnackBar(context, '✅ Reenviado. CUFE: ${resGen.cufe ?? "Procesando"}');
           _cargarDocumentos();
         } else {
           showErrorDialog(context, resGen.message);
@@ -604,9 +590,7 @@ class _DocumentosPendientesScreenState
 
   void _mostrarExito(String mensaje) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensaje), backgroundColor: AppTheme.success),
-    );
+    showSuccessSnackBar(context, mensaje);
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────

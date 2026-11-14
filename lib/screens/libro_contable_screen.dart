@@ -13,6 +13,7 @@ import 'costeo_inventario_screen.dart';
 import 'rentabilidad_screen.dart';
 import 'comparativo_periodos_screen.dart';
 import 'anomalias_screen.dart';
+import '../utils/snackbar_helper.dart';
 
 /// Pantalla única que fusiona los 5 reportes contables que antes vivían
 /// separados en el submenú (Libro Contable, Costeo y Utilidad Real,
@@ -1401,12 +1402,7 @@ class _VentasYGastosTabState extends State<_VentasYGastosTab> {
 
   Future<void> _exportarAExcel() async {
     if (!ExcelExportService.hayDatosLibroContableParaExportar(_datosPreview)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No hay datos para exportar. Carga la vista previa primero.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      showWarningSnackBar(context, 'No hay datos para exportar. Carga la vista previa primero.');
       return;
     }
 

@@ -7,6 +7,7 @@ import '../../theme/app_theme.dart';
 import '../../models/factura.dart';
 import '../../utils/currency_utils.dart';
 import '../../utils/api_error.dart';
+import '../../utils/snackbar_helper.dart';
 
 enum TipoNota { credito, debito }
 
@@ -163,15 +164,7 @@ class _NotaCreditoDebitoDialogState extends State<NotaCreditoDebitoDialog> {
       if (resultado.success) {
         Navigator.of(context).pop();
         widget.onSuccess?.call();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '✅ ${esCredito ? "Nota Crédito" : "Nota Débito"} emitida. CUFE: ${resultado.documentKey ?? "N/A"}',
-            ),
-            backgroundColor: AppTheme.success,
-            duration: const Duration(seconds: 5),
-          ),
-        );
+        showSuccessSnackBar(context, '✅ ${esCredito ? "Nota Crédito" : "Nota Débito"} emitida. CUFE: ${resultado.documentKey ?? "N/A"}', duration: const Duration(seconds: 5));
       } else {
         setState(() => _errorMsg = resultado.message);
       }

@@ -25,6 +25,7 @@ import '../utils/dialogs_helper.dart';
 import '../utils/datetime_utils.dart';
 import '../utils/currency_utils.dart';
 import '../utils/legal_texts.dart';
+import '../utils/snackbar_helper.dart';
 
 class AsesorPedidosScreen extends StatefulWidget {
   const AsesorPedidosScreen({super.key});
@@ -265,15 +266,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
         _cantidadController.text = '1';
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${producto.nombre} agregado (${CurrencyUtils.format(precioIngresado)})',
-          ),
-          backgroundColor: AppTheme.success,
-          duration: Duration(seconds: 1),
-        ),
-      );
+      showSuccessSnackBar(context, '${producto.nombre} agregado (${CurrencyUtils.format(precioIngresado)})', duration: Duration(seconds: 1));
       return;
     }
 
@@ -379,13 +372,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
       _cantidadController.text = '1';
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${producto.nombre} agregado desde $origen'),
-        backgroundColor: AppTheme.success,
-        duration: Duration(seconds: 1),
-      ),
-    );
+    showSuccessSnackBar(context, '${producto.nombre} agregado desde $origen', duration: Duration(seconds: 1));
   }
 
   void _actualizarCantidad(int index, int nuevaCantidad) {
@@ -2246,9 +2233,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen>
   }
 
   void _mostrarExito(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensaje), backgroundColor: AppTheme.success),
-    );
+    showSuccessSnackBar(context, mensaje);
   }
 
   // 💲 Mostrar diálogo para ingresar el precio de un item de "Mano de obra"
