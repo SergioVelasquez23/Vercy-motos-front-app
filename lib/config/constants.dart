@@ -2,10 +2,11 @@
 // Configuración de API
 //
 // Se puede cambiar al compilar con --dart-define=BACKEND_URL=https://... (así se arma
-// el front de staging, ver docs/STAGING.md del backend). Sin eso, es producción.
+// el front de staging, ver docs/STAGING.md del backend). Cada negocio compila con SU URL;
+// sin ese parámetro apunta al backend local.
 const String kBackendUrl = String.fromEnvironment(
   'BACKEND_URL',
-  defaultValue: 'https://204-168-190-85.nip.io', // backend en producción (Hetzner)
+  defaultValue: 'http://localhost:8081',
 );
 
 // URL de desarrollo local
@@ -71,8 +72,24 @@ const kTiposMovimiento = [
   'Salida - Otro',
 ];
 
-// Nombre de la aplicación
-const kNombreApp = 'Vercy Motos';
+// ---------- Marca y datos del negocio ----------
+// Se definen al compilar con --dart-define (ver docs/PLANTILLA_NUEVO_CLIENTE.md). No escribir nombres,
+// correos ni teléfonos de un negocio concreto en el código.
+const String kNombreApp = String.fromEnvironment('APP_NAME', defaultValue: 'Mi Negocio');
+String get kNombreAppMayus => kNombreApp.toUpperCase();
+
+// Nombre del software registrado ante la DIAN, solo si el negocio no lo guardó en Configuración.
+const String kSoftwareNombreDefault = String.fromEnvironment('SOFTWARE_NAME', defaultValue: 'POS');
+
+// Datos de contacto del responsable que aparecen en los textos legales.
+const String kNitResponsable = String.fromEnvironment('LEGAL_NIT', defaultValue: '');
+const String kDireccionResponsable = String.fromEnvironment('LEGAL_DIRECCION', defaultValue: '');
+const String kCorreoContacto = String.fromEnvironment('CONTACT_EMAIL', defaultValue: '');
+const String kTelefonoContacto = String.fromEnvironment('CONTACT_PHONE', defaultValue: '');
+
+// Usuarios que reciben el aviso de traslados (listas separadas por coma): correos y nombres de usuario.
+const String kNotifTrasladoEmails = String.fromEnvironment('NOTIF_TRASLADO_EMAILS', defaultValue: '');
+const String kNotifTrasladoUsuarios = String.fromEnvironment('NOTIF_TRASLADO_USUARIOS', defaultValue: '');
 
 // Estados de documentos / facturas
 const kEstadoTodos = 'TODOS';

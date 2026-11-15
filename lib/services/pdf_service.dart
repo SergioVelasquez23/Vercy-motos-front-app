@@ -8,6 +8,7 @@ import 'package:printing/printing.dart';
 import 'package:path_provider/path_provider.dart';
 import 'pdf_download_helper.dart';
 import '../utils/logger.dart';
+import '../config/constants.dart';
 
 class PDFService {
   // Cache de fuentes para evitar cargas repetidas
@@ -225,7 +226,7 @@ class PDFService {
     // Cargar logo con manejo de errores
     pw.MemoryImage? logoImage;
     try {
-      final logoData = await rootBundle.load('assets/images/vercylogo.png');
+      final logoData = await rootBundle.load('assets/images/logo_app.png');
       logoImage = pw.MemoryImage(logoData.buffer.asUint8List());
       appLog('✅ Logo cargado exitosamente');
     } catch (e) {
@@ -240,7 +241,7 @@ class PDFService {
       resumen['nombreNegocio'] ??
           resumen['nombreRestaurante'] ??
           negocio?['nombre'],
-      'VERCY MOTOS',
+      kNombreAppMayus,
     );
     final nit = _toSafeString(
       resumen['nit'] ?? negocio?['nit'],
@@ -1676,7 +1677,7 @@ class PDFService {
     // Pre-procesar valores
     final nombreNegocio = _toSafeString(
       resumen['nombreNegocio'],
-      'VERCY MOTOS',
+      kNombreAppMayus,
     );
     final tipoInforme = _toSafeString(resumen['tipoInforme'], 'Informe');
     final fechaDesde = _toSafeString(resumen['fechaDesde']);
@@ -2078,7 +2079,7 @@ class PDFService {
     final font = await _getFontRegular();
     final fontBold = await _getFontBold();
 
-    final nombreNegocio = _toSafeString(resumen['nombreNegocio'], 'VERCY MOTOS');
+    final nombreNegocio = _toSafeString(resumen['nombreNegocio'], kNombreAppMayus);
     final fecha = _toSafeString(resumen['fecha']);
     final hora = _toSafeString(resumen['hora']);
     final fechaDesde = _toSafeString(resumen['fechaDesde']);
@@ -2328,7 +2329,7 @@ class PDFService {
     final font = await _getFontRegular();
     final fontBold = await _getFontBold();
 
-    final nombreNegocio = _toSafeString(resumen['nombreNegocio'], 'VERCY MOTOS');
+    final nombreNegocio = _toSafeString(resumen['nombreNegocio'], kNombreAppMayus);
     final fecha = _toSafeString(resumen['fecha']);
     final hora = _toSafeString(resumen['hora']);
     final fechaDesde = _toSafeString(resumen['fechaDesde']);
@@ -2459,7 +2460,7 @@ class PDFService {
     final font = await _getFontRegular();
     final fontBold = await _getFontBold();
 
-    final nombreNegocio = _toSafeString(resumen['nombreNegocio'], 'VERCY MOTOS');
+    final nombreNegocio = _toSafeString(resumen['nombreNegocio'], kNombreAppMayus);
     final fecha = _toSafeString(resumen['fecha']);
     final hora = _toSafeString(resumen['hora']);
     final tipoComparacion = _toSafeString(resumen['tipoComparacion'], 'Comparacion de periodos');
@@ -2596,7 +2597,7 @@ class PDFService {
     final font = await _getFontRegular();
     final fontBold = await _getFontBold();
 
-    final nombreNegocio = _toSafeString(resumen['nombreNegocio'], 'VERCY MOTOS');
+    final nombreNegocio = _toSafeString(resumen['nombreNegocio'], kNombreAppMayus);
     final fecha = _toSafeString(resumen['fecha']);
     final hora = _toSafeString(resumen['hora']);
     final fechaDesde = _toSafeString(resumen['fechaDesde']);

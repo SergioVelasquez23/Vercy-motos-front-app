@@ -51,6 +51,7 @@ import '../utils/borradores_utils.dart';
 import '../utils/payment_mapping.dart' as payment_mapping;
 import '../utils/facturacion_calculos.dart' as calculos;
 import 'package:url_launcher/url_launcher.dart';
+import '../config/constants.dart';
 
 // Cache de clientes compartido entre instancias de FacturacionScreen
 List<Cliente> _clientesCached = [];
@@ -5352,8 +5353,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
     return {
       // Información del negocio
-      'nombreRestaurante': negocioInfo?.nombre ?? 'VERCY MOTOS',
-      'nombreNegocio': negocioInfo?.nombre ?? 'VERCY MOTOS',
+      'nombreRestaurante': negocioInfo?.nombre ?? kNombreAppMayus,
+      'nombreNegocio': negocioInfo?.nombre ?? kNombreAppMayus,
       'nit': negocioInfo?.nitDoc ?? negocioInfo?.nit ?? '',
       'direccionRestaurante': negocioInfo?.direccion ?? '',
       'telefonoRestaurante': negocioInfo?.contacto ?? negocioInfo?.telefono ?? '',

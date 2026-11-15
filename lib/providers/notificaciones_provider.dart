@@ -61,16 +61,15 @@ class NotificacionesProvider extends ChangeNotifier {
   // no se les muestra ni suena esta notificación. Se compara contra email
   // Y nombre de usuario (no todos los JWT traen el claim "email") para que
   // baste con que uno de los dos matchee.
-  static const _emailsNotificadosTraslado = {
-    'francia@gmail.com',
-    'diegoalek01@gmail.com',
-    'bodegavercy@gmail.com',
-  };
-  static const _usuariosNotificadosTraslado = {
-    'francia',
-    'diego',
-    'bodega',
-  };
+  static final _emailsNotificadosTraslado = _lista(kNotifTrasladoEmails);
+  static final _usuariosNotificadosTraslado = _lista(kNotifTrasladoUsuarios);
+
+  // Convierte "a,b,c" en {a, b, c} (minúsculas, sin vacíos).
+  static Set<String> _lista(String csv) => csv
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .where((e) => e.isNotEmpty)
+      .toSet();
 
   final CarteraService _carteraService;
   final TrasladoService _trasladoService;

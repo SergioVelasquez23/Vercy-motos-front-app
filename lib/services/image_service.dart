@@ -302,7 +302,7 @@ class ImageService {
       // Imagen guardada con el dominio viejo de Render: reescribir el mismo
       // path sobre el backend actual (_apiConfig.baseUrl) en vez de devolver
       // un link muerto.
-      if (cleanFilename.contains('vercy-motos-app-048m.onrender.com')) {
+      if ((Uri.tryParse(cleanFilename)?.host ?? '').endsWith('.onrender.com')) {
         try {
           final uriAntigua = Uri.parse(cleanFilename);
           final baseUrl = _apiConfig.baseUrl.endsWith('/')

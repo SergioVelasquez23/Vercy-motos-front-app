@@ -6,6 +6,7 @@ import '../utils/logger.dart';
 import '../utils/datetime_utils.dart';
 import '../utils/payment_mapping.dart' as payment_mapping;
 import 'base_api_service.dart';
+import '../config/constants.dart';
 
 /// Servicio para integración con API de Facturación Matias
 /// Cubre: Facturas, Nota Crédito, Nota Débito, Doc. Soporte,
@@ -499,7 +500,7 @@ class MatiasService {
       'software_manufacturer': {
         'owner_name': _valorOrDefault(negocioInfo.softwareOwnerName, _valorOrDefault(negocioInfo.nombre, 'Software Owner')),
         'company_name': _valorOrDefault(negocioInfo.softwareCompanyName, _valorOrDefault(negocioInfo.nombre, 'Software Company')),
-        'software_name': _valorOrDefault(negocioInfo.softwareName, 'Vercy POS'),
+        'software_name': _valorOrDefault(negocioInfo.softwareName, kSoftwareNombreDefault),
       },
       'point_of_sale': {
         // Matias exige point_of_sale.cashier_name cuando type_document_id es

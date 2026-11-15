@@ -20,6 +20,7 @@ import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/common/screen_header.dart';
 import '../utils/snackbar_helper.dart';
+import '../config/constants.dart';
 
 class CotizacionesListScreen extends StatefulWidget {
   @override
@@ -762,8 +763,8 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen>
       // Preparar datos del resumen para el PDF
       final resumen = {
         // Información del negocio - USAR NOMBRES DE CAMPOS QUE ESPERA PDF_SERVICE
-        'nombreNegocio': negocioInfo?.nombre ?? 'VERCY MOTOS',
-        'nombreRestaurante': negocioInfo?.nombre ?? 'VERCY MOTOS',
+        'nombreNegocio': negocioInfo?.nombre ?? kNombreAppMayus,
+        'nombreRestaurante': negocioInfo?.nombre ?? kNombreAppMayus,
         'nit': negocioInfo?.nit ?? '',
         'email': negocioInfo?.email ?? '',
         'telefonoRestaurante': negocioInfo?.telefono ?? '',

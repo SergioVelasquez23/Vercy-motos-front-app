@@ -8,6 +8,7 @@ import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/reportes/rango_fechas_dialog.dart';
 import '../utils/snackbar_helper.dart';
+import '../config/constants.dart';
 
 /// Rentabilidad por Producto y Cliente: responde "¿qué productos son más
 /// rentables?", "¿cuáles tienen mucha venta pero poco margen?" y "¿qué
@@ -488,7 +489,7 @@ class _RentabilidadScreenState extends State<RentabilidadScreen> {
     return {
       'productos': _resultadoProductos,
       'clientes': _resultadoClientes,
-      'nombreNegocio': 'VERCY MOTOS',
+      'nombreNegocio': kNombreAppMayus,
       'fecha': formatearFechaCorta(ahora),
       'hora': DateFormat('HH:mm').format(ahora),
       'fechaDesde': formatearFechaCorta(_rangoSeleccionado!.start),

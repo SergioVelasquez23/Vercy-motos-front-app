@@ -8,6 +8,7 @@ import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/reportes/rango_fechas_dialog.dart';
 import '../utils/snackbar_helper.dart';
+import '../config/constants.dart';
 
 /// Costeo de Inventario y Utilidad Real: responde con datos del sistema a las
 /// 3 preguntas clásicas para reconstruir la utilidad sin depender de un
@@ -523,7 +524,7 @@ class _CosteoInventarioScreenState extends State<CosteoInventarioScreen> {
     final ahora = DateTime.now();
     return {
       ..._resultado!,
-      'nombreNegocio': 'VERCY MOTOS',
+      'nombreNegocio': kNombreAppMayus,
       'fecha': formatearFechaCorta(ahora),
       'hora': DateFormat('HH:mm').format(ahora),
       'fechaDesde': formatearFechaCorta(_rangoSeleccionado!.start),
