@@ -1278,7 +1278,7 @@ class _ImportarFacturaCompraPdfScreenState
         totalImpuestos: totalImpuestosItems,
       );
 
-      await _facturaCompraService.crearFacturaCompra(factura);
+      final facturaCreada = await _facturaCompraService.crearFacturaCompra(factura);
 
       // Actualizar el costo (y opcionalmente el precio de venta) de los
       // productos que ya existían (mismo patrón que
@@ -1315,11 +1315,28 @@ class _ImportarFacturaCompraPdfScreenState
       }
 
       if (mounted) {
-        showSuccessSnackBar(
-          context,
-          'Compra creada: $creados producto(s) nuevo(s), $actualizados actualizado(s)',
-        );
-        context.go('/compras');
+        // El backend avisa si algún producto no sumó stock (no encontrado, sin
+        // control de inventario, fallo al actualizar). No se debe dar por buena
+        // la compra en silencio: mismo criterio que CrearFacturaCompraScreen.
+        final avisos = <String>[
+          ...facturaCreada.advertencias.map((a) => '• $a'),
+          if (facturaCreada.productosSinControlInventario.isNotEmpty)
+            '• NO se sumó stock (sin control de inventario): '
+                '${facturaCreada.productosSinControlInventario.join(', ')}',
+        ];
+        if (avisos.isNotEmpty) {
+          await showInfoDialog(
+            context,
+            title: 'Compra guardada, pero revisa esto',
+            content: avisos.join('\n'),
+          );
+        } else {
+          showSuccessSnackBar(
+            context,
+            'Compra creada: $creados producto(s) nuevo(s), $actualizados actualizado(s)',
+          );
+        }
+        if (mounted) context.go('/compras');
       }
     } catch (e) {
       if (mounted) {
