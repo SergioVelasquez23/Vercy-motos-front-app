@@ -8,6 +8,7 @@ import '../providers/user_provider.dart';
 import '../models/negocio_info.dart';
 import '../services/negocio_info_service.dart';
 import '../utils/api_error.dart';
+import '../config/constants.dart';
 
 class ConfiguracionScreen extends StatefulWidget {
   const ConfiguracionScreen({super.key});
@@ -302,7 +303,7 @@ class _NegocioTabState extends State<_NegocioTab> {
         _codigoVentaCtrl.text = info.posSalesCode ?? 'V001';
         _softwareOwnerCtrl.text = info.softwareOwnerName ?? '';
         _softwareCompanyCtrl.text = info.softwareCompanyName ?? '';
-        _softwareNameCtrl.text = info.softwareName ?? 'Vercy POS';
+        _softwareNameCtrl.text = info.softwareName ?? kSoftwareNombreDefault;
       }
     } catch (e) {
       _errorMsg = errorMessage(e);
@@ -444,8 +445,8 @@ class _NegocioTabState extends State<_NegocioTab> {
               subtitle: 'Datos del software registrado ante la DIAN'),
           _field(_softwareOwnerCtrl, 'Nombre del propietario del software', hint: 'ej: Juan Pérez'),
           _row([
-            _field(_softwareCompanyCtrl, 'Empresa del software', hint: 'ej: Vercy Motos S.A.S'),
-            _field(_softwareNameCtrl, 'Nombre del software', hint: 'ej: Vercy POS'),
+            _field(_softwareCompanyCtrl, 'Empresa del software', hint: 'ej: Mi Empresa S.A.S'),
+            _field(_softwareNameCtrl, 'Nombre del software', hint: 'ej: Mi Negocio POS'),
           ]),
 
           const SizedBox(height: 24),

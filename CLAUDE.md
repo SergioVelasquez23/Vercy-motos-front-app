@@ -129,7 +129,7 @@ flutter test --concurrency=1       # 280+ tests, correr con concurrency=1 por me
 - No ejecutes `firebase deploy` ni toques el hosting. Para ver un cambio antes de publicarlo existe un canal de
   vista previa de staging (`firebase hosting:channel:deploy staging`) que lanza el dueño.
 - El backend a producción es manual y lo lanza el dueño (ver `CLAUDE.md` del repo `Vercy-motos-app`). El front de staging
-  se compila con `--dart-define=BACKEND_URL=https://staging.204-168-190-85.nip.io`; sin ese parámetro apunta a producción.
+  se compila con `bash tool/build_web.sh --dart-define=BACKEND_URL=https://staging.204-168-190-85.nip.io` (el último `--dart-define` gana). La marca, la URL de producción y los datos de contacto salen de `negocio.env`; sin ese archivo el script no compila.
 
 ## Stock y datos que el front no debe pisar
 

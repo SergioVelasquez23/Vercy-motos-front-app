@@ -8,6 +8,7 @@ import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/reportes/rango_fechas_dialog.dart';
 import '../utils/snackbar_helper.dart';
+import '../config/constants.dart';
 
 /// Alertas y Anomalías: gastos que subieron anormalmente por categoría,
 /// caída de ventas, clientes que compran menos, facturas inusualmente
@@ -349,7 +350,7 @@ class _AnomaliasScreenState extends State<AnomaliasScreen> {
     final ahora = DateTime.now();
     return {
       ..._resultado!,
-      'nombreNegocio': 'VERCY MOTOS',
+      'nombreNegocio': kNombreAppMayus,
       'fecha': formatearFechaCorta(ahora),
       'hora': DateFormat('HH:mm').format(ahora),
       'fechaDesde': formatearFechaCorta(_rangoSeleccionado!.start),

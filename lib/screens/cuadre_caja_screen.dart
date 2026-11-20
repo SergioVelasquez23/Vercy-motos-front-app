@@ -894,7 +894,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                             '-- Responsable --',
                             style: TextStyle(color: textLight),
                           ),
-                          items: <String>['Vercy Motos', 'Administrador']
+                          items: <String>[kNombreApp, 'Administrador']
                               .map<DropdownMenuItem<String>>((String value) {
                                 return DropdownMenuItem<String>(
                                   value: value,
@@ -1214,7 +1214,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                     style: TextStyle(fontSize: 16, color: textLight),
                   ),
                   Text(
-                    "Vercy Motos",
+                    kNombreApp,
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,

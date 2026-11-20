@@ -14,6 +14,7 @@ import '../utils/api_error.dart' as api_error;
 import '../utils/legal_texts.dart';
 import '../utils/dialogs_helper.dart';
 import 'package:universal_html/html.dart' as html;
+import '../config/constants.dart';
 
 // Extension para validación de email
 extension EmailValidator on String {
@@ -772,7 +773,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
-                                    'Vercy Motos',
+                                    kNombreApp,
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: context.screenWidth > 1400 ? 56 : 48,
@@ -920,7 +921,7 @@ class _LoginScreenState extends State<LoginScreen>
                       if (context.isMobile) ...[
                         Center(
                           child: Image.asset(
-                            'assets/images/vercylogo.png',
+                            'assets/images/logo_app.png',
                             height: 64,
                             errorBuilder: (_, __, ___) => Icon(
                               Icons.two_wheeler,

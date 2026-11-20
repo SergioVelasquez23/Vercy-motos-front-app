@@ -8,6 +8,7 @@ import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import '../widgets/reportes/rango_fechas_dialog.dart';
 import '../utils/snackbar_helper.dart';
+import '../config/constants.dart';
 
 /// Comparación de Períodos: mes actual vs. mes anterior, o un rango contra el
 /// mismo rango del año anterior — usando la utilidad real (ventas, costo de
@@ -442,7 +443,7 @@ class _ComparativoPeriodosScreenState extends State<ComparativoPeriodosScreen> {
       'tipoComparacion': _modo == _ModoComparacion.mesAnterior
           ? 'Mes actual vs. mes anterior'
           : 'Rango vs. mismo rango del año anterior',
-      'nombreNegocio': 'VERCY MOTOS',
+      'nombreNegocio': kNombreAppMayus,
       'fecha': formatearFechaCorta(ahora),
       'hora': DateFormat('HH:mm').format(ahora),
       'generadoPor': userProvider.userName ?? 'Sistema',
