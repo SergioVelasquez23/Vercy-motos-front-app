@@ -13,6 +13,7 @@ import 'providers/notificaciones_provider.dart';
 import 'providers/theme_provider.dart';
 import 'theme/app_theme.dart';
 import 'router/app_router.dart';
+import 'config/constants.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -72,7 +73,7 @@ class MyApp extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp.router(
-      title: 'Vercy Motos',
+      title: kNombreApp,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

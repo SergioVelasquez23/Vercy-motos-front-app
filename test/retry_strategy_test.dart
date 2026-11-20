@@ -110,7 +110,7 @@ void main() {
 
     test('cualquier otro dominio usa ProductionRetryStrategy', () {
       expect(
-        RetryStrategyFactory.forEnvironment('https://api.vercymotos.com'),
+        RetryStrategyFactory.forEnvironment('https://api.ejemplo.co'),
         isA<ProductionRetryStrategy>(),
       );
     });

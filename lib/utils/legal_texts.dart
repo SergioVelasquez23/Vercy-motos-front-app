@@ -1,14 +1,16 @@
+import '../config/constants.dart';
+
 // Textos legales de la Plataforma. Los datos de identificación del
 // responsable (razón social, NIT, dirección, contacto) se tomaron de la
 // papelería fiscal real del negocio (facturas/tiquetes emitidos). Revisar
 // con un abogado antes de considerarlos definitivos: este archivo es un
 // punto de partida razonable, no asesoría legal.
 
-const String _nombreResponsable = 'VERCY MOTOS';
-const String _nitResponsable = '1002576776-7';
-const String _direccionResponsable = 'Carrera 24B #41-42, Caldas, Manizales';
-const String _correoContacto = 'vercymotos@gmail.com';
-const String _telefonoContacto = '304 454 7430';
+const String _nombreResponsable = kNombreApp;
+const String _nitResponsable = kNitResponsable;
+const String _direccionResponsable = kDireccionResponsable;
+const String _correoContacto = kCorreoContacto;
+const String _telefonoContacto = kTelefonoContacto;
 const String _ultimaActualizacion = '24 de julio de 2026';
 
 const String terminosYCondicionesTexto = '''
@@ -17,7 +19,7 @@ TÉRMINOS Y CONDICIONES DE USO
 Última actualización: $_ultimaActualizacion
 
 1. Objeto
-Estos Términos y Condiciones regulan el acceso y uso de Vercy Motos (en adelante, "la Plataforma"), un sistema ERP para la gestión administrativa, de inventario y facturación de establecimientos dedicados a la venta y/o servicio técnico de motocicletas. Al crear una cuenta, el usuario declara haber leído y aceptado estos términos.
+Estos Términos y Condiciones regulan el acceso y uso de $_nombreResponsable (en adelante, "la Plataforma"), un sistema ERP para la gestión administrativa, de inventario y facturación de establecimientos dedicados a la venta y/o servicio técnico de motocicletas. Al crear una cuenta, el usuario declara haber leído y aceptado estos términos.
 
 2. Responsabilidades del usuario
 - Suministrar información veraz, completa y actualizada al registrarse.
@@ -40,7 +42,7 @@ El proveedor no será responsable por daños indirectos, pérdida de datos, lucr
 El proveedor podrá suspender o cancelar una cuenta cuando detecte uso indebido, incumplimiento de estos Términos, o a solicitud del administrador del establecimiento asociado a la cuenta. El usuario puede solicitar la cancelación de su cuenta en cualquier momento escribiendo a $_correoContacto.
 
 7. Propiedad intelectual
-El software, su código, diseño, marca y demás elementos de la Plataforma son propiedad de Vercy Motos o de sus licenciantes. El uso de la Plataforma no otorga al usuario ningún derecho de propiedad intelectual sobre el software, más allá de la licencia de uso necesaria para operar la cuenta.
+El software, su código, diseño, marca y demás elementos de la Plataforma son propiedad de $_nombreResponsable o de sus licenciantes. El uso de la Plataforma no otorga al usuario ningún derecho de propiedad intelectual sobre el software, más allá de la licencia de uso necesaria para operar la cuenta.
 
 8. Modificaciones
 Estos Términos pueden actualizarse. Los cambios sustanciales serán informados a los usuarios registrados.

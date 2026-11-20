@@ -13,6 +13,7 @@ import '../widgets/common/screen_header.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import '../utils/snackbar_helper.dart';
+import '../config/constants.dart';
 
 class InformesProductosScreen extends StatefulWidget {
   /// Caja con la que arranca el filtro ('TODAS'/'LOCAL'/'ENVIOS') — lo usa el
@@ -1489,7 +1490,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
   /// Generar resumen del informe para PDF
   Map<String, dynamic> _crearResumenInforme() {
     return {
-      'nombreNegocio': 'VERCY MOTOS',
+      'nombreNegocio': kNombreAppMayus,
       'fecha': _dateFormat.format(DateTime.now()),
       'hora': DateFormat('HH:mm:ss').format(DateTime.now()),
       'tipoInforme': _tipoInformeActual == 'detallado'

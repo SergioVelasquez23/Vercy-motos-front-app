@@ -1,11 +1,11 @@
 {
-    "name": "Vercy Motos",
-    "short_name": "Vercy Motos",
+    "name": "Mi Negocio",
+    "short_name": "Mi Negocio",
     "start_url": ".",
     "display": "browser",
     "background_color": "#FF6B00",
     "theme_color": "#FF6B00",
-    "description": "Sistema de gestión para Vercy Motos",
+    "description": "Sistema de gestión para Mi Negocio",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -27,6 +27,7 @@ import '../utils/currency_utils.dart';
 import '../utils/api_error.dart';
 import '../utils/dialogs_helper.dart';
 import '../utils/snackbar_helper.dart';
+import '../config/constants.dart';
 
 class FacturasListScreen extends StatefulWidget {
   final String? filtroInicial;
@@ -1301,8 +1302,8 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
 
       resumen = {
         // Datos del negocio
-        'nombreNegocio': negocioInfo?.nombre ?? 'VERCY MOTOS',
-        'nombreRestaurante': negocioInfo?.nombre ?? 'VERCY MOTOS',
+        'nombreNegocio': negocioInfo?.nombre ?? kNombreAppMayus,
+        'nombreRestaurante': negocioInfo?.nombre ?? kNombreAppMayus,
         'nit': negocioInfo?.nit ?? '',
         'email': negocioInfo?.email ?? '',
         'telefonoRestaurante': negocioInfo?.telefono ?? '',
@@ -1434,8 +1435,8 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
 
       resumen = {
         // Datos del negocio
-        'nombreNegocio': negocioInfo?.nombre ?? 'VERCY MOTOS',
-        'nombreRestaurante': negocioInfo?.nombre ?? 'VERCY MOTOS',
+        'nombreNegocio': negocioInfo?.nombre ?? kNombreAppMayus,
+        'nombreRestaurante': negocioInfo?.nombre ?? kNombreAppMayus,
         'nit': negocioInfo?.nit ?? '',
         'email': negocioInfo?.email ?? '',
         'telefonoRestaurante': negocioInfo?.telefono ?? '',

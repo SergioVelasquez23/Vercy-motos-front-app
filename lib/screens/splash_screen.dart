@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
+import '../config/constants.dart';
 
 /// Pantalla de arranque de la app (mientras se restaura la sesion y se decide a que ruta ir).
 ///
@@ -145,8 +146,8 @@ class SplashView extends StatelessWidget {
                     shaderCallback: (rect) => const LinearGradient(
                       colors: [_azulClaro, _violetaClaro],
                     ).createShader(rect),
-                    child: const Text(
-                      'VERCY MOTOS',
+                    child: Text(
+                      kNombreAppMayus,
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 26,
@@ -209,7 +210,7 @@ class _LogoCard extends StatelessWidget {
         ],
       ),
       child: Image.asset(
-        'assets/images/vercy_logo_cuadrado.png',
+        'assets/images/logo_cuadrado.png',
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) => const Icon(
           Icons.two_wheeler,

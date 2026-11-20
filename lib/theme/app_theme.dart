@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import '../config/constants.dart';
 
-/// Paleta y estilos centrales de Vercy Motos.
+/// Paleta y estilos centrales de la aplicación.
 ///
 /// Tonos suavizados (azul #3B82F6, morado #8B5CF6) y soporte para modo oscuro.
 /// Las constantes [primary], [secondary], etc. siguen los nombres históricos
