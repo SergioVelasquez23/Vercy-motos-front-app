@@ -1303,6 +1303,13 @@ class ProductoService {
         productoJson['precio'] = precioActual;
       }
 
+      // El stock NO se reenvía: lo acaba de sumar la compra y este PUT lleva una copia leída antes
+      // de que una venta o traslado simultáneo lo cambie (pisaría ese cambio). El backend solo toca
+      // el stock si la clave viene en el cuerpo.
+      for (final k in const ['cantidad', 'cantidadBodega', 'cantidadAlmacen', 'cantidadTotal']) {
+        productoJson.remove(k);
+      }
+
       // 4️⃣ Enviar el producto completo con PUT (backend no soporta PATCH)
       final response = await http
           .put(
