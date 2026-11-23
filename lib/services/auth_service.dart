@@ -39,6 +39,14 @@ class AuthService {
           'fechaAceptacionTerminos': DateTime.now().toUtc().toIso8601String(),
         }),
       ).timeout(Duration(seconds: ApiConfig.requestTimeout));
+      if (response.statusCode == 202) {
+        // El usuario NO existe todavía: un superadmin debe autorizarlo antes de que pueda iniciar sesión.
+        return {
+          'success': true,
+          'pendiente': true,
+          'message': 'Solicitud enviada. Un superadmin debe autorizar tu usuario antes de que puedas ingresar.',
+        };
+      }
       if (response.statusCode == 200 || response.statusCode == 201) {
         return {'success': true, 'message': 'Usuario registrado exitosamente'};
       } else {

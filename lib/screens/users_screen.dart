@@ -787,8 +787,15 @@ class _UsersScreenState extends State<UsersScreen> {
         showSuccessSnackBar(context, 'Usuario actualizado correctamente');
       } else {
         // Crear nuevo usuario
-        await _userService.createUser(newUser);
-        showSuccessSnackBar(context, 'Usuario creado correctamente');
+        final creadoAlInstante = await _userService.createUser(newUser);
+        if (creadoAlInstante) {
+          showSuccessSnackBar(context, 'Usuario creado correctamente');
+        } else {
+          showInfoSnackBar(
+            context,
+            'Solicitud enviada: un superadmin debe autorizarla antes de que se cree el usuario',
+          );
+        }
       }
 
       Navigator.pop(context);

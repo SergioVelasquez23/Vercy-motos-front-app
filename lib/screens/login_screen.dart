@@ -673,7 +673,9 @@ class _LoginScreenState extends State<LoginScreen>
                                             ).showSnackBar(
                                               SnackBar(
                                                 content: Text(
-                                                  'Cuenta creada exitosamente',
+                                                  result['pendiente'] == true
+                                                      ? result['message']
+                                                      : 'Cuenta creada exitosamente',
                                                 ),
                                                 backgroundColor:
                                                     AppTheme.success,

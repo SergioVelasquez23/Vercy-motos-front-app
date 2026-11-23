@@ -8,8 +8,10 @@ import '../models/cuenta_por_pagar.dart';
 import '../models/gasto_programado.dart';
 import '../models/resumen_cartera.dart';
 import '../config/constants.dart';
+import '../models/solicitud_usuario.dart';
 import '../models/traslado.dart';
 import '../services/cartera_service.dart';
+import '../services/solicitud_usuario_service.dart';
 import '../services/traslado_service.dart';
 import '../services/traslado_websocket_service.dart';
 import '../utils/currency_utils.dart';
@@ -21,6 +23,7 @@ enum TipoNotificacion {
   gastoProgramadoProximo,
   descuentoEnRiesgo,
   trasladoPendiente,
+  usuarioPendiente,
 }
 
 class NotificacionItem {
@@ -31,6 +34,7 @@ class NotificacionItem {
   final String ruta;
   final dynamic origen;
   final List<ItemTraslado>? itemsTraslado;
+  final SolicitudUsuario? solicitudUsuario;
 
   const NotificacionItem({
     required this.id,
@@ -40,6 +44,7 @@ class NotificacionItem {
     required this.ruta,
     this.origen,
     this.itemsTraslado,
+    this.solicitudUsuario,
   });
 }
 
@@ -47,8 +52,10 @@ class NotificacionesProvider extends ChangeNotifier {
   NotificacionesProvider({
     CarteraService? carteraService,
     TrasladoService? trasladoService,
+    ISolicitudUsuarioService? solicitudUsuarioService,
   })  : _carteraService = carteraService ?? CarteraService(),
-        _trasladoService = trasladoService ?? TrasladoService();
+        _trasladoService = trasladoService ?? TrasladoService(),
+        _solicitudUsuarioService = solicitudUsuarioService ?? SolicitudUsuarioService();
 
   static const _prefsKeyDescartados = 'notif_traslados_descartados';
   // Los traslados solo se muestran como notificación mientras sean recientes;
@@ -73,10 +80,13 @@ class NotificacionesProvider extends ChangeNotifier {
 
   final CarteraService _carteraService;
   final TrasladoService _trasladoService;
+  final ISolicitudUsuarioService _solicitudUsuarioService;
   final TrasladoWebSocketService _wsService = TrasladoWebSocketService();
 
   ResumenCartera? _resumen;
   List<Traslado> _trasladosRecientes = [];
+  List<SolicitudUsuario> _solicitudesUsuario = [];
+  bool _esSuperadmin = false;
   Set<String> _trasladosDescartados = {};
   bool _isLoading = false;
   String? _error;
@@ -95,7 +105,8 @@ class NotificacionesProvider extends ChangeNotifier {
 
   /// Debe llamarse al iniciar sesión (ver AppShell) para que el proveedor
   /// sepa si el usuario actual debe recibir sonido/alerta de traslados.
-  void configurarUsuario({String? email, String? nombre}) {
+  void configurarUsuario({String? email, String? nombre, bool esSuperadmin = false}) {
+    _esSuperadmin = esSuperadmin;
     _emailUsuarioActual = email?.trim().toLowerCase();
     _nombreUsuarioActual = nombre?.trim().toLowerCase();
     debugPrint(
@@ -112,12 +123,27 @@ class NotificacionesProvider extends ChangeNotifier {
           _usuariosNotificadosTraslado.contains(_nombreUsuarioActual));
 
   ResumenCartera? get resumen => _resumen;
+  List<SolicitudUsuario> get solicitudesUsuario => List.unmodifiable(_solicitudesUsuario);
   bool get isLoading => _isLoading;
   String? get error => _error;
   DateTime? get lastRefresh => _lastRefresh;
 
   List<NotificacionItem> get items {
     final List<NotificacionItem> result = [];
+
+    // Crear un usuario exige la autorización de un SUPERADMIN: solo él ve estas solicitudes.
+    if (_esSuperadmin) {
+      for (final s in _solicitudesUsuario) {
+        result.add(NotificacionItem(
+          id: 'usuario-${s.id}',
+          tipo: TipoNotificacion.usuarioPendiente,
+          titulo: 'Nuevo usuario por autorizar',
+          descripcion: '${s.nombre} · ${s.email}',
+          ruta: '/usuarios',
+          solicitudUsuario: s,
+        ));
+      }
+    }
 
     for (final traslado in _puedeVerTraslados ? _trasladosRecientes : const <Traslado>[]) {
       if (traslado.id == null || _trasladosDescartados.contains(traslado.id)) {
@@ -218,8 +244,45 @@ class NotificacionesProvider extends ChangeNotifier {
       // en este ciclo; no debe romper el resto del centro de notificaciones.
     }
 
+    await _cargarSolicitudesUsuario();
+
     _lastRefresh = DateTime.now();
     _isLoading = false;
+    notifyListeners();
+  }
+
+  /// Solicitudes de creación de usuario pendientes (solo para SUPERADMIN). Suena cuando llega una nueva,
+  /// salvo en el primer refresh de la sesión (lo que ya estaba pendiente no es una novedad).
+  Future<void> _cargarSolicitudesUsuario() async {
+    if (!_esSuperadmin) {
+      _solicitudesUsuario = [];
+      return;
+    }
+    try {
+      final antes = _solicitudesUsuario.map((s) => s.id).toSet();
+      final nuevas = await _solicitudUsuarioService.pendientes();
+      final hayNueva = nuevas.any((s) => !antes.contains(s.id));
+      _solicitudesUsuario = nuevas;
+      if (hayNueva && !_primerRefreshSolicitudes) playNotificationSound();
+      _primerRefreshSolicitudes = false;
+    } catch (_) {
+      // Si falla, simplemente no se muestran solicitudes en este ciclo.
+    }
+  }
+
+  bool _primerRefreshSolicitudes = true;
+
+  /// Autoriza la solicitud: el backend crea el usuario. Lanza el error si no se pudo.
+  Future<void> autorizarSolicitudUsuario(String id) async {
+    await _solicitudUsuarioService.autorizar(id);
+    _solicitudesUsuario.removeWhere((s) => s.id == id);
+    notifyListeners();
+  }
+
+  /// Rechaza la solicitud: el usuario no se crea. Lanza el error si no se pudo.
+  Future<void> rechazarSolicitudUsuario(String id) async {
+    await _solicitudUsuarioService.rechazar(id);
+    _solicitudesUsuario.removeWhere((s) => s.id == id);
     notifyListeners();
   }
 
