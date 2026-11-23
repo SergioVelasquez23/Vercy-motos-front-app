@@ -125,8 +125,9 @@ class UserService {
     }
   }
 
-  // Crear nuevo usuario
-  Future<User> createUser(User user) async {
+  // Crear nuevo usuario. Devuelve true si se creó al instante (lo pide un SUPERADMIN) y false si quedó como
+  // solicitud pendiente: un SUPERADMIN debe autorizarla desde la campana y hasta entonces el usuario no existe.
+  Future<bool> createUser(User user) async {
     try {
       final token = await _getToken();
       if (token == null) {
@@ -141,7 +142,9 @@ class UserService {
         body: json.encode(user.toJsonCreate()),
       ).timeout(_timeout);
       if (response.statusCode == 201 || response.statusCode == 200) {
-        return User.fromJson(json.decode(response.body));
+        return true;
+      } else if (response.statusCode == 202) {
+        return false;
       } else {
         throwBackendError(response.body, response.statusCode, prefix: 'Error al crear usuario');
       }

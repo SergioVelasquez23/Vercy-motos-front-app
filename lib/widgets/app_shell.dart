@@ -6,7 +6,10 @@ import '../providers/user_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/notificaciones_provider.dart';
 import '../providers/datos_cache_provider.dart';
+import '../utils/api_error.dart';
+import '../utils/dialogs_helper.dart';
 import '../utils/notification_sound.dart';
+import '../utils/snackbar_helper.dart';
 
 /// Shell persistente: sidebar a la izquierda + topbar minimal + área de contenido.
 /// Las rutas envueltas por ShellRoute se renderizan en [child] sin perder el sidebar.
@@ -38,6 +41,7 @@ class _AppShellState extends State<AppShell> {
     _notifProvider?.configurarUsuario(
       email: userProviderRef.userEmail,
       nombre: userProviderRef.userName,
+      esSuperadmin: userProviderRef.isSuperAdmin,
     );
 
     // AppShell envuelve TODAS las rutas protegidas, así que arrancar el
@@ -837,6 +841,8 @@ class _NotificacionesPanel extends StatelessWidget {
           onClose();
           if (items[i].tipo == TipoNotificacion.trasladoPendiente) {
             _mostrarItemsTraslado(context, items[i]);
+          } else if (items[i].tipo == TipoNotificacion.usuarioPendiente) {
+            _mostrarSolicitudUsuario(context, items[i]);
           } else {
             context.push(items[i].ruta);
           }
@@ -844,6 +850,70 @@ class _NotificacionesPanel extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Solicitud de creación de usuario: solo un SUPERADMIN la ve. Si no la autoriza, el usuario no se crea.
+void _mostrarSolicitudUsuario(BuildContext context, NotificacionItem item) {
+  final notif = context.read<NotificacionesProvider>();
+  final solicitud = item.solicitudUsuario;
+  if (solicitud == null) return;
+
+  showDialog<void>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: const Text('Autorizar nuevo usuario'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(solicitud.nombre, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            const SizedBox(height: 4),
+            Text(solicitud.email),
+            if ((solicitud.solicitadoPor ?? '').isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text('Solicitado por: ${solicitud.solicitadoPor}', style: const TextStyle(fontSize: 12)),
+            ],
+            const SizedBox(height: 12),
+            const Text(
+              'El usuario no existe hasta que lo autorices.',
+              style: TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cerrar'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+              try {
+                await notif.rechazarSolicitudUsuario(solicitud.id);
+                if (context.mounted) showInfoSnackBar(context, 'Solicitud rechazada: el usuario no se creó');
+              } catch (e) {
+                if (context.mounted) showErrorDialog(context, 'No se pudo rechazar: ${errorMessage(e)}');
+              }
+            },
+            child: const Text('Rechazar', style: TextStyle(color: Colors.redAccent)),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+              try {
+                await notif.autorizarSolicitudUsuario(solicitud.id);
+                if (context.mounted) showSuccessSnackBar(context, 'Usuario autorizado y creado');
+              } catch (e) {
+                if (context.mounted) showErrorDialog(context, 'No se pudo autorizar: ${errorMessage(e)}');
+              }
+            },
+            child: const Text('Autorizar'),
+          ),
+        ],
+      );
+    },
+  );
 }
 
 void _mostrarItemsTraslado(BuildContext context, NotificacionItem item) {
@@ -995,6 +1065,8 @@ class _NotificacionTile extends StatelessWidget {
         return (Icons.local_offer_outlined, AppTheme.secondary);
       case TipoNotificacion.trasladoPendiente:
         return (Icons.local_shipping_outlined, AppTheme.primary);
+      case TipoNotificacion.usuarioPendiente:
+        return (Icons.person_add_alt_1_outlined, AppTheme.warning);
     }
   }
 }
